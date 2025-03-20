@@ -75,6 +75,7 @@ async fn main() {
         eprintln!("Warning: Failed to initialize SonarQube client: {}", err);
         eprintln!("SonarQube integration will be disabled");
         eprintln!("Set SONARQUBE_URL and SONARQUBE_TOKEN environment variables to enable");
+        eprintln!("If your SonarQube instance requires an organization, also set SONARQUBE_ORGANIZATION");
     }
 
     // signal handling to exit cli
@@ -229,11 +230,10 @@ async fn display_info(args: &Args) {
         if args.tools {
             println!(
                 r#"tools:
-- get_current_time_in_city: get current time in city
-- sonarqube/get_metrics: get metrics for a SonarQube project
-- sonarqube/get_issues: get issues for a SonarQube project
-- sonarqube/get_quality_gate: get quality gate status for a SonarQube project
-- sonarqube/list_projects: list all SonarQube projects
+- sonarqube_get_metrics: get metrics for a SonarQube project
+- sonarqube_get_issues: get issues for a SonarQube project
+- sonarqube_get_quality_gate: get quality gate status for a SonarQube project
+- sonarqube_list_projects: list all SonarQube projects
 "#
             );
         }

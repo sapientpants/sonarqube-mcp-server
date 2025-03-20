@@ -32,6 +32,7 @@ async fn test_sonarqube_get_metrics_tool() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Define metrics array
@@ -92,6 +93,7 @@ async fn test_sonarqube_get_issues_tool() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call client method directly
@@ -131,6 +133,7 @@ async fn test_sonarqube_get_quality_gate_tool() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call client method directly
@@ -174,6 +177,7 @@ async fn test_sonarqube_get_metrics_tool_with_error() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call function and verify error

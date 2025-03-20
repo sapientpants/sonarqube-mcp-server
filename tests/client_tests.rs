@@ -29,6 +29,7 @@ async fn test_get_metrics_success() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call function and verify results
@@ -79,6 +80,7 @@ async fn test_get_metrics_project_not_found() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call function and verify error
@@ -112,6 +114,7 @@ async fn test_get_metrics_auth_error() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: "invalid-token".to_string(),
+        organization: None,
     });
 
     // Call function and verify error
@@ -146,6 +149,7 @@ async fn test_get_issues_success() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call function and verify results
@@ -200,6 +204,7 @@ async fn test_get_quality_gate_success() {
     let client = SonarQubeClient::new(SonarQubeConfig {
         base_url: mock_base_url(&mock_server),
         token: mock_token(),
+        organization: None,
     });
 
     // Call function and verify results

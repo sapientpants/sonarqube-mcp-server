@@ -1,6 +1,6 @@
 [
   {
-    "name": "sonarqube/get_metrics",
+    "name": "sonarqube_get_metrics",
     "description": "Get metrics for a SonarQube project",
     "inputSchema": {
       "type": "object",
@@ -20,7 +20,7 @@
     }
   },
   {
-    "name": "sonarqube/get_issues",
+    "name": "sonarqube_get_issues",
     "description": "Get issues for a SonarQube project",
     "inputSchema": {
       "type": "object",
@@ -52,7 +52,7 @@
     }
   },
   {
-    "name": "sonarqube/get_quality_gate",
+    "name": "sonarqube_get_quality_gate",
     "description": "Get quality gate status for a SonarQube project",
     "inputSchema": {
       "type": "object",
@@ -68,7 +68,7 @@
     }
   },
   {
-    "name": "sonarqube/list_projects",
+    "name": "sonarqube_list_projects",
     "description": "List all projects in SonarQube",
     "inputSchema": {
       "type": "object",
@@ -80,6 +80,10 @@
         "page_size": {
           "type": "number",
           "description": "Page size (optional)"
+        },
+        "organization": {
+          "type": "string",
+          "description": "Organization key (required for SonarCloud and some SonarQube instances)"
         }
       },
       "required": []

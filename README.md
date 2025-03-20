@@ -57,6 +57,11 @@ The SonarQube MCP Server requires the following environment variables:
 * `SONARQUBE_URL`: The base URL of your SonarQube server (e.g., `https://sonarqube.example.com`)
 * `SONARQUBE_TOKEN`: Your SonarQube authentication token
 
+Optional environment variables:
+
+* `SONARQUBE_ORGANIZATION`: Organization key for SonarCloud or multi-organization SonarQube instances
+* `SONARQUBE_DEBUG`: Set to "1" or "true" to enable detailed debugging output
+
 ### Integration with Claude Desktop
 
 1. Edit `claude_desktop_config.json`: Claude Desktop -> `Settings` -> `Developer` -> `Edit Config` 
@@ -72,7 +77,8 @@ The SonarQube MCP Server requires the following environment variables:
          ],
          "env": {
             "SONARQUBE_URL": "https://sonarqube.example.com",
-            "SONARQUBE_TOKEN": "your-sonarqube-token"
+            "SONARQUBE_TOKEN": "your-sonarqube-token",
+            "SONARQUBE_ORGANIZATION": "your-organization-key"
          }
       }
    }
@@ -87,14 +93,17 @@ To check MCP logs, use: `tail -n 20 -f ~/Library/Logs/Claude/mcp*.log`
 
 The SonarQube MCP Server provides the following tools:
 
-1. `sonarqube/get_metrics`: Retrieve code metrics for a project
+1. `sonarqube_get_metrics`: Retrieve code metrics for a project
    - Parameters: `project_key` (required), `metrics` (optional array of metric keys)
 
-2. `sonarqube/get_issues`: Retrieve issues for a project
+2. `sonarqube_get_issues`: Retrieve issues for a project
    - Parameters: `project_key` (required), `severity` (optional), `type` (optional)
 
-3. `sonarqube/get_quality_gate`: Retrieve quality gate status for a project
+3. `sonarqube_get_quality_gate`: Retrieve quality gate status for a project
    - Parameters: `project_key` (required)
+
+4. `sonarqube_list_projects`: List all SonarQube projects
+   - Parameters: `page` (optional), `page_size` (optional), `organization` (optional - can override the environment variable)
 
 
 ## Examples
@@ -105,7 +114,7 @@ The SonarQube MCP Server provides the following tools:
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "sonarqube/get_metrics",
+  "method": "sonarqube_get_metrics",
   "params": {
     "project_key": "my-project",
     "metrics": ["ncloc", "bugs", "code_smells", "complexity"]
@@ -145,16 +154,15 @@ Response:
 }
 ```
 
-### Example: Retrieving Issues
+### Example: Listing Projects with Organization Parameter
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 2,
-  "method": "sonarqube/get_issues",
+  "method": "sonarqube_list_projects", 
   "params": {
-    "project_key": "my-project",
-    "severity": "CRITICAL"
+    "organization": "my-org-key"
   }
 }
 ```

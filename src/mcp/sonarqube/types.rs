@@ -8,7 +8,7 @@ pub enum SonarError {
     Http(#[from] reqwest::Error),
 
     #[error("JSON parsing failed: {0}")]
-    Parse(#[from] serde_json::Error),
+    Parse(String),
 
     #[error("SonarQube API error: {0}")]
     Api(String),
@@ -23,11 +23,19 @@ pub enum SonarError {
     Config(String),
 }
 
+// Add an implementation to convert serde_json::Error to SonarError
+impl From<serde_json::Error> for SonarError {
+    fn from(err: serde_json::Error) -> Self {
+        SonarError::Parse(err.to_string())
+    }
+}
+
 /// Configuration for SonarQube API client
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SonarQubeConfig {
     pub base_url: String,
     pub token: String,
+    pub organization: Option<String>,
 }
 
 /// Response for metrics from SonarQube API
@@ -216,7 +224,9 @@ pub struct Project {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub qualifier: String,
-    pub visibility: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub visibility: Option<String>,
     #[serde(rename = "lastAnalysisDate")]
     pub last_analysis_date: Option<String>,
 }
@@ -229,10 +239,11 @@ pub struct ProjectsResponse {
 }
 
 /// Request parameters for MCP sonarqube/list_projects tool
-#[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct SonarQubeListProjectsRequest {
     pub page: Option<u32>,
     pub page_size: Option<u32>,
+    pub organization: Option<String>,
 }
 
 /// Result for MCP sonarqube/list_projects tool

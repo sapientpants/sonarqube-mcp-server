@@ -12,6 +12,3 @@ tools-list:
 
 resources-list:
   echo '{ "jsonrpc": "2.0", "id": 1, "method": "resources/list" }' | ./target/debug/sonarqube-mcp-server --mcp
-
-current-time:
-  echo '{ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": { "name": "get_current_time_in_city", "arguments": {"city":"Hangzhou" } } }' | ./target/debug/sonarqube-mcp-server --mcp
