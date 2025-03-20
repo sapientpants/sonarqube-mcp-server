@@ -216,7 +216,10 @@ impl SonarQubeClient {
         }
 
         if let Some(sonarsource_security) = params.sonarsource_security {
-            url.push_str(&format!("&sonarsourceSecurity={}", sonarsource_security.join(",")));
+            url.push_str(&format!(
+                "&sonarsourceSecurity={}",
+                sonarsource_security.join(",")
+            ));
         }
 
         if let Some(tags) = params.tags {

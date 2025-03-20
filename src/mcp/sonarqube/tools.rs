@@ -267,7 +267,7 @@ pub async fn sonarqube_get_issues(
     params.statuses = statuses_ref.as_deref();
     params.impact_severities = impact_severities_ref.as_deref();
     params.impact_software_qualities = impact_software_qualities_ref.as_deref();
-    
+
     // Set new parameters
     params.assigned_to_me = request.assigned_to_me;
     params.assignees = assignees_ref.as_deref();
