@@ -40,9 +40,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install latest stable Rust
+        uses: actions-rs/toolchain@v1
         with:
+          toolchain: stable
+          override: true
           components: rustfmt, clippy
 
       - name: Install grcov
@@ -60,7 +62,7 @@ jobs:
         uses: sonarsource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          
+
   test:
     strategy:
       matrix:
