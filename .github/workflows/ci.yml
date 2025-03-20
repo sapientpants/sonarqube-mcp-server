@@ -33,11 +33,6 @@ jobs:
     - name: Format check
       run: cargo fmt -- --check
 
-    - name: SonarQube Scan
-      uses: SonarSource/sonarqube-scan-action@v5
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
   test:
     strategy:
       matrix:
