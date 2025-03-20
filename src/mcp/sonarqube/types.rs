@@ -207,3 +207,39 @@ pub struct QualityGateCondition {
     pub actual_value: String,
     pub status: String,
 }
+
+/// Project information from SonarQube API
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Project {
+    pub key: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub qualifier: String,
+    pub visibility: String,
+    #[serde(rename = "lastAnalysisDate")]
+    pub last_analysis_date: Option<String>,
+}
+
+/// API response for projects list from SonarQube
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ProjectsResponse {
+    pub paging: Paging,
+    pub components: Vec<Project>,
+}
+
+/// Request parameters for MCP sonarqube/list_projects tool
+#[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
+pub struct SonarQubeListProjectsRequest {
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
+}
+
+/// Result for MCP sonarqube/list_projects tool
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SonarQubeListProjectsResult {
+    pub total: u32,
+    pub page: u32,
+    pub page_size: u32,
+    pub projects: Vec<Project>,
+}

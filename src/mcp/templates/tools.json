@@ -66,5 +66,23 @@
         "project_key"
       ]
     }
+  },
+  {
+    "name": "sonarqube/list_projects",
+    "description": "List all projects in SonarQube",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number",
+          "description": "Page number (optional)"
+        },
+        "page_size": {
+          "type": "number",
+          "description": "Page size (optional)"
+        }
+      },
+      "required": []
+    }
   }
 ]

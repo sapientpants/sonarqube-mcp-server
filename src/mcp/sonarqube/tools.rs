@@ -44,6 +44,10 @@ pub fn register_sonarqube_tools(router_builder: RouterBuilder) -> RouterBuilder 
             "sonarqube/get_quality_gate",
             sonarqube_get_quality_gate.into_dyn(),
         )
+        .append_dyn(
+            "sonarqube/list_projects",
+            sonarqube_list_projects.into_dyn(),
+        )
 }
 
 /// MCP tool to get metrics for a project
@@ -239,6 +243,45 @@ pub async fn sonarqube_get_quality_gate(
                 status: c.status,
             })
             .collect(),
+    };
+
+    Ok(result)
+}
+
+/// MCP tool to list SonarQube projects
+pub async fn sonarqube_list_projects(
+    request: SonarQubeListProjectsRequest,
+) -> HandlerResult<SonarQubeListProjectsResult> {
+    // Get client
+    let client = match get_client() {
+        Ok(client) => client,
+        Err(e) => {
+            return Err(json!({
+                "code": -32603,
+                "message": format!("Internal error: {}", e)
+            })
+            .into_handler_error());
+        }
+    };
+
+    // Get projects from SonarQube
+    let response = match client.list_projects(request.page, request.page_size).await {
+        Ok(response) => response,
+        Err(e) => {
+            return Err(json!({
+                "code": -32603,
+                "message": format!("SonarQube API error: {}", e)
+            })
+            .into_handler_error());
+        }
+    };
+
+    // Map response to the tool result format
+    let result = SonarQubeListProjectsResult {
+        total: response.paging.total,
+        page: response.paging.page_index,
+        page_size: response.paging.page_size,
+        projects: response.components,
     };
 
     Ok(result)

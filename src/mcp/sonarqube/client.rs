@@ -158,6 +158,47 @@ impl SonarQubeClient {
         let data = response.json::<QualityGateResponse>().await?;
         Ok(data)
     }
+
+    /// Get list of projects from SonarQube
+    pub async fn list_projects(
+        &self,
+        page: Option<u32>,
+        page_size: Option<u32>,
+    ) -> Result<ProjectsResponse, SonarError> {
+        let mut url = format!("{}/api/components/search?qualifiers=TRK", self.base_url);
+
+        // Add pagination parameters if provided
+        if let Some(p) = page {
+            url.push_str(&format!("&p={}", p));
+        }
+
+        if let Some(ps) = page_size {
+            url.push_str(&format!("&ps={}", ps));
+        }
+
+        let response = self
+            .client
+            .get(&url)
+            .bearer_auth(&self.token)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            if status.as_u16() == 401 || status.as_u16() == 403 {
+                return Err(SonarError::AuthError);
+            }
+
+            let error_text = response
+                .text()
+                .await
+                .unwrap_or_else(|_| "Unknown error".to_string());
+            return Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)));
+        }
+
+        let data = response.json::<ProjectsResponse>().await?;
+        Ok(data)
+    }
 }
 
 /// Create a shared instance of SonarQubeClient

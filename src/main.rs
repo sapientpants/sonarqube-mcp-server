@@ -233,6 +233,7 @@ async fn display_info(args: &Args) {
 - sonarqube/get_metrics: get metrics for a SonarQube project
 - sonarqube/get_issues: get issues for a SonarQube project
 - sonarqube/get_quality_gate: get quality gate status for a SonarQube project
+- sonarqube/list_projects: list all SonarQube projects
 "#
             );
         }
