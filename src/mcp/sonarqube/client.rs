@@ -138,6 +138,99 @@ impl SonarQubeClient {
             ));
         }
 
+        // Add new parameters
+        if let Some(assigned_to_me) = params.assigned_to_me {
+            url.push_str(&format!("&assignedToMe={}", assigned_to_me));
+        }
+
+        if let Some(assignees) = params.assignees {
+            url.push_str(&format!("&assignees={}", assignees.join(",")));
+        }
+
+        if let Some(authors) = params.authors {
+            url.push_str(&format!("&authors={}", authors.join(",")));
+        }
+
+        if let Some(code_variants) = params.code_variants {
+            url.push_str(&format!("&codeVariants={}", code_variants.join(",")));
+        }
+
+        if let Some(created_after) = params.created_after {
+            url.push_str(&format!("&createdAfter={}", created_after));
+        }
+
+        if let Some(created_before) = params.created_before {
+            url.push_str(&format!("&createdBefore={}", created_before));
+        }
+
+        if let Some(created_in_last) = params.created_in_last {
+            url.push_str(&format!("&createdInLast={}", created_in_last));
+        }
+
+        if let Some(cwe) = params.cwe {
+            url.push_str(&format!("&cwe={}", cwe.join(",")));
+        }
+
+        if let Some(directories) = params.directories {
+            url.push_str(&format!("&directories={}", directories.join(",")));
+        }
+
+        if let Some(facets) = params.facets {
+            url.push_str(&format!("&facets={}", facets.join(",")));
+        }
+
+        if let Some(files) = params.files {
+            url.push_str(&format!("&files={}", files.join(",")));
+        }
+
+        if let Some(issue_statuses) = params.issue_statuses {
+            url.push_str(&format!("&issueStatuses={}", issue_statuses.join(",")));
+        }
+
+        if let Some(languages) = params.languages {
+            url.push_str(&format!("&languages={}", languages.join(",")));
+        }
+
+        if let Some(owasp_top10) = params.owasp_top10 {
+            url.push_str(&format!("&owaspTop10={}", owasp_top10.join(",")));
+        }
+
+        if let Some(owasp_top10_2021) = params.owasp_top10_2021 {
+            url.push_str(&format!("&owaspTop10-2021={}", owasp_top10_2021.join(",")));
+        }
+
+        if let Some(resolutions) = params.resolutions {
+            url.push_str(&format!("&resolutions={}", resolutions.join(",")));
+        }
+
+        if let Some(resolved) = params.resolved {
+            url.push_str(&format!("&resolved={}", resolved));
+        }
+
+        if let Some(rules) = params.rules {
+            url.push_str(&format!("&rules={}", rules.join(",")));
+        }
+
+        if let Some(sans_top25) = params.sans_top25 {
+            url.push_str(&format!("&sansTop25={}", sans_top25.join(",")));
+        }
+
+        if let Some(sonarsource_security) = params.sonarsource_security {
+            url.push_str(&format!("&sonarsourceSecurity={}", sonarsource_security.join(",")));
+        }
+
+        if let Some(tags) = params.tags {
+            url.push_str(&format!("&tags={}", tags.join(",")));
+        }
+
+        if let Some(sort_field) = params.sort_field {
+            url.push_str(&format!("&s={}", sort_field));
+        }
+
+        if let Some(asc) = params.asc {
+            url.push_str(&format!("&asc={}", asc));
+        }
+
         if let Some(p) = params.page {
             url.push_str(&format!("&p={}", p));
         }

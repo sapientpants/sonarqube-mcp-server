@@ -97,7 +97,38 @@ The SonarQube MCP Server provides the following tools:
    - Parameters: `project_key` (required), `metrics` (optional array of metric keys)
 
 2. `sonarqube_get_issues`: Retrieve issues for a project
-   - Parameters: `project_key` (required), `severities` (optional array), `types` (optional array), `statuses` (optional array), `impact_severities` (optional array), `impact_software_qualities` (optional array), `page` (optional), `page_size` (optional)
+   - Parameters: 
+     - `project_key` (required)
+     - `severities` (optional array)
+     - `types` (optional array)
+     - `statuses` (optional array)
+     - `impact_severities` (optional array)
+     - `impact_software_qualities` (optional array)
+     - `assigned_to_me` (optional boolean)
+     - `assignees` (optional array)
+     - `authors` (optional array)
+     - `code_variants` (optional array)
+     - `created_after` (optional string, format: YYYY-MM-DD)
+     - `created_before` (optional string, format: YYYY-MM-DD)
+     - `created_in_last` (optional string, e.g., '1m' for 1 month)
+     - `cwe` (optional array of CWE identifiers)
+     - `directories` (optional array)
+     - `facets` (optional array)
+     - `files` (optional array)
+     - `issue_statuses` (optional array)
+     - `languages` (optional array)
+     - `owasp_top10` (optional array)
+     - `owasp_top10_2021` (optional array)
+     - `resolutions` (optional array)
+     - `resolved` (optional boolean)
+     - `rules` (optional array)
+     - `sans_top25` (optional array)
+     - `sonarsource_security` (optional array)
+     - `tags` (optional array)
+     - `sort_field` (optional string)
+     - `asc` (optional boolean)
+     - `page` (optional)
+     - `page_size` (optional)
 
 3. `sonarqube_get_quality_gate`: Retrieve quality gate status for a project
    - Parameters: `project_key` (required)
@@ -188,6 +219,59 @@ Response:
 }
 ```
 
+### Example: Getting Issues by Author and Creation Date
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "sonarqube_get_issues",
+  "params": {
+    "project_key": "my-project",
+    "authors": ["developer1", "developer2"],
+    "created_after": "2023-01-01",
+    "created_before": "2023-12-31",
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+### Example: Getting Security Issues with CWE and OWASP Filtering
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "sonarqube_get_issues",
+  "params": {
+    "project_key": "my-project",
+    "types": ["VULNERABILITY"],
+    "cwe": ["CWE-79", "CWE-89"],
+    "owasp_top10": ["a1", "a3"],
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+### Example: Getting Issues by Language and Directory
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "sonarqube_get_issues",
+  "params": {
+    "project_key": "my-project",
+    "languages": ["java", "js"],
+    "directories": ["src/main/java/com/example/controllers", "src/main/java/com/example/services"],
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
 ### Example: Listing Projects with Organization Parameter
 
 ```json
@@ -208,30 +292,3 @@ Response:
 - Rust 1.70 or higher
 - Cargo
 - A SonarQube server instance (for testing)
-
-### Running Tests
-
-```bash
-cargo test
-```
-
-### Building for Development
-
-```bash
-cargo build
-```
-
-### Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## References
-
-* [SonarQube Web API Documentation](https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/)
-* [Model Context Protocol (MCP) Specification](https://spec.modelcontextprotocol.io/)
-* [MCP Introduction](https://modelcontextprotocol.io/introduction)
-* [rust-rpc-router](https://github.com/jeremychone/rust-rpc-router/) - JSON-RPC routing library for Rust

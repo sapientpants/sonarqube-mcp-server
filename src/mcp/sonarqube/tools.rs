@@ -179,6 +179,87 @@ pub async fn sonarqube_get_issues(
         .as_ref()
         .map(|v| v.iter().map(|s| s.as_str()).collect());
 
+    // Convert new parameters to references
+    let assignees_ref: Option<Vec<&str>> = request
+        .assignees
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let authors_ref: Option<Vec<&str>> = request
+        .authors
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let code_variants_ref: Option<Vec<&str>> = request
+        .code_variants
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let cwe_ref: Option<Vec<&str>> = request
+        .cwe
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let directories_ref: Option<Vec<&str>> = request
+        .directories
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let facets_ref: Option<Vec<&str>> = request
+        .facets
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let files_ref: Option<Vec<&str>> = request
+        .files
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let issue_statuses_ref: Option<Vec<&str>> = request
+        .issue_statuses
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let languages_ref: Option<Vec<&str>> = request
+        .languages
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let owasp_top10_ref: Option<Vec<&str>> = request
+        .owasp_top10
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let owasp_top10_2021_ref: Option<Vec<&str>> = request
+        .owasp_top10_2021
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let resolutions_ref: Option<Vec<&str>> = request
+        .resolutions
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let rules_ref: Option<Vec<&str>> = request
+        .rules
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let sans_top25_ref: Option<Vec<&str>> = request
+        .sans_top25
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let sonarsource_security_ref: Option<Vec<&str>> = request
+        .sonarsource_security
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let tags_ref: Option<Vec<&str>> = request
+        .tags
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
     // Create query params
     let mut params = IssuesQueryParams::new(&request.project_key);
     params.severities = severities_ref.as_deref();
@@ -186,6 +267,31 @@ pub async fn sonarqube_get_issues(
     params.statuses = statuses_ref.as_deref();
     params.impact_severities = impact_severities_ref.as_deref();
     params.impact_software_qualities = impact_software_qualities_ref.as_deref();
+    
+    // Set new parameters
+    params.assigned_to_me = request.assigned_to_me;
+    params.assignees = assignees_ref.as_deref();
+    params.authors = authors_ref.as_deref();
+    params.code_variants = code_variants_ref.as_deref();
+    params.created_after = request.created_after.as_deref();
+    params.created_before = request.created_before.as_deref();
+    params.created_in_last = request.created_in_last.as_deref();
+    params.cwe = cwe_ref.as_deref();
+    params.directories = directories_ref.as_deref();
+    params.facets = facets_ref.as_deref();
+    params.files = files_ref.as_deref();
+    params.issue_statuses = issue_statuses_ref.as_deref();
+    params.languages = languages_ref.as_deref();
+    params.owasp_top10 = owasp_top10_ref.as_deref();
+    params.owasp_top10_2021 = owasp_top10_2021_ref.as_deref();
+    params.resolutions = resolutions_ref.as_deref();
+    params.resolved = request.resolved;
+    params.rules = rules_ref.as_deref();
+    params.sans_top25 = sans_top25_ref.as_deref();
+    params.sonarsource_security = sonarsource_security_ref.as_deref();
+    params.tags = tags_ref.as_deref();
+    params.sort_field = request.sort_field.as_deref();
+    params.asc = request.asc;
     params.page = request.page;
     params.page_size = request.page_size;
 

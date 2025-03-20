@@ -49,6 +49,98 @@
           "type": "array",
           "description": "List of software qualities to filter by (e.g., MAINTAINABILITY, RELIABILITY, SECURITY) (optional)"
         },
+        "assigned_to_me": {
+          "type": "boolean",
+          "description": "Filter issues assigned to the authenticated user (optional)"
+        },
+        "assignees": {
+          "type": "array",
+          "description": "List of assignee logins to filter by (optional)"
+        },
+        "authors": {
+          "type": "array",
+          "description": "List of issue authors to filter by (optional)"
+        },
+        "code_variants": {
+          "type": "array",
+          "description": "List of code variant identifiers to filter by (optional)"
+        },
+        "created_after": {
+          "type": "string",
+          "description": "Filter issues created after the given date (format: YYYY-MM-DD) (optional)"
+        },
+        "created_before": {
+          "type": "string",
+          "description": "Filter issues created before the given date (format: YYYY-MM-DD) (optional)"
+        },
+        "created_in_last": {
+          "type": "string",
+          "description": "Filter issues created during a time span before now (e.g., '1m' for 1 month) (optional)"
+        },
+        "cwe": {
+          "type": "array",
+          "description": "List of CWE identifiers to filter by (optional)"
+        },
+        "directories": {
+          "type": "array",
+          "description": "List of directories to filter by (optional)"
+        },
+        "facets": {
+          "type": "array",
+          "description": "List of facets to return in the response (optional)"
+        },
+        "files": {
+          "type": "array",
+          "description": "List of file paths to filter by (optional)"
+        },
+        "issue_statuses": {
+          "type": "array",
+          "description": "List of issue statuses (optional)"
+        },
+        "languages": {
+          "type": "array",
+          "description": "List of language keys to filter by (optional)"
+        },
+        "owasp_top10": {
+          "type": "array",
+          "description": "List of OWASP Top 10 categories to filter by (optional)"
+        },
+        "owasp_top10_2021": {
+          "type": "array",
+          "description": "List of OWASP Top 10 2021 categories to filter by (optional)"
+        },
+        "resolutions": {
+          "type": "array",
+          "description": "List of issue resolutions to filter by (optional)"
+        },
+        "resolved": {
+          "type": "boolean",
+          "description": "Filter resolved issues (optional)"
+        },
+        "rules": {
+          "type": "array",
+          "description": "List of rule keys to filter by (optional)"
+        },
+        "sans_top25": {
+          "type": "array",
+          "description": "List of SANS Top 25 categories to filter by (optional)"
+        },
+        "sonarsource_security": {
+          "type": "array",
+          "description": "List of SonarSource security categories to filter by (optional)"
+        },
+        "tags": {
+          "type": "array",
+          "description": "List of tags to filter by (optional)"
+        },
+        "sort_field": {
+          "type": "string",
+          "description": "Field to sort by (optional)"
+        },
+        "asc": {
+          "type": "boolean",
+          "description": "Sort ascending if true, descending if false (optional)"
+        },
         "page": {
           "type": "number",
           "description": "Page number (optional)"
