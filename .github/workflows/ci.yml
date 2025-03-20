@@ -53,6 +53,12 @@ jobs:
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
+      - name: Generate clippy report
+        run: cargo clippy -- -D warnings --out-format json > clippy.json
+
+      - name: Generate coverage report
+        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
+
       - name: Run tests with coverage
         run: |
           cargo test --verbose
