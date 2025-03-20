@@ -97,7 +97,7 @@ The SonarQube MCP Server provides the following tools:
    - Parameters: `project_key` (required), `metrics` (optional array of metric keys)
 
 2. `sonarqube_get_issues`: Retrieve issues for a project
-   - Parameters: `project_key` (required), `severity` (optional), `type` (optional)
+   - Parameters: `project_key` (required), `severities` (optional array), `types` (optional array), `statuses` (optional array), `impact_severities` (optional array), `impact_software_qualities` (optional array), `page` (optional), `page_size` (optional)
 
 3. `sonarqube_get_quality_gate`: Retrieve quality gate status for a project
    - Parameters: `project_key` (required)
@@ -150,6 +150,40 @@ Response:
         }
       ]
     }
+  }
+}
+```
+
+### Example: Getting Issues with Status Filtering
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "sonarqube_get_issues",
+  "params": {
+    "project_key": "my-project",
+    "severities": ["CRITICAL", "BLOCKER"],
+    "statuses": ["OPEN", "CONFIRMED"],
+    "page": 1,
+    "page_size": 20
+  }
+}
+```
+
+### Example: Getting Issues with Impact Filtering
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "sonarqube_get_issues",
+  "params": {
+    "project_key": "my-project",
+    "impact_severities": ["HIGH"],
+    "impact_software_qualities": ["MAINTAINABILITY", "SECURITY"],
+    "page": 1,
+    "page_size": 20
   }
 }
 ```

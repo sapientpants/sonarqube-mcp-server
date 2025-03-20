@@ -97,10 +97,9 @@ async fn test_sonarqube_get_issues_tool() {
     });
 
     // Call client method directly
-    let response = client
-        .get_issues(&test_project_key(), None, None, None, None)
-        .await
-        .unwrap();
+    let project_key = test_project_key();
+    let params = IssuesQueryParams::new(&project_key);
+    let response = client.get_issues(params).await.unwrap();
 
     // Verify response data
     assert_eq!(response.total, 3);

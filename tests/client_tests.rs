@@ -153,16 +153,12 @@ async fn test_get_issues_success() {
     });
 
     // Call function and verify results
-    let issues = client
-        .get_issues(
-            &test_project_key(),
-            Some(&["CRITICAL", "MAJOR"]),
-            Some(&["BUG", "VULNERABILITY"]),
-            None,
-            None,
-        )
-        .await
-        .unwrap();
+    let project_key = test_project_key();
+    let mut params = IssuesQueryParams::new(&project_key);
+    params.severities = Some(&["CRITICAL", "MAJOR"]);
+    params.types = Some(&["BUG", "VULNERABILITY"]);
+
+    let issues = client.get_issues(params).await.unwrap();
 
     // Verify response data
     assert_eq!(issues.total, 3);

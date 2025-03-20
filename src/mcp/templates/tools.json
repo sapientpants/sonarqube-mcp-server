@@ -37,6 +37,18 @@
           "type": "array",
           "description": "List of issue types to filter by (optional)"
         },
+        "statuses": {
+          "type": "array",
+          "description": "List of issue statuses to filter by (e.g., OPEN, CONFIRMED, RESOLVED, CLOSED) (optional)"
+        },
+        "impact_severities": {
+          "type": "array",
+          "description": "List of impact severities to filter by (e.g., HIGH, MEDIUM, LOW) (optional)"
+        },
+        "impact_software_qualities": {
+          "type": "array",
+          "description": "List of software qualities to filter by (e.g., MAINTAINABILITY, RELIABILITY, SECURITY) (optional)"
+        },
         "page": {
           "type": "number",
           "description": "Page number (optional)"

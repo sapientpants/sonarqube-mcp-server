@@ -159,12 +159,43 @@ pub struct MetricValue {
     pub best_value: Option<bool>,
 }
 
+/// Parameters for querying issues from the SonarQube API
+#[derive(Debug, Clone, Default)]
+pub struct IssuesQueryParams<'a> {
+    pub project_key: &'a str,
+    pub severities: Option<&'a [&'a str]>,
+    pub types: Option<&'a [&'a str]>,
+    pub statuses: Option<&'a [&'a str]>,
+    pub impact_severities: Option<&'a [&'a str]>,
+    pub impact_software_qualities: Option<&'a [&'a str]>,
+    pub page: Option<u32>,
+    pub page_size: Option<u32>,
+}
+
+impl<'a> IssuesQueryParams<'a> {
+    pub fn new(project_key: &'a str) -> Self {
+        Self {
+            project_key,
+            severities: None,
+            types: None,
+            statuses: None,
+            impact_severities: None,
+            impact_software_qualities: None,
+            page: None,
+            page_size: None,
+        }
+    }
+}
+
 /// Request parameters for MCP sonarqube/get_issues tool
 #[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
 pub struct SonarQubeIssuesRequest {
     pub project_key: String,
     pub severities: Option<Vec<String>>,
     pub types: Option<Vec<String>>,
+    pub statuses: Option<Vec<String>>,
+    pub impact_severities: Option<Vec<String>>,
+    pub impact_software_qualities: Option<Vec<String>>,
     pub page: Option<u32>,
     pub page_size: Option<u32>,
 }

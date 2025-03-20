@@ -164,17 +164,33 @@ pub async fn sonarqube_get_issues(
         .as_ref()
         .map(|v| v.iter().map(|s| s.as_str()).collect());
 
+    let statuses_ref: Option<Vec<&str>> = request
+        .statuses
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let impact_severities_ref: Option<Vec<&str>> = request
+        .impact_severities
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let impact_software_qualities_ref: Option<Vec<&str>> = request
+        .impact_software_qualities
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    // Create query params
+    let mut params = IssuesQueryParams::new(&request.project_key);
+    params.severities = severities_ref.as_deref();
+    params.types = types_ref.as_deref();
+    params.statuses = statuses_ref.as_deref();
+    params.impact_severities = impact_severities_ref.as_deref();
+    params.impact_software_qualities = impact_software_qualities_ref.as_deref();
+    params.page = request.page;
+    params.page_size = request.page_size;
+
     // Get issues from SonarQube
-    let response = match client
-        .get_issues(
-            &request.project_key,
-            severities_ref.as_deref(),
-            types_ref.as_deref(),
-            request.page,
-            request.page_size,
-        )
-        .await
-    {
+    let response = match client.get_issues(params).await {
         Ok(response) => response,
         Err(e) => {
             return Err(json!({

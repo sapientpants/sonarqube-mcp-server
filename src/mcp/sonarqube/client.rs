@@ -102,15 +102,11 @@ impl SonarQubeClient {
     /// Get issues for a project
     pub async fn get_issues(
         &self,
-        project_key: &str,
-        severities: Option<&[&str]>,
-        types: Option<&[&str]>,
-        page: Option<u32>,
-        page_size: Option<u32>,
+        params: IssuesQueryParams<'_>,
     ) -> Result<IssuesResponse, SonarError> {
         let mut url = format!(
             "{}/api/issues/search?componentKeys={}",
-            self.base_url, project_key
+            self.base_url, params.project_key
         );
 
         // Add organization parameter if available
@@ -119,21 +115,39 @@ impl SonarQubeClient {
         }
 
         // Add optional parameters if provided
-        if let Some(sevs) = severities {
+        if let Some(sevs) = params.severities {
             url.push_str(&format!("&severities={}", sevs.join(",")));
         }
 
-        if let Some(issue_types) = types {
+        if let Some(issue_types) = params.types {
             url.push_str(&format!("&types={}", issue_types.join(",")));
         }
 
-        if let Some(p) = page {
+        if let Some(issue_statuses) = params.statuses {
+            url.push_str(&format!("&statuses={}", issue_statuses.join(",")));
+        }
+
+        if let Some(impact_sevs) = params.impact_severities {
+            url.push_str(&format!("&impactSeverities={}", impact_sevs.join(",")));
+        }
+
+        if let Some(impact_qualities) = params.impact_software_qualities {
+            url.push_str(&format!(
+                "&impactSoftwareQualities={}",
+                impact_qualities.join(",")
+            ));
+        }
+
+        if let Some(p) = params.page {
             url.push_str(&format!("&p={}", p));
         }
 
-        if let Some(ps) = page_size {
+        if let Some(ps) = params.page_size {
             url.push_str(&format!("&ps={}", ps));
         }
+
+        // Log the URL for debugging if enabled
+        debug_log(&format!("Making request to: {}", url));
 
         let response = self
             .client
@@ -148,7 +162,7 @@ impl SonarQubeClient {
                 return Err(SonarError::AuthError);
             }
             if status.as_u16() == 404 {
-                return Err(SonarError::ProjectNotFound(project_key.to_string()));
+                return Err(SonarError::ProjectNotFound(params.project_key.to_string()));
             }
 
             let error_text = response
