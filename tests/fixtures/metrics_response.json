@@ -1,0 +1,40 @@
+{
+  "component": {
+    "id": "AYvY2lJ9_IXl7o1tUh_q",
+    "key": "test-project",
+    "name": "Test Project",
+    "qualifier": "TRK",
+    "measures": [
+      {
+        "metric": "ncloc",
+        "value": "1200",
+        "bestValue": false
+      },
+      {
+        "metric": "bugs",
+        "value": "12",
+        "bestValue": false
+      },
+      {
+        "metric": "vulnerabilities",
+        "value": "5",
+        "bestValue": false
+      },
+      {
+        "metric": "code_smells",
+        "value": "45",
+        "bestValue": false
+      },
+      {
+        "metric": "coverage",
+        "value": "75.3",
+        "bestValue": false
+      },
+      {
+        "metric": "duplicated_lines_density",
+        "value": "3.2",
+        "bestValue": true
+      }
+    ]
+  }
+}

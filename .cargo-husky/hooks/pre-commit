@@ -1,0 +1,19 @@
+#!/bin/sh
+# Pre-commit hook for the sonarqube-mcp-server project
+# This script runs before each commit to ensure code quality
+
+set -e
+
+echo "=== Running cargo build ==="
+cargo build --verbose
+
+echo "=== Running cargo test ==="
+cargo test --verbose
+
+echo "=== Running cargo clippy ==="
+cargo clippy -- -D warnings
+
+echo "=== Running cargo fmt ==="
+cargo fmt -- --check
+
+echo "✅ All checks passed! Proceeding with commit." 

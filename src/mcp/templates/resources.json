@@ -1,0 +1,8 @@
+[
+  {
+    "uri": "file:///logs/app.log",
+    "name": "Application Logs",
+    "description": "application logs with timestamp, level, message",
+    "mimeType": "text/plain"
+  }
+]

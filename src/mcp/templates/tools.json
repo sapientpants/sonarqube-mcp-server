@@ -1,0 +1,70 @@
+[
+  {
+    "name": "sonarqube/get_metrics",
+    "description": "Get metrics for a SonarQube project",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project_key": {
+          "type": "string",
+          "description": "SonarQube project key"
+        },
+        "metrics": {
+          "type": "array",
+          "description": "List of metric keys to retrieve (optional)"
+        }
+      },
+      "required": [
+        "project_key"
+      ]
+    }
+  },
+  {
+    "name": "sonarqube/get_issues",
+    "description": "Get issues for a SonarQube project",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project_key": {
+          "type": "string",
+          "description": "SonarQube project key"
+        },
+        "severities": {
+          "type": "array",
+          "description": "List of issue severities to filter by (optional)"
+        },
+        "types": {
+          "type": "array",
+          "description": "List of issue types to filter by (optional)"
+        },
+        "page": {
+          "type": "number",
+          "description": "Page number (optional)"
+        },
+        "page_size": {
+          "type": "number",
+          "description": "Page size (optional)"
+        }
+      },
+      "required": [
+        "project_key"
+      ]
+    }
+  },
+  {
+    "name": "sonarqube/get_quality_gate",
+    "description": "Get quality gate status for a SonarQube project",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "project_key": {
+          "type": "string",
+          "description": "SonarQube project key"
+        }
+      },
+      "required": [
+        "project_key"
+      ]
+    }
+  }
+]

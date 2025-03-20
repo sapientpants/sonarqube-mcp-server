@@ -1,0 +1,55 @@
+{
+  "metrics": [
+    {
+      "key": "ncloc",
+      "name": "Lines of Code",
+      "description": "Number of physical lines that contain at least one character which is neither a whitespace nor a tabulation nor part of a comment",
+      "domain": "Size",
+      "type": "INT",
+      "higherValuesAreBetter": false
+    },
+    {
+      "key": "bugs",
+      "name": "Bugs",
+      "description": "Number of bugs",
+      "domain": "Reliability",
+      "type": "INT",
+      "higherValuesAreBetter": false
+    },
+    {
+      "key": "vulnerabilities",
+      "name": "Vulnerabilities",
+      "description": "Number of vulnerabilities",
+      "domain": "Security",
+      "type": "INT",
+      "higherValuesAreBetter": false
+    },
+    {
+      "key": "code_smells",
+      "name": "Code Smells",
+      "description": "Number of code smells",
+      "domain": "Maintainability",
+      "type": "INT",
+      "higherValuesAreBetter": false
+    },
+    {
+      "key": "coverage",
+      "name": "Coverage",
+      "description": "Overall test coverage",
+      "domain": "Coverage",
+      "type": "PERCENT",
+      "higherValuesAreBetter": true
+    },
+    {
+      "key": "duplicated_lines_density",
+      "name": "Duplicated Lines (%)",
+      "description": "Density of duplication",
+      "domain": "Duplications",
+      "type": "PERCENT",
+      "higherValuesAreBetter": false
+    }
+  ],
+  "total": 6,
+  "p": 1,
+  "ps": 500
+}

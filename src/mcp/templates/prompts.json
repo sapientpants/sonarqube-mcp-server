@@ -1,0 +1,13 @@
+[
+  {
+    "name": "analyze-code",
+    "description": "Analyze code for potential improvements",
+    "arguments": [
+      {
+        "name": "language",
+        "description": "Programming language",
+        "required": true
+      }
+    ]
+  }
+]

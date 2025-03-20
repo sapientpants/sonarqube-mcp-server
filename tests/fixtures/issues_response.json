@@ -1,0 +1,64 @@
+{
+  "total": 3,
+  "p": 1,
+  "ps": 100,
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 100,
+    "total": 3
+  },
+  "issues": [
+    {
+      "key": "AYvY2lJ9_IXl7o1tUh_r",
+      "rule": "java:S1192",
+      "severity": "CRITICAL",
+      "component": "test-project:src/main/java/com/example/App.java",
+      "project": "test-project",
+      "line": 42,
+      "message": "Define a constant instead of duplicating this literal \"Error occurred\" 3 times.",
+      "type": "CODE_SMELL",
+      "status": "OPEN"
+    },
+    {
+      "key": "AYvY2lJ9_IXl7o1tUh_s",
+      "rule": "java:S2095",
+      "severity": "MAJOR",
+      "component": "test-project:src/main/java/com/example/App.java",
+      "project": "test-project",
+      "line": 67,
+      "message": "Use try-with-resources or close this \"FileInputStream\" in a \"finally\" clause.",
+      "type": "BUG",
+      "status": "OPEN"
+    },
+    {
+      "key": "AYvY2lJ9_IXl7o1tUh_t",
+      "rule": "java:S5852",
+      "severity": "BLOCKER",
+      "component": "test-project:src/main/java/com/example/Utils.java",
+      "project": "test-project",
+      "line": 23,
+      "message": "Use a regular expression with a reluctant quantifier instead of a greedy one.",
+      "type": "VULNERABILITY",
+      "status": "OPEN"
+    }
+  ],
+  "components": [
+    {
+      "key": "test-project",
+      "name": "Test Project",
+      "qualifier": "TRK"
+    },
+    {
+      "key": "test-project:src/main/java/com/example/App.java",
+      "name": "App.java",
+      "qualifier": "FIL",
+      "path": "src/main/java/com/example/App.java"
+    },
+    {
+      "key": "test-project:src/main/java/com/example/Utils.java",
+      "name": "Utils.java",
+      "qualifier": "FIL",
+      "path": "src/main/java/com/example/Utils.java"
+    }
+  ]
+}
