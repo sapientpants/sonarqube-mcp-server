@@ -113,9 +113,9 @@ pub async fn sonarqube_get_metrics(
     };
 
     // Format the results as text
-    let mut text_result = format!("Metrics for project '{}' ({}):\n\n", 
-        response.component.name, 
-        response.component.key
+    let mut text_result = format!(
+        "Metrics for project '{}' ({}):\n\n",
+        response.component.name, response.component.key
     );
 
     // Add each metric to the text result
@@ -124,11 +124,10 @@ pub async fn sonarqube_get_metrics(
             Some(true) => " (best value)",
             _ => "",
         };
-        
-        text_result.push_str(&format!("- {}: {}{}\n", 
-            measure.metric, 
-            measure.value,
-            best_value_indicator
+
+        text_result.push_str(&format!(
+            "- {}: {}{}\n",
+            measure.metric, measure.value, best_value_indicator
         ));
     }
 
@@ -194,24 +193,28 @@ pub async fn sonarqube_get_issues(
         .collect();
 
     // Format the results as text
-    let mut text_result = format!("Found {} issues for project '{}' (page {} of {}):\n\n", 
-        response.total, 
+    let mut text_result = format!(
+        "Found {} issues for project '{}' (page {} of {}):\n\n",
+        response.total,
         request.project_key,
         response.p,
-        (response.total + response.ps - 1) / response.ps
+        response.total.div_ceil(response.ps)
     );
 
     // Add each issue to the text result
     for issue in &response.issues {
-        let component_name = components_map.get(&issue.component)
+        let component_name = components_map
+            .get(&issue.component)
             .map(|c| c.name.clone())
             .unwrap_or_else(|| issue.component.clone());
-            
-        let line_info = issue.line
+
+        let line_info = issue
+            .line
             .map(|line| format!(", line {}", line))
             .unwrap_or_else(|| String::from(""));
-            
-        text_result.push_str(&format!("- [{}] {} ({}{})\n  Rule: {}, Status: {}\n  {}\n\n", 
+
+        text_result.push_str(&format!(
+            "- [{}] {} ({}{})\n  Rule: {}, Status: {}\n  {}\n\n",
             issue.severity,
             component_name,
             issue.component,
@@ -224,7 +227,9 @@ pub async fn sonarqube_get_issues(
 
     // If there are more pages, add a note
     if response.p * response.ps < response.total {
-        text_result.push_str("\nNote: More issues available. Use page parameter to view additional issues.");
+        text_result.push_str(
+            "\nNote: More issues available. Use page parameter to view additional issues.",
+        );
     }
 
     Ok(crate::mcp::types::CallToolResult {
@@ -267,10 +272,10 @@ pub async fn sonarqube_get_quality_gate(
     } else {
         "FAILED ❌"
     };
-    
-    let mut text_result = format!("Quality Gate for project '{}': {}\n\nConditions:\n", 
-        request.project_key,
-        status_display
+
+    let mut text_result = format!(
+        "Quality Gate for project '{}': {}\n\nConditions:\n",
+        request.project_key, status_display
     );
 
     // Add each condition to the text result
@@ -280,8 +285,9 @@ pub async fn sonarqube_get_quality_gate(
             "ERROR" => "❌",
             _ => "⚠️",
         };
-        
-        text_result.push_str(&format!("- {} {} ({}): Actual value: {} vs Threshold: {}\n", 
+
+        text_result.push_str(&format!(
+            "- {} {} ({}): Actual value: {} vs Threshold: {}\n",
             status_icon,
             condition.metric_key,
             condition.comparator,
@@ -300,9 +306,11 @@ pub async fn sonarqube_get_quality_gate(
 pub async fn sonarqube_list_projects(
     request: SonarQubeListProjectsRequest,
 ) -> HandlerResult<crate::mcp::types::CallToolResult> {
-    debug_log(&format!("Listing SonarQube projects with params: page={:?}, page_size={:?}, organization={:?}", 
-        request.page, request.page_size, request.organization));
-    
+    debug_log(&format!(
+        "Listing SonarQube projects with params: page={:?}, page_size={:?}, organization={:?}",
+        request.page, request.page_size, request.organization
+    ));
+
     // Get client
     let client = match get_client() {
         Ok(client) => client,
@@ -320,23 +328,29 @@ pub async fn sonarqube_list_projects(
     let org_ref = request.organization.as_deref();
 
     // Get projects from SonarQube
-    let response = match client.list_projects(request.page, request.page_size, org_ref).await {
+    let response = match client
+        .list_projects(request.page, request.page_size, org_ref)
+        .await
+    {
         Ok(response) => {
-            debug_log(&format!("Successfully retrieved {} projects", response.components.len()));
+            debug_log(&format!(
+                "Successfully retrieved {} projects",
+                response.components.len()
+            ));
             response
-        },
+        }
         Err(e) => {
             debug_log(&format!("Error retrieving SonarQube projects: {}", e));
             let error_message = match e {
                 SonarError::Api(msg) if msg.contains("organization") => {
                     format!("SonarQube API error: {}. This instance may require an organization parameter. Set the SONARQUBE_ORGANIZATION environment variable or provide 'organization' in the request.", msg)
-                },
+                }
                 SonarError::Parse(msg) => {
                     format!("Error parsing SonarQube response: {}. The API schema may have changed or there might be missing fields.", msg)
-                },
-                _ => format!("SonarQube API error: {}", e)
+                }
+                _ => format!("SonarQube API error: {}", e),
             };
-            
+
             return Err(json!({
                 "code": -32603,
                 "message": error_message
@@ -346,29 +360,32 @@ pub async fn sonarqube_list_projects(
     };
 
     // Format the results as a text string
-    let mut text_result = format!("Found {} SonarQube projects (page {} of {}):\n\n", 
-        response.paging.total, 
+    let mut text_result = format!(
+        "Found {} SonarQube projects (page {} of {}):\n\n",
+        response.paging.total,
         response.paging.page_index,
-        (response.paging.total + response.paging.page_size - 1) / response.paging.page_size
+        response.paging.total.div_ceil(response.paging.page_size)
     );
 
     // Add each project to the text result
     for project in &response.components {
-        let last_analysis = project.last_analysis_date
+        let last_analysis = project
+            .last_analysis_date
             .as_ref()
             .map(|date| format!(" (last analyzed: {})", date))
             .unwrap_or_else(|| String::from(""));
-            
-        text_result.push_str(&format!("- {}: {}{}\n", 
-            project.name, 
-            project.key,
-            last_analysis
+
+        text_result.push_str(&format!(
+            "- {}: {}{}\n",
+            project.name, project.key, last_analysis
         ));
     }
 
     // If there are more pages, add a note
     if response.paging.page_index * response.paging.page_size < response.paging.total {
-        text_result.push_str("\nNote: More projects available. Use page parameter to view additional projects.");
+        text_result.push_str(
+            "\nNote: More projects available. Use page parameter to view additional projects.",
+        );
     }
 
     debug_log("Successfully formatted projects list as text");

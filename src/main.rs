@@ -75,7 +75,9 @@ async fn main() {
         eprintln!("Warning: Failed to initialize SonarQube client: {}", err);
         eprintln!("SonarQube integration will be disabled");
         eprintln!("Set SONARQUBE_URL and SONARQUBE_TOKEN environment variables to enable");
-        eprintln!("If your SonarQube instance requires an organization, also set SONARQUBE_ORGANIZATION");
+        eprintln!(
+            "If your SonarQube instance requires an organization, also set SONARQUBE_ORGANIZATION"
+        );
     }
 
     // signal handling to exit cli

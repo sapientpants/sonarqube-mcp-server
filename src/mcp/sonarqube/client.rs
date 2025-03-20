@@ -79,7 +79,7 @@ impl SonarQubeClient {
 
         // Get the response body as text first for better error messages
         let response_text = response.text().await?;
-        
+
         // Try to deserialize the response
         match serde_json::from_str::<MetricsResponse>(&response_text) {
             Ok(data) => Ok(data),
@@ -90,8 +90,11 @@ impl SonarQubeClient {
                 } else {
                     response_text.clone()
                 };
-                
-                Err(SonarError::Parse(format!("Failed to parse metrics response: {} - Response preview: {}", err, preview)))
+
+                Err(SonarError::Parse(format!(
+                    "Failed to parse metrics response: {} - Response preview: {}",
+                    err, preview
+                )))
             }
         }
     }
@@ -157,7 +160,7 @@ impl SonarQubeClient {
 
         // Get the response body as text first for better error messages
         let response_text = response.text().await?;
-        
+
         // Try to deserialize the response
         match serde_json::from_str::<IssuesResponse>(&response_text) {
             Ok(data) => Ok(data),
@@ -168,8 +171,11 @@ impl SonarQubeClient {
                 } else {
                     response_text.clone()
                 };
-                
-                Err(SonarError::Parse(format!("Failed to parse issues response: {} - Response preview: {}", err, preview)))
+
+                Err(SonarError::Parse(format!(
+                    "Failed to parse issues response: {} - Response preview: {}",
+                    err, preview
+                )))
             }
         }
     }
@@ -214,7 +220,7 @@ impl SonarQubeClient {
 
         // Get the response body as text first for better error messages
         let response_text = response.text().await?;
-        
+
         // Try to deserialize the response
         match serde_json::from_str::<QualityGateResponse>(&response_text) {
             Ok(data) => Ok(data),
@@ -225,8 +231,11 @@ impl SonarQubeClient {
                 } else {
                     response_text.clone()
                 };
-                
-                Err(SonarError::Parse(format!("Failed to parse quality gate response: {} - Response preview: {}", err, preview)))
+
+                Err(SonarError::Parse(format!(
+                    "Failed to parse quality gate response: {} - Response preview: {}",
+                    err, preview
+                )))
             }
         }
     }
@@ -288,20 +297,24 @@ impl SonarQubeClient {
 
         // Get the response body as text first for better error messages
         let response_text = response.text().await?;
-        debug_log(&format!("Response body (first 200 chars): {}", 
-                           if response_text.len() > 200 {
-                               format!("{}...", &response_text[..200])
-                           } else {
-                               response_text.clone()
-                           }));
-        
+        debug_log(&format!(
+            "Response body (first 200 chars): {}",
+            if response_text.len() > 200 {
+                format!("{}...", &response_text[..200])
+            } else {
+                response_text.clone()
+            }
+        ));
+
         // Try to deserialize the response
         match serde_json::from_str::<ProjectsResponse>(&response_text) {
             Ok(data) => {
-                debug_log(&format!("Successfully parsed response: {} projects found", 
-                                   data.components.len()));
+                debug_log(&format!(
+                    "Successfully parsed response: {} projects found",
+                    data.components.len()
+                ));
                 Ok(data)
-            },
+            }
             Err(err) => {
                 // Log or capture part of the response for debugging
                 let preview = if response_text.len() > 200 {
@@ -309,9 +322,12 @@ impl SonarQubeClient {
                 } else {
                     response_text.clone()
                 };
-                
+
                 debug_log(&format!("Failed to parse response: {}", err));
-                Err(SonarError::Parse(format!("Failed to parse response: {} - Response preview: {}", err, preview).into()))
+                Err(SonarError::Parse(format!(
+                    "Failed to parse response: {} - Response preview: {}",
+                    err, preview
+                )))
             }
         }
     }
