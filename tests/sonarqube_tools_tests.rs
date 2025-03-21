@@ -69,7 +69,6 @@ fn test_register_sonarqube_tools() {
 
     // We can't easily test the router functionality without mocking,
     // so we just verify that the function doesn't panic
-    assert!(true);
 }
 
 // Test handlers without a client - they should all return errors
