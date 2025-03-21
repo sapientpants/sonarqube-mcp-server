@@ -140,26 +140,22 @@ async fn main() {
                                 println!("{}", response_json);
                             }
                         }
-                        Err(error) => match &error.error {
-                            // error from json-rpc call
-                            Error::Handler(handler) => {
-                                if let Some(error_value) = handler.get::<Value>() {
-                                    let json_error = json!({
-                                        "jsonrpc": "2.0",
-                                        "error": error_value,
-                                        "id": id
-                                    });
-                                    let response = serde_json::to_string(&json_error).unwrap();
-                                    writeln!(logging_file, "{}\n", response).unwrap();
-                                    println!("{}", response);
-                                }
-                            }
-                            _ => {
-                                let json_error = JsonRpcError::new(id, -1, "Invalid json-rpc call");
+                        Err(error) => if let Error::Handler(handler) = &error.error {
+                            if let Some(error_value) = handler.get::<Value>() {
+                                let json_error = json!({
+                                    "jsonrpc": "2.0",
+                                    "error": error_value,
+                                    "id": id
+                                });
                                 let response = serde_json::to_string(&json_error).unwrap();
                                 writeln!(logging_file, "{}\n", response).unwrap();
                                 println!("{}", response);
                             }
+                        } else {
+                            let json_error = JsonRpcError::new(id, -1, "Invalid json-rpc call");
+                            let response = serde_json::to_string(&json_error).unwrap();
+                            writeln!(logging_file, "{}\n", response).unwrap();
+                            println!("{}", response);
                         },
                     }
                 }
