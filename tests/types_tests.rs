@@ -28,7 +28,16 @@ fn test_client_capabilities_serialization() {
         "test"
     );
     assert!(deserialized.roots.unwrap().list_changed.unwrap());
-    assert!(deserialized.sampling.unwrap().get("enabled").unwrap());
+    assert_eq!(
+        deserialized
+            .sampling
+            .unwrap()
+            .get("enabled")
+            .unwrap()
+            .as_bool()
+            .unwrap(),
+        true
+    );
 }
 
 #[test]
