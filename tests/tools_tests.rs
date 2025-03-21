@@ -3,6 +3,7 @@ mod helpers;
 use helpers::{load_fixture, mock_base_url, mock_token, test_project_key};
 use sonarqube_mcp_server::mcp::sonarqube::client::SonarQubeClient;
 use sonarqube_mcp_server::mcp::sonarqube::types::*;
+use sonarqube_mcp_server::mcp::tools::tools_list;
 use wiremock::{
     matchers::{method, path, query_param},
     Mock, MockServer, ResponseTemplate,
@@ -191,4 +192,79 @@ async fn test_sonarqube_get_metrics_tool_with_error() {
         }
         _ => panic!("Expected ProjectNotFound error, got: {:?}", result),
     }
+}
+
+#[tokio::test]
+async fn test_tools_list() {
+    // Call tools_list function
+    let result = tools_list(None).await.unwrap();
+
+    // Verify the response contains tools
+    assert!(!result.tools.is_empty(), "Tools list should not be empty");
+
+    // Verify the response contains SonarQube tools
+    let sonarqube_tools = result
+        .tools
+        .iter()
+        .filter(|t| t.name.starts_with("sonarqube"));
+    assert!(
+        sonarqube_tools.count() > 0,
+        "Should contain SonarQube tools"
+    );
+
+    // Verify next_cursor is None
+    assert!(result.next_cursor.is_none());
+}
+
+#[tokio::test]
+#[ignore] // This is a placeholder test that requires setting the global client
+async fn test_sonarqube_list_projects_tool() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response for projects endpoint
+    Mock::given(method("GET"))
+        .and(path("/api/components/search"))
+        .and(query_param("qualifiers", "TRK"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(
+            r#"{
+                "paging": {
+                    "pageIndex": 1,
+                    "pageSize": 100,
+                    "total": 2
+                },
+                "components": [
+                    {
+                        "key": "test-project-1",
+                        "name": "Test Project 1",
+                        "qualifier": "TRK"
+                    },
+                    {
+                        "key": "test-project-2",
+                        "name": "Test Project 2",
+                        "qualifier": "TRK"
+                    }
+                ]
+            }"#,
+        ))
+        .mount(&mock_server)
+        .await;
+
+    // Create client with mock server URL and set the global client for tools
+    let _client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None,
+    });
+
+    // Since we can't easily set the global client in tests, we'll skip this test for now
+    // This is a placeholder to show how the test would be structured
+
+    // The actual implementation would require setting the global SONARQUBE_CLIENT
+    // and calling the sonarqube_list_projects function with a request
+
+    // Ideally, we would:
+    // 1. Set the global client
+    // 2. Call sonarqube_list_projects
+    // 3. Verify the response contains expected projects
 }

@@ -220,3 +220,116 @@ async fn test_get_quality_gate_success() {
     assert_eq!(failing_condition.metric_key, "new_maintainability_rating");
     assert_eq!(failing_condition.actual_value, "2");
 }
+
+#[tokio::test]
+async fn test_list_projects_success() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response for projects endpoint with the correct endpoint path
+    Mock::given(method("GET"))
+        .and(path("/api/components/search"))
+        .and(query_param("qualifiers", "TRK"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(
+            r#"{
+                "paging": {
+                    "pageIndex": 1,
+                    "pageSize": 50,
+                    "total": 2
+                },
+                "components": [
+                    {
+                        "key": "test-project-1",
+                        "name": "Test Project 1",
+                        "qualifier": "TRK"
+                    },
+                    {
+                        "key": "test-project-2",
+                        "name": "Test Project 2",
+                        "qualifier": "TRK"
+                    }
+                ]
+            }"#,
+        ))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // Create client with mock server URL
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None,
+    });
+
+    // Call function and verify results
+    let projects = client.list_projects(None, None, None).await.unwrap();
+
+    // Verify response data
+    assert_eq!(projects.paging.page_index, 1);
+    assert_eq!(projects.paging.page_size, 50);
+    assert_eq!(projects.paging.total, 2);
+    assert_eq!(projects.components.len(), 2);
+
+    // Verify project details
+    let first_project = &projects.components[0];
+    assert_eq!(first_project.key, "test-project-1");
+    assert_eq!(first_project.name, "Test Project 1");
+
+    let second_project = &projects.components[1];
+    assert_eq!(second_project.key, "test-project-2");
+    assert_eq!(second_project.name, "Test Project 2");
+}
+
+#[tokio::test]
+async fn test_list_projects_with_organization() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response for projects endpoint with organization using the correct endpoint
+    Mock::given(method("GET"))
+        .and(path("/api/components/search"))
+        .and(query_param("qualifiers", "TRK"))
+        .and(query_param("organization", "my-org"))
+        .respond_with(ResponseTemplate::new(200).set_body_string(
+            r#"{
+                "paging": {
+                    "pageIndex": 1,
+                    "pageSize": 100,
+                    "total": 1
+                },
+                "components": [
+                    {
+                        "key": "my-org-project",
+                        "name": "Organization Project",
+                        "qualifier": "TRK"
+                    }
+                ]
+            }"#,
+        ))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // Create client with mock server URL
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None, // We'll override this in the method call
+    });
+
+    // Call function with organization override
+    let projects = client
+        .list_projects(None, None, Some("my-org"))
+        .await
+        .unwrap();
+
+    // Verify response data
+    assert_eq!(projects.paging.total, 1);
+    assert_eq!(projects.components.len(), 1);
+
+    // Verify project details
+    let project = &projects.components[0];
+    assert_eq!(project.key, "my-org-project");
+    assert_eq!(project.name, "Organization Project");
+}
