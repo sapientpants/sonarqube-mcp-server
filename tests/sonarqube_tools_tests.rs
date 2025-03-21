@@ -9,11 +9,13 @@ use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::env;
 
 #[test]
-fn test_init_sonarqube_client_missing_url() {
+fn test_init_sonarqube_client_error_conditions() {
     // Save original environment variables
     let original_url = env::var("SONARQUBE_URL").ok();
     let original_token = env::var("SONARQUBE_TOKEN").ok();
 
+    // Test 1: Missing URL
+    // ------------------
     // Unset environment variables
     env::remove_var("SONARQUBE_URL");
     env::remove_var("SONARQUBE_TOKEN");
@@ -21,51 +23,36 @@ fn test_init_sonarqube_client_missing_url() {
     // Try to initialize client
     let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
 
-    // Verify error
+    // Verify error when URL is missing
     assert!(result.is_err());
     match result {
         Err(SonarError::Config(msg)) => {
-            assert!(msg.contains("SONARQUBE_URL"));
+            assert_eq!(msg, "SONARQUBE_URL environment variable not set");
         }
-        _ => panic!("Expected Config error"),
+        _ => panic!("Expected Config error for missing URL"),
     }
 
-    // Restore environment variables
-    if let Some(url) = original_url {
-        env::set_var("SONARQUBE_URL", url);
-    }
-    if let Some(token) = original_token {
-        env::set_var("SONARQUBE_TOKEN", token);
-    }
-}
-
-#[test]
-fn test_init_sonarqube_client_missing_token() {
-    // Save original environment variables
-    let original_url = env::var("SONARQUBE_URL").ok();
-    let original_token = env::var("SONARQUBE_TOKEN").ok();
-
-    // Set URL but unset token
+    // Test 2: Missing Token
+    // -------------------
+    // Set the URL but not the token
     env::set_var("SONARQUBE_URL", "https://sonarqube.example.com");
-    env::remove_var("SONARQUBE_TOKEN");
 
-    // Try to initialize client
+    // Try to initialize client again
     let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
 
-    // Verify error
+    // Verify error when token is missing
     assert!(result.is_err());
     match result {
         Err(SonarError::Config(msg)) => {
-            assert!(msg.contains("SONARQUBE_TOKEN"));
+            assert_eq!(msg, "SONARQUBE_TOKEN environment variable not set");
         }
-        _ => panic!("Expected Config error"),
+        _ => panic!("Expected Config error for missing token"),
     }
 
     // Restore environment variables
+    env::remove_var("SONARQUBE_URL");
     if let Some(url) = original_url {
         env::set_var("SONARQUBE_URL", url);
-    } else {
-        env::remove_var("SONARQUBE_URL");
     }
     if let Some(token) = original_token {
         env::set_var("SONARQUBE_TOKEN", token);
