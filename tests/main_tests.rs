@@ -35,11 +35,11 @@ fn test_args_default_values() {
     let args = Args::parse_from(["program"]);
 
     // Verify default values
-    assert_eq!(args.resources, false);
-    assert_eq!(args.prompts, false);
-    assert_eq!(args.tools, false);
-    assert_eq!(args.mcp, false);
-    assert_eq!(args.json, false);
+    assert!(!(args.resources));
+    assert!(!(args.prompts));
+    assert!(!(args.tools));
+    assert!(!(args.mcp));
+    assert!(!(args.json));
 }
 
 #[test]
@@ -48,11 +48,11 @@ fn test_args_with_resources() {
     let args = Args::parse_from(["program", "--resources"]);
 
     // Verify values
-    assert_eq!(args.resources, true);
-    assert_eq!(args.prompts, false);
-    assert_eq!(args.tools, false);
-    assert_eq!(args.mcp, false);
-    assert_eq!(args.json, false);
+    assert!(args.resources);
+    assert!(!(args.prompts));
+    assert!(!(args.tools));
+    assert!(!(args.mcp));
+    assert!(!(args.json));
 }
 
 #[test]
@@ -61,11 +61,11 @@ fn test_args_with_prompts() {
     let args = Args::parse_from(["program", "--prompts"]);
 
     // Verify values
-    assert_eq!(args.resources, false);
-    assert_eq!(args.prompts, true);
-    assert_eq!(args.tools, false);
-    assert_eq!(args.mcp, false);
-    assert_eq!(args.json, false);
+    assert!(!(args.resources));
+    assert!(args.prompts);
+    assert!(!(args.tools));
+    assert!(!(args.mcp));
+    assert!(!(args.json));
 }
 
 #[test]
@@ -74,11 +74,11 @@ fn test_args_with_tools() {
     let args = Args::parse_from(["program", "--tools"]);
 
     // Verify values
-    assert_eq!(args.resources, false);
-    assert_eq!(args.prompts, false);
-    assert_eq!(args.tools, true);
-    assert_eq!(args.mcp, false);
-    assert_eq!(args.json, false);
+    assert!(!(args.resources));
+    assert!(!(args.prompts));
+    assert!(args.tools);
+    assert!(!(args.mcp));
+    assert!(!(args.json));
 }
 
 #[test]
@@ -87,11 +87,11 @@ fn test_args_with_mcp() {
     let args = Args::parse_from(["program", "--mcp"]);
 
     // Verify values
-    assert_eq!(args.resources, false);
-    assert_eq!(args.prompts, false);
-    assert_eq!(args.tools, false);
-    assert_eq!(args.mcp, true);
-    assert_eq!(args.json, false);
+    assert!(!(args.resources));
+    assert!(!(args.prompts));
+    assert!(!(args.tools));
+    assert!(args.mcp);
+    assert!(!(args.json));
 }
 
 #[test]
@@ -100,11 +100,11 @@ fn test_args_with_json() {
     let args = Args::parse_from(["program", "--json"]);
 
     // Verify values
-    assert_eq!(args.resources, false);
-    assert_eq!(args.prompts, false);
-    assert_eq!(args.tools, false);
-    assert_eq!(args.mcp, false);
-    assert_eq!(args.json, true);
+    assert!(!(args.resources));
+    assert!(!(args.prompts));
+    assert!(!(args.tools));
+    assert!(!(args.mcp));
+    assert!(args.json);
 }
 
 #[test]
@@ -113,11 +113,11 @@ fn test_args_with_multiple_flags() {
     let args = Args::parse_from(["program", "--resources", "--json", "--tools"]);
 
     // Verify values
-    assert_eq!(args.resources, true);
-    assert_eq!(args.prompts, false);
-    assert_eq!(args.tools, true);
-    assert_eq!(args.mcp, false);
-    assert_eq!(args.json, true);
+    assert!(args.resources);
+    assert!(!(args.prompts));
+    assert!(args.tools);
+    assert!(!(args.mcp));
+    assert!(args.json);
 }
 
 #[test]
@@ -130,7 +130,7 @@ fn test_is_args_available() {
         mcp: false,
         json: false,
     };
-    assert_eq!(args.is_args_available(), false);
+    assert!(!(args.is_args_available()));
 
     // Test with resources flag
     let args = Args {
@@ -140,7 +140,7 @@ fn test_is_args_available() {
         mcp: false,
         json: false,
     };
-    assert_eq!(args.is_args_available(), true);
+    assert!(args.is_args_available());
 
     // Test with prompts flag
     let args = Args {
@@ -150,7 +150,7 @@ fn test_is_args_available() {
         mcp: false,
         json: false,
     };
-    assert_eq!(args.is_args_available(), true);
+    assert!(args.is_args_available());
 
     // Test with tools flag
     let args = Args {
@@ -160,7 +160,7 @@ fn test_is_args_available() {
         mcp: false,
         json: false,
     };
-    assert_eq!(args.is_args_available(), true);
+    assert!(args.is_args_available());
 
     // Test with mcp flag (should not affect is_args_available)
     let args = Args {
@@ -170,7 +170,7 @@ fn test_is_args_available() {
         mcp: true,
         json: false,
     };
-    assert_eq!(args.is_args_available(), false);
+    assert!(!(args.is_args_available()));
 
     // Test with json flag (should not affect is_args_available)
     let args = Args {
@@ -180,7 +180,7 @@ fn test_is_args_available() {
         mcp: false,
         json: true,
     };
-    assert_eq!(args.is_args_available(), false);
+    assert!(!(args.is_args_available()));
 
     // Test with multiple flags
     let args = Args {
@@ -190,5 +190,5 @@ fn test_is_args_available() {
         mcp: true,
         json: true,
     };
-    assert_eq!(args.is_args_available(), true);
+    assert!(args.is_args_available());
 }
