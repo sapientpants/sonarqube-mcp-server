@@ -19,10 +19,13 @@ jobs:
       with:
         toolchain: stable
         override: true
-        components: rustfmt, clippy, tarpaulin
+        components: rustfmt, clippy
         
     - name: Build
       run: cargo build --verbose
+
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
       
     - name: Run tests
       run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
