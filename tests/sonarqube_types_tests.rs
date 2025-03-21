@@ -337,7 +337,7 @@ fn test_sonarqube_quality_gate_result_serialization() {
 
     // Verify the roundtrip
     assert_eq!(deserialized.status, "OK");
-    assert_eq!(deserialized.passes_quality_gate, true);
+    assert!(deserialized.passes_quality_gate);
     assert_eq!(deserialized.conditions.len(), 2);
 
     assert_eq!(deserialized.conditions[0].metric, "coverage");
