@@ -30,8 +30,6 @@ wiremock = "0.5"
 tokio-test = "0.4"
 scopeguard = "1.2"
 cargo-husky = { version = "1.5", default-features = false, features = ["user-hooks"] }
-grcov = "0.8"
-cargo-tarpaulin = "0.27"
 
 [profile.dev]
 opt-level = 1
