@@ -1,6 +1,5 @@
 use crate::mcp::types::*;
-use rpc_router::{HandlerResult, IntoHandlerError};
-use serde_json::json;
+use rpc_router::HandlerResult;
 
 pub async fn prompts_list(
     _request: Option<ListPromptsRequest>,
@@ -15,23 +14,10 @@ pub async fn prompts_list(
 }
 
 pub async fn prompts_get(request: GetPromptRequest) -> HandlerResult<PromptResult> {
-    let response = match request.name.as_str() {
-        "current_time" => PromptResult {
-            description: "Get the current time in city".to_string(),
-            messages: Some(vec![PromptMessage {
-                role: "user".to_string(),
-                content: PromptMessageContent {
-                    type_name: "text".to_string(),
-                    text: format!(
-                        "What's the time of {}?",
-                        request.arguments.unwrap()["city"].as_str().unwrap()
-                    ),
-                },
-            }]),
-        },
-        _ => {
-            return Err(json!({"code": -32602, "message": "Prompt not found"}).into_handler_error())
-        }
+    // Return a default empty prompt result as we don't have any defined prompts
+    let response = PromptResult {
+        description: format!("No prompt found for '{}'", request.name),
+        messages: None,
     };
     Ok(response)
 }

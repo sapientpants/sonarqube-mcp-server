@@ -218,7 +218,7 @@ async fn display_info(args: &Args) {
         if args.prompts {
             println!(
                 r#"prompts:
-- current_time: get current time in city
+- No prompts available
 "#
             );
         }
