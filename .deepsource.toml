@@ -1,6 +1,9 @@
 version = 1
 
 [[analyzers]]
+name = "test-coverage"
+
+[[analyzers]]
 name = "rust"
 
   [analyzers.meta]
