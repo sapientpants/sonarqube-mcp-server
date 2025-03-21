@@ -46,19 +46,19 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
-        
-      - name: Install grcov
-        run: cargo install grcov
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
 
       - name: Generate coverage report
-        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
+        run: |
+          mkdir -p coverage
+          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
 
       - name: Upload coverage to SonarQube
         uses: sonarsource/sonarqube-scan-action@master
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   test:
