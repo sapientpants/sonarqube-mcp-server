@@ -47,6 +47,9 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Install cargo-sonar
+        run: cargo install cargo-sonar
+        
       - name: Install grcov
         run: cargo install grcov
 
@@ -54,7 +57,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Generate clippy report
-        run: cargo clippy -- -D warnings --out-format json > clippy.json
+        run: cargo clippy --message-format json > clippy.json
 
       - name: Generate coverage report
         run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
