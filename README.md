@@ -42,28 +42,6 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 
 Download the pre-built binary for your platform from the [Releases](https://github.com/yourusername/sonarqube-mcp-server/releases) page.
 
-## Usage
-
-### CLI Options
-
-* `--mcp`: Enable MCP server mode
-* `--resources`: Display available resources
-* `--prompts`: Display available prompts
-* `--tools`: Display available tools
-* `--help`: Show help information
-
-### Configuration
-
-The SonarQube MCP Server requires the following environment variables:
-
-* `SONARQUBE_URL`: The base URL of your SonarQube server (e.g., `https://sonarqube.example.com`)
-* `SONARQUBE_TOKEN`: Your SonarQube authentication token
-
-Optional environment variables:
-
-* `SONARQUBE_ORGANIZATION`: Organization key for SonarCloud or multi-organization SonarQube instances
-* `SONARQUBE_DEBUG`: Set to "1" or "true" to enable detailed debugging output
-
 ### Integration with Claude Desktop
 
 1. Edit `claude_desktop_config.json`: Claude Desktop -> `Settings` -> `Developer` -> `Edit Config` 
@@ -73,9 +51,18 @@ Optional environment variables:
 {
    "mcpServers": {
       "sonarqube": {
-         "command": "sonarqube-mcp-server",
+         "command": "docker",
          "args": [
-            "--mcp"
+           "run",
+           "-i",
+           "--rm",
+           "-e",
+           "SONARQUBE_URL",
+           "-e",
+           "SONARQUBE_TOKEN",
+           "-e",
+           "SONARQUBE_ORGANIZATION",
+           "sapientpants/sonarqube-mcp-server"
          ],
          "env": {
             "SONARQUBE_URL": "https://sonarqube.example.com",

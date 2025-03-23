@@ -10,35 +10,42 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
       
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
         with:
-          toolchain: stable
-          override: true
-          target: x86_64-unknown-linux-gnu
-      
-      - name: Install cross-compilation tools
-        run: |
-          rustup target add x86_64-apple-darwin
-          rustup target add x86_64-pc-windows-msvc
-      
-      - name: Build Linux binary
-        run: cargo build --release --target x86_64-unknown-linux-gnu
-      
-      - name: Build macOS binary
-        run: cargo build --release --target x86_64-apple-darwin
-      
-      - name: Build Windows binary
-        run: cargo build --release --target x86_64-pc-windows-msvc
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+          platforms: 'arm64,amd64'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
         with:
-          files: |
-            target/x86_64-unknown-linux-gnu/release/sonarqube-mcp-server
-            target/x86_64-apple-darwin/release/sonarqube-mcp-server
-            target/x86_64-pc-windows-msvc/release/sonarqube-mcp-server.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          images: sapientpants/sonarqube-mcp-server
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha
+            latest
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
