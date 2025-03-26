@@ -1,6 +1,9 @@
 # SonarQube MCP Server
 
 [![CI](https://github.com/sapientpants/sonarqube-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/sapientpants/sonarqube-mcp-server/actions/workflows/ci.yml)
+[![DeepSource](https://app.deepsource.com/gh/sapientpants/sonarqube-mcp-server.svg/?label=code+coverage&show_trend=true&token=9XrIHVVGs9oZ-6fFSOPah2Ws)](https://app.deepsource.com/gh/sapientpants/sonarqube-mcp-server/)
+[![DeepSource](https://app.deepsource.com/gh/sapientpants/sonarqube-mcp-server.svg/?label=active+issues&show_trend=true&token=9XrIHVVGs9oZ-6fFSOPah2Ws)](https://app.deepsource.com/gh/sapientpants/sonarqube-mcp-server/)
+[![DeepSource](https://app.deepsource.com/gh/sapientpants/sonarqube-mcp-server.svg/?label=resolved+issues&show_trend=true&token=9XrIHVVGs9oZ-6fFSOPah2Ws)](https://app.deepsource.com/gh/sapientpants/sonarqube-mcp-server/)
 
 A Rust implementation of a Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and quality gate statuses.
 
@@ -83,7 +86,9 @@ To check MCP logs, use: `tail -n 20 -f ~/Library/Logs/Claude/mcp*.log`
 The SonarQube MCP Server provides the following tools:
 
 1. `sonarqube_get_metrics`: Retrieve code metrics for a project
-   - Parameters: `project_key` (required), `metrics` (optional array of metric keys)
+   - Parameters:
+    - `project_key` (required),
+    - `metrics` (optional array of metric keys)
 
 2. `sonarqube_get_issues`: Retrieve issues for a project
    - Parameters: 
@@ -120,164 +125,19 @@ The SonarQube MCP Server provides the following tools:
      - `page_size` (optional)
 
 3. `sonarqube_get_quality_gate`: Retrieve quality gate status for a project
-   - Parameters: `project_key` (required)
+   - Parameters:
+    - `project_key` (required)
 
 4. `sonarqube_list_projects`: List all SonarQube projects
-   - Parameters: `page` (optional), `page_size` (optional), `organization` (optional - can override the environment variable)
-
-
-## Examples
-
-### Example: Retrieving Metrics
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "sonarqube_get_metrics",
-  "params": {
-    "project_key": "my-project",
-    "metrics": ["ncloc", "bugs", "code_smells", "complexity"]
-  }
-}
-```
-
-Response:
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "component": {
-      "key": "my-project",
-      "name": "My Project",
-      "measures": [
-        {
-          "metric": "ncloc",
-          "value": "12500"
-        },
-        {
-          "metric": "bugs",
-          "value": "42"
-        },
-        {
-          "metric": "code_smells",
-          "value": "156"
-        },
-        {
-          "metric": "complexity",
-          "value": "1250"
-        }
-      ]
-    }
-  }
-}
-```
-
-### Example: Getting Issues with Status Filtering
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "sonarqube_get_issues",
-  "params": {
-    "project_key": "my-project",
-    "severities": ["CRITICAL", "BLOCKER"],
-    "statuses": ["OPEN", "CONFIRMED"],
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
-### Example: Getting Issues with Impact Filtering
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 4,
-  "method": "sonarqube_get_issues",
-  "params": {
-    "project_key": "my-project",
-    "impact_severities": ["HIGH"],
-    "impact_software_qualities": ["MAINTAINABILITY", "SECURITY"],
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
-### Example: Getting Issues by Author and Creation Date
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 5,
-  "method": "sonarqube_get_issues",
-  "params": {
-    "project_key": "my-project",
-    "authors": ["developer1", "developer2"],
-    "created_after": "2023-01-01",
-    "created_before": "2023-12-31",
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
-### Example: Getting Security Issues with CWE and OWASP Filtering
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 6,
-  "method": "sonarqube_get_issues",
-  "params": {
-    "project_key": "my-project",
-    "types": ["VULNERABILITY"],
-    "cwe": ["CWE-79", "CWE-89"],
-    "owasp_top10": ["a1", "a3"],
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
-### Example: Getting Issues by Language and Directory
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 7,
-  "method": "sonarqube_get_issues",
-  "params": {
-    "project_key": "my-project",
-    "languages": ["java", "js"],
-    "directories": ["src/main/java/com/example/controllers", "src/main/java/com/example/services"],
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
-### Example: Listing Projects with Organization Parameter
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "sonarqube_list_projects", 
-  "params": {
-    "organization": "my-org-key"
-  }
-}
-```
+   - Parameters:
+    - `page` (optional),
+    - `page_size` (optional),
+    - `organization` (optional - can override the environment variable)
 
 ## Development
 
 ### Prerequisites
 
-- Rust 1.70 or higher
+- Rust 1.80 or higher
 - Cargo
 - A SonarQube server instance (for testing)
