@@ -489,10 +489,16 @@ pub async fn sonarqube_list_projects(
             debug_log(&format!("Error retrieving SonarQube projects: {}", e));
             let error_message = match e {
                 SonarError::Api(msg) if msg.contains("organization") => {
-                    format!("SonarQube API error: {}. This instance may require an organization parameter. Set the SONARQUBE_ORGANIZATION environment variable or provide 'organization' in the request.", msg)
+                    format!(
+                        "SonarQube API error: {}. This instance may require an organization parameter. Set the SONARQUBE_ORGANIZATION environment variable or provide 'organization' in the request.",
+                        msg
+                    )
                 }
                 SonarError::Parse(msg) => {
-                    format!("Error parsing SonarQube response: {}. The API schema may have changed or there might be missing fields.", msg)
+                    format!(
+                        "Error parsing SonarQube response: {}. The API schema may have changed or there might be missing fields.",
+                        msg
+                    )
                 }
                 _ => format!("SonarQube API error: {}", e),
             };

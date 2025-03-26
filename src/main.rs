@@ -10,7 +10,7 @@ use crate::mcp::types::{
 use crate::mcp::utilities::*;
 use clap::Parser;
 use rpc_router::{Error, Handler, Request, Router, RouterBuilder};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io;
 use std::io::Write;
 use std::thread;

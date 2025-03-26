@@ -4,8 +4,8 @@ use helpers::{load_fixture, mock_base_url, mock_token, test_project_key};
 use sonarqube_mcp_server::mcp::sonarqube::client::SonarQubeClient;
 use sonarqube_mcp_server::mcp::sonarqube::types::*;
 use wiremock::{
-    matchers::{method, path, query_param},
     Mock, MockServer, ResponseTemplate,
+    matchers::{method, path, query_param},
 };
 
 #[tokio::test]

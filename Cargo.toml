@@ -1,13 +1,13 @@
 [package]
 name = "sonarqube-mcp-server"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Marc Tremblay <marc.tremblay@gmail.com>"]
 description = "Model Context Protocol (MCP) Server for Sonarqube"
 keywords = ["rust", "ai", "mcp", "cli", "sonarqube"]
 categories = ["command-line-utilities"]
 readme = "README.md"
-license = "Apache-2.0"
+license = "MIT"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
