@@ -1,6 +1,5 @@
 mod helpers;
 
-use serde_json::json;
 use sonarqube_mcp_server::mcp::sonarqube::types::*;
 
 #[test]

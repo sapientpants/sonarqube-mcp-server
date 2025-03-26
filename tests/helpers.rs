@@ -8,7 +8,6 @@ pub fn load_fixture(filename: &str) -> String {
 }
 
 /// Get a mock SonarQube base URL for testing
-#[allow(dead_code)]
 pub fn mock_base_url(mock_server: &wiremock::MockServer) -> String {
     mock_server.uri()
 }

@@ -11,10 +11,10 @@ use crate::mcp::utilities::*;
 use clap::Parser;
 use rpc_router::{Error, Handler, Request, Router, RouterBuilder};
 use serde_json::{json, Value};
-use std::fs::OpenOptions;
 use std::io;
 use std::io::Write;
 use std::thread;
+use tempfile::NamedTempFile;
 
 // Platform-specific imports
 #[cfg(unix)]
@@ -87,18 +87,13 @@ async fn main() {
     let mut line = String::new();
     let input = io::stdin();
 
-    // Use a platform-appropriate path for the log file
-    let log_path = if cfg!(windows) {
-        std::env::temp_dir().join("mcp.jsonl")
-    } else {
-        std::path::PathBuf::from("/tmp/mcp.jsonl")
-    };
+    // Create a secure temporary file for logging
+    let logging_file = NamedTempFile::new().expect("Failed to create temporary log file");
+    eprintln!("Log file created at: {}", logging_file.path().display());
+    let mut logging_file = logging_file
+        .reopen()
+        .expect("Failed to reopen temporary log file");
 
-    let mut logging_file = OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open(log_path)
-        .unwrap();
     while input.read_line(&mut line).unwrap() != 0 {
         let line = std::mem::take(&mut line);
         writeln!(logging_file, "{}", line).unwrap();
