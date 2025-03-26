@@ -154,7 +154,6 @@ async fn test_sonarqube_list_projects_no_client() {
     let request = SonarQubeListProjectsRequest {
         page: None,
         page_size: None,
-        organization: None,
     };
     let result = sonarqube_list_projects(request).await;
 
