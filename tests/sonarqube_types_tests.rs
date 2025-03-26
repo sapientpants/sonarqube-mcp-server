@@ -456,7 +456,6 @@ fn test_sonarqube_list_projects_request_serialization() {
     let request = SonarQubeListProjectsRequest {
         page: Some(2),
         page_size: Some(10),
-        organization: Some("org-1".to_string()),
     };
 
     // Serialize to JSON
@@ -468,7 +467,6 @@ fn test_sonarqube_list_projects_request_serialization() {
     // Verify the roundtrip
     assert_eq!(deserialized.page, Some(2));
     assert_eq!(deserialized.page_size, Some(10));
-    assert_eq!(deserialized.organization, Some("org-1".to_string()));
 }
 
 #[test]

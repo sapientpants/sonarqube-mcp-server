@@ -339,11 +339,15 @@ pub struct ProjectsResponse {
 }
 
 /// Request parameters for MCP sonarqube/list_projects tool
+///
+/// This struct contains optional parameters that can be used to control pagination
+/// when listing SonarQube projects.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct SonarQubeListProjectsRequest {
+    /// Page number for pagination (optional)
     pub page: Option<u32>,
+    /// Number of items per page (optional)
     pub page_size: Option<u32>,
-    pub organization: Option<String>,
 }
 
 /// Result for MCP sonarqube/list_projects tool
