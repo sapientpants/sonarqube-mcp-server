@@ -532,8 +532,9 @@ pub async fn sonarqube_list_projects(
             let last_analysis = project
                 .last_analysis_date
                 .as_ref()
-                .map(|date| format!(" (last analyzed: {})", date))
-                .unwrap_or_else(|| String::from(""));
+                .map_or(String::from(""), |date| {
+                    format!(" (last analyzed: {})", date)
+                });
 
             text_result.push_str(&format!(
                 "- {}: {}{}\n",
