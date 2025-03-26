@@ -114,7 +114,7 @@ pub async fn sonarqube_get_metrics(
                 })
                 .into_handler_error());
             }
-            
+
             // Handle other errors
             return Err(json!({
                 "code": -32603,
@@ -136,7 +136,10 @@ pub async fn sonarqube_get_metrics(
         text_result.push_str("Possible reasons:\n");
         text_result.push_str("1. The project hasn't been analyzed yet\n");
         text_result.push_str("2. The requested metrics aren't available for this project\n");
-        text_result.push_str(&format!("3. Requested metrics: {}\n", metrics_refs.join(", ")));
+        text_result.push_str(&format!(
+            "3. Requested metrics: {}\n",
+            metrics_refs.join(", ")
+        ));
     } else {
         // Add each metric to the text result
         for measure in &response.component.measures {
@@ -188,7 +191,7 @@ pub async fn sonarqube_get_issues(
                 })
                 .into_handler_error());
             }
-            
+
             // For other errors, continue, as they may be related to metrics but not to project existence
             debug_log(&format!("Warning: Error checking project existence: {}", e));
         }
@@ -348,7 +351,7 @@ pub async fn sonarqube_get_issues(
                 })
                 .into_handler_error());
             }
-            
+
             // Handle other errors
             return Err(json!({
                 "code": -32603,
@@ -371,70 +374,67 @@ pub async fn sonarqube_get_issues(
     } else {
         response.total.div_ceil(response.ps)
     };
-    
+
     let mut text_result = format!(
         "Found {} issues for project '{}' (page {} of {}):\n\n",
-        response.total,
-        request.project_key,
-        response.p,
-        total_pages
+        response.total, request.project_key, response.p, total_pages
     );
 
     // If no issues found, provide more context
     if response.total == 0 {
         // Build information about applied filters
         let mut filters = Vec::new();
-        
+
         if let Some(sevs) = &request.severities {
             if !sevs.is_empty() {
                 filters.push(format!("severities: {}", sevs.join(", ")));
             }
         }
-        
+
         if let Some(types) = &request.types {
             if !types.is_empty() {
                 filters.push(format!("types: {}", types.join(", ")));
             }
         }
-        
+
         if let Some(statuses) = &request.statuses {
             if !statuses.is_empty() {
                 filters.push(format!("statuses: {}", statuses.join(", ")));
             }
         }
-        
+
         if request.resolved.is_some() {
             filters.push(format!("resolved: {}", request.resolved.unwrap()));
         }
-        
+
         if let Some(impact_sevs) = &request.impact_severities {
             if !impact_sevs.is_empty() {
                 filters.push(format!("impact severities: {}", impact_sevs.join(", ")));
             }
         }
-        
+
         if let Some(qualities) = &request.impact_software_qualities {
             if !qualities.is_empty() {
                 filters.push(format!("software qualities: {}", qualities.join(", ")));
             }
         }
-        
+
         if request.assigned_to_me.unwrap_or(false) {
             filters.push("assigned to me: true".to_string());
         }
-        
+
         if let Some(created_after) = &request.created_after {
             filters.push(format!("created after: {}", created_after));
         }
-        
+
         if let Some(created_before) = &request.created_before {
             filters.push(format!("created before: {}", created_before));
         }
-        
+
         if let Some(created_in_last) = &request.created_in_last {
             filters.push(format!("created in last: {}", created_in_last));
         }
-        
+
         // Add message explaining why no issues were found
         if filters.is_empty() {
             text_result.push_str("This project has no issues reported in SonarQube.\n");
@@ -513,7 +513,7 @@ pub async fn sonarqube_get_quality_gate(
                 })
                 .into_handler_error());
             }
-            
+
             // For other errors, continue, as they may be related to metrics but not to project existence
             debug_log(&format!("Warning: Error checking project existence: {}", e));
         }
@@ -531,7 +531,7 @@ pub async fn sonarqube_get_quality_gate(
                 })
                 .into_handler_error());
             }
-            
+
             // Handle other errors
             return Err(json!({
                 "code": -32603,
@@ -651,12 +651,12 @@ pub async fn sonarqube_list_projects(
     // Handle case with no projects
     if response.paging.total == 0 {
         text_result.push_str("No projects found in SonarQube.\n");
-        
+
         // Add suggestions
         text_result.push_str("\nPossible reasons:\n");
         text_result.push_str("1. No projects have been analyzed in this SonarQube instance\n");
         text_result.push_str("2. The authentication token might not have access to any projects\n");
-        
+
         if client.has_organization() {
             text_result.push_str(&format!(
                 "3. Using organization: '{}' - verify this is correct\n",

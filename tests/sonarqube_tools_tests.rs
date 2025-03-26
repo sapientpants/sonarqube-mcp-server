@@ -188,29 +188,32 @@ async fn test_project_not_found_errors() {
     // Save current environment variables
     let original_url = std::env::var("SONARQUBE_URL").ok();
     let original_token = std::env::var("SONARQUBE_TOKEN").ok();
-    
+
     // Set test environment variables with invalid values
     // Using a real base URL ensures that we'll actually try to connect
     // but the 404 error will be returned via the handler
     std::env::set_var("SONARQUBE_URL", "https://example.com");
     std::env::set_var("SONARQUBE_TOKEN", "invalid-token");
-    
+
     // Initialize the client
     let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
-    
+
     // Define non-existent project key
     let unknown_project = "non-existent-project";
-    
+
     // Test the metrics tool with a non-existent project
     let metrics_request = SonarQubeMetricsRequest {
         project_key: unknown_project.to_string(),
         metrics: None,
     };
     let metrics_result = sonarqube_get_metrics(metrics_request).await;
-    
+
     // We should get an error (exact content will depend on how example.com responds)
-    assert!(metrics_result.is_err(), "Expected an error for non-existent project, but got success");
-    
+    assert!(
+        metrics_result.is_err(),
+        "Expected an error for non-existent project, but got success"
+    );
+
     // Test the issues tool with a non-existent project
     let issues_request = SonarQubeIssuesRequest {
         project_key: unknown_project.to_string(),
@@ -246,25 +249,31 @@ async fn test_project_not_found_errors() {
         page_size: None,
     };
     let issues_result = sonarqube_get_issues(issues_request).await;
-    
+
     // We should get an error
-    assert!(issues_result.is_err(), "Expected an error for non-existent project, but got success");
-    
+    assert!(
+        issues_result.is_err(),
+        "Expected an error for non-existent project, but got success"
+    );
+
     // Test the quality gate tool with a non-existent project
     let quality_gate_request = SonarQubeQualityGateRequest {
         project_key: unknown_project.to_string(),
     };
     let quality_gate_result = sonarqube_get_quality_gate(quality_gate_request).await;
-    
+
     // We should get an error
-    assert!(quality_gate_result.is_err(), "Expected an error for non-existent project, but got success");
-    
+    assert!(
+        quality_gate_result.is_err(),
+        "Expected an error for non-existent project, but got success"
+    );
+
     // Restore original environment variables
     match original_url {
         Some(url) => std::env::set_var("SONARQUBE_URL", url),
         None => std::env::remove_var("SONARQUBE_URL"),
     }
-    
+
     match original_token {
         Some(token) => std::env::set_var("SONARQUBE_TOKEN", token),
         None => std::env::remove_var("SONARQUBE_TOKEN"),
