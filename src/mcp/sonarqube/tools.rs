@@ -431,8 +431,8 @@ pub async fn sonarqube_list_projects(
     request: SonarQubeListProjectsRequest,
 ) -> HandlerResult<crate::mcp::types::CallToolResult> {
     debug_log(&format!(
-        "Listing SonarQube projects with params: page={:?}, page_size={:?}, organization={:?}",
-        request.page, request.page_size, request.organization
+        "Listing SonarQube projects with params: page={:?}, page_size={:?}",
+        request.page, request.page_size
     ));
 
     // Get client
@@ -448,12 +448,9 @@ pub async fn sonarqube_list_projects(
         }
     };
 
-    // Get org from request if provided
-    let org_ref = request.organization.as_deref();
-
     // Get projects from SonarQube
     let response = match client
-        .list_projects(request.page, request.page_size, org_ref)
+        .list_projects(request.page, request.page_size, None)
         .await
     {
         Ok(response) => {

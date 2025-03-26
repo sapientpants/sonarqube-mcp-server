@@ -131,8 +131,7 @@ The SonarQube MCP Server provides the following tools:
 4. `sonarqube_list_projects`: List all SonarQube projects
    - Parameters:
     - `page` (optional),
-    - `page_size` (optional),
-    - `organization` (optional - can override the environment variable)
+    - `page_size` (optional)
 
 ## Development
 
