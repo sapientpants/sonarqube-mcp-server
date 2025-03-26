@@ -14,7 +14,6 @@ use serde_json::{json, Value};
 use std::io;
 use std::io::Write;
 use std::thread;
-use tempfile::NamedTempFile;
 
 // Platform-specific imports
 #[cfg(unix)]
@@ -87,12 +86,17 @@ async fn main() {
     let mut line = String::new();
     let input = io::stdin();
 
-    // Create a secure temporary file for logging
-    let logging_file = NamedTempFile::new().expect("Failed to create temporary log file");
-    eprintln!("Log file created at: {}", logging_file.path().display());
-    let mut logging_file = logging_file
-        .reopen()
-        .expect("Failed to reopen temporary log file");
+    // Create a log file with a predictable pattern but still secure
+    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let log_dir = std::env::temp_dir();
+    let log_path = log_dir.join(format!("sonarqube_mcp_server_{}.log", timestamp));
+
+    let _logging_file = std::fs::File::create(&log_path).expect("Failed to create log file");
+    eprintln!("Log file created at: {}", log_path.display());
+    let mut logging_file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&log_path)
+        .expect("Failed to reopen log file");
 
     while input.read_line(&mut line).unwrap() != 0 {
         let line = std::mem::take(&mut line);
