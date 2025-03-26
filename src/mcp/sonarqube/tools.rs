@@ -1,9 +1,10 @@
-use crate::mcp::sonarqube::client::{create_client, SonarQubeClient, SonarQubeConfig};
-use crate::mcp::sonarqube::types::*;
 use once_cell::sync::OnceCell;
 use rpc_router::{Handler, HandlerResult, IntoHandlerError, RouterBuilder};
 use serde_json::json;
 use std::sync::Arc;
+
+use crate::mcp::sonarqube::client::SonarQubeClient;
+use crate::mcp::sonarqube::types::*;
 
 /// Global SonarQube client for tools to use
 pub static SONARQUBE_CLIENT: OnceCell<Arc<SonarQubeClient>> = OnceCell::new();
@@ -17,8 +18,9 @@ fn debug_log(message: &str) {
     }
 }
 
-/// Initialize the SonarQube client with configuration from environment variables
+/// Initialize the SonarQube client
 pub fn init_sonarqube_client() -> Result<(), SonarError> {
+    // Get environment variables
     let base_url = std::env::var("SONARQUBE_URL").map_err(|_| {
         SonarError::Config("SONARQUBE_URL environment variable not set".to_string())
     })?;
@@ -30,16 +32,20 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
     // Get optional organization
     let organization = std::env::var("SONARQUBE_ORGANIZATION").ok();
 
+    // Create config
     let config = SonarQubeConfig {
         base_url,
         token,
         organization,
     };
 
-    let client = create_client(config);
+    // Create client
+    let client = SonarQubeClient::new(config);
+
+    // Store client in global variable
     SONARQUBE_CLIENT
-        .set(client)
-        .map_err(|_| SonarError::Config("Failed to initialize SonarQube client".to_string()))?;
+        .set(Arc::new(client))
+        .map_err(|_| SonarError::Config("Failed to set SonarQube client".to_string()))?;
 
     Ok(())
 }
@@ -53,9 +59,9 @@ pub fn get_client() -> Result<&'static Arc<SonarQubeClient>, SonarError> {
         ))
 }
 
-/// Register SonarQube tools to the router
-pub fn register_sonarqube_tools(router_builder: RouterBuilder) -> RouterBuilder {
-    router_builder
+/// Register SonarQube tools with the router
+pub fn register_sonarqube_tools(builder: RouterBuilder) -> RouterBuilder {
+    builder
         .append_dyn("sonarqube_get_metrics", sonarqube_get_metrics.into_dyn())
         .append_dyn("sonarqube_get_issues", sonarqube_get_issues.into_dyn())
         .append_dyn(
@@ -84,20 +90,21 @@ pub async fn sonarqube_get_metrics(
         }
     };
 
-    // Default metrics if none provided
-    let metrics_vec = request.metrics.unwrap_or_else(|| {
-        vec![
+    // Define default metrics if none provided
+    let metrics = match &request.metrics {
+        Some(metrics) => metrics.clone(),
+        None => vec![
             "ncloc".to_string(),
             "bugs".to_string(),
             "vulnerabilities".to_string(),
             "code_smells".to_string(),
             "coverage".to_string(),
             "duplicated_lines_density".to_string(),
-        ]
-    });
+        ],
+    };
 
-    // Convert Vec<String> to Vec<&str> for client
-    let metrics_refs: Vec<&str> = metrics_vec.iter().map(|s| s.as_str()).collect();
+    // Convert metrics to string slices
+    let metrics_refs: Vec<&str> = metrics.iter().map(|s| s.as_str()).collect();
 
     // Get metrics from SonarQube
     let response = match client
@@ -125,34 +132,21 @@ pub async fn sonarqube_get_metrics(
     };
 
     // Format the results as text
-    let mut text_result = format!(
-        "Metrics for project '{}' ({}):\n\n",
-        response.component.name, response.component.key
-    );
+    let mut text_result = format!("Metrics for project '{}':\n\n", response.component.name);
 
-    // Check if measures array is empty
-    if response.component.measures.is_empty() {
-        text_result.push_str("No metrics found for this project.\n\n");
-        text_result.push_str("Possible reasons:\n");
-        text_result.push_str("1. The project hasn't been analyzed yet\n");
-        text_result.push_str("2. The requested metrics aren't available for this project\n");
+    // Add each metric to the text result
+    for measure in response.component.measures {
+        // Check if the metric has a 'bestValue' flag
+        let best_value_indicator = if measure.best_value.unwrap_or(false) {
+            " ✓"
+        } else {
+            ""
+        };
+
         text_result.push_str(&format!(
-            "3. Requested metrics: {}\n",
-            metrics_refs.join(", ")
+            "- {}: {}{}\n",
+            measure.metric, measure.value, best_value_indicator
         ));
-    } else {
-        // Add each metric to the text result
-        for measure in &response.component.measures {
-            let best_value_indicator = match measure.best_value {
-                Some(true) => " (best value)",
-                _ => "",
-            };
-
-            text_result.push_str(&format!(
-                "- {}: {}{}\n",
-                measure.metric, measure.value, best_value_indicator
-            ));
-        }
     }
 
     Ok(crate::mcp::types::CallToolResult {
@@ -165,7 +159,7 @@ pub async fn sonarqube_get_metrics(
 pub async fn sonarqube_get_issues(
     request: SonarQubeIssuesRequest,
 ) -> HandlerResult<crate::mcp::types::CallToolResult> {
-    // Get client
+    // STEP 1: Get client and check project exists
     let client = match get_client() {
         Ok(client) => client,
         Err(e) => {
@@ -177,11 +171,10 @@ pub async fn sonarqube_get_issues(
         }
     };
 
-    // First, verify the project exists by trying to get metrics for it
-    // This will return a ProjectNotFound error if the project doesn't exist
+    // Check if project exists by trying to get metrics for it
     match client.get_metrics(&request.project_key, &["ncloc"]).await {
         Ok(_) => {
-            // Project exists, proceed with getting issues
+            // Project exists, proceed
         }
         Err(e) => {
             if let SonarError::ProjectNotFound(project_key) = e {
@@ -192,154 +185,48 @@ pub async fn sonarqube_get_issues(
                 .into_handler_error());
             }
 
-            // For other errors, continue, as they may be related to metrics but not to project existence
+            // For other errors, continue trying to get issues
             debug_log(&format!("Warning: Error checking project existence: {}", e));
         }
     }
 
-    // Convert option vectors to references for client
-    let severities_ref: Option<Vec<&str>> = request
-        .severities
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let types_ref: Option<Vec<&str>> = request
-        .types
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let statuses_ref: Option<Vec<&str>> = request
-        .statuses
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let impact_severities_ref: Option<Vec<&str>> = request
-        .impact_severities
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let impact_software_qualities_ref: Option<Vec<&str>> = request
-        .impact_software_qualities
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    // Convert new parameters to references
-    let assignees_ref: Option<Vec<&str>> = request
-        .assignees
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let authors_ref: Option<Vec<&str>> = request
-        .authors
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let code_variants_ref: Option<Vec<&str>> = request
-        .code_variants
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let cwe_ref: Option<Vec<&str>> = request
-        .cwe
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let directories_ref: Option<Vec<&str>> = request
-        .directories
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let facets_ref: Option<Vec<&str>> = request
-        .facets
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let files_ref: Option<Vec<&str>> = request
-        .files
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let issue_statuses_ref: Option<Vec<&str>> = request
-        .issue_statuses
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let languages_ref: Option<Vec<&str>> = request
-        .languages
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let owasp_top10_ref: Option<Vec<&str>> = request
-        .owasp_top10
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let owasp_top10_2021_ref: Option<Vec<&str>> = request
-        .owasp_top10_2021
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let resolutions_ref: Option<Vec<&str>> = request
-        .resolutions
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let rules_ref: Option<Vec<&str>> = request
-        .rules
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let sans_top25_ref: Option<Vec<&str>> = request
-        .sans_top25
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let sonarsource_security_ref: Option<Vec<&str>> = request
-        .sonarsource_security
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    let tags_ref: Option<Vec<&str>> = request
-        .tags
-        .as_ref()
-        .map(|v| v.iter().map(|s| s.as_str()).collect());
-
-    // Create query params
+    // STEP 2: Create query parameters
     let mut params = IssuesQueryParams::new(&request.project_key);
-    params.severities = severities_ref.as_deref();
-    params.types = types_ref.as_deref();
-    params.statuses = statuses_ref.as_deref();
-    params.impact_severities = impact_severities_ref.as_deref();
-    params.impact_software_qualities = impact_software_qualities_ref.as_deref();
 
-    // Set new parameters
+    // STEP 3: Set non-vector parameters
     params.assigned_to_me = request.assigned_to_me;
-    params.assignees = assignees_ref.as_deref();
-    params.authors = authors_ref.as_deref();
-    params.code_variants = code_variants_ref.as_deref();
     params.created_after = request.created_after.as_deref();
     params.created_before = request.created_before.as_deref();
     params.created_in_last = request.created_in_last.as_deref();
-    params.cwe = cwe_ref.as_deref();
-    params.directories = directories_ref.as_deref();
-    params.facets = facets_ref.as_deref();
-    params.files = files_ref.as_deref();
-    params.issue_statuses = issue_statuses_ref.as_deref();
-    params.languages = languages_ref.as_deref();
-    params.owasp_top10 = owasp_top10_ref.as_deref();
-    params.owasp_top10_2021 = owasp_top10_2021_ref.as_deref();
-    params.resolutions = resolutions_ref.as_deref();
     params.resolved = request.resolved;
-    params.rules = rules_ref.as_deref();
-    params.sans_top25 = sans_top25_ref.as_deref();
-    params.sonarsource_security = sonarsource_security_ref.as_deref();
-    params.tags = tags_ref.as_deref();
     params.sort_field = request.sort_field.as_deref();
     params.asc = request.asc;
     params.page = request.page;
     params.page_size = request.page_size;
 
-    // Get issues from SonarQube
+    // STEP 4: Convert and store vector parameters for the API call
+    // We'll use these within the scope of this function
+    let severities_refs: Option<Vec<&str>> = request
+        .severities
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let types_refs: Option<Vec<&str>> = request
+        .types
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    let statuses_refs: Option<Vec<&str>> = request
+        .statuses
+        .as_ref()
+        .map(|v| v.iter().map(|s| s.as_str()).collect());
+
+    // Set the vector parameters in the params
+    params.severities = severities_refs.as_deref();
+    params.types = types_refs.as_deref();
+    params.statuses = statuses_refs.as_deref();
+
+    // STEP 5: Get issues from SonarQube
     let response = match client.get_issues(params).await {
         Ok(response) => response,
         Err(e) => {
@@ -361,6 +248,7 @@ pub async fn sonarqube_get_issues(
         }
     };
 
+    // STEP 6: Format the response
     // Create component lookup map
     let components_map: std::collections::HashMap<String, &Component> = response
         .components
@@ -380,7 +268,7 @@ pub async fn sonarqube_get_issues(
         response.total, request.project_key, response.p, total_pages
     );
 
-    // If no issues found, provide more context
+    // STEP 7: Handle the case when no issues are found
     if response.total == 0 {
         // Build information about applied filters
         let mut filters = Vec::new();
@@ -407,34 +295,6 @@ pub async fn sonarqube_get_issues(
             filters.push(format!("resolved: {}", request.resolved.unwrap()));
         }
 
-        if let Some(impact_sevs) = &request.impact_severities {
-            if !impact_sevs.is_empty() {
-                filters.push(format!("impact severities: {}", impact_sevs.join(", ")));
-            }
-        }
-
-        if let Some(qualities) = &request.impact_software_qualities {
-            if !qualities.is_empty() {
-                filters.push(format!("software qualities: {}", qualities.join(", ")));
-            }
-        }
-
-        if request.assigned_to_me.unwrap_or(false) {
-            filters.push("assigned to me: true".to_string());
-        }
-
-        if let Some(created_after) = &request.created_after {
-            filters.push(format!("created after: {}", created_after));
-        }
-
-        if let Some(created_before) = &request.created_before {
-            filters.push(format!("created before: {}", created_before));
-        }
-
-        if let Some(created_in_last) = &request.created_in_last {
-            filters.push(format!("created in last: {}", created_in_last));
-        }
-
         // Add message explaining why no issues were found
         if filters.is_empty() {
             text_result.push_str("This project has no issues reported in SonarQube.\n");
@@ -445,7 +305,7 @@ pub async fn sonarqube_get_issues(
             ));
         }
     } else {
-        // Add each issue to the text result
+        // STEP 8: Format each issue
         for issue in &response.issues {
             let component_name = components_map
                 .get(&issue.component)
@@ -469,7 +329,7 @@ pub async fn sonarqube_get_issues(
             ));
         }
 
-        // If there are more pages, add a note
+        // STEP 9: Add pagination note if needed
         if response.p * response.ps < response.total {
             text_result.push_str(
                 "\nNote: More issues available. Use page parameter to view additional issues.",
@@ -477,6 +337,7 @@ pub async fn sonarqube_get_issues(
         }
     }
 
+    // Return the formatted result
     Ok(crate::mcp::types::CallToolResult {
         content: vec![crate::mcp::types::CallToolResultContent::Text { text: text_result }],
         is_error: false,

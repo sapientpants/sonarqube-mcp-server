@@ -453,7 +453,8 @@ impl SonarQubeClient {
     }
 }
 
-/// Create a shared instance of SonarQubeClient
+/// Create a new SonarQube client from configuration
+#[allow(dead_code)]
 pub fn create_client(config: SonarQubeConfig) -> Arc<SonarQubeClient> {
     Arc::new(SonarQubeClient::new(config))
 }
