@@ -143,7 +143,7 @@ pub async fn sonarqube_get_metrics(
     // Add each metric to the text result
     for measure in response.component.measures {
         // Check if the metric has a 'bestValue' flag
-        let best_value_indicator = if measure.best_value.unwrap_or(false) {
+        let best_value_indicator = if measure.best_value.is_some_and(|v| v) {
             " ✓"
         } else {
             ""
@@ -315,13 +315,11 @@ pub async fn sonarqube_get_issues(
         for issue in &response.issues {
             let component_name = components_map
                 .get(&issue.component)
-                .map(|c| c.name.clone())
-                .unwrap_or_else(|| issue.component.clone());
+                .map_or_else(|| issue.component.clone(), |c| c.name.clone());
 
             let line_info = issue
                 .line
-                .map(|line| format!(", line {}", line))
-                .unwrap_or_else(|| String::from(""));
+                .map_or_else(|| String::from(""), |line| format!(", line {}", line));
 
             text_result.push_str(&format!(
                 "- [{}] {} ({}{})\n  Rule: {}, Status: {}\n  {}\n\n",
