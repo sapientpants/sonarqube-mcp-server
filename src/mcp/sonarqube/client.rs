@@ -5,9 +5,12 @@ use reqwest::Client;
 pub use crate::mcp::sonarqube::types::SonarQubeConfig;
 use std::sync::Arc;
 
+// Static constants for environment variable names
+static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
+
 /// Local debug logging helper
 fn debug_log(message: &str) {
-    if let Ok(value) = std::env::var("SONARQUBE_DEBUG") {
+    if let Ok(value) = std::env::var(SONARQUBE_DEBUG_ENV) {
         if value == "1" || value.to_lowercase() == "true" {
             eprintln!("[SONARQUBE CLIENT DEBUG] {}", message);
         }
@@ -35,6 +38,16 @@ impl SonarQubeClient {
             token: config.token,
             organization: config.organization,
         }
+    }
+
+    /// Check if this client has an organization configured
+    pub fn has_organization(&self) -> bool {
+        self.organization.is_some()
+    }
+
+    /// Get the organization name if configured
+    pub fn organization(&self) -> Option<&str> {
+        self.organization.as_deref()
     }
 
     /// Get metrics for a project
@@ -443,7 +456,8 @@ impl SonarQubeClient {
     }
 }
 
-/// Create a shared instance of SonarQubeClient
+/// Create a new SonarQube client from configuration
+#[allow(dead_code)]
 pub fn create_client(config: SonarQubeConfig) -> Arc<SonarQubeClient> {
     Arc::new(SonarQubeClient::new(config))
 }

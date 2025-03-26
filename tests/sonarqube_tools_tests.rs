@@ -8,17 +8,21 @@ use sonarqube_mcp_server::mcp::sonarqube::types::*;
 use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::env;
 
+// Static constants for environment variable names
+static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
+static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
+
 #[test]
 fn test_init_sonarqube_client_error_conditions() {
     // Save original environment variables
-    let original_url = env::var("SONARQUBE_URL").ok();
-    let original_token = env::var("SONARQUBE_TOKEN").ok();
+    let original_url = env::var(SONARQUBE_URL_ENV).ok();
+    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
 
     // Test 1: Missing URL
     // ------------------
     // Unset environment variables
-    env::remove_var("SONARQUBE_URL");
-    env::remove_var("SONARQUBE_TOKEN");
+    env::remove_var(SONARQUBE_URL_ENV);
+    env::remove_var(SONARQUBE_TOKEN_ENV);
 
     // Try to initialize client
     let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
@@ -35,7 +39,7 @@ fn test_init_sonarqube_client_error_conditions() {
     // Test 2: Missing Token
     // -------------------
     // Set the URL but not the token
-    env::set_var("SONARQUBE_URL", "https://sonarqube.example.com");
+    env::set_var(SONARQUBE_URL_ENV, "https://sonarqube.example.com");
 
     // Try to initialize client again
     let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
@@ -50,12 +54,12 @@ fn test_init_sonarqube_client_error_conditions() {
     }
 
     // Restore environment variables
-    env::remove_var("SONARQUBE_URL");
+    env::remove_var(SONARQUBE_URL_ENV);
     if let Some(url) = original_url {
-        env::set_var("SONARQUBE_URL", url);
+        env::set_var(SONARQUBE_URL_ENV, url);
     }
     if let Some(token) = original_token {
-        env::set_var("SONARQUBE_TOKEN", token);
+        env::set_var(SONARQUBE_TOKEN_ENV, token);
     }
 }
 
@@ -179,5 +183,103 @@ fn test_call_tool_result_content_formatting() {
     match deserialized {
         CallToolResultContent::Text { text } => assert_eq!(text, "Test result"),
         _ => panic!("Expected Text variant"),
+    }
+}
+
+// Test that errors are correctly returned for non-existent projects
+#[tokio::test]
+async fn test_project_not_found_errors() {
+    // Save current environment variables
+    let original_url = std::env::var(SONARQUBE_URL_ENV).ok();
+    let original_token = std::env::var(SONARQUBE_TOKEN_ENV).ok();
+
+    // Set test environment variables with invalid values
+    // Using a real base URL ensures that we'll actually try to connect
+    // but the 404 error will be returned via the handler
+    std::env::set_var(SONARQUBE_URL_ENV, "https://example.com");
+    std::env::set_var(SONARQUBE_TOKEN_ENV, "invalid-token");
+
+    // Initialize the client
+    let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
+
+    // Define non-existent project key
+    let unknown_project = "non-existent-project";
+
+    // Test the metrics tool with a non-existent project
+    let metrics_request = SonarQubeMetricsRequest {
+        project_key: unknown_project.to_string(),
+        metrics: None,
+    };
+    let metrics_result = sonarqube_get_metrics(metrics_request).await;
+
+    // We should get an error (exact content will depend on how example.com responds)
+    assert!(
+        metrics_result.is_err(),
+        "Expected an error for non-existent project, but got success"
+    );
+
+    // Test the issues tool with a non-existent project
+    let issues_request = SonarQubeIssuesRequest {
+        project_key: unknown_project.to_string(),
+        severities: None,
+        types: None,
+        statuses: None,
+        impact_severities: None,
+        impact_software_qualities: None,
+        assigned_to_me: None,
+        assignees: None,
+        authors: None,
+        code_variants: None,
+        created_after: None,
+        created_before: None,
+        created_in_last: None,
+        cwe: None,
+        directories: None,
+        facets: None,
+        files: None,
+        issue_statuses: None,
+        languages: None,
+        owasp_top10: None,
+        owasp_top10_2021: None,
+        resolutions: None,
+        resolved: None,
+        rules: None,
+        sans_top25: None,
+        sonarsource_security: None,
+        tags: None,
+        sort_field: None,
+        asc: None,
+        page: None,
+        page_size: None,
+    };
+    let issues_result = sonarqube_get_issues(issues_request).await;
+
+    // We should get an error
+    assert!(
+        issues_result.is_err(),
+        "Expected an error for non-existent project, but got success"
+    );
+
+    // Test the quality gate tool with a non-existent project
+    let quality_gate_request = SonarQubeQualityGateRequest {
+        project_key: unknown_project.to_string(),
+    };
+    let quality_gate_result = sonarqube_get_quality_gate(quality_gate_request).await;
+
+    // We should get an error
+    assert!(
+        quality_gate_result.is_err(),
+        "Expected an error for non-existent project, but got success"
+    );
+
+    // Restore original environment variables
+    match original_url {
+        Some(url) => std::env::set_var(SONARQUBE_URL_ENV, url),
+        None => std::env::remove_var(SONARQUBE_URL_ENV),
+    }
+
+    match original_token {
+        Some(token) => std::env::set_var(SONARQUBE_TOKEN_ENV, token),
+        None => std::env::remove_var(SONARQUBE_TOKEN_ENV),
     }
 }
