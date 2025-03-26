@@ -37,6 +37,16 @@ impl SonarQubeClient {
         }
     }
 
+    /// Check if this client has an organization configured
+    pub fn has_organization(&self) -> bool {
+        self.organization.is_some()
+    }
+
+    /// Get the organization name if configured
+    pub fn organization(&self) -> Option<&str> {
+        self.organization.as_deref()
+    }
+
     /// Get metrics for a project
     pub async fn get_metrics(
         &self,

@@ -173,7 +173,7 @@
   },
   {
     "name": "sonarqube_list_projects",
-    "description": "List all projects in SonarQube",
+    "description": "List all projects in SonarQube. Result will be a list of project_name: project_key pairs.",
     "inputSchema": {
       "type": "object",
       "properties": {

@@ -106,6 +106,16 @@ pub async fn sonarqube_get_metrics(
     {
         Ok(response) => response,
         Err(e) => {
+            // Check specifically for ProjectNotFound error type
+            if let SonarError::ProjectNotFound(project_key) = &e {
+                return Err(json!({
+                    "code": -32603,
+                    "message": format!("Project not found: {}", project_key)
+                })
+                .into_handler_error());
+            }
+            
+            // Handle other errors
             return Err(json!({
                 "code": -32603,
                 "message": format!("SonarQube API error: {}", e)
@@ -120,17 +130,26 @@ pub async fn sonarqube_get_metrics(
         response.component.name, response.component.key
     );
 
-    // Add each metric to the text result
-    for measure in &response.component.measures {
-        let best_value_indicator = match measure.best_value {
-            Some(true) => " (best value)",
-            _ => "",
-        };
+    // Check if measures array is empty
+    if response.component.measures.is_empty() {
+        text_result.push_str("No metrics found for this project.\n\n");
+        text_result.push_str("Possible reasons:\n");
+        text_result.push_str("1. The project hasn't been analyzed yet\n");
+        text_result.push_str("2. The requested metrics aren't available for this project\n");
+        text_result.push_str(&format!("3. Requested metrics: {}\n", metrics_refs.join(", ")));
+    } else {
+        // Add each metric to the text result
+        for measure in &response.component.measures {
+            let best_value_indicator = match measure.best_value {
+                Some(true) => " (best value)",
+                _ => "",
+            };
 
-        text_result.push_str(&format!(
-            "- {}: {}{}\n",
-            measure.metric, measure.value, best_value_indicator
-        ));
+            text_result.push_str(&format!(
+                "- {}: {}{}\n",
+                measure.metric, measure.value, best_value_indicator
+            ));
+        }
     }
 
     Ok(crate::mcp::types::CallToolResult {
@@ -154,6 +173,26 @@ pub async fn sonarqube_get_issues(
             .into_handler_error());
         }
     };
+
+    // First, verify the project exists by trying to get metrics for it
+    // This will return a ProjectNotFound error if the project doesn't exist
+    match client.get_metrics(&request.project_key, &["ncloc"]).await {
+        Ok(_) => {
+            // Project exists, proceed with getting issues
+        }
+        Err(e) => {
+            if let SonarError::ProjectNotFound(project_key) = e {
+                return Err(json!({
+                    "code": -32603,
+                    "message": format!("Project not found: {}", project_key)
+                })
+                .into_handler_error());
+            }
+            
+            // For other errors, continue, as they may be related to metrics but not to project existence
+            debug_log(&format!("Warning: Error checking project existence: {}", e));
+        }
+    }
 
     // Convert option vectors to references for client
     let severities_ref: Option<Vec<&str>> = request
@@ -301,6 +340,16 @@ pub async fn sonarqube_get_issues(
     let response = match client.get_issues(params).await {
         Ok(response) => response,
         Err(e) => {
+            // Check specifically for ProjectNotFound error type
+            if let SonarError::ProjectNotFound(project_key) = &e {
+                return Err(json!({
+                    "code": -32603,
+                    "message": format!("Project not found: {}", project_key)
+                })
+                .into_handler_error());
+            }
+            
+            // Handle other errors
             return Err(json!({
                 "code": -32603,
                 "message": format!("SonarQube API error: {}", e)
@@ -317,43 +366,115 @@ pub async fn sonarqube_get_issues(
         .collect();
 
     // Format the results as text
+    let total_pages = if response.total == 0 {
+        1 // If there are no issues, we still have 1 page (the current empty page)
+    } else {
+        response.total.div_ceil(response.ps)
+    };
+    
     let mut text_result = format!(
         "Found {} issues for project '{}' (page {} of {}):\n\n",
         response.total,
         request.project_key,
         response.p,
-        response.total.div_ceil(response.ps)
+        total_pages
     );
 
-    // Add each issue to the text result
-    for issue in &response.issues {
-        let component_name = components_map
-            .get(&issue.component)
-            .map(|c| c.name.clone())
-            .unwrap_or_else(|| issue.component.clone());
+    // If no issues found, provide more context
+    if response.total == 0 {
+        // Build information about applied filters
+        let mut filters = Vec::new();
+        
+        if let Some(sevs) = &request.severities {
+            if !sevs.is_empty() {
+                filters.push(format!("severities: {}", sevs.join(", ")));
+            }
+        }
+        
+        if let Some(types) = &request.types {
+            if !types.is_empty() {
+                filters.push(format!("types: {}", types.join(", ")));
+            }
+        }
+        
+        if let Some(statuses) = &request.statuses {
+            if !statuses.is_empty() {
+                filters.push(format!("statuses: {}", statuses.join(", ")));
+            }
+        }
+        
+        if request.resolved.is_some() {
+            filters.push(format!("resolved: {}", request.resolved.unwrap()));
+        }
+        
+        if let Some(impact_sevs) = &request.impact_severities {
+            if !impact_sevs.is_empty() {
+                filters.push(format!("impact severities: {}", impact_sevs.join(", ")));
+            }
+        }
+        
+        if let Some(qualities) = &request.impact_software_qualities {
+            if !qualities.is_empty() {
+                filters.push(format!("software qualities: {}", qualities.join(", ")));
+            }
+        }
+        
+        if request.assigned_to_me.unwrap_or(false) {
+            filters.push("assigned to me: true".to_string());
+        }
+        
+        if let Some(created_after) = &request.created_after {
+            filters.push(format!("created after: {}", created_after));
+        }
+        
+        if let Some(created_before) = &request.created_before {
+            filters.push(format!("created before: {}", created_before));
+        }
+        
+        if let Some(created_in_last) = &request.created_in_last {
+            filters.push(format!("created in last: {}", created_in_last));
+        }
+        
+        // Add message explaining why no issues were found
+        if filters.is_empty() {
+            text_result.push_str("This project has no issues reported in SonarQube.\n");
+        } else {
+            text_result.push_str(&format!(
+                "No issues match the applied filters: {}.\n",
+                filters.join("; ")
+            ));
+        }
+    } else {
+        // Add each issue to the text result
+        for issue in &response.issues {
+            let component_name = components_map
+                .get(&issue.component)
+                .map(|c| c.name.clone())
+                .unwrap_or_else(|| issue.component.clone());
 
-        let line_info = issue
-            .line
-            .map(|line| format!(", line {}", line))
-            .unwrap_or_else(|| String::from(""));
+            let line_info = issue
+                .line
+                .map(|line| format!(", line {}", line))
+                .unwrap_or_else(|| String::from(""));
 
-        text_result.push_str(&format!(
-            "- [{}] {} ({}{})\n  Rule: {}, Status: {}\n  {}\n\n",
-            issue.severity,
-            component_name,
-            issue.component,
-            line_info,
-            issue.rule,
-            issue.status,
-            issue.message
-        ));
-    }
+            text_result.push_str(&format!(
+                "- [{}] {} ({}{})\n  Rule: {}, Status: {}\n  {}\n\n",
+                issue.severity,
+                component_name,
+                issue.component,
+                line_info,
+                issue.rule,
+                issue.status,
+                issue.message
+            ));
+        }
 
-    // If there are more pages, add a note
-    if response.p * response.ps < response.total {
-        text_result.push_str(
-            "\nNote: More issues available. Use page parameter to view additional issues.",
-        );
+        // If there are more pages, add a note
+        if response.p * response.ps < response.total {
+            text_result.push_str(
+                "\nNote: More issues available. Use page parameter to view additional issues.",
+            );
+        }
     }
 
     Ok(crate::mcp::types::CallToolResult {
@@ -378,10 +499,40 @@ pub async fn sonarqube_get_quality_gate(
         }
     };
 
+    // First, verify the project exists by trying to get metrics for it
+    // This will return a ProjectNotFound error if the project doesn't exist
+    match client.get_metrics(&request.project_key, &["ncloc"]).await {
+        Ok(_) => {
+            // Project exists, proceed with getting quality gate
+        }
+        Err(e) => {
+            if let SonarError::ProjectNotFound(project_key) = e {
+                return Err(json!({
+                    "code": -32603,
+                    "message": format!("Project not found: {}", project_key)
+                })
+                .into_handler_error());
+            }
+            
+            // For other errors, continue, as they may be related to metrics but not to project existence
+            debug_log(&format!("Warning: Error checking project existence: {}", e));
+        }
+    }
+
     // Get quality gate from SonarQube
     let response = match client.get_quality_gate(&request.project_key).await {
         Ok(response) => response,
         Err(e) => {
+            // Check specifically for ProjectNotFound error type
+            if let SonarError::ProjectNotFound(project_key) = &e {
+                return Err(json!({
+                    "code": -32603,
+                    "message": format!("Project not found: {}", project_key)
+                })
+                .into_handler_error());
+            }
+            
+            // Handle other errors
             return Err(json!({
                 "code": -32603,
                 "message": format!("SonarQube API error: {}", e)
@@ -402,22 +553,31 @@ pub async fn sonarqube_get_quality_gate(
         request.project_key, status_display
     );
 
-    // Add each condition to the text result
-    for condition in &response.project_status.conditions {
-        let status_icon = match condition.status.as_str() {
-            "OK" => "✅",
-            "ERROR" => "❌",
-            _ => "⚠️",
-        };
+    // Check if conditions array is empty
+    if response.project_status.conditions.is_empty() {
+        text_result.push_str("No quality gate conditions found for this project.\n\n");
+        text_result.push_str("Possible reasons:\n");
+        text_result.push_str("1. No quality gate has been assigned to this project\n");
+        text_result.push_str("2. The assigned quality gate has no conditions\n");
+        text_result.push_str("3. The project hasn't been analyzed yet\n");
+    } else {
+        // Add each condition to the text result
+        for condition in &response.project_status.conditions {
+            let status_icon = match condition.status.as_str() {
+                "OK" => "✅",
+                "ERROR" => "❌",
+                _ => "⚠️",
+            };
 
-        text_result.push_str(&format!(
-            "- {} {} ({}): Actual value: {} vs Threshold: {}\n",
-            status_icon,
-            condition.metric_key,
-            condition.comparator,
-            condition.actual_value,
-            condition.error_threshold
-        ));
+            text_result.push_str(&format!(
+                "- {} {} ({}): Actual value: {} vs Threshold: {}\n",
+                status_icon,
+                condition.metric_key,
+                condition.comparator,
+                condition.actual_value,
+                condition.error_threshold
+            ));
+        }
     }
 
     Ok(crate::mcp::types::CallToolResult {
@@ -488,25 +648,44 @@ pub async fn sonarqube_list_projects(
         response.paging.total.div_ceil(response.paging.page_size)
     );
 
-    // Add each project to the text result
-    for project in &response.components {
-        let last_analysis = project
-            .last_analysis_date
-            .as_ref()
-            .map(|date| format!(" (last analyzed: {})", date))
-            .unwrap_or_else(|| String::from(""));
+    // Handle case with no projects
+    if response.paging.total == 0 {
+        text_result.push_str("No projects found in SonarQube.\n");
+        
+        // Add suggestions
+        text_result.push_str("\nPossible reasons:\n");
+        text_result.push_str("1. No projects have been analyzed in this SonarQube instance\n");
+        text_result.push_str("2. The authentication token might not have access to any projects\n");
+        
+        if client.has_organization() {
+            text_result.push_str(&format!(
+                "3. Using organization: '{}' - verify this is correct\n",
+                client.organization().unwrap()
+            ));
+        } else {
+            text_result.push_str("3. This SonarQube instance might require an organization parameter. Set SONARQUBE_ORGANIZATION environment variable if needed\n");
+        }
+    } else {
+        // Add each project to the text result
+        for project in &response.components {
+            let last_analysis = project
+                .last_analysis_date
+                .as_ref()
+                .map(|date| format!(" (last analyzed: {})", date))
+                .unwrap_or_else(|| String::from(""));
 
-        text_result.push_str(&format!(
-            "- {}: {}{}\n",
-            project.name, project.key, last_analysis
-        ));
-    }
+            text_result.push_str(&format!(
+                "- {}: {}{}\n",
+                project.name, project.key, last_analysis
+            ));
+        }
 
-    // If there are more pages, add a note
-    if response.paging.page_index * response.paging.page_size < response.paging.total {
-        text_result.push_str(
-            "\nNote: More projects available. Use page parameter to view additional projects.",
-        );
+        // If there are more pages, add a note
+        if response.paging.page_index * response.paging.page_size < response.paging.total {
+            text_result.push_str(
+                "\nNote: More projects available. Use page parameter to view additional projects.",
+            );
+        }
     }
 
     debug_log("Successfully formatted projects list as text");
