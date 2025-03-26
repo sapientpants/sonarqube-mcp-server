@@ -184,10 +184,6 @@
         "page_size": {
           "type": "number",
           "description": "Page size (optional)"
-        },
-        "organization": {
-          "type": "string",
-          "description": "Organization key (required for SonarCloud and some SonarQube instances)"
         }
       },
       "required": []
