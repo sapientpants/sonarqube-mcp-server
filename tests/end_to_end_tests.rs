@@ -1,7 +1,7 @@
 mod helpers;
 
 use helpers::{load_fixture, mock_token, test_project_key};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
@@ -11,8 +11,8 @@ use std::{
     time::Duration,
 };
 use wiremock::{
-    matchers::{method, path, query_param},
     Mock, MockServer, ResponseTemplate,
+    matchers::{method, path, query_param},
 };
 
 // This test is more complex and requires starting the MCP server as a separate process
@@ -105,12 +105,16 @@ async fn test_mcp_server_with_sonarqube_tools() {
     assert!(metrics.is_array());
 
     let metrics_array = metrics.as_array().unwrap();
-    assert!(metrics_array
-        .iter()
-        .any(|m| m["key"] == "ncloc" && m["value"] == "1200"));
-    assert!(metrics_array
-        .iter()
-        .any(|m| m["key"] == "bugs" && m["value"] == "12"));
+    assert!(
+        metrics_array
+            .iter()
+            .any(|m| m["key"] == "ncloc" && m["value"] == "1200")
+    );
+    assert!(
+        metrics_array
+            .iter()
+            .any(|m| m["key"] == "bugs" && m["value"] == "12")
+    );
 
     // Shutdown the server
     let shutdown_request = json!({

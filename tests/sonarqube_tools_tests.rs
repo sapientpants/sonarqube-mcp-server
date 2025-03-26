@@ -21,8 +21,12 @@ fn test_init_sonarqube_client_error_conditions() {
     // Test 1: Missing URL
     // ------------------
     // Unset environment variables
-    env::remove_var(SONARQUBE_URL_ENV);
-    env::remove_var(SONARQUBE_TOKEN_ENV);
+    unsafe {
+        env::remove_var(SONARQUBE_URL_ENV);
+    }
+    unsafe {
+        env::remove_var(SONARQUBE_TOKEN_ENV);
+    }
 
     // Try to initialize client
     let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
@@ -39,7 +43,9 @@ fn test_init_sonarqube_client_error_conditions() {
     // Test 2: Missing Token
     // -------------------
     // Set the URL but not the token
-    env::set_var(SONARQUBE_URL_ENV, "https://sonarqube.example.com");
+    unsafe {
+        env::set_var(SONARQUBE_URL_ENV, "https://sonarqube.example.com");
+    }
 
     // Try to initialize client again
     let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
@@ -54,12 +60,18 @@ fn test_init_sonarqube_client_error_conditions() {
     }
 
     // Restore environment variables
-    env::remove_var(SONARQUBE_URL_ENV);
+    unsafe {
+        env::remove_var(SONARQUBE_URL_ENV);
+    }
     if let Some(url) = original_url {
-        env::set_var(SONARQUBE_URL_ENV, url);
+        unsafe {
+            env::set_var(SONARQUBE_URL_ENV, url);
+        }
     }
     if let Some(token) = original_token {
-        env::set_var(SONARQUBE_TOKEN_ENV, token);
+        unsafe {
+            env::set_var(SONARQUBE_TOKEN_ENV, token);
+        }
     }
 }
 
@@ -196,8 +208,12 @@ async fn test_project_not_found_errors() {
     // Set test environment variables with invalid values
     // Using a real base URL ensures that we'll actually try to connect
     // but the 404 error will be returned via the handler
-    std::env::set_var(SONARQUBE_URL_ENV, "https://example.com");
-    std::env::set_var(SONARQUBE_TOKEN_ENV, "invalid-token");
+    unsafe {
+        std::env::set_var(SONARQUBE_URL_ENV, "https://example.com");
+    }
+    unsafe {
+        std::env::set_var(SONARQUBE_TOKEN_ENV, "invalid-token");
+    }
 
     // Initialize the client
     let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
@@ -274,12 +290,12 @@ async fn test_project_not_found_errors() {
 
     // Restore original environment variables
     match original_url {
-        Some(url) => std::env::set_var(SONARQUBE_URL_ENV, url),
-        None => std::env::remove_var(SONARQUBE_URL_ENV),
+        Some(url) => unsafe { std::env::set_var(SONARQUBE_URL_ENV, url) },
+        None => unsafe { std::env::remove_var(SONARQUBE_URL_ENV) },
     }
 
     match original_token {
-        Some(token) => std::env::set_var(SONARQUBE_TOKEN_ENV, token),
-        None => std::env::remove_var(SONARQUBE_TOKEN_ENV),
+        Some(token) => unsafe { std::env::set_var(SONARQUBE_TOKEN_ENV, token) },
+        None => unsafe { std::env::remove_var(SONARQUBE_TOKEN_ENV) },
     }
 }

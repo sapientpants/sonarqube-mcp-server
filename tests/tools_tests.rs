@@ -5,8 +5,8 @@ use sonarqube_mcp_server::mcp::sonarqube::client::SonarQubeClient;
 use sonarqube_mcp_server::mcp::sonarqube::types::*;
 use sonarqube_mcp_server::mcp::tools::tools_list;
 use wiremock::{
-    matchers::{method, path, query_param},
     Mock, MockServer, ResponseTemplate,
+    matchers::{method, path, query_param},
 };
 
 #[tokio::test]
