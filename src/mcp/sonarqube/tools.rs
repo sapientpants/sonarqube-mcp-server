@@ -48,7 +48,9 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
 pub fn get_client() -> Result<&'static Arc<SonarQubeClient>, SonarError> {
     SONARQUBE_CLIENT
         .get()
-        .ok_or_else(|| SonarError::Config("SonarQube client not initialized".to_string()))
+        .ok_or_else(|| SonarError::Config(
+            "SonarQube client not initialized. Make sure SONARQUBE_URL and SONARQUBE_TOKEN environment variables are set.".to_string()
+        ))
 }
 
 /// Register SonarQube tools to the router
