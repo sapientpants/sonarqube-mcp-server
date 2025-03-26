@@ -6,12 +6,18 @@ use std::sync::Arc;
 use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::types::*;
 
+// Static constants for environment variable names
+static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
+static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
+static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
+static SONARQUBE_ORGANIZATION_ENV: &str = "SONARQUBE_ORGANIZATION";
+
 /// Global SonarQube client for tools to use
 pub static SONARQUBE_CLIENT: OnceCell<Arc<SonarQubeClient>> = OnceCell::new();
 
 /// Debug logging helper for internal diagnostics
 fn debug_log(message: &str) {
-    if let Ok(value) = std::env::var("SONARQUBE_DEBUG") {
+    if let Ok(value) = std::env::var(SONARQUBE_DEBUG_ENV) {
         if value == "1" || value.to_lowercase() == "true" {
             eprintln!("[SONARQUBE DEBUG] {}", message);
         }
@@ -21,16 +27,16 @@ fn debug_log(message: &str) {
 /// Initialize the SonarQube client
 pub fn init_sonarqube_client() -> Result<(), SonarError> {
     // Get environment variables
-    let base_url = std::env::var("SONARQUBE_URL").map_err(|_| {
+    let base_url = std::env::var(SONARQUBE_URL_ENV).map_err(|_| {
         SonarError::Config("SONARQUBE_URL environment variable not set".to_string())
     })?;
 
-    let token = std::env::var("SONARQUBE_TOKEN").map_err(|_| {
+    let token = std::env::var(SONARQUBE_TOKEN_ENV).map_err(|_| {
         SonarError::Config("SONARQUBE_TOKEN environment variable not set".to_string())
     })?;
 
     // Get optional organization
-    let organization = std::env::var("SONARQUBE_ORGANIZATION").ok();
+    let organization = std::env::var(SONARQUBE_ORGANIZATION_ENV).ok();
 
     // Create config
     let config = SonarQubeConfig {

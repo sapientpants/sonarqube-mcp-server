@@ -5,9 +5,12 @@ use reqwest::Client;
 pub use crate::mcp::sonarqube::types::SonarQubeConfig;
 use std::sync::Arc;
 
+// Static constants for environment variable names
+static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
+
 /// Local debug logging helper
 fn debug_log(message: &str) {
-    if let Ok(value) = std::env::var("SONARQUBE_DEBUG") {
+    if let Ok(value) = std::env::var(SONARQUBE_DEBUG_ENV) {
         if value == "1" || value.to_lowercase() == "true" {
             eprintln!("[SONARQUBE CLIENT DEBUG] {}", message);
         }
