@@ -27,7 +27,7 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/sonarqube-mcp-server.git
+   git clone https://github.com/sapientpants/sonarqube-mcp-server.git
    cd sonarqube-mcp-server
    ```
 
@@ -40,7 +40,7 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 
 ### From Releases
 
-Download the pre-built binary for your platform from the [Releases](https://github.com/yourusername/sonarqube-mcp-server/releases) page.
+Download the pre-built binary for your platform from the [Releases](https://github.com/sapientpants/sonarqube-mcp-server/releases) page.
 
 ### Integration with Claude Desktop
 
