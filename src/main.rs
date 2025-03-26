@@ -11,7 +11,6 @@ use crate::mcp::utilities::*;
 use clap::Parser;
 use rpc_router::{Error, Handler, Request, Router, RouterBuilder};
 use serde_json::{json, Value};
-use std::fs::OpenOptions;
 use std::io;
 use std::io::Write;
 use std::thread;
@@ -89,10 +88,10 @@ async fn main() {
     let input = io::stdin();
 
     // Create a secure temporary file for logging
-    let logging_file = NamedTempFile::new()
-        .expect("Failed to create temporary log file");
+    let logging_file = NamedTempFile::new().expect("Failed to create temporary log file");
     eprintln!("Log file created at: {}", logging_file.path().display());
-    let mut logging_file = logging_file.reopen()
+    let mut logging_file = logging_file
+        .reopen()
         .expect("Failed to reopen temporary log file");
 
     while input.read_line(&mut line).unwrap() != 0 {
