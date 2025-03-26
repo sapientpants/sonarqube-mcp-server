@@ -343,7 +343,6 @@ pub struct ProjectsResponse {
 pub struct SonarQubeListProjectsRequest {
     pub page: Option<u32>,
     pub page_size: Option<u32>,
-    pub organization: Option<String>,
 }
 
 /// Result for MCP sonarqube/list_projects tool
