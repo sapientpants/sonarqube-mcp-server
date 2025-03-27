@@ -68,7 +68,8 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.5
+        # uses: rust-build/rust-build.action@v1.4.5
+        uses: sapientpants/rust-build.action@179adb60356072e98e97fe9aff6dd49fe4e8b8e9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
