@@ -50,27 +50,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  github-release:
-    name: Release ${{ matrix.target }}
-    runs-on: ubuntu-latest
-    needs: docker-build-and-push
-    strategy:
-      matrix:
-        include:
-          - target: x86_64-pc-windows-gnu
-            archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz tar.xz tar.zst
-          - target: x86_64-apple-darwin
-            archive: zip
-          # - target: aarch64-apple-darwin
-          #   archive: zip
-    steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: sapientpants/rust-build.action@179adb60356072e98e97fe9aff6dd49fe4e8b8e9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
+  # github-release:
+  #   name: Release ${{ matrix.target }}
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - target: x86_64-pc-windows-gnu
+  #           archive: zip
+  #         - target: x86_64-unknown-linux-musl
+  #           archive: tar.gz tar.xz tar.zst
+  #         - target: x86_64-apple-darwin
+  #           archive: zip
+  #         # - target: aarch64-apple-darwin
+  #         #   archive: zip
+  #   steps:
+  #     - uses: actions/checkout@master
+  #     - name: Compile and release
+  #       uses: rust-build/rust-build.action@v1.4.5
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         RUSTTARGET: ${{ matrix.target }}
+  #         ARCHIVE_TYPES: ${{ matrix.archive }}
