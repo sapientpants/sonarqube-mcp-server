@@ -36,13 +36,13 @@ async fn test_resource_read() {
     // Call resource_read function
     let result = resource_read(request).await.unwrap();
 
-    // Verify the response content
-    assert_eq!(result.content.uri.to_string(), "resource:logs");
-    assert_eq!(result.content.mime_type, Some("text/plain".to_string()));
-    assert!(result.content.text.is_some());
-    assert!(result.content.blob.is_none());
-
-    // Verify the text content
-    let text = result.content.text.unwrap();
-    assert!(!text.is_empty());
+    // Verify the response content is of type Text
+    match result.content {
+        ResourceContent::Text { text } => {
+            // Verify the text content
+            assert!(!text.is_empty());
+            assert!(text.contains("INFO"));
+        }
+        _ => panic!("Expected ResourceContent::Text but got something else"),
+    }
 }

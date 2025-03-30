@@ -21,13 +21,19 @@ pub async fn initialize(_request: InitializeRequest) -> HandlerResult<Initialize
             version: SERVER_VERSION.to_string(),
         },
         capabilities: ServerCapabilities {
+            text: None,
             experimental: None,
-            prompts: Some(PromptCapabilities::default()),
-            resources: None,
-            tools: Some(json!({})),
+            prompts: Some(json!({})),
+            resources: Some(ResourcesCapabilities {
+                get: Some(true),
+                list: Some(true),
+            }),
+            tools: Some(ToolsCapabilities {
+                call: Some(true),
+                list: Some(true),
+            }),
             roots: None,
             sampling: None,
-            logging: None,
         },
         instructions: None,
     };

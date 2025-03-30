@@ -46,18 +46,19 @@ fn test_initialize_result_serialization() {
     let result = InitializeResult {
         protocol_version: "1.0".to_string(),
         capabilities: ServerCapabilities {
+            text: None,
             experimental: Some(json!({"feature": "test"})),
-            prompts: Some(PromptCapabilities {
-                list_changed: Some(true),
+            prompts: Some(json!({})),
+            resources: Some(ResourcesCapabilities {
+                get: Some(true),
+                list: Some(true),
             }),
-            resources: Some(ResourceCapabilities {
-                subscribe: Some(true),
-                list_changed: Some(true),
+            tools: Some(ToolsCapabilities {
+                call: Some(true),
+                list: Some(true),
             }),
-            tools: Some(json!({})),
             roots: Some(json!({})),
             sampling: Some(json!({})),
-            logging: Some(json!({})),
         },
         server_info: Implementation {
             name: "Test Server".to_string(),
@@ -244,21 +245,17 @@ fn test_call_tool_result_content_serialization() {
 
     // Test Resource variant
     let resource_content = CallToolResultContent::Resource {
-        resource: ResourceContent {
-            uri: Url::parse("file:///tmp/test.txt").unwrap(),
-            mime_type: Some("text/plain".to_string()),
-            text: Some("Test text".to_string()),
-            blob: None,
+        resource: ResourceContent::Text {
+            text: "Test text".to_string(),
         },
     };
     let json_str = serde_json::to_string(&resource_content).unwrap();
     let deserialized: CallToolResultContent = serde_json::from_str(&json_str).unwrap();
     match deserialized {
-        CallToolResultContent::Resource { resource } => {
-            assert_eq!(resource.uri.to_string(), "file:///tmp/test.txt");
-            assert_eq!(resource.mime_type.unwrap(), "text/plain");
-            assert_eq!(resource.text.unwrap(), "Test text");
-        }
+        CallToolResultContent::Resource { resource } => match resource {
+            ResourceContent::Text { text } => assert_eq!(text, "Test text"),
+            _ => panic!("Expected ResourceContent::Text variant"),
+        },
         _ => panic!("Expected Resource variant"),
     }
 }
