@@ -293,26 +293,45 @@ pub struct IssueInfo {
 }
 
 /// Request parameters for MCP sonarqube/get_quality_gate tool
+///
+/// Contains the parameters needed to request quality gate information
+/// for a specific SonarQube project.
 #[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
 pub struct SonarQubeQualityGateRequest {
+    /// The unique key identifier for the SonarQube project
     pub project_key: String,
 }
 
 /// Result for MCP sonarqube/get_quality_gate tool
+///
+/// Contains quality gate status information for a SonarQube project,
+/// including overall status and detailed conditions that make up the quality gate.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SonarQubeQualityGateResult {
+    /// Overall status of the quality gate (e.g., "OK", "ERROR")
     pub status: String,
+    /// Boolean indicating whether the project passes the quality gate
     pub passes_quality_gate: bool,
+    /// List of conditions that make up the quality gate evaluation
     pub conditions: Vec<QualityGateCondition>,
 }
 
 /// Quality gate condition for quality gate result
+///
+/// Represents a single condition in a SonarQube quality gate evaluation,
+/// containing information about the metric being evaluated, its threshold,
+/// and the actual value of the metric.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QualityGateCondition {
+    /// Name of the metric being evaluated (e.g., "new_coverage", "new_bugs")
     pub metric: String,
+    /// Comparison operator used for evaluation (e.g., "GT", "LT")
     pub comparator: String,
+    /// Threshold value that the metric is compared against
     pub threshold: String,
+    /// Actual value of the metric in the project
     pub actual_value: String,
+    /// Status of this specific condition (e.g., "OK", "ERROR")
     pub status: String,
 }
 
