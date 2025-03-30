@@ -65,17 +65,17 @@ These issues are about missing documentation for public items in the codebase. A
 ## Other Issues
 
 ### Bug Risk Issues
-- [ ] tests/end_to_end_tests.rs:40 - RS-E1021: Called `mem::forget` or `mem::drop` on a non-Drop type
+- [x] tests/end_to_end_tests.rs:40 - RS-E1021: Called `mem::forget` or `mem::drop` on a non-Drop type - FIXED (removed unnecessary explicit drop call)
 
 ### Anti-Pattern Issues
 - [ ] src/mcp/sonarqube/client.rs:116 - RS-R1000: Function with cyclomatic complexity higher than threshold
-- [ ] tests/end_to_end_tests.rs:162 - RS-W1079: Empty call to `new()`
+- [x] tests/end_to_end_tests.rs:162 - RS-W1079: Empty call to `new()` - FIXED (replaced String::new() with String::default())
 - [ ] src/main.rs:86 - RS-W1079: Empty call to `new()`
 
 ## Progress Tracking
 
-Total issues: 84
-- Fixed: 84
-- Remaining: 0
+Total issues: 88
+- Fixed: 86
+- Remaining: 2
 
 All documentation issues have been fixed! Next, priority should be given to addressing bug risk and anti-pattern issues. 

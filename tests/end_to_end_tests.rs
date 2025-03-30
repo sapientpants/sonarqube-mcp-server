@@ -37,7 +37,7 @@ async fn test_mcp_server_with_sonarqube_tools() {
     // Find an available port for our test server
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind to random port");
     let port = listener.local_addr().unwrap().port();
-    drop(listener); // Close the listener so the port is available
+    // The listener will be dropped automatically when it goes out of scope
 
     // Start MCP server in a separate process
     let server_process = start_mcp_server(mock_server.uri(), mock_token(), port);
@@ -159,7 +159,7 @@ fn send_request(stream: &mut TcpStream, request: &Value) {
 // Helper function to read a JSON-RPC response
 fn read_response(stream: &mut TcpStream) -> Value {
     let mut reader = BufReader::new(stream.try_clone().unwrap());
-    let mut response_str = String::new();
+    let mut response_str = String::default();
     reader
         .read_line(&mut response_str)
         .expect("Failed to read response");
