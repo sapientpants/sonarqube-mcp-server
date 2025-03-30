@@ -2,7 +2,6 @@
 ///
 /// This module provides a query builder pattern for constructing URL parameters
 /// for SonarQube API requests in a structured and maintainable way.
-
 use std::fmt::Display;
 
 /// A builder for constructing URL query parameters in a structured way
@@ -51,7 +50,12 @@ impl QueryBuilder {
     pub fn add_param<T: Display>(mut self, name: &str, value: Option<T>) -> Self {
         if let Some(val) = value {
             let separator = if self.has_params { "&" } else { "?" };
-            self.base_url.push_str(&format!("{}{}{}", separator, name, encode_value(&val.to_string())));
+            self.base_url.push_str(&format!(
+                "{}{}{}",
+                separator,
+                name,
+                encode_value(&val.to_string())
+            ));
             self.has_params = true;
         }
         self
@@ -164,7 +168,10 @@ mod tests {
             .add_param("project", Some("my-project"))
             .add_param("status", Some("OPEN"))
             .build();
-        assert_eq!(url, "https://example.com/api/issues?project=my-project&status=OPEN");
+        assert_eq!(
+            url,
+            "https://example.com/api/issues?project=my-project&status=OPEN"
+        );
     }
 
     #[test]
@@ -190,7 +197,10 @@ mod tests {
         let url = QueryBuilder::new("https://example.com/api/issues")
             .add_array_param("severities", Some(&severities))
             .build();
-        assert_eq!(url, "https://example.com/api/issues?severities=MAJOR%2CCRITICAL");
+        assert_eq!(
+            url,
+            "https://example.com/api/issues?severities=MAJOR%2CCRITICAL"
+        );
     }
 
     #[test]
@@ -207,6 +217,9 @@ mod tests {
         let url = QueryBuilder::new("https://example.com/api/issues")
             .add_param("query", Some("has space & special chars"))
             .build();
-        assert_eq!(url, "https://example.com/api/issues?query=has%20space%20%26%20special%20chars");
+        assert_eq!(
+            url,
+            "https://example.com/api/issues?query=has%20space%20%26%20special%20chars"
+        );
     }
-} 
+}
