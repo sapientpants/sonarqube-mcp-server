@@ -79,3 +79,42 @@ Total issues: 88
 - Remaining: 1
 
 All documentation issues have been fixed! Next, priority should be given to addressing bug risk and anti-pattern issues. 
+
+## Plan for Resolving Cyclomatic Complexity in src/mcp/sonarqube/client.rs
+
+The `get_issues` function in src/mcp/sonarqube/client.rs has high cyclomatic complexity due to the large number of conditional checks and URL parameter additions. Below is a step-by-step plan to refactor this function:
+
+### Step 1: Analysis
+- Review the function to identify the sources of complexity
+- Observe that most of the complexity comes from adding many optional URL parameters
+- Note that each parameter follows a similar pattern but is handled separately
+
+### Step 2: Extract Parameter Building Logic
+- Create a helper function to handle URL parameter appending
+- For example: `fn append_param(url: &mut String, param_name: &str, value: &str)`
+- For array values, create a helper to join and append: `fn append_array_param(url: &mut String, param_name: &str, values: &[String])`
+
+### Step 3: Create a Query Builder
+- Create a query parameter builder struct that handles common parameter types
+- Implement methods for adding different parameter types (strings, booleans, arrays)
+- The builder will properly format and encode parameters
+
+### Step 4: Refactor URL Building
+- Replace the direct string concatenation with the query builder pattern
+- Convert the sequence of conditional parameter additions to a more structured approach
+- Group related parameters together for better code organization
+
+### Step 5: Extract Error Handling
+- Move the response error handling logic to a separate helper function
+- This will make the main function flow clearer and reduce nesting
+
+### Step 6: Test Thoroughly
+- Ensure the refactored function behaves exactly as the original
+- Add specific tests for the new helper functions
+- Verify all parameter combinations work correctly
+
+### Step 7: Apply the Same Pattern to Other Functions
+- Once the approach is validated, apply similar refactoring to other API methods
+- This will improve consistency across the codebase
+
+By implementing these steps, we should be able to significantly reduce the cyclomatic complexity while maintaining the same functionality and improving the maintainability of the code. 
