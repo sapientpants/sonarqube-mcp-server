@@ -65,7 +65,12 @@ impl SonarQubeClient {
     }
 
     /// Append a numeric parameter to the URL if it exists
-    fn append_numeric_param<T: std::fmt::Display>(&self, url: &mut String, name: &str, value: Option<T>) {
+    fn append_numeric_param<T: std::fmt::Display>(
+        &self,
+        url: &mut String,
+        name: &str,
+        value: Option<T>,
+    ) {
         if let Some(val) = value {
             url.push_str(&format!("&{}={}", name, val));
         }
@@ -82,14 +87,14 @@ impl SonarQubeClient {
 
     /// Handle HTTP response errors and convert them to SonarError
     async fn handle_response_error(
-        &self, 
-        response: reqwest::Response, 
-        project_key: &str
+        &self,
+        response: reqwest::Response,
+        project_key: &str,
     ) -> Result<reqwest::Response, SonarError> {
         if response.status().is_success() {
             return Ok(response);
         }
-        
+
         let status = response.status();
         if status.as_u16() == 401 || status.as_u16() == 403 {
             return Err(SonarError::AuthError);
@@ -171,8 +176,12 @@ impl SonarQubeClient {
         self.append_array_param(&mut url, "types", params.types);
         self.append_array_param(&mut url, "statuses", params.statuses);
         self.append_array_param(&mut url, "impactSeverities", params.impact_severities);
-        self.append_array_param(&mut url, "impactSoftwareQualities", params.impact_software_qualities);
-        
+        self.append_array_param(
+            &mut url,
+            "impactSoftwareQualities",
+            params.impact_software_qualities,
+        );
+
         // Add new parameters
         self.append_bool_param(&mut url, "assignedToMe", params.assigned_to_me);
         self.append_array_param(&mut url, "assignees", params.assignees);
@@ -210,7 +219,9 @@ impl SonarQubeClient {
             .send()
             .await?;
 
-        let response = self.handle_response_error(response, params.project_key).await?;
+        let response = self
+            .handle_response_error(response, params.project_key)
+            .await?;
 
         // Get the response body as text first for better error messages
         let response_text = response.text().await?;
