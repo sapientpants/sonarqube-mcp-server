@@ -70,12 +70,12 @@ These issues are about missing documentation for public items in the codebase. A
 ### Anti-Pattern Issues
 - [ ] src/mcp/sonarqube/client.rs:116 - RS-R1000: Function with cyclomatic complexity higher than threshold
 - [x] tests/end_to_end_tests.rs:162 - RS-W1079: Empty call to `new()` - FIXED (replaced String::new() with String::default())
-- [ ] src/main.rs:86 - RS-W1079: Empty call to `new()`
+- [x] src/main.rs:86 - RS-W1079: Empty call to `new()` - FIXED (replaced String::new() with String::default())
 
 ## Progress Tracking
 
 Total issues: 88
-- Fixed: 86
-- Remaining: 2
+- Fixed: 87
+- Remaining: 1
 
 All documentation issues have been fixed! Next, priority should be given to addressing bug risk and anti-pattern issues. 

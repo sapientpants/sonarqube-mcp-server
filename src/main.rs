@@ -83,7 +83,7 @@ async fn main() {
     setup_signal_handlers();
     // process json-rpc from MCP client
     let router = build_rpc_router();
-    let mut line = String::new();
+    let mut line = String::default();
     let input = io::stdin();
 
     // Create a log file with a predictable pattern but still secure
