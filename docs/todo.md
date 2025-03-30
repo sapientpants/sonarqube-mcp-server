@@ -16,8 +16,8 @@ These issues are about missing documentation for public items in the codebase. A
 - [x] Line 236: `SonarQubeIssuesResult` struct - FIXED (already had basic docs, enhanced them)
 - [x] Line 199: `SonarQubeIssuesRequest` struct - FIXED (already had basic docs)
 - [x] Line 162: `Issue` struct - FIXED
-- [ ] Line 154: `TextRange` struct
-- [ ] Line 146: `Paging` struct
+- [x] Line 154: `TextRange` struct - NOT FOUND (possibly removed in a refactor)
+- [x] Line 146: `Paging` struct - FIXED
 - [ ] Line 139: `Project` struct
 - [ ] Line 123: `SonarError` struct
 - [ ] Line 116: `Organization` struct
@@ -74,8 +74,8 @@ These issues are about missing documentation for public items in the codebase. A
 
 ## Progress Tracking
 - Total issues: 84
-- Fixed issues: 11
-- Remaining issues: 73
+- Fixed issues: 13
+- Remaining issues: 71
 
 ## Notes
 - Most issues are documentation-related.

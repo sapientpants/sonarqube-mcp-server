@@ -73,12 +73,19 @@ pub struct IssuesResponse {
 }
 
 /// Paging information for issues response
+///
+/// Contains pagination metadata for SonarQube API responses that return collections of items,
+/// such as issues, projects, etc. This struct is used to track the current page, page size,
+/// and total number of items available across all pages.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Paging {
+    /// Current page index (1-based)
     #[serde(rename = "pageIndex")]
     pub page_index: u32,
+    /// Number of items per page
     #[serde(rename = "pageSize")]
     pub page_size: u32,
+    /// Total number of items available across all pages
     pub total: u32,
 }
 
