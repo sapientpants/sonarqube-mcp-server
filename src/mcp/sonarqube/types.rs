@@ -2,23 +2,33 @@ use rpc_router::RpcParams;
 use serde::{Deserialize, Serialize};
 
 /// Common error type for SonarQube-related operations
+///
+/// This enum provides a comprehensive set of error variants that can occur when
+/// interacting with the SonarQube API. It implements the standard Error trait,
+/// allowing for seamless integration with Rust's error handling mechanisms.
 #[derive(Debug, thiserror::Error)]
 pub enum SonarError {
+    /// HTTP-level errors when making requests to the SonarQube API
     #[error("HTTP request failed: {0}")]
     Http(#[from] reqwest::Error),
 
+    /// Errors that occur when parsing JSON responses from the SonarQube API
     #[error("JSON parsing failed: {0}")]
     Parse(String),
 
+    /// Errors returned by the SonarQube API itself (e.g., invalid request parameters)
     #[error("SonarQube API error: {0}")]
     Api(String),
 
+    /// Authentication failures due to invalid or expired tokens
     #[error("Authentication failed")]
     AuthError,
 
+    /// Errors when attempting to access a project that doesn't exist or the user doesn't have access to
     #[error("Project not found: {0}")]
     ProjectNotFound(String),
 
+    /// Configuration-related errors (e.g., missing or invalid base URL or token)
     #[error("Configuration error: {0}")]
     Config(String),
 }
@@ -31,10 +41,17 @@ impl From<serde_json::Error> for SonarError {
 }
 
 /// Configuration for SonarQube API client
+///
+/// Contains all necessary configuration parameters to establish a connection with
+/// a SonarQube server. This includes the base URL, authentication token, and optional
+/// organization identifier for SonarCloud or multi-organization instances.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SonarQubeConfig {
+    /// The base URL of the SonarQube server (e.g., "https://sonarcloud.io")
     pub base_url: String,
+    /// Authentication token for accessing the SonarQube API
     pub token: String,
+    /// Optional organization key for SonarCloud or multi-organization SonarQube instances
     pub organization: Option<String>,
 }
 
@@ -399,24 +416,41 @@ pub struct QualityGateCondition {
 }
 
 /// Project information from SonarQube API
+///
+/// Represents a SonarQube project entity with its key properties.
+/// This struct contains information about a project or module within SonarQube,
+/// including its unique identifier, name, description, and analysis information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Project {
+    /// Unique identifier key for the project
     pub key: String,
+    /// Display name of the project
     pub name: String,
+    /// Optional description of the project's purpose or contents
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Type qualifier for the component (e.g., "TRK" for project, "BRC" for subproject)
     pub qualifier: String,
+    /// Visibility setting of the project (e.g., "public" or "private")
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub visibility: Option<String>,
+    /// ISO-formatted date string of when the project was last analyzed
     #[serde(rename = "lastAnalysisDate")]
     pub last_analysis_date: Option<String>,
 }
 
 /// API response for projects list from SonarQube
+///
+/// Represents the response structure from the SonarQube API when listing projects.
+/// This struct contains pagination information and a collection of projects returned
+/// from the API. It's used to deserialize responses from the SonarQube 'projects/search'
+/// endpoint.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProjectsResponse {
+    /// Pagination metadata for the response
     pub paging: Paging,
+    /// Collection of projects returned in this page of results
     pub components: Vec<Project>,
 }
 
