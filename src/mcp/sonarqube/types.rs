@@ -421,61 +421,121 @@ impl<'a> IssuesQueryParams<'a> {
 }
 
 /// Request parameters for MCP sonarqube/get_issues tool
+///
+/// This struct defines the parameter structure for the MCP sonarqube/get_issues tool call.
+/// It mirrors the filter capabilities of the `IssuesQueryParams` struct but uses owned types
+/// instead of references, making it suitable for JSON serialization/deserialization in
+/// RPC contexts. It allows clients to specify a wide range of filtering criteria to narrow
+/// down which issues are returned from SonarQube projects.
 #[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
 pub struct SonarQubeIssuesRequest {
+    /// The project key to fetch issues for (required)
     pub project_key: String,
+    /// Filter issues by severity levels (e.g., "BLOCKER", "CRITICAL", "MAJOR")
     pub severities: Option<Vec<String>>,
+    /// Filter issues by type (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
     pub types: Option<Vec<String>>,
+    /// Filter issues by status (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
     pub statuses: Option<Vec<String>>,
+    /// Filter issues by impact severity (e.g., "HIGH", "MEDIUM", "LOW")
     pub impact_severities: Option<Vec<String>>,
+    /// Filter issues by the software quality they impact (e.g., "MAINTAINABILITY", "RELIABILITY", "SECURITY")
     pub impact_software_qualities: Option<Vec<String>>,
+    /// If true, returns only issues assigned to the current authenticated user
     pub assigned_to_me: Option<bool>,
+    /// Filter issues by assignee login names
     pub assignees: Option<Vec<String>>,
+    /// Filter issues by their author login names
     pub authors: Option<Vec<String>>,
+    /// Filter issues by code variant identifiers
     pub code_variants: Option<Vec<String>>,
+    /// Return issues created after this date (format: YYYY-MM-DD)
     pub created_after: Option<String>,
+    /// Return issues created before this date (format: YYYY-MM-DD)
     pub created_before: Option<String>,
+    /// Return issues created during a time span before now (e.g., "1m" for 1 month)
     pub created_in_last: Option<String>,
+    /// Filter issues by CWE (Common Weakness Enumeration) identifiers
     pub cwe: Option<Vec<String>>,
+    /// Filter issues by directories where the issues are located
     pub directories: Option<Vec<String>>,
+    /// Request additional facets in the response
     pub facets: Option<Vec<String>>,
+    /// Filter issues by file paths
     pub files: Option<Vec<String>>,
+    /// Filter issues by specific status values (different from 'statuses')
     pub issue_statuses: Option<Vec<String>>,
+    /// Filter issues by programming language
     pub languages: Option<Vec<String>>,
+    /// Filter issues by OWASP Top 10 category
     pub owasp_top10: Option<Vec<String>>,
+    /// Filter issues by OWASP Top 10 2021 category
     pub owasp_top10_2021: Option<Vec<String>>,
+    /// Filter issues by resolution status (e.g., "FIXED", "FALSE-POSITIVE")
     pub resolutions: Option<Vec<String>>,
+    /// If true, returns only resolved issues
     pub resolved: Option<bool>,
+    /// Filter issues by rule keys
     pub rules: Option<Vec<String>>,
+    /// Filter issues by SANS Top 25 category
     pub sans_top25: Option<Vec<String>>,
+    /// Filter issues by SonarSource security category
     pub sonarsource_security: Option<Vec<String>>,
+    /// Filter issues by tags
     pub tags: Option<Vec<String>>,
+    /// Field to sort results by
     pub sort_field: Option<String>,
+    /// If true, sort ascending; if false, sort descending
     pub asc: Option<bool>,
+    /// Page number for pagination
     pub page: Option<u32>,
+    /// Number of issues per page
     pub page_size: Option<u32>,
 }
 
 /// Result for MCP sonarqube/get_issues tool
+///
+/// This struct represents the response structure returned by the MCP sonarqube/get_issues tool.
+/// It contains pagination information and a collection of issues that match the filter criteria
+/// specified in the request. The structure is designed to provide a clean and consistent
+/// interface for MCP clients to consume SonarQube issue data.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SonarQubeIssuesResult {
+    /// Total number of issues matching the search criteria across all pages
     pub total: u32,
+    /// Current page number (1-based)
     pub page: u32,
+    /// Number of issues per page
     pub page_size: u32,
+    /// Collection of issues returned in the current page
     pub issues: Vec<IssueInfo>,
 }
 
 /// Issue information for issues result
+///
+/// This struct represents a single issue or violation detected in SonarQube analysis.
+/// It contains essential information about the issue, including its severity, location,
+/// and status. This is a simplified version of the full Issue struct, containing only
+/// the most relevant fields for display in MCP client interfaces.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct IssueInfo {
+    /// Unique identifier for the issue
     pub key: String,
+    /// Rule identifier that triggered this issue
     pub rule: String,
+    /// Severity level of the issue (e.g., "BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO")
     pub severity: String,
+    /// Key of the component (file) where the issue was detected
     pub component: String,
+    /// Display name of the component (file) for easier readability
     pub component_name: Option<String>,
+    /// Line number in the file where the issue occurs (None if not line-specific)
     pub line: Option<u32>,
+    /// Description of the issue, explaining what the problem is
     pub message: String,
+    /// Type of the issue (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
     pub issue_type: String,
+    /// Current status of the issue (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
     pub status: String,
 }
 

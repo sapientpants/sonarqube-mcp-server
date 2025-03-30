@@ -74,10 +74,17 @@ These issues are about missing documentation for public items in the codebase. A
 
 ## Progress Tracking
 - Total issues: 84
-- Fixed issues: 23
-- Remaining issues: 61
+- Fixed issues: 37
+- Remaining issues: 47
 
 ## Notes
 - Most issues are documentation-related.
 - Priority should be given to fixing the Bug Risk and Anti-Pattern issues after documentation is completed.
-- For documentation, start with the most critical and commonly used structures and modules. 
+- For documentation, start with the most critical and commonly used structures and modules.
+
+# Issues Tracker
+
+<!-- Keep track of how many issues have been fixed and how many remain -->
+- Total issues: 84
+- Fixed issues: 37
+- Remaining issues: 47 
