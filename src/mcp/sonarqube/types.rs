@@ -83,17 +83,30 @@ pub struct Paging {
 }
 
 /// Individual issue from SonarQube API
+///
+/// Represents a detected issue or violation in SonarQube that needs to be addressed.
+/// Issues can represent bugs, vulnerabilities, code smells, or other quality problems
+/// identified during analysis.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Issue {
+    /// Unique identifier for the issue
     pub key: String,
+    /// Rule identifier that triggered this issue
     pub rule: String,
+    /// Severity level of the issue (e.g., "BLOCKER", "CRITICAL", "MAJOR", "MINOR", "INFO")
     pub severity: String,
+    /// Key of the component (file) where the issue was detected
     pub component: String,
+    /// Key of the project containing the issue
     pub project: String,
+    /// Line number in the file where the issue occurs (None if not line-specific)
     pub line: Option<u32>,
+    /// Description of the issue, explaining what the problem is
     pub message: String,
+    /// Type of the issue (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
     #[serde(rename = "type")]
     pub issue_type: String,
+    /// Current status of the issue (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
     pub status: String,
 }
 
