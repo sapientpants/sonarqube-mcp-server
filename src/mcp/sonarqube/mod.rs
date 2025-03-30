@@ -22,3 +22,9 @@ pub mod tools;
 /// This module contains the data structures for SonarQube API requests and responses,
 /// as well as the MCP tool parameter and result types.
 pub mod types;
+
+/// Query building utilities for SonarQube API requests.
+///
+/// This module provides a query builder pattern for constructing URL parameters
+/// for SonarQube API requests in a structured and maintainable way.
+pub mod query;
