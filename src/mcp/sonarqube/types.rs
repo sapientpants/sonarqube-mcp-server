@@ -158,25 +158,47 @@ pub struct Condition {
 }
 
 /// Request parameters for MCP sonarqube/get_metrics tool
+///
+/// Contains the parameters needed to request metrics data from the SonarQube
+/// API for a specific project. This structure supports both retrieving all
+/// available metrics and filtering to a specific set of metrics through the
+/// optional `metrics` field.
 #[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
 pub struct SonarQubeMetricsRequest {
+    /// The unique key identifier for the SonarQube project
     pub project_key: String,
+    /// Optional list of specific metric keys to retrieve. If not provided, all available metrics will be returned.
     pub metrics: Option<Vec<String>>,
 }
 
 /// Result for MCP sonarqube/get_metrics tool
+///
+/// Contains the response data for a metrics request, including the project
+/// identification information and a collection of metric values. This struct
+/// represents the processed result of a SonarQube metrics API call, formatted
+/// for consumption by MCP client applications.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SonarQubeMetricsResult {
+    /// The display name of the project
     pub project_name: String,
+    /// The unique key identifier for the SonarQube project
     pub project_key: String,
+    /// Collection of metric values retrieved from SonarQube
     pub metrics: Vec<MetricValue>,
 }
 
 /// Individual metric value for metrics result
+///
+/// Represents a single metric measurement from SonarQube, containing
+/// the metric key, its value, and an optional indication of whether
+/// this value is considered the "best value" possible for this metric.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MetricValue {
+    /// The unique identifier of the metric (e.g., "complexity", "coverage", "bugs")
     pub key: String,
+    /// The value of the metric, represented as a string to accommodate different metric types
     pub value: String,
+    /// Indicates whether this value represents the best possible value for this metric
     pub best_value: Option<bool>,
 }
 

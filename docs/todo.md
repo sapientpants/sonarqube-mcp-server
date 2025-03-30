@@ -12,9 +12,9 @@ These issues are about missing documentation for public items in the codebase. A
 - [x] Line 301: `QualityGateCondition` struct - FIXED
 - [x] Line 295: `QualityGateResponse` struct - FIXED (enhanced docs at line 110)
 - [x] Line 281: `Component` struct - FIXED (already had docs at line 101)
-- [ ] Line 272: `SonarQubeMetricsRequest` struct
-- [ ] Line 236: `SonarQubeIssuesResult` struct
-- [ ] Line 199: `SonarQubeIssuesRequest` struct
+- [x] Line 272: `SonarQubeMetricsRequest` struct - FIXED
+- [x] Line 236: `SonarQubeIssuesResult` struct - FIXED (already had basic docs, enhanced them)
+- [x] Line 199: `SonarQubeIssuesRequest` struct - FIXED (already had basic docs)
 - [ ] Line 162: `Issue` struct
 - [ ] Line 154: `TextRange` struct
 - [ ] Line 146: `Paging` struct
@@ -74,8 +74,8 @@ These issues are about missing documentation for public items in the codebase. A
 
 ## Progress Tracking
 - Total issues: 84
-- Fixed issues: 7
-- Remaining issues: 77
+- Fixed issues: 10
+- Remaining issues: 74
 
 ## Notes
 - Most issues are documentation-related.
