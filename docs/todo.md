@@ -41,7 +41,7 @@ These issues are about missing documentation for public items in the codebase. A
 - [ ] Line 367 and multiple others: Add documentation to public items in this file
 
 ### src/mcp/tools.rs
-- [ ] Line 14: Public function or struct
+- [x] Line 14: Public function or struct - FIXED (tools_list)
 
 ### src/mcp/sonarqube/mod.rs
 - [x] Line 3: Module level documentation - FIXED
@@ -49,12 +49,12 @@ These issues are about missing documentation for public items in the codebase. A
 - [x] Line 1: Public item documentation - FIXED (client module)
 
 ### src/mcp/resources.rs
-- [ ] Line 16: Public function or struct
-- [ ] Line 4: Public function or struct
+- [x] Line 16: Public function or struct - FIXED (resource_read)
+- [x] Line 4: Public function or struct - FIXED (resources_list)
 
 ### src/mcp/prompts.rs
-- [ ] Line 16: Public function or struct
-- [ ] Line 4: Public function or struct
+- [x] Line 16: Public function or struct - FIXED (prompts_get)
+- [x] Line 4: Public function or struct - FIXED (prompts_list)
 
 ### src/mcp/mod.rs
 - [ ] Lines 1-6: Module level documentation and public items
@@ -75,8 +75,8 @@ These issues are about missing documentation for public items in the codebase. A
 ## Progress Tracking
 
 Total issues: 84
-- Fixed: 46
-- Remaining: 38
+- Fixed: 52
+- Remaining: 32
 
 Most issues are documentation-related. After completing documentation, priority should be given to addressing bug risk and anti-pattern issues.
 
