@@ -114,6 +114,51 @@ impl SonarQubeClient {
         Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)))
     }
 
+    /// Parse a response into the specified type, with detailed error handling
+    async fn parse_response<T>(
+        &self,
+        response: reqwest::Response,
+        entity_name: &str,
+    ) -> Result<T, SonarError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        // Get the response body as text first for better error messages
+        let response_text = response.text().await?;
+
+        // Log the response preview if debug is enabled
+        debug_log(&format!(
+            "Response body (first 200 chars): {}",
+            if response_text.len() > 200 {
+                format!("{}...", &response_text[..200])
+            } else {
+                response_text.clone()
+            }
+        ));
+
+        // Try to deserialize the response
+        match serde_json::from_str::<T>(&response_text) {
+            Ok(data) => Ok(data),
+            Err(err) => {
+                // Create a preview of the response for error messages
+                let preview = if response_text.len() > 200 {
+                    format!("{}...", &response_text[..200])
+                } else {
+                    response_text.clone()
+                };
+
+                debug_log(&format!(
+                    "Failed to parse {} response: {}",
+                    entity_name, err
+                ));
+                Err(SonarError::Parse(format!(
+                    "Failed to parse {} response: {} - Response preview: {}",
+                    entity_name, err, preview
+                )))
+            }
+        }
+    }
+
     /// Get metrics for a project
     pub async fn get_metrics(
         &self,
@@ -137,27 +182,8 @@ impl SonarQubeClient {
             .await?;
 
         let response = self.handle_response_error(response, project_key).await?;
-
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
-
-        // Try to deserialize the response
-        match serde_json::from_str::<MetricsResponse>(&response_text) {
-            Ok(data) => Ok(data),
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                Err(SonarError::Parse(format!(
-                    "Failed to parse metrics response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        self.parse_response::<MetricsResponse>(response, "metrics")
+            .await
     }
 
     /// Get issues for a project
@@ -172,44 +198,37 @@ impl SonarQubeClient {
             .add_param("componentKeys", Some(params.project_key))
             // Add organization parameter if available
             .add_param("organization", self.organization.as_deref())
-            
             // Group 1: Issue classification parameters
             .add_array_param("severities", params.severities)
             .add_array_param("types", params.types)
             .add_array_param("statuses", params.statuses)
             .add_array_param("impactSeverities", params.impact_severities)
             .add_array_param("impactSoftwareQualities", params.impact_software_qualities)
-            
             // Group 2: Issue ownership parameters
             .add_bool_param("assignedToMe", params.assigned_to_me)
             .add_array_param("assignees", params.assignees)
             .add_array_param("authors", params.authors)
-            
             // Group 3: Code location parameters
             .add_array_param("codeVariants", params.code_variants)
             .add_array_param("directories", params.directories)
             .add_array_param("files", params.files)
             .add_array_param("languages", params.languages)
-            
             // Group 4: Time-based parameters
             .add_param("createdAfter", params.created_after)
             .add_param("createdBefore", params.created_before)
             .add_param("createdInLast", params.created_in_last)
-            
             // Group 5: Standard classification parameters
             .add_array_param("cwe", params.cwe)
             .add_array_param("owaspTop10", params.owasp_top10)
             .add_array_param("owaspTop10-2021", params.owasp_top10_2021)
             .add_array_param("sansTop25", params.sans_top25)
             .add_array_param("sonarsourceSecurity", params.sonarsource_security)
-            
             // Group 6: Resolution parameters
             .add_array_param("resolutions", params.resolutions)
             .add_bool_param("resolved", params.resolved)
             .add_array_param("rules", params.rules)
             .add_array_param("tags", params.tags)
             .add_array_param("issueStatuses", params.issue_statuses)
-            
             // Group 7: Response customization parameters
             .add_array_param("facets", params.facets)
             .add_param("s", params.sort_field)
@@ -232,26 +251,8 @@ impl SonarQubeClient {
             .handle_response_error(response, params.project_key)
             .await?;
 
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
-
-        // Try to deserialize the response
-        match serde_json::from_str::<IssuesResponse>(&response_text) {
-            Ok(data) => Ok(data),
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                Err(SonarError::Parse(format!(
-                    "Failed to parse issues response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        self.parse_response::<IssuesResponse>(response, "issues")
+            .await
     }
 
     /// Get quality gate status for a project
@@ -274,27 +275,8 @@ impl SonarQubeClient {
             .await?;
 
         let response = self.handle_response_error(response, project_key).await?;
-
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
-
-        // Try to deserialize the response
-        match serde_json::from_str::<QualityGateResponse>(&response_text) {
-            Ok(data) => Ok(data),
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                Err(SonarError::Parse(format!(
-                    "Failed to parse quality gate response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        self.parse_response::<QualityGateResponse>(response, "quality gate")
+            .await
     }
 
     /// List all projects in SonarQube
@@ -307,7 +289,7 @@ impl SonarQubeClient {
         use crate::mcp::sonarqube::query::QueryBuilder;
 
         // Use override_organization if provided, otherwise use the client's organization
-        let organization = override_organization.or_else(|| self.organization.as_deref());
+        let organization = override_organization.or(self.organization.as_deref());
 
         let url = QueryBuilder::new(format!("{}/api/components/search", self.base_url))
             .add_param("qualifiers", Some("TRK")) // TRK is for projects
@@ -326,45 +308,18 @@ impl SonarQubeClient {
             .await?;
 
         // Use a dummy project key for error handling since we're not querying a specific project
-        let response = self
-            .handle_response_error(response, "")
+        let response = self.handle_response_error(response, "").await?;
+
+        let result = self
+            .parse_response::<ProjectsResponse>(response, "projects")
             .await?;
 
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
         debug_log(&format!(
-            "Response body (first 200 chars): {}",
-            if response_text.len() > 200 {
-                format!("{}...", &response_text[..200])
-            } else {
-                response_text.clone()
-            }
+            "Successfully parsed response: {} projects found",
+            result.components.len()
         ));
 
-        // Try to deserialize the response
-        match serde_json::from_str::<ProjectsResponse>(&response_text) {
-            Ok(data) => {
-                debug_log(&format!(
-                    "Successfully parsed response: {} projects found",
-                    data.components.len()
-                ));
-                Ok(data)
-            }
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                debug_log(&format!("Failed to parse response: {}", err));
-                Err(SonarError::Parse(format!(
-                    "Failed to parse projects response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        Ok(result)
     }
 }
 
