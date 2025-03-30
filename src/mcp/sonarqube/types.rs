@@ -107,32 +107,53 @@ pub struct Component {
 }
 
 /// Quality gate status response from SonarQube API
+///
+/// Represents the response structure from the SonarQube API when querying
+/// the quality gate status of a project. Contains the detailed project status
+/// with information about the quality gate evaluation.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct QualityGateResponse {
+    /// Project status details containing the overall quality gate status and conditions
     #[serde(rename = "projectStatus")]
     pub project_status: ProjectStatus,
 }
 
 /// Project status in quality gate response
+///
+/// Contains detailed information about a project's quality gate status,
+/// including the overall status (e.g., "OK", "ERROR") and a list of specific
+/// conditions that were evaluated as part of the quality gate.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProjectStatus {
+    /// Overall status of the quality gate (e.g., "OK", "ERROR")
     pub status: String,
+    /// List of conditions that were evaluated as part of the quality gate check
     pub conditions: Vec<Condition>,
 }
 
 /// Quality gate condition in quality gate response
+///
+/// Represents an individual condition that is part of a SonarQube quality gate.
+/// Each condition evaluates a specific metric against a threshold using a comparator.
+/// The status field indicates whether this specific condition has passed.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Condition {
+    /// Key of the metric being evaluated (e.g., "new_coverage", "new_bugs")
     #[serde(rename = "metricKey")]
     pub metric_key: String,
+    /// Comparison operator used for evaluation (e.g., "GT", "LT")
     #[serde(rename = "comparator")]
     pub comparator: String,
+    /// Period index for the condition evaluation (if applicable)
     #[serde(rename = "periodIndex")]
     pub period_index: Option<u32>,
+    /// Threshold value that triggers an error when crossed
     #[serde(rename = "errorThreshold")]
     pub error_threshold: String,
+    /// Actual measured value of the metric in the project
     #[serde(rename = "actualValue")]
     pub actual_value: String,
+    /// Status of this condition (e.g., "OK", "ERROR")
     pub status: String,
 }
 
