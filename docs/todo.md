@@ -23,14 +23,14 @@ These issues are about missing documentation for public items in the codebase. A
 - [x] Line 116: `Organization` struct - NOT FOUND (organization exists as a field in SonarQubeConfig struct)
 - [x] Line 109: `ProjectsResponse` struct - FIXED
 - [x] Line 100: `SonarQubeConfig` struct - FIXED
-- [ ] Line 85: Various enums and structs (review)
-- [ ] Line 75: Various enums and structs (review)
-- [ ] Line 64: Various enums and structs (review)
+- [x] Line 85: Various enums and structs (review) - FIXED (`MetricsResponse`, `ComponentMeasures`, `Measure`, `IssuesResponse`)
+- [x] Line 75: Various enums and structs (review) - FIXED (`IssuesQueryParams` and its implementation)
+- [x] Line 64: Various enums and structs (review) - FIXED (`Component` struct and its fields)
 - [ ] Line 55: Various enums and structs (review)
 - [ ] Line 47: Various enums and structs (review)
 - [ ] Line 41: Various enums and structs (review)
-- [ ] Line 33: Various enums and structs (review)
-- [ ] Line 4: Module level documentation
+- [x] Line 33: Various enums and structs (review) - FIXED (`From<serde_json::Error>` implementation for `SonarError`)
+- [x] Line 4: Module level documentation - FIXED
 
 ### src/mcp/utilities.rs
 - [ ] Line 49: Public function or struct
@@ -74,8 +74,8 @@ These issues are about missing documentation for public items in the codebase. A
 
 ## Progress Tracking
 - Total issues: 84
-- Fixed issues: 18
-- Remaining issues: 66
+- Fixed issues: 23
+- Remaining issues: 61
 
 ## Notes
 - Most issues are documentation-related.

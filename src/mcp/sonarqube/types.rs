@@ -1,6 +1,20 @@
 use rpc_router::RpcParams;
 use serde::{Deserialize, Serialize};
 
+/// Types for SonarQube API integration
+///
+/// This module contains the type definitions used for interacting with the SonarQube API.
+/// It includes:
+///
+/// - Request and response structures that match the SonarQube API's JSON formats
+/// - Parameter types for MCP tool calls related to SonarQube operations
+/// - Result types that contain processed data from SonarQube API responses
+/// - Error types for handling failures in SonarQube API operations
+///
+/// The types in this module are designed to provide a type-safe interface for
+/// communicating with SonarQube servers, handling serialization/deserialization
+/// of API requests and responses, and presenting the data in a format suitable
+/// for consumption by MCP clients.
 /// Common error type for SonarQube-related operations
 ///
 /// This enum provides a comprehensive set of error variants that can occur when
@@ -33,7 +47,11 @@ pub enum SonarError {
     Config(String),
 }
 
-// Add an implementation to convert serde_json::Error to SonarError
+/// Conversion implementation from `serde_json::Error` to `SonarError`
+///
+/// This implementation enables seamless conversion from JSON parsing errors to our custom
+/// SonarError type. It allows functions that parse JSON responses from the SonarQube API
+/// to use the `?` operator for error propagation without explicit error conversions.
 impl From<serde_json::Error> for SonarError {
     fn from(err: serde_json::Error) -> Self {
         SonarError::Parse(err.to_string())
@@ -56,36 +74,66 @@ pub struct SonarQubeConfig {
 }
 
 /// Response for metrics from SonarQube API
+///
+/// Represents the structure of a response from the SonarQube API's metrics endpoint.
+/// This struct encapsulates the component with its associated metrics measurements,
+/// which is the primary data returned when requesting metric values for a project.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MetricsResponse {
+    /// The component (project) with its associated metric measurements
     pub component: ComponentMeasures,
 }
 
 /// Component with measures from SonarQube API
+///
+/// Represents a project or component in SonarQube along with its metric measurements.
+/// This struct contains the component's identification information and a collection
+/// of metric values that were measured during analysis.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ComponentMeasures {
+    /// Unique identifier key for the component (project)
     pub key: String,
+    /// Display name of the component (project)
     pub name: String,
+    /// Collection of metric measurements for this component
     pub measures: Vec<Measure>,
 }
 
 /// Individual measure from SonarQube API
+///
+/// Represents a single metric measurement from SonarQube for a specific component.
+/// Each measure contains the metric identifier, its measured value, and an optional
+/// flag indicating whether this value is considered optimal for this metric type.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Measure {
+    /// The identifier of the metric being measured (e.g., "complexity", "coverage")
     pub metric: String,
+    /// The value of the metric, represented as a string to accommodate different metric types
     pub value: String,
+    /// Indicates whether this value represents the best possible value for this metric
     #[serde(rename = "bestValue")]
     pub best_value: Option<bool>,
 }
 
 /// Response for issues from SonarQube API
+///
+/// Represents the complete response structure from the SonarQube API's issues endpoint.
+/// This struct contains pagination information, the collection of issues found according
+/// to the search criteria, and component information for each issue. It serves as the
+/// primary container for issue data retrieved from SonarQube.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct IssuesResponse {
+    /// Total number of issues matching the search criteria across all pages
     pub total: u32,
+    /// Current page number (1-based)
     pub p: u32,
+    /// Page size (number of issues per page)
     pub ps: u32,
+    /// Detailed pagination information
     pub paging: Paging,
+    /// Collection of issues returned in the current page
     pub issues: Vec<Issue>,
+    /// Information about the components (files) where the issues were found
     pub components: Vec<Component>,
 }
 
@@ -135,11 +183,19 @@ pub struct Issue {
 }
 
 /// Component information from SonarQube API
+///
+/// Represents a component (typically a file, directory, or project) in the SonarQube system.
+/// Components are the core entities that SonarQube analyzes and for which it tracks quality metrics.
+/// This struct contains basic identification and classification information about a component.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Component {
+    /// Unique identifier key for the component in SonarQube
     pub key: String,
+    /// Display name of the component
     pub name: String,
+    /// Type qualifier indicating what kind of component this is (e.g., "TRK" for project, "FIL" for file)
     pub qualifier: String,
+    /// Relative path to the component within its project (only relevant for file components)
     pub path: Option<String>,
 }
 
@@ -240,42 +296,93 @@ pub struct MetricValue {
 }
 
 /// Parameters for querying issues from the SonarQube API
+///
+/// This struct encapsulates all possible filter parameters that can be used when
+/// querying issues from the SonarQube API. It provides a comprehensive and type-safe
+/// way to build complex issue queries with various filtering criteria such as severity,
+/// status, creation date, and many others. The struct uses lifetimes to avoid unnecessary
+/// cloning of string references.
 #[derive(Debug, Clone, Default)]
 pub struct IssuesQueryParams<'a> {
+    /// The project key to fetch issues for (required)
     pub project_key: &'a str,
+    /// Filter issues by severity levels (e.g., "BLOCKER", "CRITICAL", "MAJOR")
     pub severities: Option<&'a [&'a str]>,
+    /// Filter issues by type (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
     pub types: Option<&'a [&'a str]>,
+    /// Filter issues by status (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
     pub statuses: Option<&'a [&'a str]>,
+    /// Filter issues by impact severity (e.g., "HIGH", "MEDIUM", "LOW")
     pub impact_severities: Option<&'a [&'a str]>,
+    /// Filter issues by the software quality they impact (e.g., "MAINTAINABILITY", "RELIABILITY", "SECURITY")
     pub impact_software_qualities: Option<&'a [&'a str]>,
+    /// If true, returns only issues assigned to the current authenticated user
     pub assigned_to_me: Option<bool>,
+    /// Filter issues by assignee login names
     pub assignees: Option<&'a [&'a str]>,
+    /// Filter issues by their author login names
     pub authors: Option<&'a [&'a str]>,
+    /// Filter issues by code variant identifiers
     pub code_variants: Option<&'a [&'a str]>,
+    /// Return issues created after this date (format: YYYY-MM-DD)
     pub created_after: Option<&'a str>,
+    /// Return issues created before this date (format: YYYY-MM-DD)
     pub created_before: Option<&'a str>,
+    /// Return issues created during a time span before now (e.g., "1m" for 1 month)
     pub created_in_last: Option<&'a str>,
+    /// Filter issues by CWE (Common Weakness Enumeration) identifiers
     pub cwe: Option<&'a [&'a str]>,
+    /// Filter issues by directories where the issues are located
     pub directories: Option<&'a [&'a str]>,
+    /// Request additional facets in the response
     pub facets: Option<&'a [&'a str]>,
+    /// Filter issues by file paths
     pub files: Option<&'a [&'a str]>,
+    /// Filter issues by specific status values (different from 'statuses')
     pub issue_statuses: Option<&'a [&'a str]>,
+    /// Filter issues by programming language
     pub languages: Option<&'a [&'a str]>,
+    /// Filter issues by OWASP Top 10 category
     pub owasp_top10: Option<&'a [&'a str]>,
+    /// Filter issues by OWASP Top 10 2021 category
     pub owasp_top10_2021: Option<&'a [&'a str]>,
+    /// Filter issues by resolution status (e.g., "FIXED", "FALSE-POSITIVE")
     pub resolutions: Option<&'a [&'a str]>,
+    /// If true, returns only resolved issues
     pub resolved: Option<bool>,
+    /// Filter issues by rule keys
     pub rules: Option<&'a [&'a str]>,
+    /// Filter issues by SANS Top 25 category
     pub sans_top25: Option<&'a [&'a str]>,
+    /// Filter issues by SonarSource security category
     pub sonarsource_security: Option<&'a [&'a str]>,
+    /// Filter issues by tags
     pub tags: Option<&'a [&'a str]>,
+    /// Field to sort results by
     pub sort_field: Option<&'a str>,
+    /// If true, sort ascending; if false, sort descending
     pub asc: Option<bool>,
+    /// Page number for pagination
     pub page: Option<u32>,
+    /// Number of issues per page
     pub page_size: Option<u32>,
 }
 
 impl<'a> IssuesQueryParams<'a> {
+    /// Creates a new instance of `IssuesQueryParams` with the specified project key
+    ///
+    /// This constructor initializes a new query parameters object with the minimum
+    /// required parameter (project key) and sets all optional parameters to `None`.
+    /// Use this method to start building a query, then set additional filter parameters
+    /// as needed.
+    ///
+    /// # Arguments
+    ///
+    /// * `project_key` - The unique identifier key for the SonarQube project
+    ///
+    /// # Returns
+    ///
+    /// A new `IssuesQueryParams` instance with only the project key set
     pub fn new(project_key: &'a str) -> Self {
         Self {
             project_key,
