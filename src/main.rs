@@ -1,3 +1,9 @@
+//! # SonarQube MCP Server Main Module
+//!
+//! This module contains the main entry point and runtime logic for the SonarQube MCP server.
+//! It handles JSON-RPC communication with clients, command-line argument parsing, and
+//! initializes the server components.
+
 mod mcp;
 
 use crate::mcp::prompts::{prompts_get, prompts_list};
@@ -21,7 +27,10 @@ use signal_hook::consts::{SIGINT, SIGTERM};
 #[cfg(unix)]
 use signal_hook::iterator::Signals;
 
-// Gracefully handle shutdown
+/// Sets up platform-specific signal handlers for graceful shutdown
+///
+/// This function initializes appropriate signal handlers (SIGTERM, SIGINT)
+/// to ensure the server shuts down gracefully when terminated.
 fn setup_signal_handlers() {
     #[cfg(unix)]
     {
@@ -45,6 +54,14 @@ fn setup_signal_handlers() {
     }
 }
 
+/// Builds the JSON-RPC router with all registered endpoints
+///
+/// This function creates and configures the router with all available
+/// RPC endpoints, including core server functions and SonarQube tools.
+///
+/// # Returns
+///
+/// A configured Router instance ready to handle JSON-RPC requests
 fn build_rpc_router() -> Router {
     let builder = RouterBuilder::default()
         // append resources here
@@ -165,6 +182,7 @@ async fn main() {
     }
 }
 
+/// Command-line arguments for the application
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -186,11 +204,24 @@ struct Args {
 }
 
 impl Args {
+    /// Checks if any information display options are enabled
+    ///
+    /// # Returns
+    ///
+    /// `true` if any of the information display flags are set, `false` otherwise
     fn is_args_available(&self) -> bool {
         self.prompts || self.resources || self.tools
     }
 }
 
+/// Displays information about available resources, prompts, and tools
+///
+/// This function outputs information about the server's capabilities based on
+/// the command-line arguments provided.
+///
+/// # Arguments
+///
+/// * `args` - The command-line arguments that specify what information to display
 async fn display_info(args: &Args) {
     if !args.is_args_available() {
         println!("Please use --help to see available options");
