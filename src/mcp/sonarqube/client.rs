@@ -1,9 +1,9 @@
 use crate::mcp::sonarqube::types::*;
 use reqwest::Client;
+use std::sync::Arc;
 
 // Re-export SonarQubeConfig for use in other modules
 pub use crate::mcp::sonarqube::types::SonarQubeConfig;
-use std::sync::Arc;
 
 // Static constants for environment variable names
 static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
@@ -50,22 +50,129 @@ impl SonarQubeClient {
         self.organization.as_deref()
     }
 
+    /// Append a string parameter to the URL if it exists
+    #[allow(dead_code)]
+    fn append_param(&self, url: &mut String, name: &str, value: Option<&str>) {
+        if let Some(val) = value {
+            url.push_str(&format!("&{}={}", name, val));
+        }
+    }
+
+    /// Append a boolean parameter to the URL if it exists
+    #[allow(dead_code)]
+    fn append_bool_param(&self, url: &mut String, name: &str, value: Option<bool>) {
+        if let Some(val) = value {
+            url.push_str(&format!("&{}={}", name, val));
+        }
+    }
+
+    /// Append a numeric parameter to the URL if it exists
+    #[allow(dead_code)]
+    fn append_numeric_param<T: std::fmt::Display>(
+        &self,
+        url: &mut String,
+        name: &str,
+        value: Option<T>,
+    ) {
+        if let Some(val) = value {
+            url.push_str(&format!("&{}={}", name, val));
+        }
+    }
+
+    /// Append an array parameter as comma-separated values if it exists
+    #[allow(dead_code)]
+    fn append_array_param<'a>(&self, url: &mut String, name: &str, values: Option<&'a [&'a str]>) {
+        if let Some(vals) = values {
+            if !vals.is_empty() {
+                url.push_str(&format!("&{}={}", name, vals.join(",")));
+            }
+        }
+    }
+
+    /// Handle HTTP response errors and convert them to SonarError
+    async fn handle_response_error(
+        &self,
+        response: reqwest::Response,
+        project_key: &str,
+    ) -> Result<reqwest::Response, SonarError> {
+        if response.status().is_success() {
+            return Ok(response);
+        }
+
+        let status = response.status();
+        if status.as_u16() == 401 || status.as_u16() == 403 {
+            return Err(SonarError::AuthError);
+        }
+        if status.as_u16() == 404 {
+            return Err(SonarError::ProjectNotFound(project_key.to_string()));
+        }
+
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
+        Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)))
+    }
+
+    /// Parse a response into the specified type, with detailed error handling
+    async fn parse_response<T>(
+        &self,
+        response: reqwest::Response,
+        entity_name: &str,
+    ) -> Result<T, SonarError>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        // Get the response body as text first for better error messages
+        let response_text = response.text().await?;
+
+        // Log the response preview if debug is enabled
+        debug_log(&format!(
+            "Response body (first 200 chars): {}",
+            if response_text.len() > 200 {
+                format!("{}...", &response_text[..200])
+            } else {
+                response_text.clone()
+            }
+        ));
+
+        // Try to deserialize the response
+        match serde_json::from_str::<T>(&response_text) {
+            Ok(data) => Ok(data),
+            Err(err) => {
+                // Create a preview of the response for error messages
+                let preview = if response_text.len() > 200 {
+                    format!("{}...", &response_text[..200])
+                } else {
+                    response_text.clone()
+                };
+
+                debug_log(&format!(
+                    "Failed to parse {} response: {}",
+                    entity_name, err
+                ));
+                Err(SonarError::Parse(format!(
+                    "Failed to parse {} response: {} - Response preview: {}",
+                    entity_name, err, preview
+                )))
+            }
+        }
+    }
+
     /// Get metrics for a project
     pub async fn get_metrics(
         &self,
         project_key: &str,
         metrics: &[&str],
     ) -> Result<MetricsResponse, SonarError> {
-        let metrics_str = metrics.join(",");
-        let mut url = format!(
-            "{}/api/measures/component?component={}&metricKeys={}",
-            self.base_url, project_key, metrics_str
-        );
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter if available
-        if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-        }
+        let metrics_str = metrics.join(",");
+        let url = QueryBuilder::new(format!("{}/api/measures/component", self.base_url))
+            .add_param("component", Some(project_key))
+            .add_param("metricKeys", Some(metrics_str))
+            .add_param("organization", self.organization.as_deref())
+            .build();
 
         let response = self
             .client
@@ -74,42 +181,9 @@ impl SonarQubeClient {
             .send()
             .await?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            if status.as_u16() == 401 || status.as_u16() == 403 {
-                return Err(SonarError::AuthError);
-            }
-            if status.as_u16() == 404 {
-                return Err(SonarError::ProjectNotFound(project_key.to_string()));
-            }
-
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)));
-        }
-
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
-
-        // Try to deserialize the response
-        match serde_json::from_str::<MetricsResponse>(&response_text) {
-            Ok(data) => Ok(data),
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                Err(SonarError::Parse(format!(
-                    "Failed to parse metrics response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        let response = self.handle_response_error(response, project_key).await?;
+        self.parse_response::<MetricsResponse>(response, "metrics")
+            .await
     }
 
     /// Get issues for a project
@@ -117,143 +191,51 @@ impl SonarQubeClient {
         &self,
         params: IssuesQueryParams<'_>,
     ) -> Result<IssuesResponse, SonarError> {
-        let mut url = format!(
-            "{}/api/issues/search?componentKeys={}",
-            self.base_url, params.project_key
-        );
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter if available
-        if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-        }
-
-        // Add optional parameters if provided
-        if let Some(sevs) = params.severities {
-            url.push_str(&format!("&severities={}", sevs.join(",")));
-        }
-
-        if let Some(issue_types) = params.types {
-            url.push_str(&format!("&types={}", issue_types.join(",")));
-        }
-
-        if let Some(issue_statuses) = params.statuses {
-            url.push_str(&format!("&statuses={}", issue_statuses.join(",")));
-        }
-
-        if let Some(impact_sevs) = params.impact_severities {
-            url.push_str(&format!("&impactSeverities={}", impact_sevs.join(",")));
-        }
-
-        if let Some(impact_qualities) = params.impact_software_qualities {
-            url.push_str(&format!(
-                "&impactSoftwareQualities={}",
-                impact_qualities.join(",")
-            ));
-        }
-
-        // Add new parameters
-        if let Some(assigned_to_me) = params.assigned_to_me {
-            url.push_str(&format!("&assignedToMe={}", assigned_to_me));
-        }
-
-        if let Some(assignees) = params.assignees {
-            url.push_str(&format!("&assignees={}", assignees.join(",")));
-        }
-
-        if let Some(authors) = params.authors {
-            url.push_str(&format!("&authors={}", authors.join(",")));
-        }
-
-        if let Some(code_variants) = params.code_variants {
-            url.push_str(&format!("&codeVariants={}", code_variants.join(",")));
-        }
-
-        if let Some(created_after) = params.created_after {
-            url.push_str(&format!("&createdAfter={}", created_after));
-        }
-
-        if let Some(created_before) = params.created_before {
-            url.push_str(&format!("&createdBefore={}", created_before));
-        }
-
-        if let Some(created_in_last) = params.created_in_last {
-            url.push_str(&format!("&createdInLast={}", created_in_last));
-        }
-
-        if let Some(cwe) = params.cwe {
-            url.push_str(&format!("&cwe={}", cwe.join(",")));
-        }
-
-        if let Some(directories) = params.directories {
-            url.push_str(&format!("&directories={}", directories.join(",")));
-        }
-
-        if let Some(facets) = params.facets {
-            url.push_str(&format!("&facets={}", facets.join(",")));
-        }
-
-        if let Some(files) = params.files {
-            url.push_str(&format!("&files={}", files.join(",")));
-        }
-
-        if let Some(issue_statuses) = params.issue_statuses {
-            url.push_str(&format!("&issueStatuses={}", issue_statuses.join(",")));
-        }
-
-        if let Some(languages) = params.languages {
-            url.push_str(&format!("&languages={}", languages.join(",")));
-        }
-
-        if let Some(owasp_top10) = params.owasp_top10 {
-            url.push_str(&format!("&owaspTop10={}", owasp_top10.join(",")));
-        }
-
-        if let Some(owasp_top10_2021) = params.owasp_top10_2021 {
-            url.push_str(&format!("&owaspTop10-2021={}", owasp_top10_2021.join(",")));
-        }
-
-        if let Some(resolutions) = params.resolutions {
-            url.push_str(&format!("&resolutions={}", resolutions.join(",")));
-        }
-
-        if let Some(resolved) = params.resolved {
-            url.push_str(&format!("&resolved={}", resolved));
-        }
-
-        if let Some(rules) = params.rules {
-            url.push_str(&format!("&rules={}", rules.join(",")));
-        }
-
-        if let Some(sans_top25) = params.sans_top25 {
-            url.push_str(&format!("&sansTop25={}", sans_top25.join(",")));
-        }
-
-        if let Some(sonarsource_security) = params.sonarsource_security {
-            url.push_str(&format!(
-                "&sonarsourceSecurity={}",
-                sonarsource_security.join(",")
-            ));
-        }
-
-        if let Some(tags) = params.tags {
-            url.push_str(&format!("&tags={}", tags.join(",")));
-        }
-
-        if let Some(sort_field) = params.sort_field {
-            url.push_str(&format!("&s={}", sort_field));
-        }
-
-        if let Some(asc) = params.asc {
-            url.push_str(&format!("&asc={}", asc));
-        }
-
-        if let Some(p) = params.page {
-            url.push_str(&format!("&p={}", p));
-        }
-
-        if let Some(ps) = params.page_size {
-            url.push_str(&format!("&ps={}", ps));
-        }
+        let url = QueryBuilder::new(format!("{}/api/issues/search", self.base_url))
+            // Add required parameters
+            .add_param("componentKeys", Some(params.project_key))
+            // Add organization parameter if available
+            .add_param("organization", self.organization.as_deref())
+            // Group 1: Issue classification parameters
+            .add_array_param("severities", params.severities)
+            .add_array_param("types", params.types)
+            .add_array_param("statuses", params.statuses)
+            .add_array_param("impactSeverities", params.impact_severities)
+            .add_array_param("impactSoftwareQualities", params.impact_software_qualities)
+            // Group 2: Issue ownership parameters
+            .add_bool_param("assignedToMe", params.assigned_to_me)
+            .add_array_param("assignees", params.assignees)
+            .add_array_param("authors", params.authors)
+            // Group 3: Code location parameters
+            .add_array_param("codeVariants", params.code_variants)
+            .add_array_param("directories", params.directories)
+            .add_array_param("files", params.files)
+            .add_array_param("languages", params.languages)
+            // Group 4: Time-based parameters
+            .add_param("createdAfter", params.created_after)
+            .add_param("createdBefore", params.created_before)
+            .add_param("createdInLast", params.created_in_last)
+            // Group 5: Standard classification parameters
+            .add_array_param("cwe", params.cwe)
+            .add_array_param("owaspTop10", params.owasp_top10)
+            .add_array_param("owaspTop10-2021", params.owasp_top10_2021)
+            .add_array_param("sansTop25", params.sans_top25)
+            .add_array_param("sonarsourceSecurity", params.sonarsource_security)
+            // Group 6: Resolution parameters
+            .add_array_param("resolutions", params.resolutions)
+            .add_bool_param("resolved", params.resolved)
+            .add_array_param("rules", params.rules)
+            .add_array_param("tags", params.tags)
+            .add_array_param("issueStatuses", params.issue_statuses)
+            // Group 7: Response customization parameters
+            .add_array_param("facets", params.facets)
+            .add_param("s", params.sort_field)
+            .add_bool_param("asc", params.asc)
+            .add_param("p", params.page)
+            .add_param("ps", params.page_size)
+            .build();
 
         // Log the URL for debugging if enabled
         debug_log(&format!("Making request to: {}", url));
@@ -265,42 +247,12 @@ impl SonarQubeClient {
             .send()
             .await?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            if status.as_u16() == 401 || status.as_u16() == 403 {
-                return Err(SonarError::AuthError);
-            }
-            if status.as_u16() == 404 {
-                return Err(SonarError::ProjectNotFound(params.project_key.to_string()));
-            }
+        let response = self
+            .handle_response_error(response, params.project_key)
+            .await?;
 
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)));
-        }
-
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
-
-        // Try to deserialize the response
-        match serde_json::from_str::<IssuesResponse>(&response_text) {
-            Ok(data) => Ok(data),
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                Err(SonarError::Parse(format!(
-                    "Failed to parse issues response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        self.parse_response::<IssuesResponse>(response, "issues")
+            .await
     }
 
     /// Get quality gate status for a project
@@ -308,15 +260,12 @@ impl SonarQubeClient {
         &self,
         project_key: &str,
     ) -> Result<QualityGateResponse, SonarError> {
-        let mut url = format!(
-            "{}/api/qualitygates/project_status?projectKey={}",
-            self.base_url, project_key
-        );
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter if available
-        if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-        }
+        let url = QueryBuilder::new(format!("{}/api/qualitygates/project_status", self.base_url))
+            .add_param("projectKey", Some(project_key))
+            .add_param("organization", self.organization.as_deref())
+            .build();
 
         let response = self
             .client
@@ -325,72 +274,29 @@ impl SonarQubeClient {
             .send()
             .await?;
 
-        if !response.status().is_success() {
-            let status = response.status();
-            if status.as_u16() == 401 || status.as_u16() == 403 {
-                return Err(SonarError::AuthError);
-            }
-            if status.as_u16() == 404 {
-                return Err(SonarError::ProjectNotFound(project_key.to_string()));
-            }
-
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            return Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)));
-        }
-
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
-
-        // Try to deserialize the response
-        match serde_json::from_str::<QualityGateResponse>(&response_text) {
-            Ok(data) => Ok(data),
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                Err(SonarError::Parse(format!(
-                    "Failed to parse quality gate response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        let response = self.handle_response_error(response, project_key).await?;
+        self.parse_response::<QualityGateResponse>(response, "quality gate")
+            .await
     }
 
-    /// Get list of projects from SonarQube
+    /// List all projects in SonarQube
     pub async fn list_projects(
         &self,
         page: Option<u32>,
         page_size: Option<u32>,
         override_organization: Option<&str>,
     ) -> Result<ProjectsResponse, SonarError> {
-        let mut url = format!("{}/api/components/search?qualifiers=TRK", self.base_url);
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter (prefer override if provided)
-        if let Some(org) = override_organization {
-            url.push_str(&format!("&organization={}", org));
-            debug_log(&format!("Using override organization: {}", org));
-        } else if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-            debug_log(&format!("Using default organization: {}", org));
-        } else {
-            debug_log("No organization specified");
-        }
+        // Use override_organization if provided, otherwise use the client's organization
+        let organization = override_organization.or(self.organization.as_deref());
 
-        // Add pagination parameters if provided
-        if let Some(p) = page {
-            url.push_str(&format!("&p={}", p));
-        }
-
-        if let Some(ps) = page_size {
-            url.push_str(&format!("&ps={}", ps));
-        }
+        let url = QueryBuilder::new(format!("{}/api/components/search", self.base_url))
+            .add_param("qualifiers", Some("TRK")) // TRK is for projects
+            .add_param("organization", organization)
+            .add_param("p", page)
+            .add_param("ps", page_size)
+            .build();
 
         debug_log(&format!("Making request to: {}", url));
 
@@ -401,58 +307,19 @@ impl SonarQubeClient {
             .send()
             .await?;
 
-        let status = response.status();
-        debug_log(&format!("Received response status: {}", status));
+        // Use a dummy project key for error handling since we're not querying a specific project
+        let response = self.handle_response_error(response, "").await?;
 
-        if !status.is_success() {
-            if status.as_u16() == 401 || status.as_u16() == 403 {
-                debug_log("Authentication error");
-                return Err(SonarError::AuthError);
-            }
+        let result = self
+            .parse_response::<ProjectsResponse>(response, "projects")
+            .await?;
 
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
-            debug_log(&format!("Error response: {}", error_text));
-            return Err(SonarError::Api(format!("HTTP {}: {}", status, error_text)));
-        }
-
-        // Get the response body as text first for better error messages
-        let response_text = response.text().await?;
         debug_log(&format!(
-            "Response body (first 200 chars): {}",
-            if response_text.len() > 200 {
-                format!("{}...", &response_text[..200])
-            } else {
-                response_text.clone()
-            }
+            "Successfully parsed response: {} projects found",
+            result.components.len()
         ));
 
-        // Try to deserialize the response
-        match serde_json::from_str::<ProjectsResponse>(&response_text) {
-            Ok(data) => {
-                debug_log(&format!(
-                    "Successfully parsed response: {} projects found",
-                    data.components.len()
-                ));
-                Ok(data)
-            }
-            Err(err) => {
-                // Log or capture part of the response for debugging
-                let preview = if response_text.len() > 200 {
-                    format!("{}...", &response_text[..200])
-                } else {
-                    response_text.clone()
-                };
-
-                debug_log(&format!("Failed to parse response: {}", err));
-                Err(SonarError::Parse(format!(
-                    "Failed to parse response: {} - Response preview: {}",
-                    err, preview
-                )))
-            }
-        }
+        Ok(result)
     }
 }
 

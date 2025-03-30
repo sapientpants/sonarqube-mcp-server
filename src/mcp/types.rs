@@ -5,334 +5,627 @@ use serde_json::Value;
 use std::collections::HashMap;
 use url::Url;
 
+/// Core type definitions for the MCP server.
+///
+/// This module defines the data structures used throughout the MCP server implementation,
+/// including:
+///
+/// - JSON-RPC protocol types for request/response handling
+/// - Initialization and capability negotiation types
+/// - Resource management structures
+/// - Tool definitions and invocation types
+/// - Logging and utility structures
+///
+/// These types form the backbone of the server's communication with MCP clients
+/// and provide the necessary structures for implementing the MCP specification.
+
 #[derive(Debug, Deserialize, Serialize, RpcParams, Clone)]
+/// Request parameters for initializing a client connection
+///
+/// This structure defines the parameters sent by a client to initialize
+/// a connection to the MCP server, including the protocol version the client
+/// supports, its capabilities, and information about the client implementation.
 pub struct InitializeRequest {
+    /// Protocol version the client implements
     #[serde(rename = "protocolVersion")]
     pub protocol_version: String,
+    /// Capabilities that the client supports
     pub capabilities: ClientCapabilities,
+    /// Information about the client implementation
     #[serde(rename = "clientInfo")]
     pub client_info: Implementation,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-#[serde(default)]
+// --------- capabilities / inits -------
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ServerCapabilities {
+    /// Configuration for text-related capabilities
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<Value>,
+    /// Experimental capabilities not yet standardized
     #[serde(skip_serializing_if = "Option::is_none")]
     pub experimental: Option<Value>,
+    /// Resources capabilities configuration
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub prompts: Option<PromptCapabilities>,
+    pub resources: Option<ResourcesCapabilities>,
+    /// Tool-related capabilities configuration
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub resources: Option<ResourceCapabilities>,
+    pub tools: Option<ToolsCapabilities>,
+    /// Sampling configuration for telemetry
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tools: Option<Value>,
+    pub sampling: Option<Value>,
+    /// Prompt-related capabilities configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompts: Option<Value>,
+    /// Root directory capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roots: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sampling: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub logging: Option<Value>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResourcesCapabilities {
+    /// Whether the server supports getting resources
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub get: Option<bool>,
+    /// Whether the server supports listing resources
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub list: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ToolsCapabilities {
+    /// Whether the server supports invoking tools
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub call: Option<bool>,
+    /// Whether the server supports listing available tools
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub list: Option<bool>,
+}
+
+/// Client capabilities communicated during initialization
+///
+/// This struct represents the capabilities that a client supports,
+/// which are communicated to the server during the initialization phase.
+/// These capabilities help the server determine what features it can
+/// expose to this particular client.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-#[serde(default)]
-pub struct PromptCapabilities {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub list_changed: Option<bool>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(rename_all = "camelCase")]
-#[serde(default)]
-pub struct ResourceCapabilities {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub subscribe: Option<bool>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub list_changed: Option<bool>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 #[serde(default)]
 pub struct ClientCapabilities {
+    /// Experimental capabilities not yet standardized
     #[serde(skip_serializing_if = "Option::is_none")]
     pub experimental: Option<Value>,
+    /// Configuration for root directory capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roots: Option<RootCapabilities>,
+    /// Sampling configuration for telemetry
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sampling: Option<Value>,
 }
 
+/// Root directory capabilities configuration
+///
+/// Specifies capabilities related to root directory handling,
+/// such as whether the client can handle notifications about
+/// changes to the list of available roots.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 #[serde(default)]
 pub struct RootCapabilities {
+    /// Whether the client should be notified when the list of roots changes
     pub list_changed: Option<bool>,
 }
 
+/// Server or client implementation details
+///
+/// Contains metadata about the implementation of either the MCP server
+/// or client, including its name and version number.
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Implementation {
+    /// Name of the implementation (e.g., "sonarqube-mcp-server")
     pub name: String,
+    /// Version of the implementation (e.g., "0.2.0")
     pub version: String,
 }
 
+/// Result returned after successful client initialization
+///
+/// This structure is sent to the client after a successful initialization
+/// request, providing information about the server's capabilities,
+/// version, and other important metadata.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitializeResult {
+    /// The MCP protocol version this server implements
     pub protocol_version: String,
+    /// The specific capabilities supported by this server
     pub capabilities: ServerCapabilities,
+    /// Metadata about the server implementation
     pub server_info: Implementation,
+    /// Optional instructions for using this server
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instructions: Option<String>,
 }
 
 // --------- resource -------
 
+/// Request parameters for listing available resources
+///
+/// This structure defines the parameters for requesting a list of
+/// resources from the MCP server. It supports pagination through
+/// the optional cursor parameter.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct ListResourcesRequest {
+    /// Optional cursor for pagination when fetching multiple pages of resources
     pub cursor: Option<String>,
 }
 
+/// Result containing a list of available resources
+///
+/// This structure contains the response for a resources/list request,
+/// including a collection of resources and optional pagination information
+/// for fetching subsequent pages.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListResourcesResult {
+    /// Collection of resources available from the server
     pub resources: Vec<Resource>,
+    /// Optional cursor for fetching the next page of resources
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
 
+/// Metadata for an individual resource
+///
+/// This structure represents a single resource available from the MCP server,
+/// including its identification, descriptive information, and content type.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Resource {
+    /// URI uniquely identifying this resource
     pub uri: Url,
+    /// Display name of the resource
     pub name: String,
+    /// Optional description of the resource's contents or purpose
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// MIME type of the resource content (e.g., "text/markdown", "application/json")
     pub mime_type: Option<String>,
 }
 
+/// Request parameters for reading a specific resource
+///
+/// This structure defines the parameters for requesting the content of
+/// a specific resource from the MCP server.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct ReadResourceRequest {
+    /// URI of the resource to retrieve
     pub uri: Url,
+    /// Optional metadata for the request, such as progress tracking information
     #[serde(rename = "_meta", skip_serializing_if = "Option::is_none")]
     pub meta: Option<MetaParams>,
 }
 
+/// Result containing the content of a requested resource
+///
+/// This structure contains the response for a resources/read request,
+/// with the actual content of the requested resource.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ReadResourceResult {
+    /// Content of the requested resource
     pub content: ResourceContent,
 }
 
+/// Content of a resource with its type information
+///
+/// This enum represents different types of resource content that
+/// can be returned by the MCP server, including text and binary data.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ResourceContent {
-    pub uri: Url, // The URI of the resource
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mime_type: Option<String>, // Optional MIME type
-    pub text: Option<String>, // For text resources
-    pub blob: Option<String>, // For binary resources (base64 encoded)
+#[serde(tag = "type")]
+pub enum ResourceContent {
+    /// Textual resource content
+    #[serde(rename = "text")]
+    Text { text: String },
+    /// Binary resource content (base64-encoded)
+    #[serde(rename = "binary")]
+    Binary { data: String, mime_type: String },
 }
 
 // --------- prompt -------
+
+/// Metadata for an individual prompt
+///
+/// This structure represents a prompt available from the MCP server,
+/// including its name, description, and optional argument definitions.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Prompt {
+    /// Unique name identifier for the prompt
     pub name: String,
+    /// Optional description of the prompt's purpose or usage
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Optional list of arguments that this prompt can accept
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Vec<PromptArgument>>,
 }
 
+/// Definition of an argument for a prompt
+///
+/// This structure defines a single argument that can be provided to a
+/// prompt, including information about its name, description, and
+/// whether it's required.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PromptArgument {
+    /// Name of the argument
     pub name: String,
+    /// Optional description of the argument's purpose
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Whether this argument is required (if not specified, defaults to optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
 }
 
+/// Request parameters for listing available prompts
+///
+/// This structure defines the parameters for requesting a list of
+/// prompts from the MCP server, supporting pagination through
+/// the optional cursor parameter.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct ListPromptsRequest {
+    /// Optional cursor for pagination when fetching multiple pages of prompts
     pub cursor: Option<String>,
 }
 
+/// Result containing a list of available prompts
+///
+/// This structure contains the response for a prompts/list request,
+/// including a collection of prompts and optional pagination information
+/// for fetching subsequent pages.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListPromptsResult {
+    /// Collection of prompts available from the server
     pub prompts: Vec<Prompt>,
+    /// Optional cursor for fetching the next page of prompts
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
 
+/// Request parameters for getting a specific prompt
+///
+/// This structure defines the parameters for requesting a specific
+/// prompt from the MCP server by its name, optionally providing
+/// values for the prompt's arguments.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct GetPromptRequest {
+    /// Name of the prompt to retrieve
     pub name: String,
+    /// Optional map of argument values to provide to the prompt
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<HashMap<String, Value>>,
 }
 
+/// Result containing the contents of a requested prompt
+///
+/// This structure contains the response for a prompts/get request,
+/// with the prompt's description and optional message content.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PromptResult {
+    /// Description of the prompt's purpose or content
     pub description: String,
+    /// Optional collection of messages associated with the prompt
     #[serde(skip_serializing_if = "Option::is_none")]
     pub messages: Option<Vec<PromptMessage>>,
 }
 
+/// Message component of a prompt
+///
+/// This structure represents a message within a prompt, with a role
+/// (like "system", "user", or "assistant") and content.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PromptMessage {
+    /// Role of the message sender (e.g., "system", "user", "assistant")
     pub role: String,
+    /// Content of the message
     pub content: PromptMessageContent,
 }
 
+/// Content of a prompt message
+///
+/// This structure represents the content of a message within a prompt,
+/// specifying its type and text.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PromptMessageContent {
+    /// Type of the message content (typically "text")
     #[serde(rename = "type")]
     pub type_name: String,
+    /// Actual text content of the message
     pub text: String,
 }
 
 // --------- tool -------
 
+/// Definition of a tool available in the MCP server
+///
+/// This structure represents a tool that clients can call, including
+/// its name, description, and expected input parameters schema.
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tool {
+    /// Unique name identifier for the tool
     pub name: String,
+    /// Optional description of the tool's purpose or functionality
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Schema describing the expected input parameters for the tool
     pub input_schema: ToolInputSchema,
 }
 
+/// JSON Schema definition for a tool's input
+///
+/// This structure defines the expected input format for a tool,
+/// using a simplified JSON Schema format to describe the properties
+/// and required fields.
 #[derive(Deserialize, Serialize)]
 pub struct ToolInputSchema {
+    /// Type of the top-level schema (typically "object")
     #[serde(rename = "type")]
     pub type_name: String,
+    /// Map of property names to their schema definitions
     pub properties: HashMap<String, ToolInputSchemaProperty>,
+    /// List of property names that are required
     pub required: Vec<String>,
 }
 
+/// Schema definition for a single property in a tool's input
+///
+/// This structure defines the schema for a single property within
+/// a tool's input parameters, including its type, possible values,
+/// and description.
 #[derive(Deserialize, Serialize)]
 pub struct ToolInputSchemaProperty {
+    /// Type of the property (e.g., "string", "number", "boolean")
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "type")]
     pub type_name: Option<String>,
+    /// For enum properties, the list of possible values
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "enum")]
     pub enum_values: Option<Vec<String>>,
+    /// Description of the property's purpose or expected format
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
+/// Request parameters for calling a tool
+///
+/// This structure defines the parameters for invoking a tool on the
+/// MCP server, including the tool name, arguments, and optional
+/// progress tracking metadata.
 #[derive(Deserialize, Serialize, RpcParams)]
 pub struct CallToolRequest {
+    /// Parameters for the tool call
     pub params: ToolCallRequestParams,
+    /// Optional metadata for tracking progress of long-running operations
     #[serde(rename = "_meta", skip_serializing_if = "Option::is_none")]
     pub meta: Option<MetaParams>,
 }
 
+/// Parameters for a tool call request
+///
+/// This structure contains the specific parameters needed to invoke
+/// a tool, including its name and optional arguments.
 #[derive(Deserialize, Serialize)]
 pub struct ToolCallRequestParams {
+    /// Name of the tool to call
     pub name: String,
+    /// Optional arguments to provide to the tool
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Value>,
 }
 
+/// Result of a tool call operation
+///
+/// This structure represents the response for a tools/call request,
+/// containing the content returned by the tool and an indication of
+/// whether the operation resulted in an error.
 #[derive(Deserialize, Serialize, RpcParams)]
 #[serde(rename_all = "camelCase")]
 pub struct CallToolResult {
+    /// Content returned by the tool
     pub content: Vec<CallToolResultContent>,
+    /// Whether the tool call resulted in an error
     pub is_error: bool,
 }
 
+/// Content returned by a tool
+///
+/// This enum represents the different types of content that can be
+/// returned by a tool, including text, images, and resource references.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum CallToolResultContent {
+    /// Textual content returned by the tool
     #[serde(rename = "text")]
     Text { text: String },
+    /// Image content returned by the tool (base64-encoded)
     #[serde(rename = "image")]
     Image { data: String, mime_type: String },
+    /// Resource reference returned by the tool
     #[serde(rename = "resource")]
     Resource { resource: ResourceContent },
 }
 
+/// Request parameters for listing available tools
+///
+/// This structure defines the parameters for requesting a list of
+/// tools from the MCP server, supporting pagination through
+/// the optional cursor parameter.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct ListToolsRequest {
+    /// Optional cursor for pagination when fetching multiple pages of tools
     pub cursor: Option<String>,
 }
 
+/// Result containing a list of available tools
+///
+/// This structure contains the response for a tools/list request,
+/// including a collection of tools and optional pagination information
+/// for fetching subsequent pages.
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ListToolsResult {
+    /// Collection of tools available from the server
     pub tools: Vec<Tool>,
+    /// Optional cursor for fetching the next page of tools
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_cursor: Option<String>,
 }
 
 // ----- misc ---
+
+/// Empty result struct for operations that don't return data
+///
+/// This structure is used as a response type for operations that
+/// don't need to return any specific data to the client.
 #[derive(Deserialize, Serialize)]
 pub struct EmptyResult {}
 
+/// Request parameters for the ping operation
+///
+/// This structure defines the parameters for the ping operation,
+/// which is used to check server availability.
 #[derive(Deserialize, Serialize, RpcParams)]
 pub struct PingRequest {}
 
+/// Notification that a request has been cancelled
+///
+/// This structure represents a notification sent to inform that
+/// a particular request has been cancelled, optionally including
+/// a reason for the cancellation.
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CancelledNotification {
+    /// ID of the request that was cancelled
     pub request_id: String,
+    /// Optional reason for the cancellation
     pub reason: Option<String>,
 }
 
+/// Parameters for tracking progress of operations
+///
+/// This structure contains metadata used for tracking the progress
+/// of long-running operations, allowing clients to identify and
+/// monitor specific operations.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetaParams {
+    /// Token identifying the operation for progress tracking
     pub progress_token: String,
 }
 
+/// Progress information for a long-running operation
+///
+/// This structure represents a progress update for a long-running
+/// operation, providing information about how much of the operation
+/// has been completed.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
+    /// Token identifying the operation this progress relates to
     pub progress_token: String,
+    /// Current progress value (e.g., number of items processed)
     pub progress: i32,
+    /// Total expected work (e.g., total number of items to process)
     pub total: i32,
 }
 
+/// Request parameters for setting logging level
+///
+/// This structure defines the parameters for setting the logging
+/// level on the server, allowing clients to control how verbose
+/// the server's logging output is.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct SetLevelRequest {
+    /// Logging level to set (e.g., "debug", "info", "warn", "error")
     pub level: String,
 }
 
+/// Response for logging-related operations
+///
+/// This structure represents the response for operations that
+/// modify logging behavior, typically an empty acknowledgement.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LoggingResponse {}
 
+/// Notification containing a logging message
+///
+/// This structure represents a notification containing a log
+/// message from the server, including its level, source, and data.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct LoggingMessageNotification {
+    /// Level of the log message (e.g., "debug", "info", "warn", "error")
     pub level: String,
+    /// Source logger that generated the message
     pub logger: String,
+    /// Data/content of the log message
     pub data: Value,
 }
 
+/// Request parameters for listing root directories
+///
+/// This structure defines the parameters for requesting a list of
+/// root directories from the MCP server.
 #[derive(Debug, Deserialize, Serialize, RpcParams)]
 pub struct ListRootsRequest {}
 
+/// Result containing a list of root directories
+///
+/// This structure contains the response for a roots/list request,
+/// including a collection of available root directories.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ListRootsResult {
+    /// Collection of root directories available from the server
     pub roots: Vec<Root>,
 }
 
+/// Metadata for a root directory
+///
+/// This structure represents a single root directory available
+/// from the MCP server, including its name and URL.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Root {
+    /// Display name of the root directory
     pub name: String,
+    /// URL where the root directory can be accessed
     pub url: String,
 }
 
 // ----- json-rpc -----
+
+/// Standard JSON-RPC response
+///
+/// This structure represents a standard JSON-RPC response containing
+/// the protocol version, request ID, and result data.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JsonRpcResponse {
+    /// JSON-RPC protocol version (typically "2.0")
     pub jsonrpc: String,
+    /// ID matching the request this response is for
     pub id: Value,
+    /// Result data returned for the request
     pub result: Value,
 }
 
 impl JsonRpcResponse {
+    /// Create a new JSON-RPC response with the given ID and result
+    ///
+    /// This method constructs a new JSON-RPC response with the appropriate
+    /// protocol version and the specified ID and result data.
     pub fn new(id: Value, result: Value) -> Self {
         JsonRpcResponse {
             jsonrpc: JSONRPC_VERSION.to_string(),
@@ -342,28 +635,56 @@ impl JsonRpcResponse {
     }
 }
 
+/// Standard JSON-RPC notification
+///
+/// This structure represents a JSON-RPC notification (a message
+/// that doesn't require a response), containing the protocol version,
+/// method name, and parameters.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JsonRpcNotification {
+    /// JSON-RPC protocol version (typically "2.0")
     pub jsonrpc: String,
+    /// Method name for the notification
     pub method: String,
+    /// Parameters for the notification
     pub params: Value,
 }
 
+/// Standard JSON-RPC error response
+///
+/// This structure represents a JSON-RPC error response containing
+/// the protocol version, request ID, and error information.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JsonRpcError {
+    /// JSON-RPC protocol version (typically "2.0")
     pub jsonrpc: String,
+    /// ID matching the request this error is for
     pub id: Value,
+    /// Error information
     pub error: Error,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+/// JSON-RPC error details
+///
+/// This structure contains the details of an error that occurred
+/// during the processing of a JSON-RPC request, including its
+/// code, message, and optional additional data.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Error {
+    /// Numeric error code
     pub code: i32,
+    /// Human-readable error message
     pub message: String,
+    /// Optional additional error data
     pub data: Option<Value>,
 }
 
 impl JsonRpcError {
+    /// Create a new JSON-RPC error response with the given details
+    ///
+    /// This method constructs a new JSON-RPC error response with the
+    /// appropriate protocol version and the specified ID, error code,
+    /// and error message.
     pub fn new(id: Value, code: i32, message: &str) -> Self {
         JsonRpcError {
             jsonrpc: JSONRPC_VERSION.to_string(),
