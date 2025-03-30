@@ -73,18 +73,11 @@ These issues are about missing documentation for public items in the codebase. A
 - [ ] src/main.rs:86 - RS-W1079: Empty call to `new()`
 
 ## Progress Tracking
-- Total issues: 84
-- Fixed issues: 43
-- Remaining issues: 41
 
-## Notes
-- Most issues are documentation-related.
-- Priority should be given to fixing the Bug Risk and Anti-Pattern issues after documentation is completed.
-- For documentation, start with the most critical and commonly used structures and modules.
+Total issues: 84
+- Fixed: 46
+- Remaining: 38
 
-# Issues Tracker
+Most issues are documentation-related. After completing documentation, priority should be given to addressing bug risk and anti-pattern issues.
 
-<!-- Keep track of how many issues have been fixed and how many remain -->
-- Total issues: 84
-- Fixed issues: 43
-- Remaining issues: 41 
+As a general approach, start with the most critical and commonly used structures and modules. 
