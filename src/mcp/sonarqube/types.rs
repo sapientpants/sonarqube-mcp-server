@@ -350,11 +350,15 @@ pub struct SonarQubeListProjectsRequest {
     pub page_size: Option<u32>,
 }
 
-/// Result for MCP sonarqube/list_projects tool
+/// Result type for the SonarQube list projects operation
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SonarQubeListProjectsResult {
+    /// Total number of projects available
     pub total: u32,
+    /// Current page number
     pub page: u32,
+    /// Number of items per page
     pub page_size: u32,
+    /// List of projects in the current page
     pub projects: Vec<Project>,
 }
