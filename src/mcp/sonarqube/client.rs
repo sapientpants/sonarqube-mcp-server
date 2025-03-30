@@ -51,6 +51,7 @@ impl SonarQubeClient {
     }
 
     /// Append a string parameter to the URL if it exists
+    #[allow(dead_code)]
     fn append_param(&self, url: &mut String, name: &str, value: Option<&str>) {
         if let Some(val) = value {
             url.push_str(&format!("&{}={}", name, val));
@@ -58,6 +59,7 @@ impl SonarQubeClient {
     }
 
     /// Append a boolean parameter to the URL if it exists
+    #[allow(dead_code)]
     fn append_bool_param(&self, url: &mut String, name: &str, value: Option<bool>) {
         if let Some(val) = value {
             url.push_str(&format!("&{}={}", name, val));
@@ -65,6 +67,7 @@ impl SonarQubeClient {
     }
 
     /// Append a numeric parameter to the URL if it exists
+    #[allow(dead_code)]
     fn append_numeric_param<T: std::fmt::Display>(
         &self,
         url: &mut String,
@@ -77,6 +80,7 @@ impl SonarQubeClient {
     }
 
     /// Append an array parameter as comma-separated values if it exists
+    #[allow(dead_code)]
     fn append_array_param<'a>(&self, url: &mut String, name: &str, values: Option<&'a [&'a str]>) {
         if let Some(vals) = values {
             if !vals.is_empty() {
@@ -116,16 +120,14 @@ impl SonarQubeClient {
         project_key: &str,
         metrics: &[&str],
     ) -> Result<MetricsResponse, SonarError> {
-        let metrics_str = metrics.join(",");
-        let mut url = format!(
-            "{}/api/measures/component?component={}&metricKeys={}",
-            self.base_url, project_key, metrics_str
-        );
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter if available
-        if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-        }
+        let metrics_str = metrics.join(",");
+        let url = QueryBuilder::new(format!("{}/api/measures/component", self.base_url))
+            .add_param("component", Some(project_key))
+            .add_param("metricKeys", Some(metrics_str))
+            .add_param("organization", self.organization.as_deref())
+            .build();
 
         let response = self
             .client
@@ -163,51 +165,58 @@ impl SonarQubeClient {
         &self,
         params: IssuesQueryParams<'_>,
     ) -> Result<IssuesResponse, SonarError> {
-        let mut url = format!(
-            "{}/api/issues/search?componentKeys={}",
-            self.base_url, params.project_key
-        );
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter if available
-        self.append_param(&mut url, "organization", self.organization.as_deref());
-
-        // Add optional parameters if provided
-        self.append_array_param(&mut url, "severities", params.severities);
-        self.append_array_param(&mut url, "types", params.types);
-        self.append_array_param(&mut url, "statuses", params.statuses);
-        self.append_array_param(&mut url, "impactSeverities", params.impact_severities);
-        self.append_array_param(
-            &mut url,
-            "impactSoftwareQualities",
-            params.impact_software_qualities,
-        );
-
-        // Add new parameters
-        self.append_bool_param(&mut url, "assignedToMe", params.assigned_to_me);
-        self.append_array_param(&mut url, "assignees", params.assignees);
-        self.append_array_param(&mut url, "authors", params.authors);
-        self.append_array_param(&mut url, "codeVariants", params.code_variants);
-        self.append_param(&mut url, "createdAfter", params.created_after);
-        self.append_param(&mut url, "createdBefore", params.created_before);
-        self.append_param(&mut url, "createdInLast", params.created_in_last);
-        self.append_array_param(&mut url, "cwe", params.cwe);
-        self.append_array_param(&mut url, "directories", params.directories);
-        self.append_array_param(&mut url, "facets", params.facets);
-        self.append_array_param(&mut url, "files", params.files);
-        self.append_array_param(&mut url, "issueStatuses", params.issue_statuses);
-        self.append_array_param(&mut url, "languages", params.languages);
-        self.append_array_param(&mut url, "owaspTop10", params.owasp_top10);
-        self.append_array_param(&mut url, "owaspTop10-2021", params.owasp_top10_2021);
-        self.append_array_param(&mut url, "resolutions", params.resolutions);
-        self.append_bool_param(&mut url, "resolved", params.resolved);
-        self.append_array_param(&mut url, "rules", params.rules);
-        self.append_array_param(&mut url, "sansTop25", params.sans_top25);
-        self.append_array_param(&mut url, "sonarsourceSecurity", params.sonarsource_security);
-        self.append_array_param(&mut url, "tags", params.tags);
-        self.append_param(&mut url, "s", params.sort_field);
-        self.append_bool_param(&mut url, "asc", params.asc);
-        self.append_numeric_param(&mut url, "p", params.page);
-        self.append_numeric_param(&mut url, "ps", params.page_size);
+        let url = QueryBuilder::new(format!("{}/api/issues/search", self.base_url))
+            // Add required parameters
+            .add_param("componentKeys", Some(params.project_key))
+            // Add organization parameter if available
+            .add_param("organization", self.organization.as_deref())
+            
+            // Group 1: Issue classification parameters
+            .add_array_param("severities", params.severities)
+            .add_array_param("types", params.types)
+            .add_array_param("statuses", params.statuses)
+            .add_array_param("impactSeverities", params.impact_severities)
+            .add_array_param("impactSoftwareQualities", params.impact_software_qualities)
+            
+            // Group 2: Issue ownership parameters
+            .add_bool_param("assignedToMe", params.assigned_to_me)
+            .add_array_param("assignees", params.assignees)
+            .add_array_param("authors", params.authors)
+            
+            // Group 3: Code location parameters
+            .add_array_param("codeVariants", params.code_variants)
+            .add_array_param("directories", params.directories)
+            .add_array_param("files", params.files)
+            .add_array_param("languages", params.languages)
+            
+            // Group 4: Time-based parameters
+            .add_param("createdAfter", params.created_after)
+            .add_param("createdBefore", params.created_before)
+            .add_param("createdInLast", params.created_in_last)
+            
+            // Group 5: Standard classification parameters
+            .add_array_param("cwe", params.cwe)
+            .add_array_param("owaspTop10", params.owasp_top10)
+            .add_array_param("owaspTop10-2021", params.owasp_top10_2021)
+            .add_array_param("sansTop25", params.sans_top25)
+            .add_array_param("sonarsourceSecurity", params.sonarsource_security)
+            
+            // Group 6: Resolution parameters
+            .add_array_param("resolutions", params.resolutions)
+            .add_bool_param("resolved", params.resolved)
+            .add_array_param("rules", params.rules)
+            .add_array_param("tags", params.tags)
+            .add_array_param("issueStatuses", params.issue_statuses)
+            
+            // Group 7: Response customization parameters
+            .add_array_param("facets", params.facets)
+            .add_param("s", params.sort_field)
+            .add_bool_param("asc", params.asc)
+            .add_param("p", params.page)
+            .add_param("ps", params.page_size)
+            .build();
 
         // Log the URL for debugging if enabled
         debug_log(&format!("Making request to: {}", url));
@@ -250,15 +259,12 @@ impl SonarQubeClient {
         &self,
         project_key: &str,
     ) -> Result<QualityGateResponse, SonarError> {
-        let mut url = format!(
-            "{}/api/qualitygates/project_status?projectKey={}",
-            self.base_url, project_key
-        );
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter if available
-        if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-        }
+        let url = QueryBuilder::new(format!("{}/api/qualitygates/project_status", self.base_url))
+            .add_param("projectKey", Some(project_key))
+            .add_param("organization", self.organization.as_deref())
+            .build();
 
         let response = self
             .client
@@ -291,34 +297,24 @@ impl SonarQubeClient {
         }
     }
 
-    /// Get list of projects from SonarQube
+    /// List all projects in SonarQube
     pub async fn list_projects(
         &self,
         page: Option<u32>,
         page_size: Option<u32>,
         override_organization: Option<&str>,
     ) -> Result<ProjectsResponse, SonarError> {
-        let mut url = format!("{}/api/components/search?qualifiers=TRK", self.base_url);
+        use crate::mcp::sonarqube::query::QueryBuilder;
 
-        // Add organization parameter (prefer override if provided)
-        if let Some(org) = override_organization {
-            url.push_str(&format!("&organization={}", org));
-            debug_log(&format!("Using override organization: {}", org));
-        } else if let Some(org) = &self.organization {
-            url.push_str(&format!("&organization={}", org));
-            debug_log(&format!("Using default organization: {}", org));
-        } else {
-            debug_log("No organization specified");
-        }
+        // Use override_organization if provided, otherwise use the client's organization
+        let organization = override_organization.or_else(|| self.organization.as_deref());
 
-        // Add pagination parameters if provided
-        if let Some(p) = page {
-            url.push_str(&format!("&p={}", p));
-        }
-
-        if let Some(ps) = page_size {
-            url.push_str(&format!("&ps={}", ps));
-        }
+        let url = QueryBuilder::new(format!("{}/api/components/search", self.base_url))
+            .add_param("qualifiers", Some("TRK")) // TRK is for projects
+            .add_param("organization", organization)
+            .add_param("p", page)
+            .add_param("ps", page_size)
+            .build();
 
         debug_log(&format!("Making request to: {}", url));
 
@@ -329,10 +325,10 @@ impl SonarQubeClient {
             .send()
             .await?;
 
-        let status = response.status();
-        debug_log(&format!("Received response status: {}", status));
-
-        let response = self.handle_response_error(response, "").await?;
+        // Use a dummy project key for error handling since we're not querying a specific project
+        let response = self
+            .handle_response_error(response, "")
+            .await?;
 
         // Get the response body as text first for better error messages
         let response_text = response.text().await?;
@@ -364,7 +360,7 @@ impl SonarQubeClient {
 
                 debug_log(&format!("Failed to parse response: {}", err));
                 Err(SonarError::Parse(format!(
-                    "Failed to parse response: {} - Response preview: {}",
+                    "Failed to parse projects response: {} - Response preview: {}",
                     err, preview
                 )))
             }
