@@ -2,6 +2,8 @@
 #
 # This hook was set by cargo-husky v1.5.0: https://github.com/rhysd/cargo-husky#readme
 #
+# This hook was set by cargo-husky v1.5.0: https://github.com/rhysd/cargo-husky#readme
+#
 # Pre-commit hook for the sonarqube-mcp-server project
 # This script runs before each commit to ensure code quality
 
