@@ -1,6 +1,6 @@
 use std::env;
-use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 use wiremock::MockServer;
 
 /// Load a JSON fixture file from the tests/fixtures directory

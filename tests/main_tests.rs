@@ -3,11 +3,14 @@ mod tests {
     use clap::Parser;
     use jsonrpsee_server::RpcModule;
     use jsonrpsee_types::ErrorObject;
+    #[cfg(unix)]
     use nix::libc;
     use sonarqube_mcp_server::mcp::utilities::ping;
     use sonarqube_mcp_server::{Args, display_info, setup_signal_handlers};
     use std::env;
     use std::sync::Once;
+    #[cfg(windows)]
+    use windows_sys::Win32::Foundation::HANDLE;
 
     static INIT: Once = Once::new();
 
