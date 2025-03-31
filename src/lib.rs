@@ -18,3 +18,5 @@
 //! incorporate SonarQube's code quality insights directly into their workflows.
 
 pub mod mcp;
+pub mod server;
+pub use server::{Args, build_rpc_router, display_info, setup_signal_handlers};

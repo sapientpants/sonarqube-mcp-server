@@ -1,20 +1,24 @@
 use crate::mcp::types::*;
 use crate::mcp::{PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION};
-use rpc_router::HandlerResult;
+use anyhow::Result;
 use serde_json::json;
+use tracing::Level;
 
 /// Handles the initialization request from an MCP client.
 ///
-/// This function is called when a client connects to the server and sends an initialization request.
-/// It provides information about the server capabilities, protocol version, and other metadata.
+/// This function processes the initial connection request from a client,
+/// verifying protocol compatibility and exchanging capability information.
 ///
-/// # Parameters
-/// * `_request` - The initialization request containing client capabilities and metadata
+/// # Arguments
+///
+/// * `_request` - The initialization request from the client
 ///
 /// # Returns
-/// * `HandlerResult<InitializeResult>` - Server information including capabilities and version
-pub async fn initialize(_request: InitializeRequest) -> HandlerResult<InitializeResult> {
-    let result = InitializeResult {
+///
+/// Returns a result containing the server's initialization response
+#[allow(dead_code)]
+pub async fn initialize(_request: InitializeRequest) -> Result<InitializeResult> {
+    let response = InitializeResult {
         protocol_version: PROTOCOL_VERSION.to_string(),
         server_info: Implementation {
             name: SERVER_NAME.to_string(),
@@ -37,7 +41,7 @@ pub async fn initialize(_request: InitializeRequest) -> HandlerResult<Initialize
         },
         instructions: None,
     };
-    Ok(result)
+    Ok(response)
 }
 
 /// Handles graceful shutdown when the server receives a SIGINT signal.
@@ -45,6 +49,7 @@ pub async fn initialize(_request: InitializeRequest) -> HandlerResult<Initialize
 /// This function is called when the client sends a shutdown request or
 /// when the server process receives an interrupt signal.
 /// It should clean up resources and close connections before exiting.
+#[allow(dead_code)]
 pub fn graceful_shutdown() {
     // shutdown server
 }
@@ -54,6 +59,7 @@ pub fn graceful_shutdown() {
 /// This function is called after the client has successfully initialized
 /// and is ready to receive messages from the server.
 /// It can be used to perform any post-initialization setup.
+#[allow(dead_code)]
 pub fn notifications_initialized() {}
 
 /// Handles the 'notifications/cancelled' event from the client.
@@ -63,22 +69,25 @@ pub fn notifications_initialized() {}
 ///
 /// # Parameters
 /// * `_params` - Information about which request was cancelled
+#[allow(dead_code)]
 pub fn notifications_cancelled(_params: CancelledNotification) {
     // cancel request
 }
 
-/// Handles the ping request from the client.
+/// Checks server availability.
 ///
-/// This function implements a simple ping mechanism that clients can use
-/// to check server connectivity and responsiveness.
+/// This handler function provides a simple way to check if the server
+/// is running and responsive.
 ///
-/// # Parameters
-/// * `_request` - The ping request (typically empty)
+/// # Arguments
+///
+/// * `_request` - Optional request parameters (currently unused)
 ///
 /// # Returns
-/// * `HandlerResult<EmptyResult>` - An empty response indicating success
-pub async fn ping(_request: PingRequest) -> HandlerResult<EmptyResult> {
-    Ok(EmptyResult {})
+///
+/// Returns a result indicating success or failure
+pub async fn ping(_request: Option<PingRequest>) -> Result<()> {
+    Ok(())
 }
 
 /// Handles a request to set the logging level.
@@ -90,26 +99,54 @@ pub async fn ping(_request: PingRequest) -> HandlerResult<EmptyResult> {
 ///
 /// # Returns
 /// * `HandlerResult<LoggingResponse>` - A response indicating whether the operation succeeded
+#[allow(dead_code)]
 pub async fn logging_set_level(_request: SetLevelRequest) -> HandlerResult<LoggingResponse> {
     Ok(LoggingResponse {})
 }
 
-/// Lists the root directories accessible to the MCP server.
+/// Lists available root directories.
 ///
-/// This function returns information about the available workspace roots
-/// that can be accessed by the client.
+/// This handler function returns a list of root directories that are
+/// accessible to the MCP server.
 ///
-/// # Parameters
-/// * `_request` - Optional parameters for filtering or limiting the results
+/// # Arguments
+///
+/// * `_request` - Optional request parameters (currently unused)
 ///
 /// # Returns
-/// * `HandlerResult<ListRootsResult>` - A list of available workspace roots with metadata
-pub async fn roots_list(_request: Option<ListRootsRequest>) -> HandlerResult<ListRootsResult> {
-    let response = ListRootsResult {
-        roots: vec![Root {
-            name: "my project".to_string(),
-            url: "file:///home/user/projects/my-project".to_string(),
-        }],
-    };
+///
+/// Returns a result containing the list of root directories
+#[allow(dead_code)]
+pub async fn roots_list(_request: Option<ListRootsRequest>) -> Result<ListRootsResult> {
+    let response = ListRootsResult { roots: vec![] };
     Ok(response)
+}
+
+/// Sets the logging level for the server.
+///
+/// This handler function updates the logging level used by the server's
+/// logging system. The level determines which log messages are emitted.
+///
+/// # Arguments
+///
+/// * `request` - The request containing the desired logging level
+///
+/// # Returns
+///
+/// Returns a result indicating success or failure
+pub async fn set_level(request: SetLevelRequest) -> Result<()> {
+    let level = match request.level.to_lowercase().as_str() {
+        "debug" => Level::DEBUG,
+        "info" => Level::INFO,
+        "warn" => Level::WARN,
+        "error" => Level::ERROR,
+        _ => Level::INFO,
+    };
+
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::FmtSubscriber::builder()
+            .with_max_level(level)
+            .finish(),
+    )
+    .map_err(|e| anyhow::anyhow!("Failed to set logging level: {}", e))
 }

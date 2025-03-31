@@ -1,4 +1,3 @@
-use rpc_router::RpcParams;
 use serde::{Deserialize, Serialize};
 
 /// Types for SonarQube API integration
@@ -250,17 +249,12 @@ pub struct Condition {
     pub status: String,
 }
 
-/// Request parameters for MCP sonarqube/get_metrics tool
-///
-/// Contains the parameters needed to request metrics data from the SonarQube
-/// API for a specific project. This structure supports both retrieving all
-/// available metrics and filtering to a specific set of metrics through the
-/// optional `metrics` field.
-#[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
+/// Request parameters for getting metrics for a SonarQube project
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SonarQubeMetricsRequest {
-    /// The unique key identifier for the SonarQube project
+    /// Key of the project to get metrics for
     pub project_key: String,
-    /// Optional list of specific metric keys to retrieve. If not provided, all available metrics will be returned.
+    /// Optional list of specific metrics to retrieve
     pub metrics: Option<Vec<String>>,
 }
 
@@ -295,202 +289,101 @@ pub struct MetricValue {
     pub best_value: Option<bool>,
 }
 
-/// Parameters for querying issues from the SonarQube API
-///
-/// This struct encapsulates all possible filter parameters that can be used when
-/// querying issues from the SonarQube API. It provides a comprehensive and type-safe
-/// way to build complex issue queries with various filtering criteria such as severity,
-/// status, creation date, and many others. The struct uses lifetimes to avoid unnecessary
-/// cloning of string references.
-#[derive(Debug, Clone, Default)]
-pub struct IssuesQueryParams<'a> {
-    /// The project key to fetch issues for (required)
-    pub project_key: &'a str,
-    /// Filter issues by severity levels (e.g., "BLOCKER", "CRITICAL", "MAJOR")
-    pub severities: Option<&'a [&'a str]>,
-    /// Filter issues by type (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
-    pub types: Option<&'a [&'a str]>,
-    /// Filter issues by status (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
-    pub statuses: Option<&'a [&'a str]>,
-    /// Filter issues by impact severity (e.g., "HIGH", "MEDIUM", "LOW")
-    pub impact_severities: Option<&'a [&'a str]>,
-    /// Filter issues by the software quality they impact (e.g., "MAINTAINABILITY", "RELIABILITY", "SECURITY")
-    pub impact_software_qualities: Option<&'a [&'a str]>,
-    /// If true, returns only issues assigned to the current authenticated user
-    pub assigned_to_me: Option<bool>,
-    /// Filter issues by assignee login names
-    pub assignees: Option<&'a [&'a str]>,
-    /// Filter issues by their author login names
-    pub authors: Option<&'a [&'a str]>,
-    /// Filter issues by code variant identifiers
-    pub code_variants: Option<&'a [&'a str]>,
-    /// Return issues created after this date (format: YYYY-MM-DD)
-    pub created_after: Option<&'a str>,
-    /// Return issues created before this date (format: YYYY-MM-DD)
-    pub created_before: Option<&'a str>,
-    /// Return issues created during a time span before now (e.g., "1m" for 1 month)
-    pub created_in_last: Option<&'a str>,
-    /// Filter issues by CWE (Common Weakness Enumeration) identifiers
-    pub cwe: Option<&'a [&'a str]>,
-    /// Filter issues by directories where the issues are located
-    pub directories: Option<&'a [&'a str]>,
-    /// Request additional facets in the response
-    pub facets: Option<&'a [&'a str]>,
-    /// Filter issues by file paths
-    pub files: Option<&'a [&'a str]>,
-    /// Filter issues by specific status values (different from 'statuses')
-    pub issue_statuses: Option<&'a [&'a str]>,
-    /// Filter issues by programming language
-    pub languages: Option<&'a [&'a str]>,
-    /// Filter issues by OWASP Top 10 category
-    pub owasp_top10: Option<&'a [&'a str]>,
-    /// Filter issues by OWASP Top 10 2021 category
-    pub owasp_top10_2021: Option<&'a [&'a str]>,
-    /// Filter issues by resolution status (e.g., "FIXED", "FALSE-POSITIVE")
-    pub resolutions: Option<&'a [&'a str]>,
-    /// If true, returns only resolved issues
-    pub resolved: Option<bool>,
-    /// Filter issues by rule keys
-    pub rules: Option<&'a [&'a str]>,
-    /// Filter issues by SANS Top 25 category
-    pub sans_top25: Option<&'a [&'a str]>,
-    /// Filter issues by SonarSource security category
-    pub sonarsource_security: Option<&'a [&'a str]>,
-    /// Filter issues by tags
-    pub tags: Option<&'a [&'a str]>,
-    /// Field to sort results by
-    pub sort_field: Option<&'a str>,
-    /// If true, sort ascending; if false, sort descending
-    pub asc: Option<bool>,
-    /// Page number for pagination
-    pub page: Option<u32>,
-    /// Number of issues per page
-    pub page_size: Option<u32>,
-}
-
-impl<'a> IssuesQueryParams<'a> {
-    /// Creates a new instance of `IssuesQueryParams` with the specified project key
-    ///
-    /// This constructor initializes a new query parameters object with the minimum
-    /// required parameter (project key) and sets all optional parameters to `None`.
-    /// Use this method to start building a query, then set additional filter parameters
-    /// as needed.
-    ///
-    /// # Arguments
-    ///
-    /// * `project_key` - The unique identifier key for the SonarQube project
-    ///
-    /// # Returns
-    ///
-    /// A new `IssuesQueryParams` instance with only the project key set
-    pub fn new(project_key: &'a str) -> Self {
-        Self {
-            project_key,
-            severities: None,
-            types: None,
-            statuses: None,
-            impact_severities: None,
-            impact_software_qualities: None,
-            assigned_to_me: None,
-            assignees: None,
-            authors: None,
-            code_variants: None,
-            created_after: None,
-            created_before: None,
-            created_in_last: None,
-            cwe: None,
-            directories: None,
-            facets: None,
-            files: None,
-            issue_statuses: None,
-            languages: None,
-            owasp_top10: None,
-            owasp_top10_2021: None,
-            resolutions: None,
-            resolved: None,
-            rules: None,
-            sans_top25: None,
-            sonarsource_security: None,
-            tags: None,
-            sort_field: None,
-            asc: None,
-            page: None,
-            page_size: None,
-        }
-    }
-}
-
-/// Request parameters for MCP sonarqube/get_issues tool
-///
-/// This struct defines the parameter structure for the MCP sonarqube/get_issues tool call.
-/// It mirrors the filter capabilities of the `IssuesQueryParams` struct but uses owned types
-/// instead of references, making it suitable for JSON serialization/deserialization in
-/// RPC contexts. It allows clients to specify a wide range of filtering criteria to narrow
-/// down which issues are returned from SonarQube projects.
-#[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
+/// Request parameters for getting issues for a SonarQube project
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SonarQubeIssuesRequest {
-    /// The project key to fetch issues for (required)
+    /// Key of the project to get issues for
     pub project_key: String,
-    /// Filter issues by severity levels (e.g., "BLOCKER", "CRITICAL", "MAJOR")
-    pub severities: Option<Vec<String>>,
-    /// Filter issues by type (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
-    pub types: Option<Vec<String>>,
-    /// Filter issues by status (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
-    pub statuses: Option<Vec<String>>,
-    /// Filter issues by impact severity (e.g., "HIGH", "MEDIUM", "LOW")
-    pub impact_severities: Option<Vec<String>>,
-    /// Filter issues by the software quality they impact (e.g., "MAINTAINABILITY", "RELIABILITY", "SECURITY")
-    pub impact_software_qualities: Option<Vec<String>>,
-    /// If true, returns only issues assigned to the current authenticated user
+    /// Filter issues assigned to the authenticated user
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub assigned_to_me: Option<bool>,
-    /// Filter issues by assignee login names
+    /// List of assignee logins to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub assignees: Option<Vec<String>>,
-    /// Filter issues by their author login names
+    /// List of issue authors to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub authors: Option<Vec<String>>,
-    /// Filter issues by code variant identifiers
+    /// List of code variant identifiers to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub code_variants: Option<Vec<String>>,
-    /// Return issues created after this date (format: YYYY-MM-DD)
+    /// Filter issues created after the given date (format: YYYY-MM-DD)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_after: Option<String>,
-    /// Return issues created before this date (format: YYYY-MM-DD)
+    /// Filter issues created before the given date (format: YYYY-MM-DD)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_before: Option<String>,
-    /// Return issues created during a time span before now (e.g., "1m" for 1 month)
+    /// Filter issues created during a time span before now (e.g., '1m' for 1 month)
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_in_last: Option<String>,
-    /// Filter issues by CWE (Common Weakness Enumeration) identifiers
+    /// List of CWE identifiers to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cwe: Option<Vec<String>>,
-    /// Filter issues by directories where the issues are located
+    /// List of directories to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub directories: Option<Vec<String>>,
-    /// Request additional facets in the response
+    /// List of facets to return in the response
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub facets: Option<Vec<String>>,
-    /// Filter issues by file paths
+    /// List of file paths to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<String>>,
-    /// Filter issues by specific status values (different from 'statuses')
+    /// List of impact severities to filter by (e.g., HIGH, MEDIUM, LOW)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impact_severities: Option<Vec<String>>,
+    /// List of software qualities to filter by (e.g., MAINTAINABILITY, RELIABILITY, SECURITY)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impact_software_qualities: Option<Vec<String>>,
+    /// List of issue statuses
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub issue_statuses: Option<Vec<String>>,
-    /// Filter issues by programming language
+    /// List of language keys to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub languages: Option<Vec<String>>,
-    /// Filter issues by OWASP Top 10 category
+    /// List of OWASP Top 10 categories to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub owasp_top10: Option<Vec<String>>,
-    /// Filter issues by OWASP Top 10 2021 category
+    /// List of OWASP Top 10 2021 categories to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub owasp_top10_2021: Option<Vec<String>>,
-    /// Filter issues by resolution status (e.g., "FIXED", "FALSE-POSITIVE")
+    /// Page number
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    /// Page size
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_size: Option<i32>,
+    /// List of issue resolutions to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub resolutions: Option<Vec<String>>,
-    /// If true, returns only resolved issues
+    /// Filter resolved issues
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub resolved: Option<bool>,
-    /// Filter issues by rule keys
+    /// List of rule keys to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<String>>,
-    /// Filter issues by SANS Top 25 category
+    /// List of SANS Top 25 categories to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sans_top25: Option<Vec<String>>,
-    /// Filter issues by SonarSource security category
+    /// List of issue severities to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severities: Option<Vec<String>>,
+    /// List of SonarSource security categories to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sonarsource_security: Option<Vec<String>>,
-    /// Filter issues by tags
-    pub tags: Option<Vec<String>>,
-    /// Field to sort results by
+    /// Field to sort by
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_field: Option<String>,
-    /// If true, sort ascending; if false, sort descending
+    /// Sort ascending if true, descending if false
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub asc: Option<bool>,
-    /// Page number for pagination
-    pub page: Option<u32>,
-    /// Number of issues per page
-    pub page_size: Option<u32>,
+    /// List of issue statuses to filter by (e.g., OPEN, CONFIRMED, RESOLVED, CLOSED)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub statuses: Option<Vec<String>>,
+    /// List of tags to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    /// List of issue types to filter by
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub types: Option<Vec<String>>,
 }
 
 /// Result for MCP sonarqube/get_issues tool
@@ -539,13 +432,10 @@ pub struct IssueInfo {
     pub status: String,
 }
 
-/// Request parameters for MCP sonarqube/get_quality_gate tool
-///
-/// Contains the parameters needed to request quality gate information
-/// for a specific SonarQube project.
-#[derive(Debug, Clone, Deserialize, Serialize, RpcParams)]
+/// Request parameters for getting quality gate status for a SonarQube project
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SonarQubeQualityGateRequest {
-    /// The unique key identifier for the SonarQube project
+    /// Key of the project to get quality gate status for
     pub project_key: String,
 }
 
@@ -621,16 +511,15 @@ pub struct ProjectsResponse {
     pub components: Vec<Project>,
 }
 
-/// Request parameters for MCP sonarqube/list_projects tool
-///
-/// This struct contains optional parameters that can be used to control pagination
-/// when listing SonarQube projects.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+/// Request parameters for listing SonarQube projects
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SonarQubeListProjectsRequest {
-    /// Page number for pagination (optional)
-    pub page: Option<u32>,
-    /// Number of items per page (optional)
-    pub page_size: Option<u32>,
+    /// Page number
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    /// Page size
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_size: Option<i32>,
 }
 
 /// Result type for the SonarQube list projects operation
@@ -644,4 +533,123 @@ pub struct SonarQubeListProjectsResult {
     pub page_size: u32,
     /// List of projects in the current page
     pub projects: Vec<Project>,
+}
+
+/// Parameters for querying issues from the SonarQube API
+#[derive(Debug, Clone, Default)]
+pub struct IssuesQueryParams<'a> {
+    /// The project key to fetch issues for (required)
+    pub project_key: &'a str,
+    /// Filter issues by severity levels (e.g., "BLOCKER", "CRITICAL", "MAJOR")
+    pub severities: Option<&'a [&'a str]>,
+    /// Filter issues by type (e.g., "BUG", "VULNERABILITY", "CODE_SMELL")
+    pub types: Option<&'a [&'a str]>,
+    /// Filter issues by status (e.g., "OPEN", "CONFIRMED", "RESOLVED", "CLOSED")
+    pub statuses: Option<&'a [&'a str]>,
+    /// If true, returns only issues assigned to the current authenticated user
+    pub assigned_to_me: Option<bool>,
+    /// Filter issues by assignee login names
+    pub assignees: Option<&'a [&'a str]>,
+    /// Filter issues by their author login names
+    pub authors: Option<&'a [&'a str]>,
+    /// Filter issues by code variant identifiers
+    pub code_variants: Option<&'a [&'a str]>,
+    /// Return issues created after this date (format: YYYY-MM-DD)
+    pub created_after: Option<&'a str>,
+    /// Return issues created before this date (format: YYYY-MM-DD)
+    pub created_before: Option<&'a str>,
+    /// Return issues created during a time span before now (e.g., "1m" for 1 month)
+    pub created_in_last: Option<&'a str>,
+    /// Filter issues by CWE (Common Weakness Enumeration) identifiers
+    pub cwe: Option<&'a [&'a str]>,
+    /// Filter issues by directories where the issues are located
+    pub directories: Option<&'a [&'a str]>,
+    /// Request additional facets in the response
+    pub facets: Option<&'a [&'a str]>,
+    /// Filter issues by file paths
+    pub files: Option<&'a [&'a str]>,
+    /// Filter issues by impact severity (e.g., "HIGH", "MEDIUM", "LOW")
+    pub impact_severities: Option<&'a [&'a str]>,
+    /// Filter issues by software quality impact (e.g., "MAINTAINABILITY", "RELIABILITY", "SECURITY")
+    pub impact_software_qualities: Option<&'a [&'a str]>,
+    /// Filter issues by specific status values (different from 'statuses')
+    pub issue_statuses: Option<&'a [&'a str]>,
+    /// Filter issues by programming language
+    pub languages: Option<&'a [&'a str]>,
+    /// Filter issues by OWASP Top 10 category
+    pub owasp_top10: Option<&'a [&'a str]>,
+    /// Filter issues by OWASP Top 10 2021 category
+    pub owasp_top10_2021: Option<&'a [&'a str]>,
+    /// Filter issues by resolution status (e.g., "FIXED", "FALSE-POSITIVE")
+    pub resolutions: Option<&'a [&'a str]>,
+    /// If true, returns only resolved issues
+    pub resolved: Option<bool>,
+    /// Filter issues by rule keys
+    pub rules: Option<&'a [&'a str]>,
+    /// Filter issues by SANS Top 25 category
+    pub sans_top25: Option<&'a [&'a str]>,
+    /// Filter issues by SonarSource security category
+    pub sonarsource_security: Option<&'a [&'a str]>,
+    /// Filter issues by tags
+    pub tags: Option<&'a [&'a str]>,
+    /// Field to sort results by
+    pub sort_field: Option<&'a str>,
+    /// If true, sort ascending; if false, sort descending
+    pub asc: Option<bool>,
+    /// Page number for pagination
+    pub page: Option<u32>,
+    /// Number of issues per page
+    pub page_size: Option<u32>,
+}
+
+impl<'a> IssuesQueryParams<'a> {
+    /// Creates a new instance of `IssuesQueryParams` with the specified project key
+    ///
+    /// This constructor initializes a new query parameters object with the minimum
+    /// required parameter (project key) and sets all optional parameters to `None`.
+    /// Use this method to start building a query, then set additional filter parameters
+    /// as needed.
+    ///
+    /// # Arguments
+    ///
+    /// * `project_key` - The unique identifier key for the SonarQube project
+    ///
+    /// # Returns
+    ///
+    /// A new `IssuesQueryParams` instance with only the project key set
+    pub fn new(project_key: &'a str) -> Self {
+        Self {
+            project_key,
+            severities: None,
+            types: None,
+            statuses: None,
+            assigned_to_me: None,
+            assignees: None,
+            authors: None,
+            code_variants: None,
+            created_after: None,
+            created_before: None,
+            created_in_last: None,
+            cwe: None,
+            directories: None,
+            facets: None,
+            files: None,
+            impact_severities: None,
+            impact_software_qualities: None,
+            issue_statuses: None,
+            languages: None,
+            owasp_top10: None,
+            owasp_top10_2021: None,
+            resolutions: None,
+            resolved: None,
+            rules: None,
+            sans_top25: None,
+            sonarsource_security: None,
+            tags: None,
+            sort_field: None,
+            asc: None,
+            page: None,
+            page_size: None,
+        }
+    }
 }

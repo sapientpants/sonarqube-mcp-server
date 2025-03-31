@@ -118,6 +118,7 @@ fn test_prompt_serialization() {
     let prompt = Prompt {
         name: "Test Prompt".to_string(),
         description: Some("A test prompt".to_string()),
+        messages: Some(vec![]),
         arguments: Some(vec![
             PromptArgument {
                 name: "arg1".to_string(),
@@ -230,17 +231,21 @@ fn test_call_tool_result_content_serialization() {
 
     // Test Image variant
     let image_content = CallToolResultContent::Image {
-        data: "base64data".to_string(),
-        mime_type: "image/png".to_string(),
+        data: b"base64data".to_vec(),
     };
+
+    // Serialize to JSON
     let json_str = serde_json::to_string(&image_content).unwrap();
+
+    // Deserialize back to struct
     let deserialized: CallToolResultContent = serde_json::from_str(&json_str).unwrap();
+
+    // Verify the roundtrip
     match deserialized {
-        CallToolResultContent::Image { data, mime_type } => {
-            assert_eq!(data, "base64data");
-            assert_eq!(mime_type, "image/png");
+        CallToolResultContent::Image { data } => {
+            assert_eq!(data, b"base64data".to_vec());
         }
-        _ => panic!("Expected Image variant"),
+        _ => panic!("Wrong variant"),
     }
 
     // Test Resource variant

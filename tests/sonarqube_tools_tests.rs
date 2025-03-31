@@ -1,8 +1,9 @@
 mod helpers;
 
+use jsonrpsee_server::RpcModule;
 use sonarqube_mcp_server::mcp::sonarqube::tools::{
-    register_sonarqube_tools, sonarqube_get_issues, sonarqube_get_metrics,
-    sonarqube_get_quality_gate, sonarqube_list_projects,
+    list_projects as sonarqube_list_projects, register_sonarqube_tools, sonarqube_get_issues,
+    sonarqube_get_metrics, sonarqube_get_quality_gate,
 };
 use sonarqube_mcp_server::mcp::sonarqube::types::*;
 use sonarqube_mcp_server::mcp::types::CallToolResultContent;
@@ -77,11 +78,11 @@ fn test_init_sonarqube_client_error_conditions() {
 
 #[test]
 fn test_register_sonarqube_tools() {
-    // Create a router builder
-    let builder = rpc_router::RouterBuilder::default();
+    // Create a router module
+    let mut router = RpcModule::new(());
 
     // Register SonarQube tools
-    let _builder = register_sonarqube_tools(builder);
+    register_sonarqube_tools(&mut router).unwrap();
 
     // We can't easily test the router functionality without mocking,
     // so we just verify that the function doesn't panic
@@ -171,7 +172,7 @@ async fn test_sonarqube_list_projects_no_client() {
         page: None,
         page_size: None,
     };
-    let result = sonarqube_list_projects(request).await;
+    let result = sonarqube_list_projects(Some(request)).await;
 
     // Since there's no global client initialized, this should error
     assert!(result.is_err());

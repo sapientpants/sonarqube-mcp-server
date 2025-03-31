@@ -1,5 +1,6 @@
 use crate::mcp::types::*;
-use rpc_router::HandlerResult;
+use anyhow::Result;
+use serde_json;
 
 /// Lists all resources available in the MCP server.
 ///
@@ -14,9 +15,7 @@ use rpc_router::HandlerResult;
 /// # Returns
 ///
 /// Returns a result containing the list of all available resources
-pub async fn resources_list(
-    _request: Option<ListResourcesRequest>,
-) -> HandlerResult<ListResourcesResult> {
+pub async fn resources_list(_request: Option<ListResourcesRequest>) -> Result<ListResourcesResult> {
     let resources: Vec<Resource> =
         serde_json::from_str(include_str!("./templates/resources.json")).unwrap();
     let response = ListResourcesResult {
@@ -39,7 +38,7 @@ pub async fn resources_list(
 /// # Returns
 ///
 /// Returns a result containing the content of the requested resource
-pub async fn resource_read(_request: ReadResourceRequest) -> HandlerResult<ReadResourceResult> {
+pub async fn resource_read(_request: ReadResourceRequest) -> Result<ReadResourceResult> {
     let response = ReadResourceResult {
         content: ResourceContent::Text {
             text: "2024-11-28T08:19:18.974368Z,INFO,main,this is message".to_string(),

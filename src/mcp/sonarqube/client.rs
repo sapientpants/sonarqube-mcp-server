@@ -41,11 +41,13 @@ impl SonarQubeClient {
     }
 
     /// Check if this client has an organization configured
+    #[allow(dead_code)]
     pub fn has_organization(&self) -> bool {
         self.organization.is_some()
     }
 
     /// Get the organization name if configured
+    #[allow(dead_code)]
     pub fn organization(&self) -> Option<&str> {
         self.organization.as_deref()
     }
