@@ -1,5 +1,5 @@
 use crate::mcp::JSONRPC_VERSION;
-use rpc_router::RpcParams;
+use crate::mcp::sonarqube::types::Project;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -19,7 +19,7 @@ use url::Url;
 /// These types form the backbone of the server's communication with MCP clients
 /// and provide the necessary structures for implementing the MCP specification.
 
-#[derive(Debug, Deserialize, Serialize, RpcParams, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 /// Request parameters for initializing a client connection
 ///
 /// This structure defines the parameters sent by a client to initialize
@@ -156,7 +156,7 @@ pub struct InitializeResult {
 /// This structure defines the parameters for requesting a list of
 /// resources from the MCP server. It supports pagination through
 /// the optional cursor parameter.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ListResourcesRequest {
     /// Optional cursor for pagination when fetching multiple pages of resources
     pub cursor: Option<String>,
@@ -167,7 +167,7 @@ pub struct ListResourcesRequest {
 /// This structure contains the response for a resources/list request,
 /// including a collection of resources and optional pagination information
 /// for fetching subsequent pages.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ListResourcesResult {
     /// Collection of resources available from the server
@@ -181,7 +181,7 @@ pub struct ListResourcesResult {
 ///
 /// This structure represents a single resource available from the MCP server,
 /// including its identification, descriptive information, and content type.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Resource {
     /// URI uniquely identifying this resource
@@ -192,6 +192,7 @@ pub struct Resource {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     /// MIME type of the resource content (e.g., "text/markdown", "application/json")
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
 }
 
@@ -199,7 +200,7 @@ pub struct Resource {
 ///
 /// This structure defines the parameters for requesting the content of
 /// a specific resource from the MCP server.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ReadResourceRequest {
     /// URI of the resource to retrieve
     pub uri: Url,
@@ -212,7 +213,7 @@ pub struct ReadResourceRequest {
 ///
 /// This structure contains the response for a resources/read request,
 /// with the actual content of the requested resource.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ReadResourceResult {
     /// Content of the requested resource
     pub content: ResourceContent,
@@ -222,7 +223,7 @@ pub struct ReadResourceResult {
 ///
 /// This enum represents different types of resource content that
 /// can be returned by the MCP server, including text and binary data.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type")]
 pub enum ResourceContent {
@@ -231,7 +232,7 @@ pub enum ResourceContent {
     Text { text: String },
     /// Binary resource content (base64-encoded)
     #[serde(rename = "binary")]
-    Binary { data: String, mime_type: String },
+    Binary { data: Vec<u8> },
 }
 
 // --------- prompt -------
@@ -240,7 +241,7 @@ pub enum ResourceContent {
 ///
 /// This structure represents a prompt available from the MCP server,
 /// including its name, description, and optional argument definitions.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Prompt {
     /// Unique name identifier for the prompt
     pub name: String,
@@ -250,6 +251,9 @@ pub struct Prompt {
     /// Optional list of arguments that this prompt can accept
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arguments: Option<Vec<PromptArgument>>,
+    /// Optional collection of messages associated with the prompt
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub messages: Option<Vec<PromptMessage>>,
 }
 
 /// Definition of an argument for a prompt
@@ -257,7 +261,7 @@ pub struct Prompt {
 /// This structure defines a single argument that can be provided to a
 /// prompt, including information about its name, description, and
 /// whether it's required.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PromptArgument {
     /// Name of the argument
     pub name: String,
@@ -274,7 +278,7 @@ pub struct PromptArgument {
 /// This structure defines the parameters for requesting a list of
 /// prompts from the MCP server, supporting pagination through
 /// the optional cursor parameter.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ListPromptsRequest {
     /// Optional cursor for pagination when fetching multiple pages of prompts
     pub cursor: Option<String>,
@@ -285,7 +289,7 @@ pub struct ListPromptsRequest {
 /// This structure contains the response for a prompts/list request,
 /// including a collection of prompts and optional pagination information
 /// for fetching subsequent pages.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ListPromptsResult {
     /// Collection of prompts available from the server
@@ -300,7 +304,7 @@ pub struct ListPromptsResult {
 /// This structure defines the parameters for requesting a specific
 /// prompt from the MCP server by its name, optionally providing
 /// values for the prompt's arguments.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct GetPromptRequest {
     /// Name of the prompt to retrieve
     pub name: String,
@@ -313,7 +317,7 @@ pub struct GetPromptRequest {
 ///
 /// This structure contains the response for a prompts/get request,
 /// with the prompt's description and optional message content.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PromptResult {
     /// Description of the prompt's purpose or content
     pub description: String,
@@ -326,7 +330,7 @@ pub struct PromptResult {
 ///
 /// This structure represents a message within a prompt, with a role
 /// (like "system", "user", or "assistant") and content.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PromptMessage {
     /// Role of the message sender (e.g., "system", "user", "assistant")
     pub role: String,
@@ -338,7 +342,7 @@ pub struct PromptMessage {
 ///
 /// This structure represents the content of a message within a prompt,
 /// specifying its type and text.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PromptMessageContent {
     /// Type of the message content (typically "text")
     #[serde(rename = "type")]
@@ -353,7 +357,7 @@ pub struct PromptMessageContent {
 ///
 /// This structure represents a tool that clients can call, including
 /// its name, description, and expected input parameters schema.
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Tool {
     /// Unique name identifier for the tool
@@ -370,7 +374,7 @@ pub struct Tool {
 /// This structure defines the expected input format for a tool,
 /// using a simplified JSON Schema format to describe the properties
 /// and required fields.
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ToolInputSchema {
     /// Type of the top-level schema (typically "object")
     #[serde(rename = "type")]
@@ -386,7 +390,7 @@ pub struct ToolInputSchema {
 /// This structure defines the schema for a single property within
 /// a tool's input parameters, including its type, possible values,
 /// and description.
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ToolInputSchemaProperty {
     /// Type of the property (e.g., "string", "number", "boolean")
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -406,7 +410,7 @@ pub struct ToolInputSchemaProperty {
 /// This structure defines the parameters for invoking a tool on the
 /// MCP server, including the tool name, arguments, and optional
 /// progress tracking metadata.
-#[derive(Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CallToolRequest {
     /// Parameters for the tool call
     pub params: ToolCallRequestParams,
@@ -419,7 +423,7 @@ pub struct CallToolRequest {
 ///
 /// This structure contains the specific parameters needed to invoke
 /// a tool, including its name and optional arguments.
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ToolCallRequestParams {
     /// Name of the tool to call
     pub name: String,
@@ -433,7 +437,7 @@ pub struct ToolCallRequestParams {
 /// This structure represents the response for a tools/call request,
 /// containing the content returned by the tool and an indication of
 /// whether the operation resulted in an error.
-#[derive(Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CallToolResult {
     /// Content returned by the tool
@@ -446,7 +450,7 @@ pub struct CallToolResult {
 ///
 /// This enum represents the different types of content that can be
 /// returned by a tool, including text, images, and resource references.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum CallToolResultContent {
     /// Textual content returned by the tool
@@ -454,7 +458,7 @@ pub enum CallToolResultContent {
     Text { text: String },
     /// Image content returned by the tool (base64-encoded)
     #[serde(rename = "image")]
-    Image { data: String, mime_type: String },
+    Image { data: Vec<u8> },
     /// Resource reference returned by the tool
     #[serde(rename = "resource")]
     Resource { resource: ResourceContent },
@@ -465,7 +469,7 @@ pub enum CallToolResultContent {
 /// This structure defines the parameters for requesting a list of
 /// tools from the MCP server, supporting pagination through
 /// the optional cursor parameter.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ListToolsRequest {
     /// Optional cursor for pagination when fetching multiple pages of tools
     pub cursor: Option<String>,
@@ -476,7 +480,7 @@ pub struct ListToolsRequest {
 /// This structure contains the response for a tools/list request,
 /// including a collection of tools and optional pagination information
 /// for fetching subsequent pages.
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ListToolsResult {
     /// Collection of tools available from the server
@@ -499,7 +503,7 @@ pub struct EmptyResult {}
 ///
 /// This structure defines the parameters for the ping operation,
 /// which is used to check server availability.
-#[derive(Deserialize, Serialize, RpcParams)]
+#[derive(Deserialize, Serialize)]
 pub struct PingRequest {}
 
 /// Notification that a request has been cancelled
@@ -549,7 +553,7 @@ pub struct Progress {
 /// This structure defines the parameters for setting the logging
 /// level on the server, allowing clients to control how verbose
 /// the server's logging output is.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SetLevelRequest {
     /// Logging level to set (e.g., "debug", "info", "warn", "error")
     pub level: String,
@@ -566,7 +570,7 @@ pub struct LoggingResponse {}
 ///
 /// This structure represents a notification containing a log
 /// message from the server, including its level, source, and data.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct LoggingMessageNotification {
     /// Level of the log message (e.g., "debug", "info", "warn", "error")
     pub level: String,
@@ -580,7 +584,7 @@ pub struct LoggingMessageNotification {
 ///
 /// This structure defines the parameters for requesting a list of
 /// root directories from the MCP server.
-#[derive(Debug, Deserialize, Serialize, RpcParams)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ListRootsRequest {}
 
 /// Result containing a list of root directories
@@ -622,10 +626,7 @@ pub struct JsonRpcResponse {
 }
 
 impl JsonRpcResponse {
-    /// Create a new JSON-RPC response with the given ID and result
-    ///
-    /// This method constructs a new JSON-RPC response with the appropriate
-    /// protocol version and the specified ID and result data.
+    #[allow(dead_code)]
     pub fn new(id: Value, result: Value) -> Self {
         JsonRpcResponse {
             jsonrpc: JSONRPC_VERSION.to_string(),
@@ -680,11 +681,7 @@ pub struct Error {
 }
 
 impl JsonRpcError {
-    /// Create a new JSON-RPC error response with the given details
-    ///
-    /// This method constructs a new JSON-RPC error response with the
-    /// appropriate protocol version and the specified ID, error code,
-    /// and error message.
+    #[allow(dead_code)]
     pub fn new(id: Value, code: i32, message: &str) -> Self {
         JsonRpcError {
             jsonrpc: JSONRPC_VERSION.to_string(),
@@ -697,3 +694,137 @@ impl JsonRpcError {
         }
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IssuesQueryParams {
+    pub project_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub asc: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assigned_to_me: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assignees: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authors: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code_variants: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_after: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_before: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_in_last: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cwe: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub directories: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub facets: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub files: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impact_severities: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impact_software_qualities: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub issue_statuses: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owasp_top10: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owasp_top10_2021: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_size: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolutions: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolved: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rules: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sans_top25: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severities: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sonarsource_security: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_field: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub statuses: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub types: Option<Vec<String>>,
+}
+
+/// Request parameters for listing SonarQube projects
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ListProjectsRequest {
+    /// Page number
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i32>,
+    /// Page size
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page_size: Option<i32>,
+}
+
+/// Result type for listing SonarQube projects
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct ListProjectsResult {
+    /// List of projects
+    pub projects: Vec<Project>,
+}
+
+/// Request parameters for getting metrics
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetMetricsRequest {
+    /// Project key
+    pub project_key: String,
+    /// Optional list of metrics to retrieve
+    pub metrics: Option<Vec<String>>,
+}
+
+/// Result type for getting metrics
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetMetricsResult {
+    /// Metrics data
+    pub metrics: Value,
+}
+
+/// Request parameters for getting issues
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetIssuesRequest {
+    /// Project key
+    pub project_key: String,
+    /// Optional filters
+    #[serde(flatten)]
+    pub filters: IssuesQueryParams,
+}
+
+/// Result type for getting issues
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetIssuesResult {
+    /// Issues data
+    pub issues: Value,
+}
+
+/// Request parameters for getting quality gate status
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetQualityGateRequest {
+    /// Project key
+    pub project_key: String,
+}
+
+/// Result type for getting quality gate status
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GetQualityGateResult {
+    /// Quality gate status
+    pub status: Value,
+}
+
+/// Generic handler result type
+#[allow(dead_code)]
+pub type HandlerResult<T> = Result<T, anyhow::Error>;

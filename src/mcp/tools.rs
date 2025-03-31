@@ -1,28 +1,9 @@
-use crate::mcp::sonarqube::tools::register_sonarqube_tools;
-use crate::mcp::types::*;
-use rpc_router::{Handler, HandlerResult, RouterBuilder};
+use anyhow::Result;
+use jsonrpsee_server::RpcModule;
+use jsonrpsee_types::ErrorObject;
+
+use crate::mcp::types::{ListToolsRequest, ListToolsResult, Tool};
 use serde_json;
-
-/// Registers all available MCP tools with the router.
-///
-/// This function initializes all tools that the MCP server provides, including
-/// the built-in tools_list tool and all domain-specific tools such as SonarQube tools.
-/// Each tool is registered with the router under its specific path following the
-/// naming convention of 'domain/action'.
-///
-/// # Arguments
-///
-/// * `router_builder` - The router builder instance to register tools with
-///
-/// # Returns
-///
-/// Returns the router builder with all tools registered
-pub fn register_tools(router_builder: RouterBuilder) -> RouterBuilder {
-    let builder = router_builder.append_dyn("tools/list", tools_list.into_dyn());
-
-    // Register SonarQube tools
-    register_sonarqube_tools(builder)
-}
 
 /// Lists all available tools that the MCP server provides.
 ///
@@ -37,11 +18,32 @@ pub fn register_tools(router_builder: RouterBuilder) -> RouterBuilder {
 /// # Returns
 ///
 /// Returns a result containing the list of all available tools
-pub async fn tools_list(_request: Option<ListToolsRequest>) -> HandlerResult<ListToolsResult> {
+pub async fn tools_list(_request: Option<ListToolsRequest>) -> Result<ListToolsResult> {
     let tools: Vec<Tool> = serde_json::from_str(include_str!("./templates/tools.json")).unwrap();
     let response = ListToolsResult {
         tools,
         next_cursor: None,
     };
     Ok(response)
+}
+
+/// Register all tools with the router.
+///
+/// This function initializes all tools that the MCP server provides,
+/// including tools for resource management, prompts, and SonarQube integration.
+///
+/// # Arguments
+///
+/// * `module` - The RPC module to register tools with
+///
+/// # Returns
+///
+/// Returns the RPC module with all tools registered
+pub fn register_tools(module: &mut RpcModule<()>) -> Result<()> {
+    module.register_async_method("tools/list", |_, _| async move {
+        tools_list(None)
+            .await
+            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
+    })?;
+    Ok(())
 }

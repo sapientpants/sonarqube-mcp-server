@@ -1,193 +1,187 @@
-use clap::Parser;
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+    use jsonrpsee_server::RpcModule;
+    use jsonrpsee_types::ErrorObject;
+    #[cfg(unix)]
+    use nix::libc;
+    use sonarqube_mcp_server::mcp::utilities::ping;
+    use sonarqube_mcp_server::{Args, display_info, setup_signal_handlers};
+    use std::env;
+    use std::sync::Once;
 
-// Import the Args struct from main.rs
-// We can't directly import it as it's not public, so we recreate it here
-#[derive(Parser, Debug, PartialEq)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// list resources
-    #[arg(long, default_value = "false")]
-    resources: bool,
-    /// list prompts
-    #[arg(long, default_value = "false")]
-    prompts: bool,
-    /// list tools
-    #[arg(long, default_value = "false")]
-    tools: bool,
-    /// start MCP server
-    #[arg(long, default_value = "false")]
-    mcp: bool,
-    /// output as json-rpc format
-    #[arg(long, default_value = "false")]
-    json: bool,
-}
+    static INIT: Once = Once::new();
 
-impl Args {
-    fn is_args_available(&self) -> bool {
-        self.prompts || self.resources || self.tools
+    fn setup() {
+        INIT.call_once(|| {
+            // Setup code that should run once for all tests
+            unsafe {
+                env::set_var("SONARQUBE_URL", "http://localhost:9000");
+                env::set_var("SONARQUBE_TOKEN", "dummy-token");
+            }
+        });
     }
-}
 
-#[test]
-fn test_args_default_values() {
-    // Parse empty arguments
-    let args = Args::parse_from(["program"]);
+    // Build a simple test router with only essential methods
+    fn build_test_router() -> RpcModule<()> {
+        let mut router = RpcModule::new(());
 
-    // Verify default values
-    assert!(!(args.resources));
-    assert!(!(args.prompts));
-    assert!(!(args.tools));
-    assert!(!(args.mcp));
-    assert!(!(args.json));
-}
+        // Register ping method for testing
+        router
+            .register_async_method("ping", |_, _| async move {
+                ping(None).await.map_err(|e| {
+                    ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
+                })
+            })
+            .unwrap();
 
-#[test]
-fn test_args_with_resources() {
-    // Parse with resources flag
-    let args = Args::parse_from(["program", "--resources"]);
+        router
+    }
 
-    // Verify values
-    assert!(args.resources);
-    assert!(!(args.prompts));
-    assert!(!(args.tools));
-    assert!(!(args.mcp));
-    assert!(!(args.json));
-}
+    #[test]
+    fn test_args_parsing() {
+        let args = Args::try_parse_from([
+            "test",
+            "--mcp",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        assert!(args.mcp);
+        assert!(!args.prompts);
+        assert!(!args.resources);
+        assert!(!args.tools);
+        assert!(!args.json);
+    }
 
-#[test]
-fn test_args_with_prompts() {
-    // Parse with prompts flag
-    let args = Args::parse_from(["program", "--prompts"]);
+    #[test]
+    fn test_args_available() {
+        let args = Args::try_parse_from([
+            "test",
+            "--prompts",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        assert!(args.is_args_available());
 
-    // Verify values
-    assert!(!(args.resources));
-    assert!(args.prompts);
-    assert!(!(args.tools));
-    assert!(!(args.mcp));
-    assert!(!(args.json));
-}
+        let args = Args::try_parse_from([
+            "test",
+            "--resources",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        assert!(args.is_args_available());
 
-#[test]
-fn test_args_with_tools() {
-    // Parse with tools flag
-    let args = Args::parse_from(["program", "--tools"]);
+        let args = Args::try_parse_from([
+            "test",
+            "--tools",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        assert!(args.is_args_available());
 
-    // Verify values
-    assert!(!(args.resources));
-    assert!(!(args.prompts));
-    assert!(args.tools);
-    assert!(!(args.mcp));
-    assert!(!(args.json));
-}
+        let args = Args::try_parse_from([
+            "test",
+            "--mcp",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        assert!(!args.is_args_available());
+    }
 
-#[test]
-fn test_args_with_mcp() {
-    // Parse with mcp flag
-    let args = Args::parse_from(["program", "--mcp"]);
+    #[test]
+    fn test_args_json_output() {
+        let args = Args::try_parse_from([
+            "test",
+            "--prompts",
+            "--json",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        assert!(args.prompts);
+        assert!(args.json);
+    }
 
-    // Verify values
-    assert!(!(args.resources));
-    assert!(!(args.prompts));
-    assert!(!(args.tools));
-    assert!(args.mcp);
-    assert!(!(args.json));
-}
+    #[tokio::test]
+    async fn test_display_info() {
+        // Test resources display
+        let args = Args::try_parse_from([
+            "test",
+            "--resources",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        display_info(&args).await;
 
-#[test]
-fn test_args_with_json() {
-    // Parse with json flag
-    let args = Args::parse_from(["program", "--json"]);
+        // Test prompts display
+        let args = Args::try_parse_from([
+            "test",
+            "--prompts",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        display_info(&args).await;
 
-    // Verify values
-    assert!(!(args.resources));
-    assert!(!(args.prompts));
-    assert!(!(args.tools));
-    assert!(!(args.mcp));
-    assert!(args.json);
-}
+        // Test tools display
+        let args = Args::try_parse_from([
+            "test",
+            "--tools",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        display_info(&args).await;
 
-#[test]
-fn test_args_with_multiple_flags() {
-    // Parse with multiple flags
-    let args = Args::parse_from(["program", "--resources", "--json", "--tools"]);
+        // Test JSON output
+        let args = Args::try_parse_from([
+            "test",
+            "--resources",
+            "--json",
+            "--sonarqube-url",
+            "http://localhost:9000",
+            "--sonarqube-token",
+            "dummy-token",
+        ])
+        .unwrap();
+        display_info(&args).await;
+    }
 
-    // Verify values
-    assert!(args.resources);
-    assert!(!(args.prompts));
-    assert!(args.tools);
-    assert!(!(args.mcp));
-    assert!(args.json);
-}
+    #[test]
+    fn test_build_rpc_router() {
+        let router = build_test_router();
 
-#[test]
-fn test_is_args_available() {
-    // Test with no flags
-    let args = Args {
-        resources: false,
-        prompts: false,
-        tools: false,
-        mcp: false,
-        json: false,
-    };
-    assert!(!(args.is_args_available()));
+        // Verify only our test methods are registered
+        assert!(router.method("ping").is_some());
+    }
 
-    // Test with resources flag
-    let args = Args {
-        resources: true,
-        prompts: false,
-        tools: false,
-        mcp: false,
-        json: false,
-    };
-    assert!(args.is_args_available());
-
-    // Test with prompts flag
-    let args = Args {
-        resources: false,
-        prompts: true,
-        tools: false,
-        mcp: false,
-        json: false,
-    };
-    assert!(args.is_args_available());
-
-    // Test with tools flag
-    let args = Args {
-        resources: false,
-        prompts: false,
-        tools: true,
-        mcp: false,
-        json: false,
-    };
-    assert!(args.is_args_available());
-
-    // Test with mcp flag (should not affect is_args_available)
-    let args = Args {
-        resources: false,
-        prompts: false,
-        tools: false,
-        mcp: true,
-        json: false,
-    };
-    assert!(!(args.is_args_available()));
-
-    // Test with json flag (should not affect is_args_available)
-    let args = Args {
-        resources: false,
-        prompts: false,
-        tools: false,
-        mcp: false,
-        json: true,
-    };
-    assert!(!(args.is_args_available()));
-
-    // Test with multiple flags
-    let args = Args {
-        resources: true,
-        prompts: true,
-        tools: true,
-        mcp: true,
-        json: true,
-    };
-    assert!(args.is_args_available());
+    #[tokio::test]
+    async fn test_signal_handlers() {
+        let running = setup_signal_handlers().await;
+        assert!(running.load(std::sync::atomic::Ordering::SeqCst));
+    }
 }

@@ -22,7 +22,11 @@ pub mod tools;
 pub mod types;
 pub mod utilities;
 
+#[allow(dead_code)]
 const JSONRPC_VERSION: &str = "2.0";
+#[allow(dead_code)]
 const PROTOCOL_VERSION: &str = "2024-11-05";
+#[allow(dead_code)]
 const SERVER_NAME: &str = "mcp-rs-template";
+#[allow(dead_code)]
 const SERVER_VERSION: &str = "0.1.0";
