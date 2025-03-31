@@ -190,7 +190,7 @@ mod tests {
     #[tokio::test]
     async fn test_signal_handlers() {
         // Just verify we get an AtomicBool back
-        let running = setup_signal_handlers();
+        let running = setup_signal_handlers().await;
         assert!(running.load(std::sync::atomic::Ordering::SeqCst));
     }
 }
