@@ -1,7 +1,7 @@
 {
   "errors": [
     {
-      "msg": "Project 'unknown-project' not found"
+      "msg": "Project not found: unknown-project"
     }
   ]
 }

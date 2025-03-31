@@ -26,6 +26,7 @@ anyhow = "1.0"
 ctrlc = "3.4"
 tempfile = "3.9"
 urlencoding = "2.1"
+nix = "0.27.1"
 
 [dev-dependencies]
 wiremock = "0.6"

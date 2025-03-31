@@ -10,36 +10,36 @@
   "issues": [
     {
       "key": "AYvY2lJ9_IXl7o1tUh_r",
-      "rule": "java:S1192",
-      "severity": "CRITICAL",
       "component": "test-project:src/main/java/com/example/App.java",
       "project": "test-project",
-      "line": 42,
-      "message": "Define a constant instead of duplicating this literal \"Error occurred\" 3 times.",
-      "type": "CODE_SMELL",
-      "status": "OPEN"
+      "rule": "java:S1134",
+      "severity": "CRITICAL",
+      "message": "Take the required action to fix the issue indicated by this comment.",
+      "status": "OPEN",
+      "creationDate": "2023-01-01T12:00:00+0000",
+      "type": "CODE_SMELL"
     },
     {
       "key": "AYvY2lJ9_IXl7o1tUh_s",
-      "rule": "java:S2095",
-      "severity": "MAJOR",
-      "component": "test-project:src/main/java/com/example/App.java",
+      "component": "test-project:src/main/java/com/example/Utils.java",
       "project": "test-project",
-      "line": 67,
-      "message": "Use try-with-resources or close this \"FileInputStream\" in a \"finally\" clause.",
-      "type": "BUG",
-      "status": "OPEN"
+      "rule": "java:S4144",
+      "severity": "MAJOR",
+      "message": "Update this method so that its implementation is not identical to line 42.",
+      "status": "OPEN",
+      "creationDate": "2023-01-01T12:00:00+0000",
+      "type": "BUG"
     },
     {
       "key": "AYvY2lJ9_IXl7o1tUh_t",
-      "rule": "java:S5852",
-      "severity": "BLOCKER",
-      "component": "test-project:src/main/java/com/example/Utils.java",
+      "component": "test-project:src/main/java/com/example/App.java",
       "project": "test-project",
-      "line": 23,
-      "message": "Use a regular expression with a reluctant quantifier instead of a greedy one.",
-      "type": "VULNERABILITY",
-      "status": "OPEN"
+      "rule": "java:S5042",
+      "severity": "CRITICAL",
+      "message": "Use a third party library to implement this cryptographic algorithm.",
+      "status": "OPEN",
+      "creationDate": "2023-01-01T12:00:00+0000",
+      "type": "VULNERABILITY"
     }
   ],
   "components": [
