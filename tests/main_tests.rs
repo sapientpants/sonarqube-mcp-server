@@ -179,12 +179,9 @@ mod tests {
         assert!(router.method("ping").is_some());
     }
 
-    // Skip signal handler tests since they send actual signals which terminate the process
-    #[ignore]
     #[tokio::test]
     async fn test_signal_handlers() {
-        // Just verify we get an AtomicBool back
-        let running = setup_signal_handlers();
+        let running = setup_signal_handlers().await;
         assert!(running.load(std::sync::atomic::Ordering::SeqCst));
     }
 

@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
     server::display_info(&args).await;
 
     // Setup signal handlers
-    let running = server::setup_signal_handlers();
+    let running = server::setup_signal_handlers().await;
 
     // Build the RPC router
     let router = server::build_rpc_router();

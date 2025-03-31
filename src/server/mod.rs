@@ -9,7 +9,7 @@ use jsonrpsee_types::error::ErrorObject;
 
 // Conditionally import Unix signal handling
 #[cfg(unix)]
-use tokio::signal::unix::{SignalKind, signal};
+pub use tokio::signal::unix::{SignalKind, signal};
 
 use tracing::info;
 
@@ -69,7 +69,7 @@ impl Args {
 
 // Conditionally define setup_signal_handlers
 #[cfg(unix)]
-async fn setup_signal_handlers() -> Arc<AtomicBool> {
+pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
@@ -93,7 +93,7 @@ async fn setup_signal_handlers() -> Arc<AtomicBool> {
 }
 
 #[cfg(not(unix))]
-async fn setup_signal_handlers() -> Arc<AtomicBool> {
+pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 

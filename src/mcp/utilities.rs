@@ -1,7 +1,7 @@
 use crate::mcp::types::*;
 use crate::mcp::{PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION};
-use serde_json::json;
 use anyhow::Result;
+use serde_json::json;
 use tracing::Level;
 
 /// Handles the initialization request from an MCP client.
@@ -118,9 +118,7 @@ pub async fn logging_set_level(_request: SetLevelRequest) -> HandlerResult<Loggi
 /// Returns a result containing the list of root directories
 #[allow(dead_code)]
 pub async fn roots_list(_request: Option<ListRootsRequest>) -> Result<ListRootsResult> {
-    let response = ListRootsResult {
-        roots: vec![],
-    };
+    let response = ListRootsResult { roots: vec![] };
     Ok(response)
 }
 

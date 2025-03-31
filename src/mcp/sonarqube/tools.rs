@@ -3,9 +3,8 @@ use std::sync::Arc;
 
 use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::types::{
-    IssuesQueryParams, SonarError, SonarQubeConfig,
-    SonarQubeMetricsRequest, SonarQubeIssuesRequest,
-    SonarQubeQualityGateRequest, SonarQubeListProjectsRequest,
+    IssuesQueryParams, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
+    SonarQubeListProjectsRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
 };
 use crate::mcp::types::{
     CallToolResult, CallToolResultContent, GetIssuesRequest, GetIssuesResult, GetMetricsRequest,
@@ -85,46 +84,30 @@ pub fn get_client() -> Result<&'static Arc<SonarQubeClient>, SonarError> {
 pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
     module.register_async_method("sonarqube/metrics", |params, _| async move {
         let request = params.parse::<SonarQubeMetricsRequest>()?;
-        sonarqube_get_metrics(request).await.map_err(|e| {
-            ErrorObject::owned(
-                -32603,
-                format!("Internal error: {}", e),
-                None::<()>,
-            )
-        })
+        sonarqube_get_metrics(request)
+            .await
+            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     module.register_async_method("sonarqube/issues", |params, _| async move {
         let request = params.parse::<SonarQubeIssuesRequest>()?;
-        sonarqube_get_issues(request).await.map_err(|e| {
-            ErrorObject::owned(
-                -32603,
-                format!("Internal error: {}", e),
-                None::<()>,
-            )
-        })
+        sonarqube_get_issues(request)
+            .await
+            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     module.register_async_method("sonarqube/quality_gate", |params, _| async move {
         let request = params.parse::<SonarQubeQualityGateRequest>()?;
-        sonarqube_get_quality_gate(request).await.map_err(|e| {
-            ErrorObject::owned(
-                -32603,
-                format!("Internal error: {}", e),
-                None::<()>,
-            )
-        })
+        sonarqube_get_quality_gate(request)
+            .await
+            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     module.register_async_method("sonarqube/list_projects", |params, _| async move {
         let request = params.parse::<SonarQubeListProjectsRequest>()?;
-        list_projects(Some(request)).await.map_err(|e| {
-            ErrorObject::owned(
-                -32603,
-                format!("Internal error: {}", e),
-                None::<()>,
-            )
-        })
+        list_projects(Some(request))
+            .await
+            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     Ok(())
@@ -292,7 +275,9 @@ pub async fn sonarqube_get_quality_gate(
 /// # Returns
 ///
 /// Returns a result containing the list of projects
-pub async fn list_projects(request: Option<SonarQubeListProjectsRequest>) -> Result<ListProjectsResult> {
+pub async fn list_projects(
+    request: Option<SonarQubeListProjectsRequest>,
+) -> Result<ListProjectsResult> {
     let client = get_client()?;
     let mut params = vec![];
     if let Some(req) = request {
