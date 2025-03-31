@@ -15,16 +15,16 @@
 
 set -e
 
+echo "=== Running cargo fmt ==="
+cargo fmt -- --check
+
+echo "=== Running cargo clippy ==="
+cargo clippy -- -D warnings
+
 echo "=== Running cargo build ==="
 cargo build --verbose
 
 echo "=== Running cargo test ==="
 cargo test --verbose
-
-echo "=== Running cargo clippy ==="
-cargo clippy -- -D warnings
-
-echo "=== Running cargo fmt ==="
-cargo fmt -- --check
 
 echo "✅ All checks passed! Proceeding with commit." 
