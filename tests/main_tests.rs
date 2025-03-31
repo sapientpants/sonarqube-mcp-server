@@ -9,8 +9,6 @@ mod tests {
     use sonarqube_mcp_server::{Args, display_info, setup_signal_handlers};
     use std::env;
     use std::sync::Once;
-    #[cfg(windows)]
-    use windows_sys::Win32::Foundation::HANDLE;
 
     static INIT: Once = Once::new();
 
@@ -183,15 +181,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_signal_handlers() {
-        let running = setup_signal_handlers().await;
-        assert!(running.load(std::sync::atomic::Ordering::SeqCst));
-    }
-
-    #[cfg(windows)]
-    #[ignore]
-    #[tokio::test]
-    async fn test_signal_handlers_windows() {
-        // Just verify we get an AtomicBool back
         let running = setup_signal_handlers().await;
         assert!(running.load(std::sync::atomic::Ordering::SeqCst));
     }
