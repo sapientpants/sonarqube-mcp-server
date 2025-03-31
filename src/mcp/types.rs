@@ -1,7 +1,7 @@
-use crate::mcp::JSONRPC_VERSION;
-use crate::mcp::sonarqube::types::Project;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use crate::mcp::JSONRPC_VERSION;
+use crate::mcp::sonarqube::types::Project;
 use std::collections::HashMap;
 use url::Url;
 

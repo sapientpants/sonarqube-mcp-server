@@ -6,7 +6,11 @@ use anyhow::Result;
 use clap::Parser;
 use jsonrpsee_server::{RpcModule, ServerBuilder, ServerHandle};
 use jsonrpsee_types::error::ErrorObject;
+
+// Conditionally import Unix signal handling
+#[cfg(unix)]
 use tokio::signal::unix::{SignalKind, signal};
+
 use tracing::info;
 
 use crate::mcp::prompts::{prompts_get, prompts_list};
@@ -63,8 +67,9 @@ impl Args {
     }
 }
 
-/// Sets up signal handlers for graceful shutdown
-pub fn setup_signal_handlers() -> Arc<AtomicBool> {
+// Conditionally define setup_signal_handlers
+#[cfg(unix)]
+async fn setup_signal_handlers() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
 
@@ -82,6 +87,21 @@ pub fn setup_signal_handlers() -> Arc<AtomicBool> {
                 r.store(false, Ordering::SeqCst);
             }
         }
+    });
+
+    running
+}
+
+#[cfg(not(unix))]
+async fn setup_signal_handlers() -> Arc<AtomicBool> {
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for Ctrl+C");
+        r.store(false, Ordering::SeqCst);
     });
 
     running
