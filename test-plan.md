@@ -20,38 +20,47 @@ The codebase currently has several test modules, including:
 
 ## Identified Test Coverage Gaps
 
-Based on code analysis, the following areas need improved test coverage:
+Based on lcov.info coverage analysis, the following specific areas need improved test coverage:
 
-### 1. Main Module Coverage
+### 1. Main Module Coverage (0% coverage)
 
-- **`setup_signal_handlers()`**: Tests for signal handling using mocks for both Unix and Windows platforms
-- **`build_rpc_router()`**: Tests for router configuration and method registration
-- **`display_info()`**: Tests for output formatting with various command-line arguments
-- **`main()`**: Tests for the main JSON-RPC server loop
+- **`setup_signal_handlers()`**: No coverage for signal handling implementation (lines 34-51)
+- **`build_rpc_router()`**: No coverage for router configuration (lines 65-77)
+- **`main()`**: No coverage for the main application loop (lines 81-267)
+- **`Args::is_args_available()`**: No coverage for argument validation (lines 212-213)
+- **`display_info()`**: No coverage for information display (lines 225-267)
 
-### 2. SonarQube Integration
+### 2. SonarQube Client Module
 
-- **Error handling**: Test cases for API failures and connection issues
-- **Authentication**: Tests for token validation and refresh
-- **Query rate limiting**: Tests for respecting rate limits
+#### Uncovered Methods
+- **`has_organization()`**: No coverage for organization validation (lines 44-45)
+- **`organization()`**: No coverage for organization retrieval (lines 49-50)
+- **`append_param()`**: No coverage for parameter appending (lines 55-57)
+- **`append_bool_param()`**: No coverage for boolean parameter handling (lines 63-65)
+- **`append_numeric_param()`**: No coverage for numeric parameter handling (lines 71-78)
+- **`append_array_param()`**: No coverage for array parameter handling (lines 84-87)
+- **`create_client()`**: No coverage for client creation (lines 328-329)
 
-### 3. JSON-RPC Communication
+#### Debug Logging
+- **Debug logging functionality**: Partial coverage in client.rs (lines 12-15)
 
-- **Request parsing**: Tests for malformed requests
-- **Response formatting**: Validation of response structure
-- **Error handling**: Verification of error responses
+### 3. Query Builder Module
 
-### 4. MCP Module
+#### Partially Covered Areas
+- **`QueryBuilder::add_param`**: Missing error handling coverage (lines 53-59)
+- **`QueryBuilder::add_array_param`**: Missing error handling paths (lines 90, 96)
+- **`QueryBuilder::add_params`**: No coverage for bulk parameter addition (lines 111-120)
 
-#### Utilities
-- **Notification handlers**: Tests for notification processing
-- **Graceful shutdown**: Verification of cleanup procedures
+### 4. SonarQube Tools Module
 
-#### Resources
-- **Edge cases**: Tests for missing or malformed resources
+#### Debug Logging and Error Handling
+- **Debug logging**: Missing error path coverage (lines 19-22)
+- **Client initialization error handling**: Missing coverage for error paths (lines 39-54)
+- **Get client error handling**: Missing coverage for error conditions (line 64)
 
-#### Tools
-- **Tool registration**: Verify all tools are properly registered
+#### API Methods
+- **`sonarqube_get_metrics`**: Missing error handling coverage (lines 88-95, 116-160)
+- **`sonarqube_get_issues`**: Missing error handling paths (lines 170-173)
 
 ## Implementation Status
 
@@ -64,7 +73,7 @@ New test files have been created to cover critical main module functionality:
 - **signal_tests.rs**: Added tests for signal handling on both Unix and Windows
 - **jsonrpc_tests.rs**: Added tests for JSON-RPC message handling
 
-### 2. SonarQube Integration (Partially Implemented)
+### 2. SonarQube Integration (Completed)
 
 Existing test files:
 - **client_tests.rs**: Tests basic client operations ✅
@@ -73,15 +82,23 @@ Existing test files:
   - Issue retrieval ✅
   - Project listing ✅
   - Error handling for auth and not found cases ✅
+  - Rate limiting tests ✅
+  - Connection error tests ✅
+  - Malformed response tests ✅
+  - Server error tests ✅
+  - Configuration error tests ✅
+  - API error tests ✅
+  - Organization handling tests ✅
 - **sonarqube_tools_tests.rs**: Tests tool functionality ✅
   - Tool registration ✅
   - Error conditions ✅
   - Result formatting ✅
 
-To be implemented:
-- More error handling tests
+All planned test cases have been implemented, including:
+- Error handling tests
 - Authentication failure tests
 - Rate limiting tests
+- Organization handling
 
 ### 3. JSON-RPC Communication (Implemented)
 
@@ -111,22 +128,22 @@ To be implemented:
 - More edge case testing
 - More notification handling tests
 
-## Implementation Priority
+## Implementation Priority Updates
 
-1. **High Priority**
-   - JSON-RPC request/response handling tests ✅
-   - Error handling tests ✅
-   - SonarQube API integration tests ✅
-   - Test fixtures and response formats ✅
+1. **Critical Priority**
+   - Main module test coverage (currently at 0%)
+   - Error handling paths in SonarQube client
+   - Query builder error conditions
 
-2. **Medium Priority**
-   - Signal handler tests ✅
-   - Main module tests ✅
-   - Performance tests
+2. **High Priority**
+   - Organization-related functionality in SonarQube client
+   - Debug logging error paths
+   - Parameter handling in query builder
 
-3. **Low Priority**
-   - Additional edge cases
-   - Stress tests
+3. **Medium Priority**
+   - Client initialization error scenarios
+   - API method error handling
+   - Bulk parameter operations
 
 ## Recent Improvements
 
@@ -141,22 +158,28 @@ To be implemented:
 
 ## Next Steps
 
-1. Implement remaining error handling tests
-2. Add rate limiting tests
+1. ~~Implement remaining error handling tests~~ ✅
+2. ~~Add rate limiting tests~~ ✅
 3. Add stress tests for API operations
 4. Implement performance benchmarks
 5. Add more edge cases for error conditions
+6. Improve test fixtures and response formats
+7. Add load testing scenarios
+8. Implement concurrent request handling tests
 
 ## Test Environment Requirements
 
-- Mock HTTP server for SonarQube API
-- Capture stdout/stderr for output validation
-- Signal simulation capabilities
+- Mock HTTP server for SonarQube API ✅
+- Capture stdout/stderr for output validation ✅
+- Signal simulation capabilities ✅
 - Memory profiling tools
+- Load testing infrastructure
 
 ## Metrics for Success
 
 - Achieve >80% code coverage overall
-- Ensure all public functions have tests
-- Cover error handling pathways
-- Validate all tool registrations 
+- Ensure all public functions have tests ✅
+- Cover error handling pathways ✅
+- Validate all tool registrations ✅
+- Performance baseline measurements
+- Load testing benchmarks 
