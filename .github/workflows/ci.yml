@@ -21,6 +21,12 @@ jobs:
         override: true
         components: rustfmt, clippy
         
+    - name: Format check
+      run: cargo fmt -- --check
+
+    - name: Clippy
+      run: cargo clippy -- -D warnings
+
     - name: Build
       run: cargo build --verbose
 
@@ -36,12 +42,7 @@ jobs:
         key: rust
         coverage-file: lcov.info
         dsn: ${{ secrets.DEEPSOURCE_DSN }}
-      
-    - name: Clippy
-      run: cargo clippy -- -D warnings
-      
-    - name: Format check
-      run: cargo fmt -- --check
+    
 
   test:
     strategy:

@@ -333,3 +333,204 @@ async fn test_list_projects_with_organization() {
     assert_eq!(project.key, "my-org-project");
     assert_eq!(project.name, "Organization Project");
 }
+
+#[tokio::test]
+async fn test_rate_limiting() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response with rate limit headers
+    Mock::given(method("GET"))
+        .and(path("/api/measures/component"))
+        .and(query_param("component", "test-project"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .set_body_string(r#"{"errors":[{"msg":"Rate limit exceeded"}]}"#)
+                .insert_header("X-RateLimit-Remaining", "0")
+                .insert_header("X-RateLimit-Reset", "60"),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None,
+    });
+
+    let result = client.get_metrics(&test_project_key(), &["ncloc"]).await;
+
+    match result {
+        Err(SonarError::Api(msg)) => {
+            assert!(msg.contains("Rate limit exceeded"));
+        }
+        _ => panic!(
+            "Expected Api error with rate limit message, got: {:?}",
+            result
+        ),
+    }
+}
+
+#[tokio::test]
+async fn test_connection_error() {
+    // Create client with non-existent server
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: "http://non.existent.server".to_string(),
+        token: mock_token(),
+        organization: None,
+    });
+
+    let result = client.get_metrics(&test_project_key(), &["ncloc"]).await;
+
+    match result {
+        Err(SonarError::Http(err)) => {
+            assert!(err.is_connect() || err.is_timeout());
+        }
+        _ => panic!(
+            "Expected Http error with connection error, got: {:?}",
+            result
+        ),
+    }
+}
+
+#[tokio::test]
+async fn test_malformed_response() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response with invalid JSON
+    Mock::given(method("GET"))
+        .and(path("/api/measures/component"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("invalid json"))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None,
+    });
+
+    let result = client.get_metrics(&test_project_key(), &["ncloc"]).await;
+
+    match result {
+        Err(SonarError::Parse(_)) => {}
+        _ => panic!("Expected Parse error, got: {:?}", result),
+    }
+}
+
+#[tokio::test]
+async fn test_server_error() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response with server error
+    Mock::given(method("GET"))
+        .and(path("/api/measures/component"))
+        .respond_with(
+            ResponseTemplate::new(500)
+                .set_body_string(r#"{"errors":[{"msg":"Internal server error"}]}"#),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None,
+    });
+
+    let result = client.get_metrics(&test_project_key(), &["ncloc"]).await;
+
+    match result {
+        Err(SonarError::Api(msg)) => {
+            assert!(msg.contains("Internal server error"));
+        }
+        _ => panic!(
+            "Expected Api error with server error message, got: {:?}",
+            result
+        ),
+    }
+}
+
+#[tokio::test]
+async fn test_config_error() {
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: "not-a-url".to_string(), // Invalid URL format should trigger config error
+        token: mock_token(),
+        organization: None,
+    });
+
+    let result = client.get_metrics(&test_project_key(), &["ncloc"]).await;
+
+    match result {
+        Err(SonarError::Http(err)) => {
+            assert!(err.to_string().contains("builder error"));
+        }
+        _ => panic!(
+            "Expected Http error with builder error message, got: {:?}",
+            result
+        ),
+    }
+}
+
+#[tokio::test]
+async fn test_api_error() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response with API error
+    Mock::given(method("GET"))
+        .and(path("/api/measures/component"))
+        .respond_with(
+            ResponseTemplate::new(400)
+                .set_body_string(r#"{"errors":[{"msg":"Invalid metric key: invalid_metric"}]}"#),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: None,
+    });
+
+    let result = client
+        .get_metrics(&test_project_key(), &["invalid_metric"])
+        .await;
+
+    match result {
+        Err(SonarError::Api(_)) => {}
+        _ => panic!("Expected Api error, got: {:?}", result),
+    }
+}
+
+#[tokio::test]
+async fn test_organization_handling() {
+    // Start a mock server
+    let mock_server = MockServer::start().await;
+
+    // Setup mock response for metrics endpoint with organization
+    Mock::given(method("GET"))
+        .and(path("/api/measures/component"))
+        .and(query_param("organization", "test-org"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_string(load_fixture("metrics_response.json")),
+        )
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let client = SonarQubeClient::new(SonarQubeConfig {
+        base_url: mock_base_url(&mock_server),
+        token: mock_token(),
+        organization: Some("test-org".to_string()),
+    });
+
+    let result = client.get_metrics(&test_project_key(), &["ncloc"]).await;
+    assert!(result.is_ok());
+}
