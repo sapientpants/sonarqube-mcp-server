@@ -60,6 +60,26 @@ fn test_init_sonarqube_client_error_conditions() {
         _ => panic!("Expected Config error for missing token"),
     }
 
+    // Test 3: Client Set Error
+    // ----------------------
+    // Set both URL and token
+    unsafe {
+        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
+    }
+
+    // Try to initialize client twice (should fail on second attempt)
+    let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
+    let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
+
+    // Verify error when trying to set client twice
+    assert!(result.is_err());
+    match result {
+        Err(SonarError::Config(msg)) => {
+            assert_eq!(msg, "Failed to set SonarQube client");
+        }
+        _ => panic!("Expected Config error for client set failure"),
+    }
+
     // Restore environment variables
     unsafe {
         env::remove_var(SONARQUBE_URL_ENV);
