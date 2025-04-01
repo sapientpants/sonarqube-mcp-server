@@ -24,9 +24,21 @@ static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
 static SONARQUBE_ORGANIZATION_ENV: &str = "SONARQUBE_ORGANIZATION";
 
 /// Global SonarQube client for tools to use
+///
+/// This global variable provides a singleton instance of the SonarQube client
+/// that can be accessed by all tools. It's initialized during server startup.
 pub static SONARQUBE_CLIENT: OnceCell<Arc<SonarQubeClient>> = OnceCell::new();
 
 /// Initialize the SonarQube client
+///
+/// This function creates and initializes a SonarQube client instance using
+/// environment variables. It sets up the client with the SonarQube server URL,
+/// authentication token, and optional organization.
+///
+/// # Returns
+///
+/// A result indicating success or error. An error is returned if required
+/// environment variables are missing or the client cannot be initialized.
 #[allow(dead_code)]
 pub fn init_sonarqube_client() -> Result<(), SonarError> {
     // Get environment variables
@@ -60,6 +72,14 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
 }
 
 /// Get the SonarQube client instance
+///
+/// This function retrieves the global SonarQube client instance.
+/// It should be called after the client has been initialized.
+///
+/// # Returns
+///
+/// A result containing a reference to the SonarQube client on success,
+/// or an error if the client has not been initialized.
 pub fn get_client() -> Result<&'static Arc<SonarQubeClient>, SonarError> {
     SONARQUBE_CLIENT
         .get()
@@ -239,6 +259,18 @@ pub async fn sonarqube_get_issues(request: SonarQubeIssuesRequest) -> Result<Cal
 /// # Returns
 ///
 /// Returns a result containing the quality gate status
+///
+/// This handler function fetches the quality gate status for a specific project
+/// from SonarQube. The quality gate represents the overall health of the project
+/// based on predefined quality criteria.
+///
+/// # Arguments
+///
+/// * `request` - The request containing the project key
+///
+/// # Returns
+///
+/// Returns a result containing the project's quality gate status
 pub async fn sonarqube_get_quality_gate(
     request: SonarQubeQualityGateRequest,
 ) -> Result<CallToolResult> {
@@ -275,6 +307,18 @@ pub async fn sonarqube_get_quality_gate(
 /// # Returns
 ///
 /// Returns a result containing the list of projects
+///
+/// This handler function fetches a list of all projects from the SonarQube instance
+/// that the authenticated user has access to. The results can be paginated and
+/// filtered by organization.
+///
+/// # Arguments
+///
+/// * `request` - Optional request containing pagination parameters and filters
+///
+/// # Returns
+///
+/// Returns a result containing the list of available projects
 pub async fn list_projects(
     request: Option<SonarQubeListProjectsRequest>,
 ) -> Result<ListProjectsResult> {
@@ -304,6 +348,19 @@ pub async fn list_projects(
 /// # Returns
 ///
 /// Returns a result containing the requested metrics
+///
+/// Legacy endpoint for getting metrics (deprecated).
+///
+/// This handler function is a legacy endpoint for fetching metrics.
+/// It provides backward compatibility with older clients.
+///
+/// # Arguments
+///
+/// * `_request` - The metrics request parameters
+///
+/// # Returns
+///
+/// Returns a result containing the requested metrics in the legacy format
 #[allow(dead_code)]
 pub async fn get_metrics(_request: GetMetricsRequest) -> Result<GetMetricsResult> {
     let response = GetMetricsResult {
@@ -323,6 +380,19 @@ pub async fn get_metrics(_request: GetMetricsRequest) -> Result<GetMetricsResult
 /// # Returns
 ///
 /// Returns a result containing the filtered issues
+///
+/// Legacy endpoint for getting issues (deprecated).
+///
+/// This handler function is a legacy endpoint for fetching issues.
+/// It provides backward compatibility with older clients.
+///
+/// # Arguments
+///
+/// * `_request` - The issues request parameters
+///
+/// # Returns
+///
+/// Returns a result containing the requested issues in the legacy format
 #[allow(dead_code)]
 pub async fn get_issues(_request: GetIssuesRequest) -> Result<GetIssuesResult> {
     let response = GetIssuesResult {
@@ -342,6 +412,19 @@ pub async fn get_issues(_request: GetIssuesRequest) -> Result<GetIssuesResult> {
 /// # Returns
 ///
 /// Returns a result containing the quality gate status
+///
+/// Legacy endpoint for getting quality gate status (deprecated).
+///
+/// This handler function is a legacy endpoint for fetching quality gate status.
+/// It provides backward compatibility with older clients.
+///
+/// # Arguments
+///
+/// * `_request` - The quality gate request parameters
+///
+/// # Returns
+///
+/// Returns a result containing the quality gate status in the legacy format
 #[allow(dead_code)]
 pub async fn get_quality_gate(_request: GetQualityGateRequest) -> Result<GetQualityGateResult> {
     let response = GetQualityGateResult {
@@ -351,6 +434,17 @@ pub async fn get_quality_gate(_request: GetQualityGateRequest) -> Result<GetQual
 }
 
 /// Convert a SonarQube project list to an MCP project list
+///
+/// This helper function transforms the native SonarQube API response format
+/// into the MCP server's format for project listings.
+///
+/// # Arguments
+///
+/// * `projects` - The projects response from the SonarQube API
+///
+/// # Returns
+///
+/// The formatted list of projects for the MCP response
 fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
     ListProjectsResult {
         projects: projects

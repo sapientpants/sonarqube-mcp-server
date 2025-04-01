@@ -1,3 +1,9 @@
+//! # Server Module
+//!
+//! This module implements the JSON-RPC server for the SonarQube MCP integration.
+//! It defines the server infrastructure, endpoint handlers, and signal handling
+//! for proper lifecycle management of the server process.
+
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::time::Duration;
@@ -19,9 +25,15 @@ use crate::mcp::tools::register_tools;
 use crate::mcp::types::{GetPromptRequest, ReadResourceRequest};
 
 /// Static tracker for whether we've recently received an initialize request
+///
+/// This global state is used to manage the server lifecycle and prevent
+/// premature termination during initialization.
 pub static INITIALIZED_RECENTLY: OnceCell<Arc<AtomicBool>> = OnceCell::new();
 
 /// Command line arguments for the server
+///
+/// This struct defines all command-line parameters supported by the SonarQube MCP server.
+/// It's used with the clap crate to parse arguments and environment variables.
 #[derive(Parser, Debug)]
 pub struct Args {
     /// SonarQube server URL
@@ -59,6 +71,8 @@ pub struct Args {
 
 impl Args {
     /// Check if any of the list arguments are available
+    ///
+    /// Returns true if any of the flags for listing resources, prompts, or tools is set.
     pub fn is_args_available(&self) -> bool {
         self.resources || self.prompts || self.tools
     }
@@ -170,11 +184,15 @@ pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
 ///
 /// This function creates and configures the RPC router that handles
 /// all incoming requests to the MCP server. It registers all available
-/// tools and their handlers.
+/// tools and methods including:
+/// - Lifecycle methods (initialize, initialized, shutdown, exit)
+/// - Resource management (list, read)
+/// - Prompts (list, get)
+/// - SonarQube tools (metrics, issues, quality gates, projects)
 ///
 /// # Returns
 ///
-/// Returns the configured RPC router
+/// Returns the configured RPC module
 pub fn build_rpc_router() -> RpcModule<()> {
     let mut router = RpcModule::new(());
 
@@ -276,11 +294,15 @@ pub fn build_rpc_router() -> RpcModule<()> {
     router
 }
 
-/// Displays server information and configuration.
+/// Display information about the server
 ///
-/// This function prints information about the server's configuration,
-/// including available resources, prompts, and tools. The output format
-/// can be controlled through command line arguments.
+/// Shows various information based on the command-line arguments:
+/// - Resources: Lists available documentation and template resources
+/// - Prompts: Lists available AI prompts
+/// - Tools: Lists available tools for interacting with SonarQube
+/// - MCP: Shows MCP configuration information
+///
+/// Output can be formatted as JSON if the `json` flag is set.
 ///
 /// # Arguments
 ///

@@ -14,10 +14,15 @@ use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::types::SonarQubeConfig;
 
 // Re-export the modules for backward compatibility
+/// Module containing MCP protocol implementation and related functionality
 pub mod mcp;
+/// Module defining the JSON-RPC server infrastructure and endpoints
 pub mod server;
 
 /// Command line arguments for the server
+///
+/// This struct defines all command-line parameters supported by the SonarQube MCP server.
+/// It's used with the clap crate to parse arguments and environment variables.
 #[derive(Parser, Debug)]
 pub struct Args {
     /// SonarQube server URL
@@ -55,6 +60,8 @@ pub struct Args {
 
 impl Args {
     /// Check if any of the list arguments are available
+    ///
+    /// Returns true if any of the flags for listing resources, prompts, or tools is set.
     pub fn is_args_available(&self) -> bool {
         self.resources || self.prompts || self.tools
     }
@@ -80,27 +87,46 @@ impl SonarQubeMcpServer {
     }
 }
 
-// Example of tool implementation with the RMCP SDK
+/// Request parameters for listing SonarQube projects
+///
+/// This struct defines the parameters for the SonarQube project listing tool.
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct ListProjectsRequest {
+    /// Optional page number for pagination
     #[schemars(description = "Optional page number")]
     pub page: Option<u32>,
+
+    /// Optional page size for pagination
     #[schemars(description = "Optional page size")]
     pub page_size: Option<u32>,
+
+    /// Optional organization override to specify a different organization than the default
     #[schemars(description = "Optional organization override")]
     pub organization: Option<String>,
 }
 
+/// Request parameters for fetching SonarQube issues
+///
+/// This struct defines the parameters for the SonarQube issues retrieval tool.
 #[derive(Debug, Deserialize, Serialize, schemars::JsonSchema)]
 pub struct GetIssuesRequest {
+    /// Project key identifier in SonarQube
     #[schemars(description = "Project key")]
     pub project_key: String,
+
+    /// Optional page number for pagination
     #[schemars(description = "Optional page number")]
     pub page: Option<u32>,
+
+    /// Optional page size for pagination
     #[schemars(description = "Optional page size")]
     pub page_size: Option<u32>,
+
+    /// Optional severity filter (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
     #[schemars(description = "Optional severity filter (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)")]
     pub severity: Option<String>,
+
+    /// Optional organization override to specify a different organization than the default
     #[schemars(description = "Optional organization override")]
     pub organization: Option<String>,
 }
@@ -258,15 +284,15 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-/// Displays server information and configuration.
+/// Display information about the server
 ///
-/// This function prints information about the server's configuration,
-/// including available resources, prompts, and tools. The output format
-/// can be controlled through command line arguments.
+/// Shows various information based on the command-line arguments:
+/// - Resources: Lists available documentation and template resources
+/// - Prompts: Lists available AI prompts
+/// - Tools: Lists available tools for interacting with SonarQube
+/// - MCP: Shows MCP configuration information
 ///
-/// # Arguments
-///
-/// * `args` - Command line arguments containing display preferences
+/// Output can be formatted as JSON if the `json` flag is set.
 pub async fn display_info(args: &Args) {
     info!("Starting SonarQube MCP server...");
     info!("Using the official RMCP SDK for MCP communication");
