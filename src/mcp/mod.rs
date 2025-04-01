@@ -15,7 +15,10 @@
 //! - `tools`: Registers and exposes tools to MCP clients
 //! - `types`: Defines data structures used throughout the server
 //! - `utilities`: Provides helper functions for server operation
+//! - `lifecycle`: Handles MCP protocol lifecycle such as initialization
 
+/// Module for handling MCP protocol lifecycle
+pub mod lifecycle;
 /// Module for managing and exposing prompts to MCP clients
 pub mod prompts;
 /// Module for handling resource-related operations and endpoints
@@ -39,8 +42,8 @@ const PROTOCOL_VERSION: &str = "2024-11-05";
 
 /// Name of the server implementation
 #[allow(dead_code)]
-const SERVER_NAME: &str = "mcp-rs-template";
+const SERVER_NAME: &str = "sonarqube-mcp-server";
 
 /// Version of the server implementation
 #[allow(dead_code)]
-const SERVER_VERSION: &str = "0.1.0";
+const SERVER_VERSION: &str = "0.2.0";

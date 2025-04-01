@@ -22,7 +22,7 @@ use url::Url;
 /// This structure contains the information needed to establish a connection
 /// between a client and the MCP server, including protocol version,
 /// capabilities, and client implementation details.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct InitializeRequest {
     /// Protocol version the client implements
     #[serde(rename = "protocolVersion")]
@@ -41,7 +41,7 @@ pub struct InitializeRequest {
 /// This structure defines the capabilities that the server supports and can
 /// expose to clients, including text handling, resources, tools, and other
 /// experimental features.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerCapabilities {
     /// Configuration for text-related capabilities
@@ -103,7 +103,7 @@ pub struct ListRootsRequest {}
 /// This structure defines which resource-related capabilities
 /// are supported by the server, such as retrieving and listing
 /// available resources.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ResourcesCapabilities {
     /// Whether the server supports getting resources
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -118,7 +118,7 @@ pub struct ResourcesCapabilities {
 /// This structure defines which tool-related capabilities
 /// are supported by the server, such as calling tools and
 /// listing available tools.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ToolsCapabilities {
     /// Whether the server supports invoking tools
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -179,7 +179,7 @@ pub struct Implementation {
 /// This structure is sent to the client after a successful initialization
 /// request, providing information about the server's capabilities,
 /// version, and other important metadata.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct InitializeResult {
     /// The MCP protocol version this server implements

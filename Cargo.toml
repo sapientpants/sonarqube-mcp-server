@@ -33,6 +33,10 @@ jsonrpsee-server = { version = "0.21" }
 jsonrpsee-types = { version = "0.21" }
 tracing = "0.1"
 tracing-subscriber = "0.3"
+# Official MCP SDK
+rmcp = { git = "https://github.com/modelcontextprotocol/rust-sdk", branch = "main", features = ["server", "transport-io", "macros"] }
+# JSON Schema support for RMCP
+schemars = "0.8"
 
 [dev-dependencies]
 wiremock = "0.6"
