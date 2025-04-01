@@ -67,8 +67,17 @@ impl Args {
     }
 }
 
-// Conditionally define setup_signal_handlers
 #[cfg(unix)]
+/// Sets up signal handlers for Unix systems.
+///
+/// This function sets up handlers for SIGTERM and SIGINT signals on Unix systems.
+/// When either signal is received, it will set a flag indicating that the server
+/// should shut down gracefully.
+///
+/// # Returns
+///
+/// Returns an atomic boolean wrapped in an Arc that will be set to false when
+/// a termination signal is received.
 pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -93,6 +102,16 @@ pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
 }
 
 #[cfg(not(unix))]
+/// Sets up signal handlers for non-Unix systems.
+///
+/// This function sets up a handler for Ctrl+C (SIGINT) on non-Unix systems.
+/// When the signal is received, it will set a flag indicating that the server
+/// should shut down gracefully.
+///
+/// # Returns
+///
+/// Returns an atomic boolean wrapped in an Arc that will be set to false when
+/// a termination signal is received.
 pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -206,7 +225,15 @@ pub async fn start_server(addr: SocketAddr) -> Result<ServerHandle> {
     Ok(handle)
 }
 
-/// Displays server information
+/// Displays server information and configuration.
+///
+/// This function prints information about the server's configuration,
+/// including available resources, prompts, and tools. The output format
+/// can be controlled through command line arguments.
+///
+/// # Arguments
+///
+/// * `args` - Command line arguments containing display preferences
 pub async fn display_info(args: &Args) {
     info!("Starting SonarQube MCP server...");
     info!("Listening on {}:{}", args.host, args.port);

@@ -3,12 +3,12 @@ use std::sync::Arc;
 
 use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::types::{
-    IssuesQueryParams, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
+    IssuesQueryParams, ProjectsResponse, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
     SonarQubeListProjectsRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
 };
 use crate::mcp::types::{
     CallToolResult, CallToolResultContent, GetIssuesRequest, GetIssuesResult, GetMetricsRequest,
-    GetMetricsResult, GetQualityGateRequest, GetQualityGateResult, ListProjectsResult,
+    GetMetricsResult, GetQualityGateRequest, GetQualityGateResult, ListProjectsResult, Project,
 };
 use anyhow::Result;
 use jsonrpsee_server::RpcModule;
@@ -290,10 +290,7 @@ pub async fn list_projects(
     }
 
     let projects = client.list_projects(None, None, None).await?;
-    let response = ListProjectsResult {
-        projects: projects.components,
-    };
-    Ok(response)
+    Ok(convert_projects(projects))
 }
 
 /// Gets metrics for a SonarQube project.
@@ -351,4 +348,18 @@ pub async fn get_quality_gate(_request: GetQualityGateRequest) -> Result<GetQual
         status: Value::Null,
     };
     Ok(response)
+}
+
+/// Convert a SonarQube project list to an MCP project list
+fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
+    ListProjectsResult {
+        projects: projects
+            .components
+            .into_iter()
+            .map(|p| Project {
+                name: p.name,
+                key: p.key,
+            })
+            .collect(),
+    }
 }

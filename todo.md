@@ -12,24 +12,24 @@
 ## Minor Issues
 
 ### Documentation
-- [ ] **Undocumented public items** (RS-D1001)
+- [x] **Undocumented public items** (RS-D1001)
   - Add documentation for public items in:
-    - `src/server/mod.rs:95`
-    - `src/server/mod.rs:70`
-    - `src/mcp/types.rs:698`
-    - `src/mcp/types.rs:684`
-    - `src/mcp/types.rs:629`
-    - `src/main.rs:8`
-    - `src/lib.rs:21`
-    - `src/mcp/types.rs:67`
-    - `src/mcp/types.rs:41`
-    - `src/mcp/types.rs:77`
-    - `src/mcp/mod.rs:23`
-    - `src/mcp/mod.rs:22`
-    - `src/mcp/mod.rs:21`
-    - `src/mcp/mod.rs:20`
-    - `src/mcp/mod.rs:19`
-    - `src/lib.rs:20`
+    - `src/server/mod.rs:95` ✅
+    - `src/server/mod.rs:70` ✅
+    - `src/mcp/types.rs:698` ✅
+    - `src/mcp/types.rs:684` ✅
+    - `src/mcp/types.rs:629` ✅
+    - `src/main.rs:8` ✅
+    - `src/lib.rs:21` ✅
+    - `src/mcp/types.rs:67` ✅
+    - `src/mcp/types.rs:41` ✅
+    - `src/mcp/types.rs:77` ✅
+    - `src/mcp/mod.rs:23` ✅
+    - `src/mcp/mod.rs:22` ✅
+    - `src/mcp/mod.rs:21` ✅
+    - `src/mcp/mod.rs:20` ✅
+    - `src/mcp/mod.rs:19` ✅
+    - `src/lib.rs:20` ✅
 
 ### Bug Risk
 - [x] **Array-expression with zero length** (RS-W1096)
