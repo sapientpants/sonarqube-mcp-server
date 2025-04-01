@@ -98,6 +98,11 @@ pub struct LoggingResponse {}
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListRootsRequest {}
 
+/// Resource capabilities configuration
+///
+/// This structure defines which resource-related capabilities
+/// are supported by the server, such as retrieving and listing
+/// available resources.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResourcesCapabilities {
     /// Whether the server supports getting resources
@@ -108,6 +113,11 @@ pub struct ResourcesCapabilities {
     pub list: Option<bool>,
 }
 
+/// Tools capabilities configuration
+///
+/// This structure defines which tool-related capabilities
+/// are supported by the server, such as calling tools and
+/// listing available tools.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ToolsCapabilities {
     /// Whether the server supports invoking tools

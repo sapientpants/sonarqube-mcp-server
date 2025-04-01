@@ -4,7 +4,9 @@
 //! It handles JSON-RPC communication with clients, command-line argument parsing, and
 //! initializes the server components.
 
+/// Module containing MCP protocol implementation and related functionality
 mod mcp;
+/// Module defining the JSON-RPC server infrastructure and endpoints
 pub mod server;
 
 use anyhow::Result;

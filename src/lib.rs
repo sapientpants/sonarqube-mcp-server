@@ -17,6 +17,8 @@
 //! This integration enables IDE plugins, CI/CD tools, and other clients to
 //! incorporate SonarQube's code quality insights directly into their workflows.
 
+/// Module containing MCP protocol implementation and related functionality
 pub mod mcp;
+/// Module defining the JSON-RPC server infrastructure and endpoints
 pub mod server;
 pub use server::{Args, build_rpc_router, display_info, setup_signal_handlers};
