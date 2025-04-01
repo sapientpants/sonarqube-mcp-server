@@ -2,7 +2,7 @@ use crate::mcp::types::*;
 use crate::mcp::{PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION};
 use anyhow::Result;
 use serde_json::json;
-use tracing::{debug, info};
+use tracing::debug;
 
 /// Handles the initialization request from an MCP client.
 ///
@@ -45,20 +45,6 @@ pub fn graceful_shutdown() {
 pub async fn roots_list(_request: Option<ListRootsRequest>) -> Result<ListRootsResult> {
     let response = ListRootsResult { roots: vec![] };
     Ok(response)
-}
-
-/// Sets the logging level for the server.
-///
-/// # Arguments
-///
-/// * `request` - The request containing the desired log level
-///
-/// # Returns
-///
-/// Returns a result indicating success or failure
-pub async fn set_level(request: SetLevelRequest) -> Result<()> {
-    info!("Setting log level to {}", request.level);
-    Ok(())
 }
 
 /// Sends an initialized notification.

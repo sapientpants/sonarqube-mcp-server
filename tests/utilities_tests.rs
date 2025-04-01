@@ -1,6 +1,5 @@
 mod helpers;
 
-use sonarqube_mcp_server::mcp::types::*;
 use sonarqube_mcp_server::mcp::utilities::*;
 
 #[tokio::test]
@@ -10,15 +9,6 @@ async fn test_initialize() {
     assert!(result_obj.contains_key("name"));
     assert!(result_obj.contains_key("version"));
     assert!(result_obj.contains_key("protocol"));
-}
-
-#[tokio::test]
-async fn test_set_level() {
-    let request = SetLevelRequest {
-        level: "debug".to_string(),
-    };
-    let result = set_level(request).await;
-    assert!(result.is_ok());
 }
 
 #[tokio::test]

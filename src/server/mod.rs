@@ -17,8 +17,7 @@ use crate::mcp::prompts::{prompts_get, prompts_list};
 use crate::mcp::resources::{resource_read, resources_list};
 use crate::mcp::sonarqube::tools::register_sonarqube_tools;
 use crate::mcp::tools::register_tools;
-use crate::mcp::types::{GetPromptRequest, ReadResourceRequest, SetLevelRequest};
-use crate::mcp::utilities::set_level;
+use crate::mcp::types::{GetPromptRequest, ReadResourceRequest};
 
 /// Command line arguments for the server
 #[derive(Parser, Debug)]
@@ -137,16 +136,6 @@ pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
 /// Returns the configured RPC router
 pub fn build_rpc_router() -> RpcModule<()> {
     let mut router = RpcModule::new(());
-
-    // Register core methods
-    router
-        .register_async_method("set_level", |params, _| async move {
-            let request = params.parse::<SetLevelRequest>()?;
-            set_level(request).await.map_err(|e| {
-                ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
-            })
-        })
-        .unwrap();
 
     // Register resource methods
     router

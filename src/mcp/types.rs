@@ -562,17 +562,6 @@ pub struct Progress {
     pub total: i32,
 }
 
-/// Request parameters for setting logging level
-///
-/// This structure defines the parameters for setting the logging
-/// level on the server, allowing clients to control how verbose
-/// the server's logging output is.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct SetLevelRequest {
-    /// Logging level to set (e.g., "debug", "info", "warn", "error")
-    pub level: String,
-}
-
 /// Notification containing a logging message
 ///
 /// This structure represents a notification containing a log

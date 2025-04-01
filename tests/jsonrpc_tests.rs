@@ -6,7 +6,7 @@ mod tests {
     use sonarqube_mcp_server::mcp::tools::register_tools;
     use sonarqube_mcp_server::mcp::types::*;
     use sonarqube_mcp_server::mcp::utilities::{
-        notifications_cancelled, notifications_initialized, set_level,
+        notifications_cancelled, notifications_initialized,
     };
 
     // Create a simple router for testing
@@ -149,14 +149,5 @@ mod tests {
         let mut module = RpcModule::new(());
         register_tools(&mut module).unwrap();
         notifications_cancelled().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_logging_set_level() {
-        let request = SetLevelRequest {
-            level: "debug".to_string(),
-        };
-        let result = set_level(request).await.unwrap();
-        assert_eq!(result, ());
     }
 }
