@@ -103,7 +103,7 @@ pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
             .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
-    module.register_async_method("sonarqube/list_projects", |params, _| async move {
+    module.register_async_method("sonarqube/projects", |params, _| async move {
         let request = params.parse::<SonarQubeListProjectsRequest>()?;
         list_projects(Some(request))
             .await

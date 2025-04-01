@@ -1,6 +1,6 @@
 [
   {
-    "name": "sonarqube_get_metrics",
+    "name": "sonarqube/metrics",
     "description": "Get metrics for a SonarQube project",
     "inputSchema": {
       "type": "object",
@@ -20,7 +20,7 @@
     }
   },
   {
-    "name": "sonarqube_get_issues",
+    "name": "sonarqube/issues",
     "description": "Get issues for a SonarQube project",
     "inputSchema": {
       "type": "object",
@@ -156,7 +156,7 @@
     }
   },
   {
-    "name": "sonarqube_get_quality_gate",
+    "name": "sonarqube/quality_gate",
     "description": "Get quality gate status for a SonarQube project",
     "inputSchema": {
       "type": "object",
@@ -172,7 +172,7 @@
     }
   },
   {
-    "name": "sonarqube_list_projects",
+    "name": "sonarqube/projects",
     "description": "List all projects in SonarQube. Result will be a list of project_name: project_key pairs.",
     "inputSchema": {
       "type": "object",
