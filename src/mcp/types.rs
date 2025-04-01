@@ -86,12 +86,6 @@ pub struct Project {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EmptyResult {}
 
-/// Ping request type
-///
-/// Used for health check requests to verify server availability.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PingRequest {}
-
 /// Logging response type
 ///
 /// Used to acknowledge logging-related operations.
@@ -537,14 +531,8 @@ pub struct ListToolsResult {
 /// This structure represents a notification sent to inform that
 /// a particular request has been cancelled, optionally including
 /// a reason for the cancellation.
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CancelledNotification {
-    /// ID of the request that was cancelled
-    pub request_id: String,
-    /// Optional reason for the cancellation
-    pub reason: Option<String>,
-}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CancelledNotification {}
 
 /// Parameters for tracking progress of operations
 ///
@@ -924,4 +912,5 @@ pub struct GetQualityGateResult {
 ///
 /// This type alias defines the standard result type used by request handlers,
 /// wrapping the success type T in a Result with anyhow::Error as the error type.
+#[allow(dead_code)]
 pub type HandlerResult<T> = Result<T, anyhow::Error>;

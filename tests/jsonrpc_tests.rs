@@ -1,23 +1,22 @@
 #[cfg(test)]
 mod tests {
-    use jsonrpsee_server::RpcModule;
+    use jsonrpsee_core::server::RpcModule;
     use jsonrpsee_types::ErrorObject;
     use serde_json::{Value, json};
-    use sonarqube_mcp_server::mcp::types::{CancelledNotification, JsonRpcError};
+    use sonarqube_mcp_server::mcp::tools::register_tools;
+    use sonarqube_mcp_server::mcp::types::*;
     use sonarqube_mcp_server::mcp::utilities::{
-        notifications_cancelled, notifications_initialized, ping,
+        notifications_cancelled, notifications_initialized, set_level,
     };
 
-    // Create a simple router for testing that only registers the ping method
+    // Create a simple router for testing
     fn build_test_router() -> RpcModule<()> {
         let mut router = RpcModule::new(());
 
-        // Register ping method for testing
+        // Register test method
         router
-            .register_async_method("ping", |_, _| async move {
-                ping(None).await.map_err(|e| {
-                    ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
-                })
+            .register_async_method("test", |_, _| async move {
+                Ok::<_, ErrorObject<'static>>(json!({"result": "success"}))
             })
             .unwrap();
 
@@ -29,7 +28,7 @@ mod tests {
         let router = build_test_router();
 
         // Test valid request with empty params - using a tuple since () doesn't implement ToRpcParams
-        let response: Result<Value, _> = router.call("ping", (json!({}),)).await;
+        let response: Result<Value, _> = router.call("test", (json!({}),)).await;
         assert!(response.is_ok());
 
         // Test invalid method - use a method name that isn't registered
@@ -38,19 +37,19 @@ mod tests {
         assert!(response.is_err());
     }
 
-    #[test]
-    fn test_notifications_initialized() {
+    #[tokio::test]
+    async fn test_notifications_initialized() {
         let request = json!({
             "jsonrpc": "2.0",
             "method": "notifications/initialized"
         });
         let method = request.get("method").unwrap().as_str().unwrap();
         assert_eq!(method, "notifications/initialized");
-        notifications_initialized();
+        notifications_initialized().await.unwrap();
     }
 
-    #[test]
-    fn test_notifications_cancelled() {
+    #[tokio::test]
+    async fn test_notifications_cancelled() {
         let request = json!({
             "jsonrpc": "2.0",
             "method": "notifications/cancelled",
@@ -58,12 +57,10 @@ mod tests {
                 "requestId": "test_id"
             }
         });
-        let params_value = request.get("params").unwrap();
-        let cancel_params: CancelledNotification =
-            serde_json::from_value(params_value.clone()).unwrap();
         let method = request.get("method").unwrap().as_str().unwrap();
         assert_eq!(method, "notifications/cancelled");
-        notifications_cancelled(cancel_params);
+        // Call with no parameters since the function signature changed
+        notifications_cancelled().await.unwrap();
     }
 
     #[test]
@@ -87,7 +84,7 @@ mod tests {
             "id": 1,
             "method": "tools/call",
             "params": {
-                "name": "ping",
+                "name": "sonarqube_get_metrics",
                 "arguments": {}
             }
         });
@@ -121,28 +118,45 @@ mod tests {
         assert!(error_json.contains("Custom error message"));
     }
 
-    fn handle_notification(json_value: &Value) -> bool {
+    #[tokio::test]
+    async fn test_handle_notification() {
+        let json_value = json!({
+            "method": "notifications/initialized"
+        });
+
         if let Some(method) = json_value.get("method") {
             match method.as_str().unwrap() {
                 "notifications/initialized" => {
-                    notifications_initialized();
-                    true
+                    notifications_initialized().await.unwrap();
                 }
                 "notifications/cancelled" => {
-                    if let Some(params) = json_value.get("params") {
-                        if let Ok(cancel_params) =
-                            serde_json::from_value::<CancelledNotification>(params.clone())
-                        {
-                            notifications_cancelled(cancel_params);
-                            return true;
-                        }
-                    }
-                    false
+                    // Call with no parameters since the function signature changed
+                    notifications_cancelled().await.unwrap();
                 }
-                _ => false,
+                _ => {}
             }
-        } else {
-            false
         }
+    }
+
+    #[test]
+    fn test_register_methods() {
+        let mut module = RpcModule::new(());
+        register_tools(&mut module).unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_notifications_cancelled_async() {
+        let mut module = RpcModule::new(());
+        register_tools(&mut module).unwrap();
+        notifications_cancelled().await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_logging_set_level() {
+        let request = SetLevelRequest {
+            level: "debug".to_string(),
+        };
+        let result = set_level(request).await.unwrap();
+        assert_eq!(result, ());
     }
 }

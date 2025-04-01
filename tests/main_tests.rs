@@ -3,12 +3,13 @@ mod tests {
     use clap::Parser;
     use jsonrpsee_server::RpcModule;
     use jsonrpsee_types::ErrorObject;
-    #[cfg(unix)]
-    use nix::libc;
-    use sonarqube_mcp_server::mcp::utilities::ping;
+    use sonarqube_mcp_server::mcp::utilities::*;
+    use sonarqube_mcp_server::server::start_server;
     use sonarqube_mcp_server::{Args, display_info, setup_signal_handlers};
     use std::env;
+    use std::net::SocketAddr;
     use std::sync::Once;
+    use tokio;
 
     static INIT: Once = Once::new();
 
@@ -24,18 +25,8 @@ mod tests {
 
     // Build a simple test router with only essential methods
     fn build_test_router() -> RpcModule<()> {
-        let mut router = RpcModule::new(());
-
-        // Register ping method for testing
-        router
-            .register_async_method("ping", |_, _| async move {
-                ping(None).await.map_err(|e| {
-                    ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
-                })
-            })
-            .unwrap();
-
-        router
+        RpcModule::new(())
+        // No methods need to be registered for this test
     }
 
     #[test]
@@ -173,15 +164,32 @@ mod tests {
 
     #[test]
     fn test_build_rpc_router() {
-        let router = build_test_router();
-
-        // Verify only our test methods are registered
-        assert!(router.method("ping").is_some());
+        let _router = build_test_router();
+        // No specific methods to check after ping was removed
     }
 
     #[tokio::test]
     async fn test_signal_handlers() {
         let running = setup_signal_handlers().await;
         assert!(running.load(std::sync::atomic::Ordering::SeqCst));
+    }
+
+    #[tokio::test]
+    async fn test_notifications() {
+        // Test initialization notification
+        let init_result = notifications_initialized().await;
+        assert!(init_result.is_ok());
+
+        // Test cancellation notification
+        let cancel_result = notifications_cancelled().await;
+        assert!(cancel_result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_start_server() {
+        let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let server = start_server(addr).await.unwrap();
+        // Just assert that we got a valid server handle
+        assert!(server.stop().is_ok());
     }
 }

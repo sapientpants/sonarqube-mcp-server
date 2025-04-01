@@ -18,7 +18,7 @@ use crate::mcp::resources::{resource_read, resources_list};
 use crate::mcp::sonarqube::tools::register_sonarqube_tools;
 use crate::mcp::tools::register_tools;
 use crate::mcp::types::{GetPromptRequest, ReadResourceRequest, SetLevelRequest};
-use crate::mcp::utilities::{ping, set_level};
+use crate::mcp::utilities::set_level;
 
 /// Command line arguments for the server
 #[derive(Parser, Debug)]
@@ -139,14 +139,6 @@ pub fn build_rpc_router() -> RpcModule<()> {
     let mut router = RpcModule::new(());
 
     // Register core methods
-    router
-        .register_async_method("ping", |_, _| async move {
-            ping(None).await.map_err(|e| {
-                ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
-            })
-        })
-        .unwrap();
-
     router
         .register_async_method("set_level", |params, _| async move {
             let request = params.parse::<SetLevelRequest>()?;
