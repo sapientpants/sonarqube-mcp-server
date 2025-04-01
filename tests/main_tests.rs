@@ -121,4 +121,19 @@ mod tests {
         let cancel_result = notifications_cancelled().await;
         assert!(cancel_result.is_ok());
     }
+
+    #[tokio::test]
+    async fn test_display_info() {
+        let args = sonarqube_mcp_server::Args {
+            sonarqube_url: "http://test.com".to_string(),
+            sonarqube_token: "test-token".to_string(),
+            sonarqube_organization: None,
+            resources: false,
+            prompts: false,
+            tools: false,
+            mcp: false,
+            json: false,
+        };
+        sonarqube_mcp_server::display_info(&args).await;
+    }
 }

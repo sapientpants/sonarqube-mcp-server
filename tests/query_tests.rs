@@ -58,3 +58,39 @@ fn test_combining_parameter_types() {
     assert!(url.contains("resolved=false"));
     assert!(url.contains("severities=MAJOR%2CCRITICAL"));
 }
+
+#[test]
+fn test_query_builder() {
+    let qb = QueryBuilder::new("http://test.com")
+        .add_param("test", Some("value"))
+        .add_bool_param("active", Some(true))
+        .add_array_param("items", Some(&["one", "two"]))
+        .add_params(vec![("another", Some("param"))]);
+    let query = qb.build();
+    assert!(query.contains("test"));
+    assert!(query.contains("active"));
+    assert!(query.contains("items"));
+    assert!(query.contains("another"));
+}
+
+#[test]
+fn test_query_builder_with_empty_values() {
+    let qb = QueryBuilder::new("http://test.com")
+        .add_param("empty_string", Some(""))
+        .add_array_param::<String>("empty_array", Some(&[]));
+    let query = qb.build();
+    assert!(query.contains("empty_string="));
+    assert!(!query.contains("empty_array"));
+}
+
+#[test]
+fn test_query_builder_parameter_types() {
+    let qb = QueryBuilder::new("http://test.com")
+        .add_param("string_param", Some("value"))
+        .add_bool_param("bool_param", Some(false))
+        .add_array_param("array_param", Some(&["1", "2", "3"]));
+    let query = qb.build();
+    assert!(query.contains("string_param=value"));
+    assert!(query.contains("bool_param=false"));
+    assert!(query.contains("array_param=1%2C2%2C3"));
+}

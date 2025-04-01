@@ -1,12 +1,21 @@
 mod helpers;
 
-use sonarqube_mcp_server::mcp::prompts::*;
-use sonarqube_mcp_server::mcp::types::*;
+use sonarqube_mcp_server::mcp::prompts;
+use sonarqube_mcp_server::mcp::types::{GetPromptRequest, ListPromptsRequest};
+
+#[test]
+fn test_prompts_functions() {
+    let _ = prompts::prompts_list(Some(ListPromptsRequest { cursor: None }));
+    let _ = prompts::prompts_get(GetPromptRequest {
+        name: "test".to_string(),
+        arguments: None,
+    });
+}
 
 #[tokio::test]
 async fn test_prompts_list() {
     // Call prompts_list function
-    let result = prompts_list(None).await.unwrap();
+    let result = prompts::prompts_list(None).await.unwrap();
 
     // Verify next_cursor is None
     assert!(result.next_cursor.is_none());
@@ -31,7 +40,7 @@ async fn test_prompts_get() {
     };
 
     // Call prompts_get function
-    let result = prompts_get(request).await.unwrap();
+    let result = prompts::prompts_get(request).await.unwrap();
 
     // Verify the response content
     assert!(!result.description.is_empty());

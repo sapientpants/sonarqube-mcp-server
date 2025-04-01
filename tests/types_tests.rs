@@ -1,5 +1,6 @@
 mod helpers;
 
+use serde_json::Value;
 use serde_json::json;
 use sonarqube_mcp_server::mcp::types::*;
 use std::collections::HashMap;
@@ -311,4 +312,12 @@ fn test_json_rpc_error_serialization() {
     assert_eq!(deserialized.error.code, -32601);
     assert_eq!(deserialized.error.message, "Method not found");
     assert!(deserialized.error.data.is_none());
+}
+
+#[test]
+fn test_jsonrpc_types() {
+    let response = JsonRpcResponse::new(Value::from(1), Value::from("ok"));
+    assert_eq!(response.id, Value::from(1));
+    let error = JsonRpcError::new(Value::from(1), -32000, "fail");
+    assert_eq!(error.error.code, -32000);
 }

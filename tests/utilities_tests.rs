@@ -1,5 +1,6 @@
 mod helpers;
 
+use sonarqube_mcp_server::mcp::types::ListRootsRequest;
 use sonarqube_mcp_server::mcp::utilities::*;
 
 #[tokio::test]
@@ -28,4 +29,13 @@ fn test_graceful_shutdown() {
     // there's not much to assert. If it changes later, this test
     // would need to be updated to verify the new behavior.
     assert!(true);
+}
+
+#[test]
+fn test_utilities_functions() {
+    let _ = initialize();
+    let _ = graceful_shutdown();
+    let _ = roots_list(Some(ListRootsRequest {}));
+    let _ = notifications_initialized();
+    let _ = notifications_cancelled();
 }
