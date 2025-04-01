@@ -1,4 +1,4 @@
-/// MCP (Modern Communications Protocol) implementation for SonarQube integration.
+/// MCP (Model Context Protocol) implementation for SonarQube integration.
 ///
 /// This module provides the core functionality of the SonarQube MCP server, including:
 ///

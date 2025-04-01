@@ -1,6 +1,6 @@
 //! # SonarQube MCP Server Main Module
 //!
-//! This module contains the main entry point and runtime logic for the SonarQube MCP server.
+//! This module contains the main entry point and runtime logic for the SonarQube Model Context Protocol (MCP) server.
 //! It handles JSON-RPC communication with clients, command-line argument parsing, and
 //! initializes the server components.
 

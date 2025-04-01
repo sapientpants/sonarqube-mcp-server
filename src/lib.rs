@@ -1,6 +1,6 @@
 //! # SonarQube MCP Server
 //!
-//! This crate provides a Modern Communications Protocol (MCP) server that integrates with
+//! This crate provides a Model Context Protocol (MCP) server that integrates with
 //! SonarQube to expose code quality metrics and analysis functionality to MCP clients.
 //!
 //! The server implements the MCP specification, providing a JSON-RPC based API that allows
