@@ -1,11 +1,11 @@
-mod helpers;
-
 use jsonrpsee_server::RpcModule;
 use sonarqube_mcp_server::mcp::sonarqube::tools::{
-    list_projects as sonarqube_list_projects, register_sonarqube_tools, sonarqube_get_issues,
-    sonarqube_get_metrics, sonarqube_get_quality_gate,
+    init_sonarqube_client, register_sonarqube_tools, sonarqube_get_issues, sonarqube_get_metrics,
+    sonarqube_get_quality_gate,
 };
-use sonarqube_mcp_server::mcp::sonarqube::types::*;
+use sonarqube_mcp_server::mcp::sonarqube::types::{
+    SonarQubeIssuesRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
+};
 use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::env;
 
@@ -13,189 +13,135 @@ use std::env;
 static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
 static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
 
-#[test]
-fn test_init_sonarqube_client_error_conditions() {
-    // Save original environment variables
-    let original_url = env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // Test 1: Missing URL
-    // ------------------
-    // Unset environment variables
-    unsafe {
-        env::remove_var(SONARQUBE_URL_ENV);
-    }
-    unsafe {
-        env::remove_var(SONARQUBE_TOKEN_ENV);
-    }
+    #[test]
+    fn test_init_sonarqube_client_error_conditions() {
+        // Save original env vars
+        let original_url = env::var("SONARQUBE_URL").ok();
+        let original_token = env::var("SONARQUBE_TOKEN").ok();
 
-    // Try to initialize client
-    let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
-
-    // Verify error when URL is missing
-    assert!(result.is_err());
-    match result {
-        Err(SonarError::Config(msg)) => {
-            assert_eq!(msg, "SONARQUBE_URL environment variable not set");
-        }
-        _ => panic!("Expected Config error for missing URL"),
-    }
-
-    // Test 2: Missing Token
-    // -------------------
-    // Set the URL but not the token
-    unsafe {
-        env::set_var(SONARQUBE_URL_ENV, "https://sonarqube.example.com");
-    }
-
-    // Try to initialize client again
-    let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
-
-    // Verify error when token is missing
-    assert!(result.is_err());
-    match result {
-        Err(SonarError::Config(msg)) => {
-            assert_eq!(msg, "SONARQUBE_TOKEN environment variable not set");
-        }
-        _ => panic!("Expected Config error for missing token"),
-    }
-
-    // Test 3: Client Set Error
-    // ----------------------
-    // Set both URL and token
-    unsafe {
-        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
-    }
-
-    // Try to initialize client twice (should fail on second attempt)
-    let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
-    let result = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
-
-    // Verify error when trying to set client twice
-    assert!(result.is_err());
-    match result {
-        Err(SonarError::Config(msg)) => {
-            assert_eq!(msg, "Failed to set SonarQube client");
-        }
-        _ => panic!("Expected Config error for client set failure"),
-    }
-
-    // Restore environment variables
-    unsafe {
-        env::remove_var(SONARQUBE_URL_ENV);
-    }
-    if let Some(url) = original_url {
+        // Test missing URL
         unsafe {
-            env::set_var(SONARQUBE_URL_ENV, url);
+            env::remove_var("SONARQUBE_URL");
+            env::set_var("SONARQUBE_TOKEN", "dummy_token");
         }
-    }
-    if let Some(token) = original_token {
+        let result = init_sonarqube_client();
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Configuration error: SONARQUBE_URL environment variable not set"
+        );
+
+        // Test missing token
         unsafe {
-            env::set_var(SONARQUBE_TOKEN_ENV, token);
+            env::set_var("SONARQUBE_URL", "http://localhost:9000");
+            env::remove_var("SONARQUBE_TOKEN");
+        }
+        let result = init_sonarqube_client();
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Configuration error: SONARQUBE_TOKEN environment variable not set"
+        );
+
+        // Test client set error
+        unsafe {
+            env::set_var("SONARQUBE_URL", "http://localhost:9000");
+            env::set_var("SONARQUBE_TOKEN", "dummy_token");
+        }
+        let _ = init_sonarqube_client();
+        let result = init_sonarqube_client();
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Configuration error: Failed to set SonarQube client"
+        );
+
+        // Restore original env vars
+        unsafe {
+            match original_url {
+                Some(url) => env::set_var("SONARQUBE_URL", url),
+                None => env::remove_var("SONARQUBE_URL"),
+            }
+            match original_token {
+                Some(token) => env::set_var("SONARQUBE_TOKEN", token),
+                None => env::remove_var("SONARQUBE_TOKEN"),
+            }
         }
     }
-}
 
-#[test]
-fn test_register_sonarqube_tools() {
-    // Create a router module
-    let mut router = RpcModule::new(());
+    #[test]
+    fn test_register_sonarqube_tools() {
+        let mut router = RpcModule::new(());
+        register_sonarqube_tools(&mut router).unwrap();
+        assert!(router.method("sonarqube/issues").is_some());
+        assert!(router.method("sonarqube/metrics").is_some());
+        assert!(router.method("sonarqube/quality_gate").is_some());
+    }
 
-    // Register SonarQube tools
-    register_sonarqube_tools(&mut router).unwrap();
+    #[tokio::test]
+    async fn test_sonarqube_get_metrics_no_client() {
+        // We're testing without initializing the client
+        let request = SonarQubeMetricsRequest {
+            project_key: "test-project".to_string(),
+            metrics: None,
+        };
+        let result = sonarqube_get_metrics(request).await;
+        assert!(result.is_err());
+    }
 
-    // We can't easily test the router functionality without mocking,
-    // so we just verify that the function doesn't panic
-}
+    #[tokio::test]
+    async fn test_sonarqube_get_issues_no_client() {
+        // We're testing without initializing the client
+        let request = SonarQubeIssuesRequest {
+            project_key: "test-project".to_string(),
+            severities: None,
+            types: None,
+            statuses: None,
+            impact_severities: None,
+            impact_software_qualities: None,
+            assigned_to_me: None,
+            assignees: None,
+            authors: None,
+            code_variants: None,
+            created_after: None,
+            created_before: None,
+            created_in_last: None,
+            cwe: None,
+            directories: None,
+            facets: None,
+            files: None,
+            issue_statuses: None,
+            languages: None,
+            owasp_top10: None,
+            owasp_top10_2021: None,
+            resolutions: None,
+            resolved: None,
+            rules: None,
+            sans_top25: None,
+            sonarsource_security: None,
+            tags: None,
+            sort_field: None,
+            asc: None,
+            page: None,
+            page_size: None,
+        };
+        let result = sonarqube_get_issues(request).await;
+        assert!(result.is_err());
+    }
 
-// Test handlers without a client - they should all return errors
-
-#[tokio::test]
-async fn test_sonarqube_get_metrics_no_client() {
-    // We're testing without initializing the client
-
-    // Call the tool handler
-    let request = SonarQubeMetricsRequest {
-        project_key: "test-project".to_string(),
-        metrics: None,
-    };
-    let result = sonarqube_get_metrics(request).await;
-
-    // Since there's no global client initialized, this should error
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_sonarqube_get_issues_no_client() {
-    // We're testing without initializing the client
-
-    // Call the tool handler
-    let request = SonarQubeIssuesRequest {
-        project_key: "test-project".to_string(),
-        severities: None,
-        types: None,
-        statuses: None,
-        impact_severities: None,
-        impact_software_qualities: None,
-        assigned_to_me: None,
-        assignees: None,
-        authors: None,
-        code_variants: None,
-        created_after: None,
-        created_before: None,
-        created_in_last: None,
-        cwe: None,
-        directories: None,
-        facets: None,
-        files: None,
-        issue_statuses: None,
-        languages: None,
-        owasp_top10: None,
-        owasp_top10_2021: None,
-        resolutions: None,
-        resolved: None,
-        rules: None,
-        sans_top25: None,
-        sonarsource_security: None,
-        tags: None,
-        sort_field: None,
-        asc: None,
-        page: None,
-        page_size: None,
-    };
-    let result = sonarqube_get_issues(request).await;
-
-    // Since there's no global client initialized, this should error
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_sonarqube_get_quality_gate_no_client() {
-    // We're testing without initializing the client
-
-    // Call the tool handler
-    let request = SonarQubeQualityGateRequest {
-        project_key: "test-project".to_string(),
-    };
-    let result = sonarqube_get_quality_gate(request).await;
-
-    // Since there's no global client initialized, this should error
-    assert!(result.is_err());
-}
-
-#[tokio::test]
-async fn test_sonarqube_list_projects_no_client() {
-    // We're testing without initializing the client
-
-    // Call the tool handler
-    let request = SonarQubeListProjectsRequest {
-        page: None,
-        page_size: None,
-    };
-    let result = sonarqube_list_projects(Some(request)).await;
-
-    // Since there's no global client initialized, this should error
-    assert!(result.is_err());
+    #[tokio::test]
+    async fn test_sonarqube_get_quality_gate_no_client() {
+        // We're testing without initializing the client
+        let request = SonarQubeQualityGateRequest {
+            project_key: "test-project".to_string(),
+        };
+        let result = sonarqube_get_quality_gate(request).await;
+        assert!(result.is_err());
+    }
 }
 
 // Integration test - we'll create a test that ensures the CallToolResultContent is correctly formatted

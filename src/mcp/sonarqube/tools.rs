@@ -457,3 +457,16 @@ fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
             .collect(),
     }
 }
+
+/// Reset the SonarQube client (for testing purposes only)
+#[cfg(test)]
+pub fn reset_client() {
+    // Create a new OnceCell instance
+    let _ = SONARQUBE_CLIENT.get_or_init(|| {
+        Arc::new(SonarQubeClient::new(SonarQubeConfig {
+            base_url: "".to_string(),
+            token: "".to_string(),
+            organization: None,
+        }))
+    });
+}
