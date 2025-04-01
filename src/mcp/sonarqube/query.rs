@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_query_builder_with_empty_array() {
-        let empty: [&str; 0] = [];
+        let empty: Vec<&str> = Vec::new();
         let url = QueryBuilder::new("https://example.com/api/issues")
             .add_array_param("severities", Some(&empty))
             .build();

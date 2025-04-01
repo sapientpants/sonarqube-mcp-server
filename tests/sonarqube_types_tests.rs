@@ -1,6 +1,13 @@
 mod helpers;
 
-use sonarqube_mcp_server::mcp::sonarqube::types::*;
+use sonarqube_mcp_server::mcp::sonarqube::types::{
+    Component, Condition, Issue, IssueInfo, Paging, ProjectStatus, ProjectsResponse,
+    QualityGateCondition, QualityGateResponse, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
+    SonarQubeIssuesResult, SonarQubeListProjectsRequest, SonarQubeListProjectsResult,
+    SonarQubeMetricsRequest, SonarQubeProject, SonarQubeQualityGateRequest,
+    SonarQubeQualityGateResult,
+};
+use sonarqube_mcp_server::mcp::types::Project;
 
 #[test]
 fn test_paging_serialization() {
@@ -356,12 +363,8 @@ fn test_sonarqube_quality_gate_result_serialization() {
 fn test_project_serialization() {
     // Create a Project struct
     let project = Project {
-        key: "project-1".to_string(),
-        name: "Project One".to_string(),
-        description: Some("A test project".to_string()),
-        qualifier: "TRK".to_string(),
-        visibility: Some("public".to_string()),
-        last_analysis_date: Some("2022-01-01T12:00:00+0000".to_string()),
+        key: "test-key".to_string(),
+        name: "Test Project".to_string(),
     };
 
     // Serialize to JSON
@@ -371,15 +374,8 @@ fn test_project_serialization() {
     let deserialized: Project = serde_json::from_str(&json_str).unwrap();
 
     // Verify the roundtrip
-    assert_eq!(deserialized.key, "project-1");
-    assert_eq!(deserialized.name, "Project One");
-    assert_eq!(deserialized.description.unwrap(), "A test project");
-    assert_eq!(deserialized.qualifier, "TRK");
-    assert_eq!(deserialized.visibility.unwrap(), "public");
-    assert_eq!(
-        deserialized.last_analysis_date.unwrap(),
-        "2022-01-01T12:00:00+0000"
-    );
+    assert_eq!(deserialized.key, "test-key");
+    assert_eq!(deserialized.name, "Test Project");
 }
 
 #[test]
@@ -392,7 +388,7 @@ fn test_projects_response_serialization() {
             total: 2,
         },
         components: vec![
-            Project {
+            SonarQubeProject {
                 key: "project-1".to_string(),
                 name: "Project One".to_string(),
                 description: Some("A test project".to_string()),
@@ -400,7 +396,7 @@ fn test_projects_response_serialization() {
                 visibility: Some("public".to_string()),
                 last_analysis_date: Some("2022-01-01T12:00:00+0000".to_string()),
             },
-            Project {
+            SonarQubeProject {
                 key: "project-2".to_string(),
                 name: "Project Two".to_string(),
                 description: None,
@@ -477,7 +473,7 @@ fn test_sonarqube_list_projects_result_serialization() {
         page: 1,
         page_size: 10,
         projects: vec![
-            Project {
+            SonarQubeProject {
                 key: "project-1".to_string(),
                 name: "Project One".to_string(),
                 description: Some("A test project".to_string()),
@@ -485,7 +481,7 @@ fn test_sonarqube_list_projects_result_serialization() {
                 visibility: Some("public".to_string()),
                 last_analysis_date: Some("2022-01-01T12:00:00+0000".to_string()),
             },
-            Project {
+            SonarQubeProject {
                 key: "project-2".to_string(),
                 name: "Project Two".to_string(),
                 description: None,

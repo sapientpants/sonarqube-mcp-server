@@ -3,9 +3,12 @@ use std::path::Path;
 use std::path::PathBuf;
 use wiremock::MockServer;
 
+/// Environment variable for the Cargo manifest directory
+static CARGO_MANIFEST_DIR: &str = "CARGO_MANIFEST_DIR";
+
 /// Load a JSON fixture file from the tests/fixtures directory
 pub fn load_fixture(name: &str) -> String {
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get manifest directory");
+    let manifest_dir = env::var(CARGO_MANIFEST_DIR).expect("Failed to get manifest directory");
     let fixture_path = Path::new(&manifest_dir)
         .join("tests")
         .join("fixtures")

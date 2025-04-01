@@ -1,5 +1,4 @@
 use crate::mcp::JSONRPC_VERSION;
-use crate::mcp::sonarqube::types::Project;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -18,13 +17,12 @@ use url::Url;
 ///
 /// These types form the backbone of the server's communication with MCP clients
 /// and provide the necessary structures for implementing the MCP specification.
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-/// Request parameters for initializing a client connection
+/// Parameters for initializing a client connection
 ///
-/// This structure defines the parameters sent by a client to initialize
-/// a connection to the MCP server, including the protocol version the client
-/// supports, its capabilities, and information about the client implementation.
+/// This structure contains the information needed to establish a connection
+/// between a client and the MCP server, including protocol version,
+/// capabilities, and client implementation details.
+#[derive(Debug, Deserialize, Serialize)]
 pub struct InitializeRequest {
     /// Protocol version the client implements
     #[serde(rename = "protocolVersion")]
@@ -38,6 +36,11 @@ pub struct InitializeRequest {
 
 // --------- capabilities / inits -------
 
+/// Server capabilities configuration
+///
+/// This structure defines the capabilities that the server supports and can
+/// expose to clients, including text handling, resources, tools, and other
+/// experimental features.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerCapabilities {
@@ -63,6 +66,43 @@ pub struct ServerCapabilities {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub roots: Option<Value>,
 }
+
+/// Project representation in MCP
+///
+/// Contains information about a project in the system, typically used
+/// when listing available projects.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Project {
+    /// Name of the project
+    pub name: String,
+    /// Unique key identifying the project
+    pub key: String,
+}
+
+/// Empty result type
+///
+/// Used for operations that don't need to return any data but need to
+/// indicate successful completion.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EmptyResult {}
+
+/// Ping request type
+///
+/// Used for health check requests to verify server availability.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PingRequest {}
+
+/// Logging response type
+///
+/// Used to acknowledge logging-related operations.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoggingResponse {}
+
+/// Request to list available root directories
+///
+/// Used to request a list of all root directories accessible to the server.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListRootsRequest {}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResourcesCapabilities {
@@ -492,20 +532,6 @@ pub struct ListToolsResult {
 
 // ----- misc ---
 
-/// Empty result struct for operations that don't return data
-///
-/// This structure is used as a response type for operations that
-/// don't need to return any specific data to the client.
-#[derive(Deserialize, Serialize)]
-pub struct EmptyResult {}
-
-/// Request parameters for the ping operation
-///
-/// This structure defines the parameters for the ping operation,
-/// which is used to check server availability.
-#[derive(Deserialize, Serialize)]
-pub struct PingRequest {}
-
 /// Notification that a request has been cancelled
 ///
 /// This structure represents a notification sent to inform that
@@ -559,13 +585,6 @@ pub struct SetLevelRequest {
     pub level: String,
 }
 
-/// Response for logging-related operations
-///
-/// This structure represents the response for operations that
-/// modify logging behavior, typically an empty acknowledgement.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct LoggingResponse {}
-
 /// Notification containing a logging message
 ///
 /// This structure represents a notification containing a log
@@ -581,13 +600,6 @@ pub struct LoggingMessageNotification {
 }
 
 /// Request parameters for listing root directories
-///
-/// This structure defines the parameters for requesting a list of
-/// root directories from the MCP server.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ListRootsRequest {}
-
-/// Result containing a list of root directories
 ///
 /// This structure contains the response for a roots/list request,
 /// including a collection of available root directories.
@@ -626,6 +638,17 @@ pub struct JsonRpcResponse {
 }
 
 impl JsonRpcResponse {
+    /// Creates a new JSON-RPC response.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the request this response is for
+    /// * `result` - The result data to include in the response
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `JsonRpcResponse` instance with the specified ID and result,
+    /// using the standard JSON-RPC version.
     #[allow(dead_code)]
     pub fn new(id: Value, result: Value) -> Self {
         JsonRpcResponse {
@@ -681,6 +704,18 @@ pub struct Error {
 }
 
 impl JsonRpcError {
+    /// Creates a new JSON-RPC error response.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the request this error is for
+    /// * `code` - The numeric error code
+    /// * `message` - The human-readable error message
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `JsonRpcError` instance with the specified ID, code, and message,
+    /// using the standard JSON-RPC version.
     #[allow(dead_code)]
     pub fn new(id: Value, code: i32, message: &str) -> Self {
         JsonRpcError {
@@ -695,73 +730,112 @@ impl JsonRpcError {
     }
 }
 
+/// Query parameters for filtering issues
+///
+/// This structure defines the parameters that can be used to filter and sort
+/// issues when querying the SonarQube API. It supports a wide range of filters
+/// including assignees, authors, creation dates, security categories, and more.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IssuesQueryParams {
+    /// Key of the project to query issues from
     pub project_key: String,
+    /// Sort order: true for ascending, false for descending
     #[serde(skip_serializing_if = "Option::is_none")]
     pub asc: Option<bool>,
+    /// Filter for issues assigned to the authenticated user
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assigned_to_me: Option<bool>,
+    /// List of assignee logins to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub assignees: Option<Vec<String>>,
+    /// List of issue authors to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub authors: Option<Vec<String>>,
+    /// List of code variant identifiers to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub code_variants: Option<Vec<String>>,
+    /// Filter issues created after this date (format: YYYY-MM-DD)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_after: Option<String>,
+    /// Filter issues created before this date (format: YYYY-MM-DD)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_before: Option<String>,
+    /// Filter issues created during a time span before now (e.g., "1m" for 1 month)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_in_last: Option<String>,
+    /// List of CWE identifiers to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cwe: Option<Vec<String>>,
+    /// List of directories to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub directories: Option<Vec<String>>,
+    /// List of facets to return in the response
     #[serde(skip_serializing_if = "Option::is_none")]
     pub facets: Option<Vec<String>>,
+    /// List of file paths to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<String>>,
+    /// List of impact severities to filter by (e.g., HIGH, MEDIUM, LOW)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub impact_severities: Option<Vec<String>>,
+    /// List of software qualities to filter by (e.g., MAINTAINABILITY, RELIABILITY, SECURITY)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub impact_software_qualities: Option<Vec<String>>,
+    /// List of issue statuses to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub issue_statuses: Option<Vec<String>>,
+    /// List of language keys to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub languages: Option<Vec<String>>,
+    /// List of OWASP Top 10 categories to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owasp_top10: Option<Vec<String>>,
+    /// List of OWASP Top 10 2021 categories to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owasp_top10_2021: Option<Vec<String>>,
+    /// Page number for pagination
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page: Option<i32>,
+    /// Number of items per page
     #[serde(skip_serializing_if = "Option::is_none")]
     pub page_size: Option<i32>,
+    /// List of issue resolutions to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resolutions: Option<Vec<String>>,
+    /// Filter resolved issues
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resolved: Option<bool>,
+    /// List of rule keys to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rules: Option<Vec<String>>,
+    /// List of SANS Top 25 categories to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sans_top25: Option<Vec<String>>,
+    /// List of issue severities to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub severities: Option<Vec<String>>,
+    /// List of SonarSource security categories to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sonarsource_security: Option<Vec<String>>,
+    /// Field to sort by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_field: Option<String>,
+    /// List of issue statuses to filter by (e.g., OPEN, CONFIRMED, RESOLVED, CLOSED)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub statuses: Option<Vec<String>>,
+    /// List of tags to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
+    /// List of issue types to filter by
     #[serde(skip_serializing_if = "Option::is_none")]
     pub types: Option<Vec<String>>,
 }
 
-/// Request parameters for listing SonarQube projects
-#[derive(Debug, Deserialize, Serialize)]
+/// Parameters for listing projects
+///
+/// This structure defines the parameters for requesting a list of projects,
+/// supporting pagination through optional page number and size parameters.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ListProjectsRequest {
     /// Page number
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -771,15 +845,21 @@ pub struct ListProjectsRequest {
     pub page_size: Option<i32>,
 }
 
-/// Result type for listing SonarQube projects
-#[derive(Debug, Deserialize, Serialize, Clone)]
+/// Result containing a list of projects
+///
+/// This structure contains the response for a projects/list request,
+/// including a collection of available projects.
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ListProjectsResult {
     /// List of projects
     pub projects: Vec<Project>,
 }
 
-/// Request parameters for getting metrics
-#[derive(Debug, Deserialize, Serialize)]
+/// Request parameters for retrieving project metrics
+///
+/// This structure defines the parameters for requesting metrics data
+/// for a specific project, optionally filtering for specific metrics.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetMetricsRequest {
     /// Project key
     pub project_key: String,
@@ -787,15 +867,21 @@ pub struct GetMetricsRequest {
     pub metrics: Option<Vec<String>>,
 }
 
-/// Result type for getting metrics
-#[derive(Debug, Deserialize, Serialize)]
+/// Result containing project metrics data
+///
+/// This structure contains the response for a metrics/get request,
+/// including the requested metrics data in a JSON value format.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetMetricsResult {
     /// Metrics data
     pub metrics: Value,
 }
 
-/// Request parameters for getting issues
-#[derive(Debug, Deserialize, Serialize)]
+/// Request parameters for retrieving project issues
+///
+/// This structure defines the parameters for requesting issues data
+/// for a specific project, with optional filtering parameters.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetIssuesRequest {
     /// Project key
     pub project_key: String,
@@ -804,27 +890,38 @@ pub struct GetIssuesRequest {
     pub filters: IssuesQueryParams,
 }
 
-/// Result type for getting issues
-#[derive(Debug, Deserialize, Serialize)]
+/// Result containing project issues data
+///
+/// This structure contains the response for an issues/get request,
+/// including the requested issues data in a JSON value format.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetIssuesResult {
     /// Issues data
     pub issues: Value,
 }
 
-/// Request parameters for getting quality gate status
-#[derive(Debug, Deserialize, Serialize)]
+/// Request parameters for retrieving quality gate status
+///
+/// This structure defines the parameters for requesting the quality gate
+/// status for a specific project.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetQualityGateRequest {
     /// Project key
     pub project_key: String,
 }
 
-/// Result type for getting quality gate status
-#[derive(Debug, Deserialize, Serialize)]
+/// Result containing quality gate status
+///
+/// This structure contains the response for a quality-gate/get request,
+/// including the project's quality gate status in a JSON value format.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct GetQualityGateResult {
     /// Quality gate status
     pub status: Value,
 }
 
-/// Generic handler result type
-#[allow(dead_code)]
+/// Result type alias for request handlers
+///
+/// This type alias defines the standard result type used by request handlers,
+/// wrapping the success type T in a Result with anyhow::Error as the error type.
 pub type HandlerResult<T> = Result<T, anyhow::Error>;

@@ -478,7 +478,7 @@ pub struct QualityGateCondition {
 /// This struct contains information about a project or module within SonarQube,
 /// including its unique identifier, name, description, and analysis information.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Project {
+pub struct SonarQubeProject {
     /// Unique identifier key for the project
     pub key: String,
     /// Display name of the project
@@ -508,7 +508,7 @@ pub struct ProjectsResponse {
     /// Pagination metadata for the response
     pub paging: Paging,
     /// Collection of projects returned in this page of results
-    pub components: Vec<Project>,
+    pub components: Vec<SonarQubeProject>,
 }
 
 /// Request parameters for listing SonarQube projects
@@ -532,7 +532,7 @@ pub struct SonarQubeListProjectsResult {
     /// Number of items per page
     pub page_size: u32,
     /// List of projects in the current page
-    pub projects: Vec<Project>,
+    pub projects: Vec<SonarQubeProject>,
 }
 
 /// Parameters for querying issues from the SonarQube API
