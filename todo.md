@@ -32,7 +32,7 @@
     - `src/lib.rs:20`
 
 ### Bug Risk
-- [ ] **Array-expression with zero length** (RS-W1096)
+- [x] **Array-expression with zero length** (RS-W1096)
   - File: `src/mcp/sonarqube/query.rs:208`
   - Description: Zero-length array initialization found
   - Recommendation: Consider using `PhantomData` for marker types or adjust array size if storage is needed
