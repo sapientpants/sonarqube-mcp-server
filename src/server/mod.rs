@@ -116,7 +116,6 @@ pub async fn setup_signal_handlers() -> Arc<AtomicBool> {
                             // Grace period expired
                             info!("Grace period expired, accepting SIGTERM");
                             init_tracker.store(false, Ordering::SeqCst);
-                            in_grace_period = false;
                         }
                     }
 

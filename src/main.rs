@@ -63,6 +63,7 @@ impl Args {
 /// SonarQube MCP server implementation
 #[derive(Clone)]
 struct SonarQubeMcpServer {
+    #[allow(dead_code)]
     config: SonarQubeConfig,
     client: Arc<SonarQubeClient>,
 }
