@@ -94,10 +94,31 @@ Configuration is currently handled through command-line arguments with some over
 - Support dynamic reconfiguration where appropriate
 
 ### Tasks
-- [ ] Create a configuration module with strong typing
-- [ ] Implement validation for configuration values
-- [ ] Support loading configuration from multiple sources
-- [ ] Add unit tests for configuration handling
+- [x] Create a configuration module with strong typing
+- [x] Implement validation for configuration values
+- [x] Support loading configuration from multiple sources
+- [x] Add unit tests for configuration handling
+
+### Implementation Details
+- Created a new `Config` struct in `src/mcp/config.rs` to centralize all configuration
+- Implemented configuration loading from multiple sources with a clear precedence order:
+  1. Command-line arguments (highest priority)
+  2. Environment variables
+  3. Configuration file specified by environment variable
+  4. Configuration file in the current directory
+  5. Configuration file in the user's home directory
+- Added strong typing for all configuration values with separate structs for different configuration areas
+  - `SonarQubeConfig` for SonarQube connection settings
+  - `ServerConfig` for server runtime settings
+  - `LoggingConfig` for logging configuration
+- Implemented validation for configuration values to ensure required fields are present and have valid values
+- Added support for TOML configuration files with detailed comments explaining each option
+- Created helper methods for parsing and validating various types of configuration values
+- Added the ability to save configuration to a file for easy reuse
+- Created comprehensive tests in `tests/config_tests.rs` to verify all aspects of configuration handling
+- Provided a sample configuration template file that users can customize and save to their preferred location
+
+This change improves the maintainability of the codebase by centralizing all configuration handling in one place, adds validation to prevent misconfiguration, and provides multiple convenient ways for users to configure the application.
 
 ## 5. Module Structure Reorganization
 

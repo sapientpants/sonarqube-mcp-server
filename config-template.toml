@@ -1,0 +1,67 @@
+# SonarQube MCP Server Configuration Template
+# 
+# To use this configuration, save it as "sonarqube-mcp.toml" in one of these locations:
+# - The current working directory
+# - Your home directory
+# - Or specify a custom path with the SONARQUBE_MCP_CONFIG environment variable
+#
+# This file uses TOML format: https://toml.io/
+
+# SonarQube connection settings
+[sonarqube]
+# The base URL of your SonarQube server (required)
+# Example: "https://sonarcloud.io" or "http://localhost:9000"
+url = "https://sonarcloud.io"
+
+# Your SonarQube authentication token (required)
+# You can generate a token in your SonarQube user settings
+token = "your-sonarqube-token-here"
+
+# Organization identifier for SonarCloud or multi-organization instances (optional)
+# Example: "your-organization-key"
+organization = ""
+
+# Enable debug mode for more verbose logging of SonarQube operations (optional)
+debug = false
+
+# Server settings
+[server]
+# Host address to bind the server to
+# Default: "127.0.0.1" (localhost only)
+# Use "0.0.0.0" to allow connections from any network interface
+host = "127.0.0.1"
+
+# Port number to listen on
+# Default: 9000
+port = 9000
+
+# Maximum number of concurrent connections
+# Default: 100
+max_connections = 100
+
+# Request timeout in seconds
+# Default: 30
+timeout_seconds = 30
+
+# Logging settings
+[logging]
+# Log level (error, warn, info, debug, trace)
+# Default: "info"
+level = "info"
+
+# Optional path to a log file
+# If not specified, logs will only go to stdout/stderr
+# file = "/path/to/logs/sonarqube-mcp.log"
+
+# Whether to log to stdout
+# Default: true
+stdout = true
+
+# Use JSON format for logs (useful for log aggregation systems)
+# Default: false
+json_format = false
+
+# Custom configuration (optional)
+# You can add any custom key-value pairs here that your extensions might use
+[custom]
+# example_setting = "value" 

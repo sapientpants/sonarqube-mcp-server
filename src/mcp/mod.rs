@@ -16,6 +16,8 @@
 //! - `types`: Defines data structures used throughout the server
 //! - `lifecycle`: Handles MCP protocol lifecycle such as initialization
 
+/// Configuration management module
+pub mod config;
 /// Module for error handling and standardization
 pub mod errors;
 /// Module for handling MCP protocol lifecycle

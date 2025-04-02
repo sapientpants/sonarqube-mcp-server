@@ -5,12 +5,12 @@
 
 use anyhow::Result;
 use clap::Parser;
-use rmcp::{Error as McpError, ServerHandler, ServiceExt, model::*, tool, transport::stdio};
+use rmcp::{Error as McpError, ServerHandler, ServiceExt, model::*, tool};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
+use crate::mcp::config::Config;
 use crate::mcp::sonarqube::context::ServerContext;
-use crate::mcp::sonarqube::types::SonarQubeConfig;
 use crate::server::Args;
 
 // Re-export the modules for backward compatibility
@@ -28,12 +28,26 @@ struct SonarQubeMcpServer {
 
 impl SonarQubeMcpServer {
     fn new(args: &Args) -> Self {
-        let config = SonarQubeConfig {
-            base_url: args.sonarqube_url.clone(),
-            token: args.sonarqube_token.clone(),
-            organization: args.sonarqube_organization.clone(),
+        // Load configuration using the new configuration system
+        let config = match Config::load_with_args(args) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                // Log error and fall back to using command-line args directly
+                eprintln!(
+                    "Error loading configuration: {}. Using command-line args only.",
+                    e
+                );
+                let mut cfg = Config::default_config();
+                cfg.sonarqube.url = args.sonarqube_url.clone();
+                cfg.sonarqube.token = args.sonarqube_token.clone();
+                cfg.sonarqube.organization = args.sonarqube_organization.clone();
+                cfg
+            }
         };
-        let context = ServerContext::new(config);
+
+        // Convert the new config to a SonarQube client config
+        let sonarqube_config = config.to_sonarqube_config();
+        let context = ServerContext::new(sonarqube_config);
         Self { context }
     }
 }
@@ -181,7 +195,8 @@ impl ServerHandler for SonarQubeMcpServer {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize tracing to write to stderr instead of stdout
+    // Initialize tracing based on configuration
+    // For now, we'll use default settings but later we could use the config
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .with_max_level(tracing::Level::INFO)
@@ -198,7 +213,6 @@ async fn main() -> Result<()> {
                 // The error already printed help information
                 std::process::exit(0);
             }
-            // Otherwise, this is a real error
             return Err(anyhow::anyhow!(
                 "Failed to parse command line arguments: {}",
                 e
@@ -206,38 +220,39 @@ async fn main() -> Result<()> {
         }
     };
 
-    // Check if any of the special arguments are provided
-    if args.is_args_available() || args.mcp {
-        display_info(&args).await;
+    // Load configuration but for now, don't change existing behavior
+    // This serves as documentation for future refactoring
+    let _config = match Config::load_with_args(&args) {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("Warning: Failed to load configuration: {}", e);
+            eprintln!("Continuing with command-line arguments only.");
+            // The SonarQubeMcpServer::new function will handle this case
+            Config::default_config()
+        }
+    };
+
+    // If arguments are provided, display information and exit
+    if args.is_args_available() {
+        server::display_info(&args).await;
         return Ok(());
     }
 
-    // Create the SonarQube MCP server
+    // Create and initialize the server
     let server = SonarQubeMcpServer::new(&args);
+    info!("Server initialized with configuration");
 
-    // Store the client in the global variable for backward compatibility
-    #[allow(deprecated)]
-    {
-        crate::mcp::sonarqube::tools::SONARQUBE_CLIENT
-            .lock()
-            .unwrap()
-            .set(server.context.client.clone())
-            .expect("Failed to set SonarQube client");
-    }
+    // Run the server using stdio transport
+    info!("Starting server with stdio transport");
 
-    // Display server information
-    display_info(&args).await;
+    // Use the ServiceExt trait to create a service
+    let service = server.serve(rmcp::transport::io::stdio()).await?;
 
-    info!("Starting SonarQube MCP server with RMCP SDK...");
-
-    // The simplified approach: Create and serve the server with stdio transport
-    let service = server.serve(stdio()).await?;
-
-    // Wait for server to finish
-    info!("Server initialized and running");
+    // Wait for the service to complete
+    info!("Server running, waiting for completion");
     service.waiting().await?;
 
-    info!("Server shut down");
+    info!("Server shutting down gracefully");
     Ok(())
 }
 
