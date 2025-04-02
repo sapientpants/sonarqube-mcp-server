@@ -156,7 +156,7 @@ Async code is not always used optimally, with some operations potentially blocki
 
 ### Tasks
 - [ ] Review all async code for potential blocking operations
-- [ ] Add timeouts to network operations
+- [x] Add timeouts to network operations
 - [ ] Identify opportunities for concurrent operations
 - [ ] Implement backpressure handling for high-load scenarios
 
@@ -172,7 +172,7 @@ Test coverage is uneven across the codebase, and some tests rely on global state
 
 ### Tasks
 - [ ] Add unit tests for under-tested modules
-- [ ] Refactor existing tests to use dependency injection
+- [x] Refactor existing tests to use dependency injection
 - [ ] Add integration tests for critical server flows
 - [ ] Implement property-based testing for complex logic
 
