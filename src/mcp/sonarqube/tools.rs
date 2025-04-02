@@ -462,13 +462,13 @@ fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
     }
 }
 
-/// Reset the SonarQube client (for testing purposes only)
-#[cfg(test)]
+/// Resets the global SonarQube client
+///
+/// This function clears the global SonarQube client instance,
+/// allowing it to be reinitialized. This is primarily used in
+/// testing scenarios to ensure a clean state between tests.
 pub fn reset_client() {
-    // Create a new OnceCell instance by replacing the static one
-    let _ = SONARQUBE_CLIENT.lock().unwrap().take();
-    // Ensure all threads see this change
-    std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+    SONARQUBE_CLIENT.lock().unwrap().take();
 }
 
 #[cfg(test)]

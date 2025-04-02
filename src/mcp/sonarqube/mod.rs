@@ -29,4 +29,8 @@ pub mod types;
 /// for SonarQube API requests in a structured and maintainable way.
 pub mod query;
 
+/// Testing utilities for SonarQube integration.
+///
+/// This module provides helper functions and utilities used specifically
+/// in testing the SonarQube integration components.
 pub mod test_utils;
