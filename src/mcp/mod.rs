@@ -14,7 +14,6 @@
 //! - `sonarqube`: Contains the SonarQube integration code (client, tools, types)
 //! - `tools`: Registers and exposes tools to MCP clients
 //! - `types`: Defines data structures used throughout the server
-//! - `utilities`: Provides helper functions for server operation
 //! - `lifecycle`: Handles MCP protocol lifecycle such as initialization
 
 /// Module for handling MCP protocol lifecycle
@@ -29,8 +28,6 @@ pub mod sonarqube;
 pub mod tools;
 /// Module containing data structure definitions for the MCP protocol
 pub mod types;
-/// Module providing utility functions for server operation
-pub mod utilities;
 
 /// JSON-RPC protocol version used by the server
 #[allow(dead_code)]

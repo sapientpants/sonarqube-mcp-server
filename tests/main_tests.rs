@@ -2,9 +2,17 @@
 mod tests {
     use clap::Parser;
     use jsonrpsee_server::RpcModule;
-    use sonarqube_mcp_server::mcp::utilities::*;
     use sonarqube_mcp_server::{Args, setup_signal_handlers};
     use tokio;
+
+    // Mock implementations of utilities functions for testing
+    async fn notifications_initialized() -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    async fn notifications_cancelled() -> anyhow::Result<()> {
+        Ok(())
+    }
 
     // Build a simple test router with only essential methods
     fn build_test_router() -> RpcModule<()> {

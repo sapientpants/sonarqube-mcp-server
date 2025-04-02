@@ -5,9 +5,15 @@ mod tests {
     use serde_json::{Value, json};
     use sonarqube_mcp_server::mcp::tools::register_tools;
     use sonarqube_mcp_server::mcp::types::*;
-    use sonarqube_mcp_server::mcp::utilities::{
-        notifications_cancelled, notifications_initialized,
-    };
+
+    // Mock implementations of utilities functions for testing
+    async fn notifications_initialized() -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    async fn notifications_cancelled() -> anyhow::Result<()> {
+        Ok(())
+    }
 
     // Create a simple router for testing
     fn build_test_router() -> RpcModule<()> {
