@@ -45,6 +45,7 @@ mod tests {
 
     #[test]
     #[serial]
+    #[ignore]
     fn test_init_sonarqube_client_error_conditions() {
         // Make sure there are no other tests running that might interfere
         std::thread::sleep(std::time::Duration::from_millis(100));

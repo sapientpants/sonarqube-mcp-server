@@ -2,6 +2,7 @@ use crate::mcp::sonarqube::tools::SONARQUBE_DEBUG_ENV;
 use crate::mcp::sonarqube::types::*;
 use reqwest::Client;
 use std::sync::Arc;
+use std::time::Duration;
 
 // Re-export SonarQubeConfig for use in other modules
 pub use crate::mcp::sonarqube::types::SonarQubeConfig;
@@ -31,8 +32,13 @@ pub struct SonarQubeClient {
 impl SonarQubeClient {
     /// Create a new SonarQube client with the given configuration
     pub fn new(config: SonarQubeConfig) -> Self {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("Failed to build reqwest client");
+
         Self {
-            client: Client::new(),
+            client,
             base_url: config.base_url,
             token: config.token,
             organization: config.organization,
