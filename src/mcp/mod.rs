@@ -30,17 +30,13 @@ pub mod tools;
 pub mod types;
 
 /// JSON-RPC protocol version used by the server
-#[allow(dead_code)]
 const JSONRPC_VERSION: &str = "2.0";
 
 /// MCP protocol version implemented by the server
-#[allow(dead_code)]
 const PROTOCOL_VERSION: &str = "2024-11-05";
 
 /// Name of the server implementation
-#[allow(dead_code)]
 const SERVER_NAME: &str = "sonarqube-mcp-server";
 
 /// Version of the server implementation
-#[allow(dead_code)]
 const SERVER_VERSION: &str = "0.2.0";

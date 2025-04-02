@@ -55,20 +55,20 @@ The `prompts.json` file is empty, and the `prompts_get()` function doesn't use i
 - ✅ `src/mcp/templates/prompts.json` (removed as it's no longer needed)
 - ✅ `src/mcp/prompts.rs`
 
-## 5. Clean up dead constants
+## 5. ✅ Clean up constants with inappropriate attributes
 
-Remove unused constants marked with `#[allow(dead_code)]` in `src/mcp/mod.rs`.
+Remove incorrect `#[allow(dead_code)]` attributes from constants that are actually used in the codebase.
 
 **Steps:**
-1. Verify that all occurrences of these constants are only within the module.
-2. Remove the following constants:
-   - `JSONRPC_VERSION`
-   - `PROTOCOL_VERSION`
-   - `SERVER_NAME`
-   - `SERVER_VERSION`
+1. ✅ Verify which constants are used elsewhere in the codebase
+2. ✅ Remove the `#[allow(dead_code)]` attribute from the following constants:
+   - ✅ `JSONRPC_VERSION`
+   - ✅ `PROTOCOL_VERSION`
+   - ✅ `SERVER_NAME`
+   - ✅ `SERVER_VERSION`
 
 **Files affected:**
-- `src/mcp/mod.rs`
+- ✅ `src/mcp/mod.rs`
 
 ## 6. Implement proper resource handling
 
@@ -97,10 +97,10 @@ Examine if `src/mcp/sonarqube/test_utils.rs` is actually used in any tests.
 For the safest implementation, we recommend following this order:
 
 1. ✅ Clean up utilities module (#1) - standalone module
-2. Clean up dead constants (#5) - lowest risk
-3. Remove unused utility methods (#3) - isolated to client implementation  
-4. Consolidate Args struct (#2) - simple refactoring
-5. Address prompts functionality (#4) - contained feature
+2. ✅ Clean up constants with inappropriate attributes (#5) - lowest risk
+3. ✅ Remove unused utility methods (#3) - isolated to client implementation  
+4. ✅ Consolidate Args struct (#2) - simple refactoring
+5. ✅ Address prompts functionality (#4) - contained feature
 6. Implement proper resource handling (#6) - contained feature
 7. Clean up test utilities (#7) - only impacts tests
 
