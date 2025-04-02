@@ -20,7 +20,9 @@ pub use tokio::signal::unix::{SignalKind, signal};
 
 use crate::mcp::prompts::{prompts_get, prompts_list};
 use crate::mcp::resources::{resource_read, resources_list};
-use crate::mcp::sonarqube::tools::register_sonarqube_tools;
+use crate::mcp::sonarqube::tools::{
+    SONARQUBE_ORGANIZATION_ENV, SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV, register_sonarqube_tools,
+};
 use crate::mcp::tools::register_tools;
 use crate::mcp::types::{GetPromptRequest, ReadResourceRequest};
 
@@ -37,15 +39,15 @@ pub static INITIALIZED_RECENTLY: OnceCell<Arc<AtomicBool>> = OnceCell::new();
 #[derive(Parser, Debug)]
 pub struct Args {
     /// SonarQube server URL
-    #[arg(short = 'u', long, env = "SONARQUBE_URL")]
+    #[arg(short = 'u', long, env = SONARQUBE_URL_ENV)]
     pub sonarqube_url: String,
 
     /// SonarQube authentication token
-    #[arg(short = 't', long, env = "SONARQUBE_TOKEN")]
+    #[arg(short = 't', long, env = SONARQUBE_TOKEN_ENV)]
     pub sonarqube_token: String,
 
     /// SonarQube organization (optional)
-    #[arg(short = 'o', long, env = "SONARQUBE_ORGANIZATION")]
+    #[arg(short = 'o', long, env = SONARQUBE_ORGANIZATION_ENV)]
     pub sonarqube_organization: Option<String>,
 
     /// List MCP resources

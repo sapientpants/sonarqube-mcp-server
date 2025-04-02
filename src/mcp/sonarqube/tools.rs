@@ -1,5 +1,6 @@
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::types::{
@@ -16,18 +17,16 @@ use jsonrpsee_types::ErrorObject;
 use serde_json::Value;
 
 // Static constants for environment variable names
-#[allow(dead_code)]
-static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
-#[allow(dead_code)]
-static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
-#[allow(dead_code)]
-static SONARQUBE_ORGANIZATION_ENV: &str = "SONARQUBE_ORGANIZATION";
+pub static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
+pub static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
+pub static SONARQUBE_ORGANIZATION_ENV: &str = "SONARQUBE_ORGANIZATION";
+pub static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
 
 /// Global SonarQube client for tools to use
 ///
 /// This global variable provides a singleton instance of the SonarQube client
 /// that can be accessed by all tools. It's initialized during server startup.
-pub static SONARQUBE_CLIENT: OnceCell<Arc<SonarQubeClient>> = OnceCell::new();
+pub static SONARQUBE_CLIENT: Mutex<OnceCell<Arc<SonarQubeClient>>> = Mutex::new(OnceCell::new());
 
 /// Initialize the SonarQube client
 ///
@@ -65,6 +64,8 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
 
     // Store client in global variable
     SONARQUBE_CLIENT
+        .lock()
+        .unwrap()
         .set(Arc::new(client))
         .map_err(|_| SonarError::Config("Failed to set SonarQube client".to_string()))?;
 
@@ -80,9 +81,12 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
 ///
 /// A result containing a reference to the SonarQube client on success,
 /// or an error if the client has not been initialized.
-pub fn get_client() -> Result<&'static Arc<SonarQubeClient>, SonarError> {
+pub fn get_client() -> Result<Arc<SonarQubeClient>, SonarError> {
     SONARQUBE_CLIENT
+        .lock()
+        .unwrap()
         .get()
+        .cloned()
         .ok_or_else(|| SonarError::Config(
             "SonarQube client not initialized. Make sure SONARQUBE_URL and SONARQUBE_TOKEN environment variables are set.".to_string()
         ))
@@ -461,12 +465,26 @@ fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
 /// Reset the SonarQube client (for testing purposes only)
 #[cfg(test)]
 pub fn reset_client() {
-    // Create a new OnceCell instance
-    let _ = SONARQUBE_CLIENT.get_or_init(|| {
-        Arc::new(SonarQubeClient::new(SonarQubeConfig {
-            base_url: "".to_string(),
-            token: "".to_string(),
-            organization: None,
-        }))
-    });
+    // Create a new OnceCell instance by replacing the static one
+    let _ = SONARQUBE_CLIENT.lock().unwrap().take();
+    // Ensure all threads see this change
+    std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+}
+
+#[cfg(test)]
+pub mod test_utils {
+    use super::*;
+
+    pub fn reset_sonarqube_client() {
+        let mut guard = SONARQUBE_CLIENT.lock().unwrap();
+        let _ = guard.take();
+        std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    // Test-specific code here
 }

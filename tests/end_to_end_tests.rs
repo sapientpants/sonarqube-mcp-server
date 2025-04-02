@@ -2,6 +2,7 @@ mod helpers;
 
 use helpers::{load_fixture, mock_token, test_project_key};
 use serde_json::{Value, json};
+use sonarqube_mcp_server::mcp::sonarqube::tools::{SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
@@ -144,8 +145,8 @@ async fn test_mcp_server_with_sonarqube_tools() {
 fn start_mcp_server(sonarqube_url: String, sonarqube_token: String, port: u16) -> Child {
     Command::new("cargo")
         .args(["run", "--", "--port", &port.to_string()])
-        .env("SONARQUBE_URL", sonarqube_url)
-        .env("SONARQUBE_TOKEN", sonarqube_token)
+        .env(SONARQUBE_URL_ENV, sonarqube_url)
+        .env(SONARQUBE_TOKEN_ENV, sonarqube_token)
         .spawn()
         .expect("Failed to start MCP server")
 }

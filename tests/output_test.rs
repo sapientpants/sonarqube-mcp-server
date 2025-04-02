@@ -1,24 +1,15 @@
 use sonarqube_mcp_server::mcp::sonarqube::tools::sonarqube_get_issues;
+use sonarqube_mcp_server::mcp::sonarqube::tools::{SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV};
 use sonarqube_mcp_server::mcp::sonarqube::types::SonarQubeIssuesRequest;
 use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::env;
 
-// Static constants for environment variable names
-static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
-static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
-
 #[tokio::test]
-async fn test_issues_output_formatting() {
-    // Save and set environment variables
-    let original_url = env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
-
-    // Set test environment variables
+async fn test_output_error_when_no_env_vars() {
+    // Remove environment variables if they exist
     unsafe {
-        env::set_var(SONARQUBE_URL_ENV, "https://example.com");
-    }
-    unsafe {
-        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
+        env::remove_var(SONARQUBE_URL_ENV);
+        env::remove_var(SONARQUBE_TOKEN_ENV);
     }
 
     // Initialize the client
@@ -98,6 +89,24 @@ async fn test_issues_output_formatting() {
     );
     println!("{}", expected_output);
     println!("=== END SIMULATED OUTPUT ===");
+}
+
+#[tokio::test]
+async fn test_issues_output_formatting() {
+    // Save and set environment variables
+    let original_url = env::var(SONARQUBE_URL_ENV).ok();
+    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+
+    // Set test environment variables
+    unsafe {
+        env::set_var(SONARQUBE_URL_ENV, "https://example.com");
+    }
+    unsafe {
+        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
+    }
+
+    // Initialize the client
+    let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
 
     // Restore environment variables
     match original_url {

@@ -1,12 +1,10 @@
+use crate::mcp::sonarqube::tools::SONARQUBE_DEBUG_ENV;
 use crate::mcp::sonarqube::types::*;
 use reqwest::Client;
 use std::sync::Arc;
 
 // Re-export SonarQubeConfig for use in other modules
 pub use crate::mcp::sonarqube::types::SonarQubeConfig;
-
-// Static constants for environment variable names
-static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
 
 /// Local debug logging helper
 fn debug_log(message: &str) {
@@ -18,6 +16,7 @@ fn debug_log(message: &str) {
 }
 
 /// SonarQube API client
+#[derive(Debug)]
 pub struct SonarQubeClient {
     /// HTTP client for making requests
     client: Client,

@@ -43,6 +43,7 @@ wiremock = "0.6"
 tokio-test = "0.4"
 scopeguard = "1.2"
 cargo-husky = { version = "1.5", default-features = false, features = ["user-hooks"] }
+serial_test = "2.0.0"
 
 [profile.dev]
 opt-level = 1
@@ -55,3 +56,7 @@ strip = true
 lto = true
 opt-level = "z"
 codegen-units = 1
+
+[features]
+default = []
+test-utils = []

@@ -11,6 +11,9 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::mcp::sonarqube::client::SonarQubeClient;
+use crate::mcp::sonarqube::tools::{
+    SONARQUBE_ORGANIZATION_ENV, SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV,
+};
 use crate::mcp::sonarqube::types::SonarQubeConfig;
 
 // Re-export the modules for backward compatibility
@@ -26,15 +29,15 @@ pub mod server;
 #[derive(Parser, Debug)]
 pub struct Args {
     /// SonarQube server URL
-    #[arg(short = 'u', long, env = "SONARQUBE_URL")]
+    #[arg(short = 'u', long, env = SONARQUBE_URL_ENV)]
     pub sonarqube_url: String,
 
     /// SonarQube authentication token
-    #[arg(short = 't', long, env = "SONARQUBE_TOKEN")]
+    #[arg(short = 't', long, env = SONARQUBE_TOKEN_ENV)]
     pub sonarqube_token: String,
 
     /// SonarQube organization (optional)
-    #[arg(short = 'o', long, env = "SONARQUBE_ORGANIZATION")]
+    #[arg(short = 'o', long, env = SONARQUBE_ORGANIZATION_ENV)]
     pub sonarqube_organization: Option<String>,
 
     /// List MCP resources
@@ -265,8 +268,10 @@ async fn main() -> Result<()> {
 
     // Store the client in the global variable for backward compatibility
     crate::mcp::sonarqube::tools::SONARQUBE_CLIENT
+        .lock()
+        .unwrap()
         .set(server.client.clone())
-        .map_err(|_| anyhow::anyhow!("Failed to initialize SonarQube client"))?;
+        .expect("Failed to set SonarQube client");
 
     // Display server information
     display_info(&args).await;

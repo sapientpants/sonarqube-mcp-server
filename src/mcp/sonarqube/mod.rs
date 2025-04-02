@@ -28,3 +28,5 @@ pub mod types;
 /// This module provides a query builder pattern for constructing URL parameters
 /// for SonarQube API requests in a structured and maintainable way.
 pub mod query;
+
+pub mod test_utils;
