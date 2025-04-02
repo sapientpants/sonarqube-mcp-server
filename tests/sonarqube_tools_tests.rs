@@ -23,9 +23,15 @@ mod tests {
         let original_url = env::var("SONARQUBE_URL").ok();
         let original_token = env::var("SONARQUBE_TOKEN").ok();
 
-        // Test missing URL
+        // Remove all environment variables to start with a clean state
         unsafe {
             env::remove_var("SONARQUBE_URL");
+            env::remove_var("SONARQUBE_TOKEN");
+            env::remove_var("SONARQUBE_ORGANIZATION");
+        }
+
+        // Test missing URL
+        unsafe {
             env::set_var("SONARQUBE_TOKEN", "dummy_token");
         }
         let result = init_sonarqube_client();
