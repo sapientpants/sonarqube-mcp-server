@@ -51,45 +51,6 @@ impl SonarQubeClient {
         self.organization.as_deref()
     }
 
-    /// Append a string parameter to the URL if it exists
-    #[allow(dead_code)]
-    fn append_param(&self, url: &mut String, name: &str, value: Option<&str>) {
-        if let Some(val) = value {
-            url.push_str(&format!("&{}={}", name, val));
-        }
-    }
-
-    /// Append a boolean parameter to the URL if it exists
-    #[allow(dead_code)]
-    fn append_bool_param(&self, url: &mut String, name: &str, value: Option<bool>) {
-        if let Some(val) = value {
-            url.push_str(&format!("&{}={}", name, val));
-        }
-    }
-
-    /// Append a numeric parameter to the URL if it exists
-    #[allow(dead_code)]
-    fn append_numeric_param<T: std::fmt::Display>(
-        &self,
-        url: &mut String,
-        name: &str,
-        value: Option<T>,
-    ) {
-        if let Some(val) = value {
-            url.push_str(&format!("&{}={}", name, val));
-        }
-    }
-
-    /// Append an array parameter as comma-separated values if it exists
-    #[allow(dead_code)]
-    fn append_array_param<'a>(&self, url: &mut String, name: &str, values: Option<&'a [&'a str]>) {
-        if let Some(vals) = values {
-            if !vals.is_empty() {
-                url.push_str(&format!("&{}={}", name, vals.join(",")));
-            }
-        }
-    }
-
     /// Handle HTTP response errors and convert them to SonarError
     async fn handle_response_error(
         &self,

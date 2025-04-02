@@ -29,20 +29,20 @@ The `Args` struct is defined redundantly in both `src/main.rs` and `src/server/m
 - ✅ `src/main.rs`
 - ✅ `src/server/mod.rs`
 
-## 3. Clean up unused SonarQubeClient helper methods
+## 3. ✅ Clean up unused SonarQubeClient helper methods
 
 Several helper methods in `SonarQubeClient` are marked with `#[allow(dead_code)]` and have been superseded by `QueryBuilder`.
 
 **Steps:**
-1. Remove the following methods from `SonarQubeClient`:
-   - `append_param()`
-   - `append_bool_param()`
-   - `append_numeric_param()`
-   - `append_array_param()`
-2. Remove any tests that might be dependent on these methods
+1. ✅ Remove the following methods from `SonarQubeClient`:
+   - ✅ `append_param()`
+   - ✅ `append_bool_param()`
+   - ✅ `append_numeric_param()`
+   - ✅ `append_array_param()`
+2. ✅ Remove any tests that might be dependent on these methods
 
 **Files affected:**
-- `src/mcp/sonarqube/client.rs`
+- ✅ `src/mcp/sonarqube/client.rs`
 
 ## 4. Fix or properly implement prompts functionality
 
