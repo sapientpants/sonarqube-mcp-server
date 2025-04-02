@@ -1,5 +1,7 @@
 mod helpers;
 
+use sonarqube_mcp_server::mcp::sonarqube::context::ServerContext;
+use sonarqube_mcp_server::mcp::sonarqube::tools;
 use sonarqube_mcp_server::mcp::sonarqube::types::{
     Component, Condition, Issue, IssueInfo, Paging, ProjectStatus, ProjectsResponse,
     QualityGateCondition, QualityGateResponse, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
@@ -450,8 +452,9 @@ fn test_projects_response_serialization() {
 fn test_sonarqube_list_projects_request_serialization() {
     // Create a SonarQubeListProjectsRequest struct
     let request = SonarQubeListProjectsRequest {
-        page: Some(2),
+        page: Some(1),
         page_size: Some(10),
+        organization: None,
     };
 
     // Serialize to JSON
@@ -461,8 +464,9 @@ fn test_sonarqube_list_projects_request_serialization() {
     let deserialized: SonarQubeListProjectsRequest = serde_json::from_str(&json_str).unwrap();
 
     // Verify the roundtrip
-    assert_eq!(deserialized.page, Some(2));
+    assert_eq!(deserialized.page, Some(1));
     assert_eq!(deserialized.page_size, Some(10));
+    assert_eq!(deserialized.organization, None);
 }
 
 #[test]
@@ -613,113 +617,124 @@ fn test_sonar_error_from_impl() {
 
 // Legacy tool tests moved from src/mcp/sonarqube/tools.rs
 use serde_json::Value;
-use sonarqube_mcp_server::mcp::sonarqube::tools;
-use sonarqube_mcp_server::mcp::types::{
-    GetIssuesRequest, GetMetricsRequest, GetQualityGateRequest, IssuesQueryParams,
-};
 
 #[tokio::test]
 async fn test_get_metrics_legacy() {
-    // Create a metrics request
-    let request = GetMetricsRequest {
+    // This is testing a legacy function in tools.rs
+    // Create a request
+    let request = SonarQubeMetricsRequest {
         project_key: "test-project".to_string(),
-        metrics: None,
+        metrics: Some(vec!["coverage".to_string()]),
     };
 
-    // Call the legacy get_metrics function
-    let result = tools::get_metrics(request).await;
-    assert!(result.is_ok());
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Verify the result structure
-    let metrics_result = result.unwrap();
-    assert_eq!(metrics_result.metrics, Value::Null);
+    // Call the function
+    let result = tools::sonarqube_get_metrics(request, &context).await;
+    assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_get_issues_legacy() {
-    // Create an issues request
-    let request = GetIssuesRequest {
+    // This is testing a legacy function in tools.rs
+    // Create a request
+    let request = SonarQubeIssuesRequest {
         project_key: "test-project".to_string(),
-        filters: IssuesQueryParams {
-            project_key: "test-project".to_string(),
-            asc: None,
-            assigned_to_me: None,
-            assignees: None,
-            authors: None,
-            code_variants: None,
-            created_after: None,
-            created_before: None,
-            created_in_last: None,
-            cwe: None,
-            directories: None,
-            facets: None,
-            files: None,
-            impact_severities: None,
-            impact_software_qualities: None,
-            issue_statuses: None,
-            languages: None,
-            owasp_top10: None,
-            owasp_top10_2021: None,
-            page: None,
-            page_size: None,
-            resolutions: None,
-            resolved: None,
-            rules: None,
-            sans_top25: None,
-            severities: None,
-            sonarsource_security: None,
-            sort_field: None,
-            statuses: None,
-            tags: None,
-            types: None,
-        },
+        severities: None,
+        types: None,
+        statuses: None,
+        impact_severities: None,
+        impact_software_qualities: None,
+        assigned_to_me: None,
+        assignees: None,
+        authors: None,
+        code_variants: None,
+        created_after: None,
+        created_before: None,
+        created_in_last: None,
+        cwe: None,
+        directories: None,
+        facets: None,
+        files: None,
+        issue_statuses: None,
+        languages: None,
+        owasp_top10: None,
+        owasp_top10_2021: None,
+        resolutions: None,
+        resolved: None,
+        rules: None,
+        sans_top25: None,
+        sonarsource_security: None,
+        tags: None,
+        sort_field: None,
+        asc: None,
+        page: None,
+        page_size: None,
     };
 
-    // Call the legacy get_issues function
-    let result = tools::get_issues(request).await;
-    assert!(result.is_ok());
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Verify the result structure
-    let issues_result = result.unwrap();
-    assert_eq!(issues_result.issues, Value::Null);
+    // Call the function
+    let result = tools::sonarqube_get_issues(request, &context).await;
+    assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_get_quality_gate_legacy() {
-    // Create a quality gate request
-    let request = GetQualityGateRequest {
+    // This is testing a legacy function in tools.rs
+    // Create a request
+    let request = SonarQubeQualityGateRequest {
         project_key: "test-project".to_string(),
     };
 
-    // Call the legacy get_quality_gate function
-    let result = tools::get_quality_gate(request).await;
-    assert!(result.is_ok());
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Verify the result structure
-    let quality_gate_result = result.unwrap();
-    assert_eq!(quality_gate_result.status, Value::Null);
+    // Call the function
+    let result = tools::sonarqube_get_quality_gate(request, &context).await;
+    assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_list_projects_legacy() {
-    // Skip this test if there's no client configured
+    // Skip if SonarQube client is not set up
     if tools::get_client().is_err() {
         return;
     }
 
-    // Create a list projects request with minimal data
+    // Create a request
     let request = SonarQubeListProjectsRequest {
         page: Some(1),
         page_size: Some(10),
+        organization: None,
     };
 
-    // Call the list_projects function
-    let result = tools::list_projects(Some(request)).await;
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // This may fail if there's no SonarQube client, so we'll just check the type
-    if result.is_ok() {
-        let projects_result = result.unwrap();
-        // Just verify the type is correct
-        assert!(projects_result.projects.is_empty() || !projects_result.projects.is_empty());
-    }
+    // Call the function
+    let result = tools::list_projects(Some(request), &context).await;
+    assert!(result.is_err());
 }

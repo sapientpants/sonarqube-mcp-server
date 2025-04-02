@@ -7,10 +7,9 @@ use anyhow::Result;
 use clap::Parser;
 use rmcp::{Error as McpError, ServerHandler, ServiceExt, model::*, tool, transport::stdio};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use tracing::info;
 
-use crate::mcp::sonarqube::client::SonarQubeClient;
+use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::SonarQubeConfig;
 use crate::server::Args;
 
@@ -23,9 +22,8 @@ pub mod server;
 /// SonarQube MCP server implementation
 #[derive(Clone)]
 struct SonarQubeMcpServer {
-    #[allow(dead_code)]
-    config: SonarQubeConfig,
-    client: Arc<SonarQubeClient>,
+    /// Server context containing all dependencies
+    context: ServerContext,
 }
 
 impl SonarQubeMcpServer {
@@ -35,8 +33,8 @@ impl SonarQubeMcpServer {
             token: args.sonarqube_token.clone(),
             organization: args.sonarqube_organization.clone(),
         };
-        let client = Arc::new(SonarQubeClient::new(config.clone()));
-        Self { config, client }
+        let context = ServerContext::new(config);
+        Self { context }
     }
 }
 
@@ -94,6 +92,7 @@ impl SonarQubeMcpServer {
         // Call SonarQube client
         let org_ref = request.organization.as_deref();
         match self
+            .context
             .client
             .list_projects(request.page, request.page_size, org_ref)
             .await
@@ -153,7 +152,7 @@ impl SonarQubeMcpServer {
             asc: None,
         };
 
-        match self.client.get_issues(params).await {
+        match self.context.client.get_issues(params).await {
             Ok(issues) => {
                 let json_str = serde_json::to_string(&issues).unwrap_or_default();
                 Ok(CallToolResult::success(vec![Content::text(json_str)]))
@@ -217,11 +216,14 @@ async fn main() -> Result<()> {
     let server = SonarQubeMcpServer::new(&args);
 
     // Store the client in the global variable for backward compatibility
-    crate::mcp::sonarqube::tools::SONARQUBE_CLIENT
-        .lock()
-        .unwrap()
-        .set(server.client.clone())
-        .expect("Failed to set SonarQube client");
+    #[allow(deprecated)]
+    {
+        crate::mcp::sonarqube::tools::SONARQUBE_CLIENT
+            .lock()
+            .unwrap()
+            .set(server.context.client.clone())
+            .expect("Failed to set SonarQube client");
+    }
 
     // Display server information
     display_info(&args).await;

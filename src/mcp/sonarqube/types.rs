@@ -516,10 +516,13 @@ pub struct ProjectsResponse {
 pub struct SonarQubeListProjectsRequest {
     /// Page number
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub page: Option<i32>,
+    pub page: Option<u32>,
     /// Page size
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub page_size: Option<i32>,
+    pub page_size: Option<u32>,
+    /// Organization identifier (for SonarCloud or multi-organization instances)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub organization: Option<String>,
 }
 
 /// Result type for the SonarQube list projects operation

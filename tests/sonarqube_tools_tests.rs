@@ -2,13 +2,14 @@ use jsonrpsee_server::RpcModule;
 use once_cell::sync::OnceCell;
 use serial_test::serial;
 use sonarqube_mcp_server::mcp::sonarqube::client::SonarQubeClient;
+use sonarqube_mcp_server::mcp::sonarqube::context::ServerContext;
 use sonarqube_mcp_server::mcp::sonarqube::tools::{
     SONARQUBE_ORGANIZATION_ENV, SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV, init_sonarqube_client,
     register_sonarqube_tools, sonarqube_get_issues, sonarqube_get_metrics,
     sonarqube_get_quality_gate,
 };
 use sonarqube_mcp_server::mcp::sonarqube::types::{
-    SonarQubeIssuesRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
+    SonarQubeConfig, SonarQubeIssuesRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
 };
 use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::cell::UnsafeCell;
@@ -146,7 +147,14 @@ mod tests {
             project_key: "test-project".to_string(),
             metrics: Some(vec!["coverage".to_string()]),
         };
-        let result = sonarqube_get_metrics(request).await;
+        // Create a mock server context with a test configuration
+        let config = SonarQubeConfig {
+            base_url: "http://localhost:9000".to_string(),
+            token: "test-token".to_string(),
+            organization: None,
+        };
+        let context = ServerContext::new(config);
+        let result = sonarqube_get_metrics(request, &context).await;
         assert!(result.is_err());
     }
 
@@ -186,7 +194,14 @@ mod tests {
             page: None,
             page_size: None,
         };
-        let result = sonarqube_get_issues(request).await;
+        // Create a mock server context with a test configuration
+        let config = SonarQubeConfig {
+            base_url: "http://localhost:9000".to_string(),
+            token: "test-token".to_string(),
+            organization: None,
+        };
+        let context = ServerContext::new(config);
+        let result = sonarqube_get_issues(request, &context).await;
         assert!(result.is_err());
     }
 
@@ -196,7 +211,14 @@ mod tests {
         let request = SonarQubeQualityGateRequest {
             project_key: "test-project".to_string(),
         };
-        let result = sonarqube_get_quality_gate(request).await;
+        // Create a mock server context with a test configuration
+        let config = SonarQubeConfig {
+            base_url: "http://localhost:9000".to_string(),
+            token: "test-token".to_string(),
+            organization: None,
+        };
+        let context = ServerContext::new(config);
+        let result = sonarqube_get_quality_gate(request, &context).await;
         assert!(result.is_err());
     }
 
@@ -291,38 +313,46 @@ fn test_call_tool_result_content_formatting() {
 // Test that errors are correctly returned for non-existent projects
 #[tokio::test]
 async fn test_project_not_found_errors() {
-    // Save current environment variables
-    let original_url = std::env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = std::env::var(SONARQUBE_TOKEN_ENV).ok();
+    // Set up test environment with valid config but missing project
+    reset_sonarqube_client();
 
-    // Set test environment variables with invalid values
+    // Save current environment variables
+    let original_url = env::var(SONARQUBE_URL_ENV).ok();
+    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+    let original_org = env::var(SONARQUBE_ORGANIZATION_ENV).ok();
+
+    // Set test environment variables
     unsafe {
-        std::env::set_var(SONARQUBE_URL_ENV, "https://example.com");
-        std::env::set_var(SONARQUBE_TOKEN_ENV, "invalid-token");
+        env::set_var(SONARQUBE_URL_ENV, "http://localhost:9000");
+        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
+        if let Some(org) = &original_org {
+            env::set_var(SONARQUBE_ORGANIZATION_ENV, org);
+        }
     }
 
-    // Initialize the client
+    // Initialize the client with test values
     let _ = init_sonarqube_client();
 
-    // Define non-existent project key
-    let unknown_project = "non-existent-project";
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Test the metrics tool with a non-existent project
+    // Test metrics endpoint with non-existent project
     let metrics_request = SonarQubeMetricsRequest {
-        project_key: unknown_project.to_string(),
+        project_key: "non-existent-project".to_string(),
         metrics: Some(vec!["coverage".to_string()]),
     };
-    let metrics_result = sonarqube_get_metrics(metrics_request).await;
+    let metrics_result = sonarqube_get_metrics(metrics_request, &context).await;
+    // This should be an error due to project not found
+    assert!(metrics_result.is_err());
 
-    // We should get an error (exact content will depend on how example.com responds)
-    assert!(
-        metrics_result.is_err(),
-        "Expected an error for non-existent project, but got success"
-    );
-
-    // Test the issues tool with a non-existent project
+    // Test issues endpoint with non-existent project
     let issues_request = SonarQubeIssuesRequest {
-        project_key: unknown_project.to_string(),
+        project_key: "non-existent-project".to_string(),
         severities: None,
         types: None,
         statuses: None,
@@ -354,36 +384,32 @@ async fn test_project_not_found_errors() {
         page: None,
         page_size: None,
     };
-    let issues_result = sonarqube_get_issues(issues_request).await;
+    let issues_result = sonarqube_get_issues(issues_request, &context).await;
+    // This should be an error due to project not found
+    assert!(issues_result.is_err());
 
-    // We should get an error
-    assert!(
-        issues_result.is_err(),
-        "Expected an error for non-existent project, but got success"
-    );
-
-    // Test the quality gate tool with a non-existent project
+    // Test quality gate endpoint with non-existent project
     let quality_gate_request = SonarQubeQualityGateRequest {
-        project_key: unknown_project.to_string(),
+        project_key: "non-existent-project".to_string(),
     };
-    let quality_gate_result = sonarqube_get_quality_gate(quality_gate_request).await;
+    let quality_gate_result = sonarqube_get_quality_gate(quality_gate_request, &context).await;
+    // This should be an error due to project not found
+    assert!(quality_gate_result.is_err());
 
-    // We should get an error
-    assert!(
-        quality_gate_result.is_err(),
-        "Expected an error for non-existent project, but got success"
-    );
-
-    // Restore original environment variables
+    // Clean up and restore original environment
+    reset_sonarqube_client();
     unsafe {
         match original_url {
-            Some(url) => std::env::set_var(SONARQUBE_URL_ENV, url),
-            None => std::env::remove_var(SONARQUBE_URL_ENV),
+            Some(url) => env::set_var(SONARQUBE_URL_ENV, url),
+            None => env::remove_var(SONARQUBE_URL_ENV),
         }
-
         match original_token {
-            Some(token) => std::env::set_var(SONARQUBE_TOKEN_ENV, token),
-            None => std::env::remove_var(SONARQUBE_TOKEN_ENV),
+            Some(token) => env::set_var(SONARQUBE_TOKEN_ENV, token),
+            None => env::remove_var(SONARQUBE_TOKEN_ENV),
+        }
+        match original_org {
+            Some(org) => env::set_var(SONARQUBE_ORGANIZATION_ENV, org),
+            None => env::remove_var(SONARQUBE_ORGANIZATION_ENV),
         }
     }
 }
@@ -426,71 +452,63 @@ fn test_get_client_error_when_no_env_vars() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_sonarqube_get_metrics() {
-    // Save current environment variables
-    let original_url = env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+    // Reset the client
+    reset_sonarqube_client();
 
-    // Set up test environment
-    unsafe {
-        env::remove_var(SONARQUBE_URL_ENV);
-        env::remove_var(SONARQUBE_TOKEN_ENV);
-        env::set_var(SONARQUBE_URL_ENV, "http://localhost:9000");
-        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
-    }
+    // Make sure there are no other tests running that might interfere
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
-    // Initialize the client
+    // Initialize the client with test environment
     let _ = init_sonarqube_client();
 
-    // Create a metrics request
+    // Create a simple request
     let request = SonarQubeMetricsRequest {
-        project_key: "test-project".to_string(),
+        project_key: "sonarqube-test-project".to_string(),
         metrics: Some(vec!["coverage".to_string()]),
     };
 
-    // Call the sonarqube_get_metrics function
-    let result = sonarqube_get_metrics(request).await;
-    assert!(result.is_err()); // Changed to expect error since we're using a non-existent server
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Clean up
-    unsafe {
-        match original_url {
-            Some(url) => env::set_var(SONARQUBE_URL_ENV, url),
-            None => env::remove_var(SONARQUBE_URL_ENV),
-        }
-        match original_token {
-            Some(token) => env::set_var(SONARQUBE_TOKEN_ENV, token),
-            None => env::remove_var(SONARQUBE_TOKEN_ENV),
-        }
-    }
+    // Call the function
+    let result = sonarqube_get_metrics(request, &context).await;
+
+    // Since we don't have a real SonarQube instance in the test environment,
+    // we expect an error, but we want to make sure the function itself works
+    assert!(result.is_err());
+
+    // Reset client after test
+    reset_sonarqube_client();
 }
 
 #[tokio::test]
+#[serial]
 async fn test_sonarqube_get_issues() {
-    // Save current environment variables
-    let original_url = env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+    // Reset the client
+    reset_sonarqube_client();
 
-    // Set up test environment
-    unsafe {
-        env::remove_var(SONARQUBE_URL_ENV);
-        env::remove_var(SONARQUBE_TOKEN_ENV);
-        env::set_var(SONARQUBE_URL_ENV, "http://localhost:9000");
-        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
-    }
+    // Make sure there are no other tests running that might interfere
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
-    // Initialize the client
+    // Initialize the client with test environment
     let _ = init_sonarqube_client();
 
-    // Create an issues request
+    // Create a simple request
     let request = SonarQubeIssuesRequest {
-        project_key: "test-project".to_string(),
-        severities: None,
-        types: None,
-        statuses: None,
+        project_key: "sonarqube-test-project".to_string(),
+        severities: Some(vec!["MAJOR".to_string(), "CRITICAL".to_string()]),
+        types: Some(vec!["BUG".to_string(), "VULNERABILITY".to_string()]),
+        statuses: Some(vec!["OPEN".to_string()]),
         impact_severities: None,
         impact_software_qualities: None,
-        assigned_to_me: None,
+        assigned_to_me: Some(false),
         assignees: None,
         authors: None,
         code_variants: None,
@@ -513,64 +531,63 @@ async fn test_sonarqube_get_issues() {
         tags: None,
         sort_field: None,
         asc: None,
-        page: None,
-        page_size: None,
+        page: Some(1),
+        page_size: Some(10),
     };
 
-    // Call the sonarqube_get_issues function
-    let result = sonarqube_get_issues(request).await;
-    assert!(result.is_err()); // Changed to expect error since we're using a non-existent server
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Clean up
-    unsafe {
-        match original_url {
-            Some(url) => env::set_var(SONARQUBE_URL_ENV, url),
-            None => env::remove_var(SONARQUBE_URL_ENV),
-        }
-        match original_token {
-            Some(token) => env::set_var(SONARQUBE_TOKEN_ENV, token),
-            None => env::remove_var(SONARQUBE_TOKEN_ENV),
-        }
-    }
+    // Call the function
+    let result = sonarqube_get_issues(request, &context).await;
+
+    // Since we don't have a real SonarQube instance in the test environment,
+    // we expect an error, but we want to make sure the function itself works
+    assert!(result.is_err());
+
+    // Reset client after test
+    reset_sonarqube_client();
 }
 
 #[tokio::test]
+#[serial]
 async fn test_sonarqube_get_quality_gate() {
-    // Save current environment variables
-    let original_url = env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+    // Reset the client
+    reset_sonarqube_client();
 
-    // Set up test environment
-    unsafe {
-        env::remove_var(SONARQUBE_URL_ENV);
-        env::remove_var(SONARQUBE_TOKEN_ENV);
-        env::set_var(SONARQUBE_URL_ENV, "http://localhost:9000");
-        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
-    }
+    // Make sure there are no other tests running that might interfere
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
-    // Initialize the client
+    // Initialize the client with test environment
     let _ = init_sonarqube_client();
 
-    // Create a quality gate request
+    // Create a simple request
     let request = SonarQubeQualityGateRequest {
-        project_key: "test-project".to_string(),
+        project_key: "sonarqube-test-project".to_string(),
     };
 
-    // Call the sonarqube_get_quality_gate function
-    let result = sonarqube_get_quality_gate(request).await;
-    assert!(result.is_err()); // Changed to expect error since we're using a non-existent server
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
 
-    // Clean up
-    unsafe {
-        match original_url {
-            Some(url) => env::set_var(SONARQUBE_URL_ENV, url),
-            None => env::remove_var(SONARQUBE_URL_ENV),
-        }
-        match original_token {
-            Some(token) => env::set_var(SONARQUBE_TOKEN_ENV, token),
-            None => env::remove_var(SONARQUBE_TOKEN_ENV),
-        }
-    }
+    // Call the function
+    let result = sonarqube_get_quality_gate(request, &context).await;
+
+    // Since we don't have a real SonarQube instance in the test environment,
+    // we expect an error, but we want to make sure the function itself works
+    assert!(result.is_err());
+
+    // Reset client after test
+    reset_sonarqube_client();
 }
 
 #[tokio::test]

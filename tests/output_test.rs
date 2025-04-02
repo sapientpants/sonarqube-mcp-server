@@ -1,5 +1,7 @@
+use sonarqube_mcp_server::mcp::sonarqube::context::ServerContext;
 use sonarqube_mcp_server::mcp::sonarqube::tools::sonarqube_get_issues;
 use sonarqube_mcp_server::mcp::sonarqube::tools::{SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV};
+use sonarqube_mcp_server::mcp::sonarqube::types::SonarQubeConfig;
 use sonarqube_mcp_server::mcp::sonarqube::types::SonarQubeIssuesRequest;
 use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::env;
@@ -50,9 +52,17 @@ async fn test_output_error_when_no_env_vars() {
         page_size: None,
     };
 
+    // Create a mock server context with a test configuration
+    let config = SonarQubeConfig {
+        base_url: "http://localhost:9000".to_string(),
+        token: "test-token".to_string(),
+        organization: None,
+    };
+    let context = ServerContext::new(config);
+
     // This will fail due to connection error, but we can use a mock to simulate a response
     // For now, let's just print the structure of the output
-    match sonarqube_get_issues(request).await {
+    match sonarqube_get_issues(request, &context).await {
         Ok(result) => {
             for content in result.content {
                 match content {

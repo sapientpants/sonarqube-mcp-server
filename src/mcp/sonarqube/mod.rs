@@ -11,6 +11,12 @@
 /// issues, quality gates, and other information through a standardized interface.
 pub mod client;
 
+/// Server context for dependency injection.
+///
+/// This module provides a centralized container for server dependencies,
+/// enabling proper dependency injection throughout the codebase.
+pub mod context;
+
 /// MCP tools exposing SonarQube functionality to clients.
 ///
 /// This module defines the tools that are registered with the MCP server

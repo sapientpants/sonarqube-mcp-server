@@ -39,10 +39,20 @@ The current implementation uses global static variables for server components li
 - Pass dependencies explicitly to functions that need them
 
 ### Tasks
-- [ ] Create a central context/container for server dependencies
-- [ ] Remove static globals in favor of passed dependencies
-- [ ] Update tool implementations to accept dependencies through parameters
-- [ ] Improve testability by making dependencies mockable
+- [x] Create a central context/container for server dependencies
+- [x] Remove static globals in favor of passed dependencies
+- [x] Update tool implementations to accept dependencies through parameters
+- [x] Improve testability by making dependencies mockable
+
+### Implementation Details
+- Created a new ServerContext struct in `src/mcp/sonarqube/context.rs` to hold all dependencies
+- Deprecated the global SONARQUBE_CLIENT static variable in favor of explicit dependency injection
+- Updated all tool functions to accept a ServerContext parameter containing dependencies
+- Maintained backward compatibility by keeping legacy implementations that use the global state
+- Updated the SonarQubeMcpServer implementation to use the new context approach
+- Added proper documentation explaining the migration path for legacy code
+
+This change makes the codebase more maintainable and testable by removing global state and enforcing explicit dependency passing. The legacy global state is kept with deprecation warnings for backward compatibility, with clear guidance to migrate to the new approach.
 
 ## 3. Error Handling Standardization
 

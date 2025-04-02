@@ -3,18 +3,15 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::mcp::sonarqube::client::SonarQubeClient;
+use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::{
     IssuesQueryParams, ProjectsResponse, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
     SonarQubeListProjectsRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
 };
-use crate::mcp::types::{
-    CallToolResult, CallToolResultContent, GetIssuesRequest, GetIssuesResult, GetMetricsRequest,
-    GetMetricsResult, GetQualityGateRequest, GetQualityGateResult, ListProjectsResult, Project,
-};
+use crate::mcp::types::{CallToolResult, CallToolResultContent, ListProjectsResult, Project};
 use anyhow::Result;
 use jsonrpsee_server::RpcModule;
 use jsonrpsee_types::ErrorObject;
-use serde_json::Value;
 
 // Static constants for environment variable names
 /// SonarQube server URL environment variable
@@ -41,22 +38,36 @@ pub static SONARQUBE_ORGANIZATION_ENV: &str = "SONARQUBE_ORGANIZATION";
 /// SonarQube client operations.
 pub static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
 
-/// Global SonarQube client for tools to use
+/// Global SonarQube client for tools to use (deprecated)
 ///
 /// This global variable provides a singleton instance of the SonarQube client
 /// that can be accessed by all tools. It's initialized during server startup.
+///
+/// Note: This is deprecated and maintained only for backward compatibility.
+/// New code should use the ServerContext for dependency injection instead.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use ServerContext for dependency injection instead of global state"
+)]
 pub static SONARQUBE_CLIENT: Mutex<OnceCell<Arc<SonarQubeClient>>> = Mutex::new(OnceCell::new());
 
-/// Initialize the SonarQube client
+/// Initialize the SonarQube client (deprecated)
 ///
 /// This function creates and initializes a SonarQube client instance using
 /// environment variables. It sets up the client with the SonarQube server URL,
 /// authentication token, and optional organization.
 ///
+/// Note: This is deprecated and maintained only for backward compatibility.
+/// New code should use the ServerContext.from_env() method instead.
+///
 /// # Returns
 ///
 /// A result indicating success or error. An error is returned if required
 /// environment variables are missing or the client cannot be initialized.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use ServerContext::from_env() instead of this function for dependency injection"
+)]
 #[allow(dead_code)]
 pub fn init_sonarqube_client() -> Result<(), SonarError> {
     // Get environment variables
@@ -82,6 +93,7 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
     let client = SonarQubeClient::new(config);
 
     // Store client in global variable
+    #[allow(deprecated)]
     SONARQUBE_CLIENT
         .lock()
         .unwrap()
@@ -91,16 +103,24 @@ pub fn init_sonarqube_client() -> Result<(), SonarError> {
     Ok(())
 }
 
-/// Get the SonarQube client instance
+/// Get the SonarQube client instance (deprecated)
 ///
 /// This function retrieves the global SonarQube client instance.
 /// It should be called after the client has been initialized.
+///
+/// Note: This is deprecated and maintained only for backward compatibility.
+/// New code should use the ServerContext for dependency injection instead.
 ///
 /// # Returns
 ///
 /// A result containing a reference to the SonarQube client on success,
 /// or an error if the client has not been initialized.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use ServerContext for dependency injection instead of global state"
+)]
 pub fn get_client() -> Result<Arc<SonarQubeClient>, SonarError> {
+    #[allow(deprecated)]
     SONARQUBE_CLIENT
         .lock()
         .unwrap()
@@ -135,33 +155,43 @@ pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
 
     module.register_async_method("sonarqube/metrics", |params, _| async move {
         let request = params.parse::<SonarQubeMetricsRequest>()?;
-        sonarqube_get_metrics(request)
+        sonarqube_get_metrics_legacy(request)
             .await
             .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     module.register_async_method("sonarqube/issues", |params, _| async move {
         let request = params.parse::<SonarQubeIssuesRequest>()?;
-        sonarqube_get_issues(request)
+        sonarqube_get_issues_legacy(request)
             .await
             .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     module.register_async_method("sonarqube/quality_gate", |params, _| async move {
         let request = params.parse::<SonarQubeQualityGateRequest>()?;
-        sonarqube_get_quality_gate(request)
+        sonarqube_get_quality_gate_legacy(request)
             .await
             .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     module.register_async_method("sonarqube/projects", |params, _| async move {
         let request = params.parse::<SonarQubeListProjectsRequest>()?;
-        list_projects(Some(request))
+        list_projects_legacy(Some(request))
             .await
             .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
     })?;
 
     Ok(())
+}
+
+/// Legacy wrapper for sonarqube_get_metrics that uses global state
+///
+/// This is kept for backward compatibility.
+async fn sonarqube_get_metrics_legacy(request: SonarQubeMetricsRequest) -> Result<CallToolResult> {
+    #[allow(deprecated)]
+    let client = get_client()?;
+
+    sonarqube_get_metrics_with_client(request, client).await
 }
 
 /// Retrieves metrics for a SonarQube project.
@@ -173,12 +203,23 @@ pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
 /// # Arguments
 ///
 /// * `request` - The request containing the project key and optional metric keys
+/// * `context` - The server context containing dependencies
 ///
 /// # Returns
 ///
 /// Returns a result containing the requested metrics
-pub async fn sonarqube_get_metrics(request: SonarQubeMetricsRequest) -> Result<CallToolResult> {
-    let client = get_client()?;
+pub async fn sonarqube_get_metrics(
+    request: SonarQubeMetricsRequest,
+    context: &ServerContext,
+) -> Result<CallToolResult> {
+    sonarqube_get_metrics_with_client(request, context.client()).await
+}
+
+/// Internal implementation for sonarqube_get_metrics that works with a provided client
+async fn sonarqube_get_metrics_with_client(
+    request: SonarQubeMetricsRequest,
+    client: Arc<SonarQubeClient>,
+) -> Result<CallToolResult> {
     let project_key = request.project_key;
 
     // Check if project exists
@@ -208,6 +249,16 @@ pub async fn sonarqube_get_metrics(request: SonarQubeMetricsRequest) -> Result<C
     Ok(response)
 }
 
+/// Legacy wrapper for sonarqube_get_issues that uses global state
+///
+/// This is kept for backward compatibility.
+async fn sonarqube_get_issues_legacy(request: SonarQubeIssuesRequest) -> Result<CallToolResult> {
+    #[allow(deprecated)]
+    let client = get_client()?;
+
+    sonarqube_get_issues_with_client(request, client).await
+}
+
 /// Retrieves issues for a SonarQube project.
 ///
 /// This handler function fetches issues (e.g., bugs, vulnerabilities, code smells)
@@ -217,12 +268,23 @@ pub async fn sonarqube_get_metrics(request: SonarQubeMetricsRequest) -> Result<C
 /// # Arguments
 ///
 /// * `request` - The request containing the project key and optional filters
+/// * `context` - The server context containing dependencies
 ///
 /// # Returns
 ///
 /// Returns a result containing the requested issues
-pub async fn sonarqube_get_issues(request: SonarQubeIssuesRequest) -> Result<CallToolResult> {
-    let client = get_client()?;
+pub async fn sonarqube_get_issues(
+    request: SonarQubeIssuesRequest,
+    context: &ServerContext,
+) -> Result<CallToolResult> {
+    sonarqube_get_issues_with_client(request, context.client()).await
+}
+
+/// Internal implementation for sonarqube_get_issues that works with a provided client
+async fn sonarqube_get_issues_with_client(
+    request: SonarQubeIssuesRequest,
+    client: Arc<SonarQubeClient>,
+) -> Result<CallToolResult> {
     let project_key = request.project_key;
 
     // Check if project exists
@@ -277,6 +339,18 @@ pub async fn sonarqube_get_issues(request: SonarQubeIssuesRequest) -> Result<Cal
     Ok(response)
 }
 
+/// Legacy wrapper for sonarqube_get_quality_gate that uses global state
+///
+/// This is kept for backward compatibility.
+async fn sonarqube_get_quality_gate_legacy(
+    request: SonarQubeQualityGateRequest,
+) -> Result<CallToolResult> {
+    #[allow(deprecated)]
+    let client = get_client()?;
+
+    sonarqube_get_quality_gate_with_client(request, client).await
+}
+
 /// Retrieves quality gate status for a SonarQube project.
 ///
 /// This handler function fetches the quality gate status for a specific project
@@ -286,26 +360,23 @@ pub async fn sonarqube_get_issues(request: SonarQubeIssuesRequest) -> Result<Cal
 /// # Arguments
 ///
 /// * `request` - The request containing the project key
+/// * `context` - The server context containing dependencies
 ///
 /// # Returns
 ///
 /// Returns a result containing the quality gate status
-///
-/// This handler function fetches the quality gate status for a specific project
-/// from SonarQube. The quality gate represents the overall health of the project
-/// based on predefined quality criteria.
-///
-/// # Arguments
-///
-/// * `request` - The request containing the project key
-///
-/// # Returns
-///
-/// Returns a result containing the project's quality gate status
 pub async fn sonarqube_get_quality_gate(
     request: SonarQubeQualityGateRequest,
+    context: &ServerContext,
 ) -> Result<CallToolResult> {
-    let client = get_client()?;
+    sonarqube_get_quality_gate_with_client(request, context.client()).await
+}
+
+/// Internal implementation for sonarqube_get_quality_gate that works with a provided client
+async fn sonarqube_get_quality_gate_with_client(
+    request: SonarQubeQualityGateRequest,
+    client: Arc<SonarQubeClient>,
+) -> Result<CallToolResult> {
     let project_key = request.project_key;
 
     // Check if project exists
@@ -327,6 +398,18 @@ pub async fn sonarqube_get_quality_gate(
     Ok(response)
 }
 
+/// Legacy wrapper for list_projects that uses global state
+///
+/// This is kept for backward compatibility.
+async fn list_projects_legacy(
+    request: Option<SonarQubeListProjectsRequest>,
+) -> Result<ListProjectsResult> {
+    #[allow(deprecated)]
+    let client = get_client()?;
+
+    list_projects_with_client(request, client).await
+}
+
 /// Lists all available SonarQube projects.
 ///
 /// This function retrieves a list of all projects from the SonarQube instance.
@@ -334,148 +417,44 @@ pub async fn sonarqube_get_quality_gate(
 /// # Arguments
 ///
 /// * `request` - Optional parameters for pagination
+/// * `context` - The server context containing dependencies
 ///
 /// # Returns
 ///
 /// Returns a result containing the list of projects
-///
-/// This handler function fetches a list of all projects from the SonarQube instance
-/// that the authenticated user has access to. The results can be paginated and
-/// filtered by organization.
-///
-/// # Arguments
-///
-/// * `request` - Optional request containing pagination parameters and filters
-///
-/// # Returns
-///
-/// Returns a result containing the list of available projects
 pub async fn list_projects(
     request: Option<SonarQubeListProjectsRequest>,
+    context: &ServerContext,
 ) -> Result<ListProjectsResult> {
-    let client = get_client()?;
-    let mut params = vec![];
-    if let Some(req) = request {
-        if let Some(page) = req.page {
-            params.push(("page", page.to_string()));
-        }
-        if let Some(page_size) = req.page_size {
-            params.push(("pageSize", page_size.to_string()));
-        }
-    }
+    list_projects_with_client(request, context.client()).await
+}
 
-    let projects = client.list_projects(None, None, None).await?;
+/// Internal implementation for list_projects that works with a provided client
+async fn list_projects_with_client(
+    request: Option<SonarQubeListProjectsRequest>,
+    client: Arc<SonarQubeClient>,
+) -> Result<ListProjectsResult> {
+    // Extract request parameters if provided
+    let (page, page_size, org_str) = match request {
+        Some(req) => {
+            let org_str = req.organization.clone();
+            (req.page, req.page_size, org_str)
+        }
+        None => (None, None, None),
+    };
+
+    // Get list of projects
+    let org = org_str.as_deref();
+    let projects = client.list_projects(page, page_size, org).await?;
+
+    // Convert to ListProjectsResult
     Ok(convert_projects(projects))
 }
 
-/// Gets metrics for a SonarQube project.
+/// Converts SonarQube ProjectsResponse to ListProjectsResult
 ///
-/// This function retrieves specific metrics for a given project.
-///
-/// # Arguments
-///
-/// * `request` - The request containing project key and metrics to retrieve
-///
-/// # Returns
-///
-/// Returns a result containing the requested metrics
-///
-/// Legacy endpoint for getting metrics (deprecated).
-///
-/// This handler function is a legacy endpoint for fetching metrics.
-/// It provides backward compatibility with older clients.
-///
-/// # Arguments
-///
-/// * `_request` - The metrics request parameters
-///
-/// # Returns
-///
-/// Returns a result containing the requested metrics in the legacy format
-#[allow(dead_code)]
-pub async fn get_metrics(_request: GetMetricsRequest) -> Result<GetMetricsResult> {
-    let response = GetMetricsResult {
-        metrics: Value::Null,
-    };
-    Ok(response)
-}
-
-/// Gets issues for a SonarQube project.
-///
-/// This function retrieves issues for a given project based on specified filters.
-///
-/// # Arguments
-///
-/// * `request` - The request containing project key and filter parameters
-///
-/// # Returns
-///
-/// Returns a result containing the filtered issues
-///
-/// Legacy endpoint for getting issues (deprecated).
-///
-/// This handler function is a legacy endpoint for fetching issues.
-/// It provides backward compatibility with older clients.
-///
-/// # Arguments
-///
-/// * `_request` - The issues request parameters
-///
-/// # Returns
-///
-/// Returns a result containing the requested issues in the legacy format
-#[allow(dead_code)]
-pub async fn get_issues(_request: GetIssuesRequest) -> Result<GetIssuesResult> {
-    let response = GetIssuesResult {
-        issues: Value::Null,
-    };
-    Ok(response)
-}
-
-/// Gets quality gate status for a SonarQube project.
-///
-/// This function retrieves the quality gate status for a given project.
-///
-/// # Arguments
-///
-/// * `request` - The request containing the project key
-///
-/// # Returns
-///
-/// Returns a result containing the quality gate status
-///
-/// Legacy endpoint for getting quality gate status (deprecated).
-///
-/// This handler function is a legacy endpoint for fetching quality gate status.
-/// It provides backward compatibility with older clients.
-///
-/// # Arguments
-///
-/// * `_request` - The quality gate request parameters
-///
-/// # Returns
-///
-/// Returns a result containing the quality gate status in the legacy format
-#[allow(dead_code)]
-pub async fn get_quality_gate(_request: GetQualityGateRequest) -> Result<GetQualityGateResult> {
-    let response = GetQualityGateResult {
-        status: Value::Null,
-    };
-    Ok(response)
-}
-
-/// Convert a SonarQube project list to an MCP project list
-///
-/// This helper function transforms the native SonarQube API response format
-/// into the MCP server's format for project listings.
-///
-/// # Arguments
-///
-/// * `projects` - The projects response from the SonarQube API
-///
-/// # Returns
-///
-/// The formatted list of projects for the MCP response
+/// This helper function transforms the SonarQube API response into
+/// the MCP tool response format.
 fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
     ListProjectsResult {
         projects: projects
@@ -489,12 +468,20 @@ fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
     }
 }
 
-/// Resets the global SonarQube client
+/// Resets the global SonarQube client (deprecated)
 ///
 /// This function clears the global SonarQube client instance,
 /// allowing it to be reinitialized. This is primarily used in
 /// testing scenarios to ensure a clean state between tests.
+///
+/// Note: This is deprecated and maintained only for backward compatibility.
+/// New code should not rely on global state.
+#[deprecated(
+    since = "0.3.0",
+    note = "Use ServerContext for dependency injection instead of global state"
+)]
 pub fn reset_client() {
+    #[allow(deprecated)]
     SONARQUBE_CLIENT.lock().unwrap().take();
 }
 
@@ -502,11 +489,18 @@ pub fn reset_client() {
 pub mod test_utils {
     use super::*;
 
-    /// Resets the SonarQube client for testing
+    /// Resets the SonarQube client for testing (deprecated)
     ///
     /// This function clears the global SonarQube client instance and adds
     /// additional synchronization operations to ensure thread safety during tests.
     /// It includes a memory fence and a small delay to avoid race conditions.
+    ///
+    /// Note: This is deprecated and maintained only for backward compatibility.
+    /// New tests should use ServerContext for dependency injection instead.
+    #[deprecated(
+        since = "0.3.0",
+        note = "Use ServerContext for dependency injection in tests instead of global state"
+    )]
     pub fn reset_sonarqube_client() {
         let mut guard = SONARQUBE_CLIENT.lock().unwrap();
         let _ = guard.take();
