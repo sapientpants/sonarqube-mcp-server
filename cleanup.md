@@ -81,18 +81,23 @@ The `resource_read()` function ignores its input and returns a hardcoded message
 - ✅ `src/server/mod.rs`
 - ✅ `tests/resources_tests.rs`
 
-## 7. Clean up test_utils.rs if not used in tests
+## 7. ✅ Clean up test_utils.rs if not used in tests
 
 Examine if `src/mcp/sonarqube/test_utils.rs` is actually used in any tests.
 
 **Steps:**
-1. Check if any test files import from test_utils
-2. If not used, remove the file and its module declaration
-3. If used, ensure it only contains what's needed for tests
+1. ✅ Check if any test files import from test_utils
+2. ✅ If not used, remove the file and its module declaration
+3. ✅ If used, ensure it only contains what's needed for tests
+
+**Findings:**
+- ✅ Confirmed that the `test_utils.rs` file was not being imported in any tests
+- ✅ The function `reset_sonarqube_client()` was duplicated in both `test_utils.rs` and as a submodule in `tools.rs`
+- ✅ Tests were using their own implementation of the function rather than importing it
 
 **Files affected:**
-- `src/mcp/sonarqube/test_utils.rs`
-- `src/mcp/sonarqube/mod.rs`
+- ✅ `src/mcp/sonarqube/test_utils.rs` (removed as unused)
+- ✅ `src/mcp/sonarqube/mod.rs` (removed module declaration)
 
 ## Implementation Order
 
@@ -103,8 +108,8 @@ For the safest implementation, we recommend following this order:
 3. ✅ Remove unused utility methods (#3) - isolated to client implementation  
 4. ✅ Consolidate Args struct (#2) - simple refactoring
 5. ✅ Address prompts functionality (#4) - contained feature
-6. Implement proper resource handling (#6) - contained feature
-7. Clean up test utilities (#7) - only impacts tests
+6. ✅ Implement proper resource handling (#6) - contained feature
+7. ✅ Clean up test utilities (#7) - only impacts tests
 
 ## Testing Strategy
 
