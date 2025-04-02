@@ -1,6 +1,5 @@
-use anyhow::Result;
+use crate::mcp::errors::{McpError, McpResult};
 use jsonrpsee_server::RpcModule;
-use jsonrpsee_types::ErrorObject;
 use tracing::info;
 
 use crate::mcp::types::{ListToolsRequest, ListToolsResult, Tool};
@@ -22,13 +21,16 @@ use serde_json;
 /// # Returns
 ///
 /// Returns a result containing the list of all available tools
-pub async fn tools_list(_request: Option<ListToolsRequest>) -> Result<ListToolsResult> {
+pub async fn tools_list(_request: Option<ListToolsRequest>) -> McpResult<ListToolsResult> {
     info!("Legacy tools_list called - tools are now handled by RMCP SDK");
-    let tools: Vec<Tool> = serde_json::from_str(include_str!("./templates/tools.json")).unwrap();
+    let tools: Vec<Tool> = serde_json::from_str(include_str!("./templates/tools.json"))
+        .map_err(|e| McpError::SerializationError(format!("Failed to parse tools JSON: {}", e)))?;
+
     let response = ListToolsResult {
         tools,
         next_cursor: None,
     };
+
     Ok(response)
 }
 
@@ -45,12 +47,12 @@ pub async fn tools_list(_request: Option<ListToolsRequest>) -> Result<ListToolsR
 /// # Returns
 ///
 /// Returns the RPC module with all tools registered
-pub fn register_tools(module: &mut RpcModule<()>) -> Result<()> {
+pub fn register_tools(module: &mut RpcModule<()>) -> anyhow::Result<()> {
     info!("Legacy register_tools called - tools are now registered via RMCP SDK");
+
     module.register_async_method("tools/list", |_, _| async move {
-        tools_list(None)
-            .await
-            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
+        tools_list(None).await.map_err(|e| e.to_error_object())
     })?;
+
     Ok(())
 }

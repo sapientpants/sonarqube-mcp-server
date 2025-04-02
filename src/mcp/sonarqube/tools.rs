@@ -2,10 +2,11 @@ use once_cell::sync::OnceCell;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use crate::mcp::errors::{McpError, McpResult};
 use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::{
-    IssuesQueryParams, ProjectsResponse, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
+    IssuesQueryParams, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
     SonarQubeListProjectsRequest, SonarQubeMetricsRequest, SonarQubeQualityGateRequest,
 };
 use crate::mcp::types::{CallToolResult, CallToolResultContent, ListProjectsResult, Project};
@@ -403,20 +404,21 @@ async fn sonarqube_get_quality_gate_with_client(
 /// This is kept for backward compatibility.
 async fn list_projects_legacy(
     request: Option<SonarQubeListProjectsRequest>,
-) -> Result<ListProjectsResult> {
+) -> McpResult<ListProjectsResult> {
     #[allow(deprecated)]
-    let client = get_client()?;
+    let client = get_client().map_err(|e| McpError::from(e).with_log("list_projects_legacy"))?;
 
     list_projects_with_client(request, client).await
 }
 
-/// Lists all available SonarQube projects.
+/// Lists projects from SonarQube.
 ///
-/// This function retrieves a list of all projects from the SonarQube instance.
+/// This handler function retrieves a list of projects from SonarQube,
+/// optionally filtered by various criteria.
 ///
 /// # Arguments
 ///
-/// * `request` - Optional parameters for pagination
+/// * `request` - Optional request parameters for filtering projects
 /// * `context` - The server context containing dependencies
 ///
 /// # Returns
@@ -425,17 +427,19 @@ async fn list_projects_legacy(
 pub async fn list_projects(
     request: Option<SonarQubeListProjectsRequest>,
     context: &ServerContext,
-) -> Result<ListProjectsResult> {
-    list_projects_with_client(request, context.client()).await
+) -> McpResult<ListProjectsResult> {
+    list_projects_with_client(request, context.client())
+        .await
+        .map_err(|e| e.with_log("list_projects"))
 }
 
 /// Internal implementation for list_projects that works with a provided client
 async fn list_projects_with_client(
     request: Option<SonarQubeListProjectsRequest>,
     client: Arc<SonarQubeClient>,
-) -> Result<ListProjectsResult> {
-    // Extract request parameters if provided
-    let (page, page_size, org_str) = match request {
+) -> McpResult<ListProjectsResult> {
+    // Extract parameters from request
+    let (page, page_size, organization) = match request {
         Some(req) => {
             let org_str = req.organization.clone();
             (req.page, req.page_size, org_str)
@@ -443,29 +447,24 @@ async fn list_projects_with_client(
         None => (None, None, None),
     };
 
-    // Get list of projects
-    let org = org_str.as_deref();
-    let projects = client.list_projects(page, page_size, org).await?;
+    // Call SonarQube client
+    let org_ref = organization.as_deref();
+    let projects_response = client
+        .list_projects(page, page_size, org_ref)
+        .await
+        .map_err(|e| McpError::from(e).with_log("list_projects_with_client"))?;
 
-    // Convert to ListProjectsResult
-    Ok(convert_projects(projects))
-}
+    // Transform to MCP response format
+    let projects: Vec<Project> = projects_response
+        .components
+        .into_iter()
+        .map(|component| Project {
+            key: component.key,
+            name: component.name,
+        })
+        .collect();
 
-/// Converts SonarQube ProjectsResponse to ListProjectsResult
-///
-/// This helper function transforms the SonarQube API response into
-/// the MCP tool response format.
-fn convert_projects(projects: ProjectsResponse) -> ListProjectsResult {
-    ListProjectsResult {
-        projects: projects
-            .components
-            .into_iter()
-            .map(|p| Project {
-                name: p.name,
-                key: p.key,
-            })
-            .collect(),
-    }
+    Ok(ListProjectsResult { projects })
 }
 
 /// Resets the global SonarQube client (deprecated)

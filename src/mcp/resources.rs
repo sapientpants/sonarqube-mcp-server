@@ -1,26 +1,26 @@
-use crate::mcp::types::*;
-use anyhow::Result;
-use serde_json;
+use crate::mcp::errors::McpResult;
+use crate::mcp::types::ListResourcesResult;
+use tracing::info;
 
-/// Lists all resources available in the MCP server.
+/// Lists all available resources that the MCP server provides.
 ///
 /// This handler function returns information about all resources registered
-/// with the MCP server. Resources can include log files, configuration files,
-/// and other content that clients may need to access.
+/// with the MCP server, including prompts and other data resources.
 ///
-/// # Arguments
-///
-/// * `_request` - Optional request parameters for listing resources (currently unused)
+/// Note: This is a legacy implementation kept for backward compatibility.
+/// The RMCP SDK now handles resource registration and listing directly.
 ///
 /// # Returns
 ///
 /// Returns a result containing the list of all available resources
-pub async fn resources_list(_request: Option<ListResourcesRequest>) -> Result<ListResourcesResult> {
-    let resources: Vec<Resource> =
-        serde_json::from_str(include_str!("./templates/resources.json")).unwrap();
+pub async fn resources_list() -> McpResult<ListResourcesResult> {
+    info!("Legacy resources_list called - resources are now handled by RMCP SDK");
+
+    // For now, we return an empty list as resources are handled by the SDK
     let response = ListResourcesResult {
-        resources,
+        resources: vec![],
         next_cursor: None,
     };
+
     Ok(response)
 }

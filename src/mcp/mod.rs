@@ -16,6 +16,8 @@
 //! - `types`: Defines data structures used throughout the server
 //! - `lifecycle`: Handles MCP protocol lifecycle such as initialization
 
+/// Module for error handling and standardization
+pub mod errors;
 /// Module for handling MCP protocol lifecycle
 pub mod lifecycle;
 /// Module for managing and exposing prompts to MCP clients
@@ -33,10 +35,34 @@ pub mod types;
 const JSONRPC_VERSION: &str = "2.0";
 
 /// MCP protocol version implemented by the server
-const PROTOCOL_VERSION: &str = "2024-11-05";
+const PROTOCOL_VERSION: &str = "1.0.0";
 
 /// Name of the server implementation
 const SERVER_NAME: &str = "sonarqube-mcp-server";
 
 /// Version of the server implementation
-const SERVER_VERSION: &str = "0.2.0";
+const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub use errors::{ApiError, McpError, McpResult, error_codes};
+pub use lifecycle::{exit, initialize, initialized, shutdown};
+/// Re-export key types for easier imports
+pub use resources::resources_list;
+pub use tools::{register_tools, tools_list};
+
+/// Default API endpoint for the MCP server
+pub const DEFAULT_ENDPOINT: &str = "127.0.0.1:3000";
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_version_constants() {
+        assert!(!super::SERVER_NAME.is_empty());
+        assert!(!super::SERVER_VERSION.is_empty());
+        assert!(!super::PROTOCOL_VERSION.is_empty());
+    }
+
+    #[test]
+    fn test_jsonrpc_version() {
+        assert_eq!(super::JSONRPC_VERSION, "2.0");
+    }
+}

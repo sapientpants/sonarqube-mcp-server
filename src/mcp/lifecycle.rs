@@ -7,7 +7,7 @@
 // through the ServerHandler trait implementation in the main module. This module
 // is kept for reference and backward compatibility during the transition.
 
-use jsonrpsee_types::error::ErrorObject;
+use crate::mcp::errors::McpResult;
 use serde_json::Value;
 use tracing::info;
 
@@ -32,49 +32,40 @@ use crate::mcp::{PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION};
 /// # Returns
 ///
 /// A result containing either the initialization response or an error
-pub async fn initialize(
-    params: InitializeRequest,
-) -> Result<InitializeResult, ErrorObject<'static>> {
-    // Log client information
+pub async fn initialize(params: InitializeRequest) -> McpResult<InitializeResult> {
+    info!("Initializing MCP server (legacy handler)");
     info!(
-        "Initializing client: {} v{} (legacy handler)",
+        "Client info: name={}, version={}",
         params.client_info.name, params.client_info.version
     );
-    info!(
-        "Client requested protocol version: {}",
-        params.protocol_version
-    );
 
-    // Create server capabilities
+    // Server capabilities
     let capabilities = ServerCapabilities {
-        text: None,
-        experimental: None,
-        resources: Some(ResourcesCapabilities {
-            get: Some(true),
-            list: Some(true),
-        }),
         tools: Some(ToolsCapabilities {
             call: Some(true),
             list: Some(true),
         }),
-        sampling: None,
-        prompts: Some(Value::Bool(true)),
+        resources: Some(ResourcesCapabilities {
+            get: Some(true),
+            list: Some(true),
+        }),
+        experimental: None,
+        prompts: None,
         roots: None,
+        sampling: None,
+        text: None,
     };
 
-    // Create server info
-    let server_info = Implementation {
-        name: SERVER_NAME.to_string(),
-        version: SERVER_VERSION.to_string(),
-    };
-
-    // Return the initialization result
+    // Build response
     let result = InitializeResult {
+        server_info: Implementation {
+            name: SERVER_NAME.to_string(),
+            version: SERVER_VERSION.to_string(),
+        },
         protocol_version: PROTOCOL_VERSION.to_string(),
         capabilities,
-        server_info,
         instructions: Some(
-            "SonarQube MCP Server. Use the available tools to analyze SonarQube projects."
+            "SonarQube MCP Server provides tools for analyzing code quality and security."
                 .to_string(),
         ),
     };
@@ -84,18 +75,24 @@ pub async fn initialize(
 
 /// Handles the initialized notification from an MCP client (legacy implementation)
 ///
+/// This function processes the notification that the client has completed
+/// its initialization and is ready to receive requests.
+///
 /// Note: This is kept for backward compatibility. The main implementation now uses
 /// the ServerHandler trait from the RMCP SDK.
 ///
 /// # Returns
 ///
 /// A result indicating success or an error
-pub async fn initialized() -> Result<(), ErrorObject<'static>> {
+pub async fn initialized() -> McpResult<()> {
     info!("Client initialized (legacy handler)");
     Ok(())
 }
 
 /// Handles the shutdown request from an MCP client (legacy implementation)
+///
+/// This function initiates a clean shutdown of the server, allowing it to
+/// complete any pending operations before exiting.
 ///
 /// Note: This is kept for backward compatibility. The main implementation now uses
 /// the ServerHandler trait from the RMCP SDK.
@@ -103,7 +100,7 @@ pub async fn initialized() -> Result<(), ErrorObject<'static>> {
 /// # Returns
 ///
 /// A result containing a null value on success or an error
-pub async fn shutdown() -> Result<Value, ErrorObject<'static>> {
+pub async fn shutdown() -> McpResult<Value> {
     info!("Shutdown requested (legacy handler)");
     Ok(Value::Null)
 }
@@ -116,7 +113,7 @@ pub async fn shutdown() -> Result<Value, ErrorObject<'static>> {
 /// # Returns
 ///
 /// A result indicating success or an error
-pub async fn exit() -> Result<(), ErrorObject<'static>> {
+pub async fn exit() -> McpResult<()> {
     info!("Exit requested (legacy handler)");
     Ok(())
 }
