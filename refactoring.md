@@ -65,10 +65,22 @@ Error handling is inconsistent across the codebase, with a mix of `anyhow::Resul
 - Add more detailed error contexts to help with debugging
 
 ### Tasks
-- [ ] Create a unified error type hierarchy for the codebase
-- [ ] Implement conversions between error types
-- [ ] Improve error messages and context for better debugging
-- [ ] Add structured logging for errors
+- [x] Create a unified error type hierarchy for the codebase
+- [x] Implement conversions between error types
+- [x] Improve error messages and context for better debugging
+- [x] Add structured logging for errors
+
+### Implementation Details
+- Created a unified `McpError` enum in `src/mcp/errors.rs` to represent all possible errors in the system
+- Added `McpResult<T>` type alias for standardized result handling throughout the codebase
+- Implemented conversions from common error types (`anyhow::Error`, `reqwest::Error`, `SonarError`, etc.) to `McpError`
+- Added extension methods on `Result` via the `ResultExt` trait for simplified error handling and logging
+- Created helper functions (`map_anyhow_err`, `from_sonar_err`) to streamline error conversion
+- Added structured logging with context for better debugging through error annotation
+- Updated function signatures across the codebase to use the standardized `McpResult<T>` return type
+- Added comprehensive tests in `tests/error_tests.rs` to verify error handling functionality
+
+This change ensures consistent error handling throughout the codebase, improves error messages with additional context, and standardizes the approach to converting between different error types. Legacy functions are maintained with updated signatures that use the new error handling approach.
 
 ## 4. Configuration Management Refactoring
 
