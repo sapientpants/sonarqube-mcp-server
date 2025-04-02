@@ -17,9 +17,28 @@ use jsonrpsee_types::ErrorObject;
 use serde_json::Value;
 
 // Static constants for environment variable names
+/// SonarQube server URL environment variable
+///
+/// This environment variable should be set to the base URL of the SonarQube server
+/// that the client will connect to (e.g., "https://sonarqube.example.com").
 pub static SONARQUBE_URL_ENV: &str = "SONARQUBE_URL";
+
+/// SonarQube authentication token environment variable
+///
+/// This environment variable should be set to a valid authentication token
+/// that grants access to the SonarQube API.
 pub static SONARQUBE_TOKEN_ENV: &str = "SONARQUBE_TOKEN";
+
+/// SonarQube organization identifier environment variable (optional)
+///
+/// This optional environment variable can be set to specify a SonarQube organization
+/// when using SonarCloud or a multi-organization SonarQube instance.
 pub static SONARQUBE_ORGANIZATION_ENV: &str = "SONARQUBE_ORGANIZATION";
+
+/// SonarQube debug mode environment variable (optional)
+///
+/// When set to a truthy value, enables additional debug logging for
+/// SonarQube client operations.
 pub static SONARQUBE_DEBUG_ENV: &str = "SONARQUBE_DEBUG";
 
 /// Global SonarQube client for tools to use
@@ -475,6 +494,11 @@ pub fn reset_client() {
 pub mod test_utils {
     use super::*;
 
+    /// Resets the SonarQube client for testing
+    ///
+    /// This function clears the global SonarQube client instance and adds
+    /// additional synchronization operations to ensure thread safety during tests.
+    /// It includes a memory fence and a small delay to avoid race conditions.
     pub fn reset_sonarqube_client() {
         let mut guard = SONARQUBE_CLIENT.lock().unwrap();
         let _ = guard.take();
