@@ -2,18 +2,19 @@
 
 This document outlines a step-by-step plan to remove redundant and unused code from the SonarQube MCP Server codebase. Each task is designed to be independent and safe to implement without breaking core functionality.
 
-## 1. Remove the utilities module
+## 1. ✅ Remove the utilities module
 
 The `src/mcp/utilities.rs` file contains multiple unused functions, all marked with `#[allow(dead_code)]`.
 
 **Steps:**
-1. Remove all imports/uses of functions from `utilities.rs` in other files
-2. Remove the `pub mod utilities;` line from `src/mcp/mod.rs`
-3. Delete the `src/mcp/utilities.rs` file
+1. ✅ Remove all imports/uses of functions from `utilities.rs` in other files
+2. ✅ Remove the `pub mod utilities;` line from `src/mcp/mod.rs`
+3. ✅ Delete the `src/mcp/utilities.rs` file
 
 **Files affected:**
-- `src/mcp/mod.rs`
-- `src/mcp/utilities.rs`
+- ✅ `src/mcp/mod.rs`
+- ✅ `src/mcp/utilities.rs`
+- ✅ `tests/utilities_tests.rs` (removed as it only tested the utilities module)
 
 ## 2. Consolidate duplicate Args struct
 
@@ -95,9 +96,9 @@ Examine if `src/mcp/sonarqube/test_utils.rs` is actually used in any tests.
 
 For the safest implementation, we recommend following this order:
 
-1. Clean up dead constants (#5) - lowest risk
-2. Remove unused utility methods (#3) - isolated to client implementation
-3. Remove utilities module (#1) - standalone module 
+1. ✅ Clean up utilities module (#1) - standalone module
+2. Clean up dead constants (#5) - lowest risk
+3. Remove unused utility methods (#3) - isolated to client implementation  
 4. Consolidate Args struct (#2) - simple refactoring
 5. Address prompts functionality (#4) - contained feature
 6. Implement proper resource handling (#6) - contained feature
