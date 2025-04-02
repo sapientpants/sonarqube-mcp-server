@@ -1,3 +1,4 @@
+#![allow(clippy::empty_line_after_doc_comments)]
 /// Configuration utilities for SonarQube integration.
 ///
 /// This module provides configuration constants and helpers for the SonarQube integration.
