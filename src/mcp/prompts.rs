@@ -1,6 +1,5 @@
 use crate::mcp::types::*;
 use anyhow::Result;
-use serde_json;
 
 /// Lists all prompts available in the MCP server.
 ///
@@ -17,8 +16,9 @@ use serde_json;
 ///
 /// Returns a result containing the list of all available prompts
 pub async fn prompts_list(_request: Option<ListPromptsRequest>) -> Result<ListPromptsResult> {
-    let prompts: Vec<Prompt> =
-        serde_json::from_str(include_str!("./templates/prompts.json")).unwrap();
+    // NOTE: Prompts functionality is not currently implemented
+    // Return an empty vector instead of loading from JSON file
+    let prompts: Vec<Prompt> = Vec::new();
     let response = ListPromptsResult {
         next_cursor: None,
         prompts,
@@ -41,9 +41,13 @@ pub async fn prompts_list(_request: Option<ListPromptsRequest>) -> Result<ListPr
 /// Returns a result containing the requested prompt or a default empty result
 /// if the prompt is not found
 pub async fn prompts_get(request: GetPromptRequest) -> Result<PromptResult> {
-    // Return a default empty prompt result as we don't have any defined prompts
+    // NOTE: Prompts functionality is not currently implemented
+    // Return a default empty prompt result with an explanatory message
     let response = PromptResult {
-        description: format!("No prompt found for '{}'", request.name),
+        description: format!(
+            "No prompt found for '{}'. Prompts functionality is not currently implemented.",
+            request.name
+        ),
         messages: None,
     };
     Ok(response)

@@ -44,16 +44,16 @@ Several helper methods in `SonarQubeClient` are marked with `#[allow(dead_code)]
 **Files affected:**
 - ✅ `src/mcp/sonarqube/client.rs`
 
-## 4. Fix or properly implement prompts functionality
+## 4. ✅ Fix or properly implement prompts functionality
 
 The `prompts.json` file is empty, and the `prompts_get()` function doesn't use its input.
 
-- Replace the JSON loading with a static empty Vec
-- Add a comment explaining that prompts are not currently implemented
+- ✅ Replace the JSON loading with a static empty Vec
+- ✅ Add a comment explaining that prompts are not currently implemented
 
 **Files affected:**
-- `src/mcp/templates/prompts.json`
-- `src/mcp/prompts.rs`
+- ✅ `src/mcp/templates/prompts.json` (removed as it's no longer needed)
+- ✅ `src/mcp/prompts.rs`
 
 ## 5. Clean up dead constants
 
