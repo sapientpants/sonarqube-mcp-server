@@ -1,6 +1,7 @@
 use anyhow::Result;
 use jsonrpsee_server::RpcModule;
 use jsonrpsee_types::ErrorObject;
+use tracing::info;
 
 use crate::mcp::types::{ListToolsRequest, ListToolsResult, Tool};
 use serde_json;
@@ -11,6 +12,9 @@ use serde_json;
 /// the MCP server. The tool definitions are stored in a JSON file and include
 /// details such as name, description, parameters, and result schema.
 ///
+/// Note: This is a legacy implementation kept for backward compatibility.
+/// The RMCP SDK now handles tool registration and listing directly.
+///
 /// # Arguments
 ///
 /// * `_request` - Optional request parameters for listing tools (currently unused)
@@ -19,6 +23,7 @@ use serde_json;
 ///
 /// Returns a result containing the list of all available tools
 pub async fn tools_list(_request: Option<ListToolsRequest>) -> Result<ListToolsResult> {
+    info!("Legacy tools_list called - tools are now handled by RMCP SDK");
     let tools: Vec<Tool> = serde_json::from_str(include_str!("./templates/tools.json")).unwrap();
     let response = ListToolsResult {
         tools,
@@ -27,10 +32,11 @@ pub async fn tools_list(_request: Option<ListToolsRequest>) -> Result<ListToolsR
     Ok(response)
 }
 
-/// Register all tools with the router.
+/// Register all tools with the router (legacy implementation).
 ///
-/// This function initializes all tools that the MCP server provides,
-/// including tools for resource management, prompts, and SonarQube integration.
+/// This function is kept for backward compatibility during the transition to
+/// the RMCP SDK, which handles tool registration directly through the #[tool]
+/// attribute macro.
 ///
 /// # Arguments
 ///
@@ -40,6 +46,7 @@ pub async fn tools_list(_request: Option<ListToolsRequest>) -> Result<ListToolsR
 ///
 /// Returns the RPC module with all tools registered
 pub fn register_tools(module: &mut RpcModule<()>) -> Result<()> {
+    info!("Legacy register_tools called - tools are now registered via RMCP SDK");
     module.register_async_method("tools/list", |_, _| async move {
         tools_list(None)
             .await

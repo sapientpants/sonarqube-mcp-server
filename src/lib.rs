@@ -19,6 +19,7 @@
 
 /// Module containing MCP protocol implementation and related functionality
 pub mod mcp;
-/// Module defining the JSON-RPC server infrastructure and endpoints
+/// Module providing utility functions and command-line argument handling for the server
 pub mod server;
-pub use server::{Args, build_rpc_router, display_info, setup_signal_handlers};
+// Export only the necessary items from the server module
+pub use server::{Args, display_info, setup_signal_handlers};

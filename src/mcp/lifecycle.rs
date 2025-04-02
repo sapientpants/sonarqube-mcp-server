@@ -3,9 +3,13 @@
 //! This module provides functions and handlers for managing the MCP protocol lifecycle,
 //! including initialization, shutdown, and related operations.
 
-use anyhow::Result;
+// Note: Most of the functionality in this module has been migrated to use the RMCP SDK
+// through the ServerHandler trait implementation in the main module. This module
+// is kept for reference and backward compatibility during the transition.
+
 use jsonrpsee_types::error::ErrorObject;
 use serde_json::Value;
+use tracing::info;
 
 use crate::mcp::types::{
     Implementation, InitializeRequest, InitializeResult, ResourcesCapabilities, ServerCapabilities,
@@ -13,10 +17,13 @@ use crate::mcp::types::{
 };
 use crate::mcp::{PROTOCOL_VERSION, SERVER_NAME, SERVER_VERSION};
 
-/// Handles the initialize request from an MCP client
+/// Handles the initialize request from an MCP client (legacy implementation)
 ///
 /// This function processes the initialization request, validates the client's capabilities,
 /// and returns the server's capabilities and information.
+///
+/// Note: This is kept for backward compatibility. The main implementation now uses
+/// the ServerHandler trait from the RMCP SDK.
 ///
 /// # Arguments
 ///
@@ -29,21 +36,14 @@ pub async fn initialize(
     params: InitializeRequest,
 ) -> Result<InitializeResult, ErrorObject<'static>> {
     // Log client information
-    tracing::info!(
-        "Initializing client: {} v{}",
-        params.client_info.name,
-        params.client_info.version
+    info!(
+        "Initializing client: {} v{} (legacy handler)",
+        params.client_info.name, params.client_info.version
     );
-    tracing::info!(
+    info!(
         "Client requested protocol version: {}",
         params.protocol_version
     );
-
-    // Mark that we've just initialized to ignore the first SIGTERM
-    if let Some(initialized_flag) = crate::server::INITIALIZED_RECENTLY.get() {
-        initialized_flag.store(true, std::sync::atomic::Ordering::SeqCst);
-        tracing::info!("Set initialization flag to true");
-    }
 
     // Create server capabilities
     let capabilities = ServerCapabilities {
@@ -82,42 +82,41 @@ pub async fn initialize(
     Ok(result)
 }
 
-/// Handles the initialized notification from an MCP client
+/// Handles the initialized notification from an MCP client (legacy implementation)
 ///
-/// This function is called when a client sends an initialized notification,
-/// indicating that it has completed its initialization phase and is ready to
-/// communicate with the server.
+/// Note: This is kept for backward compatibility. The main implementation now uses
+/// the ServerHandler trait from the RMCP SDK.
 ///
 /// # Returns
 ///
 /// A result indicating success or an error
 pub async fn initialized() -> Result<(), ErrorObject<'static>> {
-    tracing::info!("Client initialized");
+    info!("Client initialized (legacy handler)");
     Ok(())
 }
 
-/// Handles the shutdown request from an MCP client
+/// Handles the shutdown request from an MCP client (legacy implementation)
 ///
-/// This function is called when a client requests the server to shut down.
+/// Note: This is kept for backward compatibility. The main implementation now uses
+/// the ServerHandler trait from the RMCP SDK.
 ///
 /// # Returns
 ///
 /// A result containing a null value on success or an error
 pub async fn shutdown() -> Result<Value, ErrorObject<'static>> {
-    tracing::info!("Shutdown requested");
+    info!("Shutdown requested (legacy handler)");
     Ok(Value::Null)
 }
 
-/// Handles the exit notification from an MCP client
+/// Handles the exit notification from an MCP client (legacy implementation)
 ///
-/// This function is called when a client notifies the server that it should exit.
+/// Note: This is kept for backward compatibility. The main implementation now uses
+/// the ServerHandler trait from the RMCP SDK.
 ///
 /// # Returns
 ///
 /// A result indicating success or an error
 pub async fn exit() -> Result<(), ErrorObject<'static>> {
-    tracing::info!("Exit requested");
-    // In a real implementation, we might want to call std::process::exit here,
-    // but for our MCP server we'll let the main loop handle the shutdown
+    info!("Exit requested (legacy handler)");
     Ok(())
 }

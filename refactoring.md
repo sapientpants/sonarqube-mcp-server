@@ -1,0 +1,186 @@
+# SonarQube MCP Server Refactoring Plan
+
+This document outlines a comprehensive plan for refactoring the SonarQube MCP server codebase to improve its architecture, maintainability, and extensibility.
+
+## 1. Consistency between RMCP SDK and Custom Implementation
+
+### Issue
+The codebase is currently in a transitional state, using both the official RMCP SDK in `main.rs` and a custom implementation in the `server` module.
+
+### Solution
+- Remove the legacy custom JSON-RPC server implementation
+- Migrate all functionality to use the RMCP SDK consistently
+- Update lifecycle handlers and tool registration to use the SDK interfaces
+
+### Tasks
+- [x] Refactor `src/server/mod.rs` to be a thin wrapper around RMCP SDK functionality
+- [x] Update all tool registrations to use the RMCP tool registration system
+- [x] Remove duplicate code and simplify the overall architecture
+- [x] Update unit tests to reflect the new implementation
+
+### Implementation Details
+- Removed the custom JSON-RPC server implementation in `src/server/mod.rs`
+- Simplified the server module to only provide utility functions and command-line argument handling
+- Updated lifecycle functions in `src/mcp/lifecycle.rs` to be compatible with the RMCP SDK
+- Added test compatibility mode to ensure tests continue to pass
+- Modified tool registration in `src/mcp/tools.rs` and `src/mcp/sonarqube/tools.rs` to indicate they're legacy implementations
+- Updated exports in `src/lib.rs` to reflect the new architecture
+
+This change reduces code duplication and creates a more consistent architecture that fully leverages the RMCP SDK throughout the codebase. Legacy implementations are kept with clear documentation for backward compatibility during the transition period.
+
+## 2. Dependency Injection Improvement
+
+### Issue
+The current implementation uses global static variables for server components like the SonarQube client, making testing difficult and creating tight coupling.
+
+### Solution
+- Implement proper dependency injection throughout the codebase
+- Remove global state like `SONARQUBE_CLIENT` and `INITIALIZED_RECENTLY`
+- Pass dependencies explicitly to functions that need them
+
+### Tasks
+- [ ] Create a central context/container for server dependencies
+- [ ] Remove static globals in favor of passed dependencies
+- [ ] Update tool implementations to accept dependencies through parameters
+- [ ] Improve testability by making dependencies mockable
+
+## 3. Error Handling Standardization
+
+### Issue
+Error handling is inconsistent across the codebase, with a mix of `anyhow::Result`, `Result<T, ErrorObject>`, and custom errors like `SonarError`.
+
+### Solution
+- Standardize error types and handling throughout the codebase
+- Implement proper error conversion between different error types
+- Add more detailed error contexts to help with debugging
+
+### Tasks
+- [ ] Create a unified error type hierarchy for the codebase
+- [ ] Implement conversions between error types
+- [ ] Improve error messages and context for better debugging
+- [ ] Add structured logging for errors
+
+## 4. Configuration Management Refactoring
+
+### Issue
+Configuration is currently handled through command-line arguments with some overlap with environment variables, but lacks structure and validation.
+
+### Solution
+- Create a dedicated configuration module
+- Support multiple configuration sources (files, env vars, args)
+- Add validation for configuration values
+- Support dynamic reconfiguration where appropriate
+
+### Tasks
+- [ ] Create a configuration module with strong typing
+- [ ] Implement validation for configuration values
+- [ ] Support loading configuration from multiple sources
+- [ ] Add unit tests for configuration handling
+
+## 5. Module Structure Reorganization
+
+### Issue
+The current module structure mixes concerns, with some modules having too many responsibilities.
+
+### Solution
+- Reorganize modules around clear boundaries of responsibility
+- Apply consistent naming conventions
+- Group related functionality together
+
+### Tasks
+- [ ] Split `sonarqube/tools.rs` into smaller, focused modules
+- [ ] Rename modules to better reflect their purpose
+- [ ] Move code to more appropriate modules based on responsibility
+- [ ] Enforce clear interfaces between modules
+
+## 6. Async Code Improvements
+
+### Issue
+Async code is not always used optimally, with some operations potentially blocking the event loop.
+
+### Solution
+- Review and refactor async code for optimal performance
+- Add proper timeout handling
+- Improve concurrency for operations that can be parallelized
+
+### Tasks
+- [ ] Review all async code for potential blocking operations
+- [ ] Add timeouts to network operations
+- [ ] Identify opportunities for concurrent operations
+- [ ] Implement backpressure handling for high-load scenarios
+
+## 7. Testing Enhancements
+
+### Issue
+Test coverage is uneven across the codebase, and some tests rely on global state.
+
+### Solution
+- Increase test coverage, especially for core functionality
+- Refactor existing tests to avoid global state
+- Add integration tests for end-to-end functionality
+
+### Tasks
+- [ ] Add unit tests for under-tested modules
+- [ ] Refactor existing tests to use dependency injection
+- [ ] Add integration tests for critical server flows
+- [ ] Implement property-based testing for complex logic
+
+## 8. API Documentation Improvement
+
+### Issue
+While the code has good comments, the API documentation could be more comprehensive, especially for external-facing components.
+
+### Solution
+- Enhance API documentation with more examples and use cases
+- Document expected behavior and error cases
+- Add diagrams for complex flows
+
+### Tasks
+- [ ] Enhance documentation for all public API functions
+- [ ] Add examples of tool usage in documentation
+- [ ] Document the JSON-RPC protocol and expected payloads
+- [ ] Create architecture diagrams
+
+## 9. Separation of MCP Protocol and SonarQube-Specific Code
+
+### Issue
+The MCP protocol implementation is tightly coupled with SonarQube-specific functionality.
+
+### Solution
+- Better separate the core MCP protocol from SonarQube integration
+- Make it easier to reuse the MCP implementation for other tools
+
+### Tasks
+- [ ] Separate core MCP protocol into its own module
+- [ ] Create clear interfaces between MCP protocol and SonarQube integration
+- [ ] Make SonarQube integration a plugin to the core MCP server
+- [ ] Enable easy extension for other tool integrations
+
+## 10. Performance Optimization
+
+### Issue
+Some operations may not be optimized for performance, especially for large SonarQube instances.
+
+### Solution
+- Identify performance bottlenecks
+- Implement caching for frequently accessed data
+- Optimize network requests
+
+### Tasks
+- [ ] Add benchmarks for critical operations
+- [ ] Implement caching for SonarQube API responses
+- [ ] Optimize query construction for SonarQube API
+- [ ] Add pagination optimizations for large result sets
+
+## Implementation Priority
+
+1. Consistency between RMCP SDK and custom implementation
+2. Dependency injection improvement
+3. Module structure reorganization
+4. Error handling standardization
+5. Configuration management refactoring
+6. Separation of MCP protocol and SonarQube-specific code
+7. Testing enhancements
+8. Async code improvements
+9. API documentation improvement
+10. Performance optimization 

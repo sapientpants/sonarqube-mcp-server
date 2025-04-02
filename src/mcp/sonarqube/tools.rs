@@ -111,11 +111,15 @@ pub fn get_client() -> Result<Arc<SonarQubeClient>, SonarError> {
         ))
 }
 
-/// Registers all SonarQube-related tools with the router.
+/// Registers all SonarQube-related tools with the router (legacy implementation).
 ///
 /// This function initializes all tools that interact with the SonarQube API,
 /// including tools for fetching metrics, issues, quality gate status, and
 /// listing projects.
+///
+/// Note: This is a legacy implementation kept for backward compatibility.
+/// The RMCP SDK now handles tool registration directly through the #[tool]
+/// attribute macro.
 ///
 /// # Arguments
 ///
@@ -125,6 +129,10 @@ pub fn get_client() -> Result<Arc<SonarQubeClient>, SonarError> {
 ///
 /// Returns the RPC module with SonarQube tools registered
 pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
+    tracing::info!(
+        "Legacy register_sonarqube_tools called - tools are now registered via RMCP SDK"
+    );
+
     module.register_async_method("sonarqube/metrics", |params, _| async move {
         let request = params.parse::<SonarQubeMetricsRequest>()?;
         sonarqube_get_metrics(request)
