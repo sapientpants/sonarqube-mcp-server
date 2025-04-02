@@ -16,18 +16,18 @@ The `src/mcp/utilities.rs` file contains multiple unused functions, all marked w
 - ✅ `src/mcp/utilities.rs`
 - ✅ `tests/utilities_tests.rs` (removed as it only tested the utilities module)
 
-## 2. Consolidate duplicate Args struct
+## 2. ✅ Consolidate duplicate Args struct
 
 The `Args` struct is defined redundantly in both `src/main.rs` and `src/server/mod.rs`.
 
 **Steps:**
-1. Keep only the definition in `src/server/mod.rs`
-2. In `src/main.rs`, add `use crate::server::Args;` to import it
-3. Remove the duplicate definition from `src/main.rs`
+1. ✅ Keep only the definition in `src/server/mod.rs`
+2. ✅ In `src/main.rs`, add `use crate::server::Args;` to import it
+3. ✅ Remove the duplicate definition from `src/main.rs`
 
 **Files affected:**
-- `src/main.rs`
-- `src/server/mod.rs`
+- ✅ `src/main.rs`
+- ✅ `src/server/mod.rs`
 
 ## 3. Clean up unused SonarQubeClient helper methods
 

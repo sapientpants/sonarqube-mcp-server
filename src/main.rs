@@ -11,64 +11,14 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::mcp::sonarqube::client::SonarQubeClient;
-use crate::mcp::sonarqube::tools::{
-    SONARQUBE_ORGANIZATION_ENV, SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV,
-};
 use crate::mcp::sonarqube::types::SonarQubeConfig;
+use crate::server::Args;
 
 // Re-export the modules for backward compatibility
 /// Module containing MCP protocol implementation and related functionality
 pub mod mcp;
 /// Module defining the JSON-RPC server infrastructure and endpoints
 pub mod server;
-
-/// Command line arguments for the server
-///
-/// This struct defines all command-line parameters supported by the SonarQube MCP server.
-/// It's used with the clap crate to parse arguments and environment variables.
-#[derive(Parser, Debug)]
-pub struct Args {
-    /// SonarQube server URL
-    #[arg(short = 'u', long, env = SONARQUBE_URL_ENV)]
-    pub sonarqube_url: String,
-
-    /// SonarQube authentication token
-    #[arg(short = 't', long, env = SONARQUBE_TOKEN_ENV)]
-    pub sonarqube_token: String,
-
-    /// SonarQube organization (optional)
-    #[arg(short = 'o', long, env = SONARQUBE_ORGANIZATION_ENV)]
-    pub sonarqube_organization: Option<String>,
-
-    /// List MCP resources
-    #[arg(long)]
-    pub resources: bool,
-
-    /// List MCP prompts
-    #[arg(long)]
-    pub prompts: bool,
-
-    /// List MCP tools
-    #[arg(long)]
-    pub tools: bool,
-
-    /// Show MCP information
-    #[arg(long)]
-    pub mcp: bool,
-
-    /// Output in JSON format
-    #[arg(long)]
-    pub json: bool,
-}
-
-impl Args {
-    /// Check if any of the list arguments are available
-    ///
-    /// Returns true if any of the flags for listing resources, prompts, or tools is set.
-    pub fn is_args_available(&self) -> bool {
-        self.resources || self.prompts || self.tools
-    }
-}
 
 /// SonarQube MCP server implementation
 #[derive(Clone)]
