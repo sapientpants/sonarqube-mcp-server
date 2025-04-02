@@ -24,25 +24,3 @@ pub async fn resources_list(_request: Option<ListResourcesRequest>) -> Result<Li
     };
     Ok(response)
 }
-
-/// Reads and returns the content of a specific resource.
-///
-/// This handler function retrieves the content of a resource identified by its URI.
-/// The content is returned with appropriate MIME type information to help clients
-/// process it correctly.
-///
-/// # Arguments
-///
-/// * `request` - The request containing the URI of the resource to read
-///
-/// # Returns
-///
-/// Returns a result containing the content of the requested resource
-pub async fn resource_read(_request: ReadResourceRequest) -> Result<ReadResourceResult> {
-    let response = ReadResourceResult {
-        content: ResourceContent::Text {
-            text: "2024-11-28T08:19:18.974368Z,INFO,main,this is message".to_string(),
-        },
-    };
-    Ok(response)
-}

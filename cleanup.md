@@ -70,14 +70,16 @@ Remove incorrect `#[allow(dead_code)]` attributes from constants that are actual
 **Files affected:**
 - ✅ `src/mcp/mod.rs`
 
-## 6. Implement proper resource handling
+## 6. ✅ Implement proper resource handling
 
 The `resource_read()` function ignores its input and returns a hardcoded message.
 
-- Remove `resource_read()`
+- ✅ Remove `resource_read()`
 
 **Files affected:**
-- `src/mcp/resources.rs`
+- ✅ `src/mcp/resources.rs`
+- ✅ `src/server/mod.rs`
+- ✅ `tests/resources_tests.rs`
 
 ## 7. Clean up test_utils.rs if not used in tests
 

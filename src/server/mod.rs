@@ -19,12 +19,12 @@ use tracing::info;
 pub use tokio::signal::unix::{SignalKind, signal};
 
 use crate::mcp::prompts::{prompts_get, prompts_list};
-use crate::mcp::resources::{resource_read, resources_list};
+use crate::mcp::resources::resources_list;
 use crate::mcp::sonarqube::tools::{
     SONARQUBE_ORGANIZATION_ENV, SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV, register_sonarqube_tools,
 };
 use crate::mcp::tools::register_tools;
-use crate::mcp::types::{GetPromptRequest, ReadResourceRequest};
+use crate::mcp::types::GetPromptRequest;
 
 /// Static tracker for whether we've recently received an initialize request
 ///
@@ -257,15 +257,6 @@ pub fn build_rpc_router() -> RpcModule<()> {
     router
         .register_async_method("resources/list", |_, _| async move {
             resources_list(None).await.map_err(|e| {
-                ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
-            })
-        })
-        .unwrap();
-
-    router
-        .register_async_method("resources/read", |params, _| async move {
-            let request = params.parse::<ReadResourceRequest>()?;
-            resource_read(request).await.map_err(|e| {
                 ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>)
             })
         })
