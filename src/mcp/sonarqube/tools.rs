@@ -506,9 +506,3 @@ pub mod test_utils {
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    // Test-specific code here
-}
