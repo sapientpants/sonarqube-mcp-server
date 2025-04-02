@@ -47,12 +47,14 @@ pub async fn tools_list(_request: Option<ListToolsRequest>) -> McpResult<ListToo
 /// # Returns
 ///
 /// Returns the RPC module with all tools registered
-pub fn register_tools(module: &mut RpcModule<()>) -> anyhow::Result<()> {
+pub fn register_tools(module: &mut RpcModule<()>) -> McpResult<()> {
     info!("Legacy register_tools called - tools are now registered via RMCP SDK");
 
-    module.register_async_method("tools/list", |_, _| async move {
-        tools_list(None).await.map_err(|e| e.to_error_object())
-    })?;
+    module
+        .register_async_method("tools/list", |_, _| async move {
+            tools_list(None).await.map_err(|e| e.to_error_object())
+        })
+        .map_err(|e| McpError::InternalError(format!("Failed to register tools/list: {}", e)))?;
 
     Ok(())
 }

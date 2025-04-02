@@ -1,4 +1,6 @@
-use sonarqube_mcp_server::mcp::errors::{ApiError, McpError, ResultExt};
+use sonarqube_mcp_server::mcp::errors::{
+    ApiError, McpError, ResultExt, from_sonar_err, map_anyhow_err,
+};
 use sonarqube_mcp_server::mcp::sonarqube::types::SonarError;
 use std::io::{Error as IoError, ErrorKind};
 
@@ -67,5 +69,34 @@ fn test_error_code_mapping() {
 
     for (error, expected_code) in errors {
         assert_eq!(error.error_code(), expected_code);
+    }
+}
+
+#[test]
+fn test_error_helper_functions() {
+    // Test map_anyhow_err function
+    let anyhow_result: anyhow::Result<i32> = Ok(42);
+    let mcp_result = map_anyhow_err(anyhow_result, "test_context");
+    assert_eq!(mcp_result.unwrap(), 42);
+
+    let anyhow_error: anyhow::Result<i32> = Err(anyhow::anyhow!("Test error"));
+    let mcp_result = map_anyhow_err(anyhow_error, "test_context");
+    assert!(mcp_result.is_err());
+    match mcp_result {
+        Err(McpError::InternalError(_)) => {}
+        _ => panic!("Expected InternalError"),
+    }
+
+    // Test from_sonar_err function
+    let sonar_ok: Result<i32, SonarError> = Ok(42);
+    let mcp_result = from_sonar_err(sonar_ok, "test_context");
+    assert_eq!(mcp_result.unwrap(), 42);
+
+    let sonar_error: Result<i32, SonarError> = Err(SonarError::AuthError);
+    let mcp_result = from_sonar_err(sonar_error, "test_context");
+    assert!(mcp_result.is_err());
+    match mcp_result {
+        Err(McpError::AuthError(_)) => {}
+        _ => panic!("Expected AuthError"),
     }
 }

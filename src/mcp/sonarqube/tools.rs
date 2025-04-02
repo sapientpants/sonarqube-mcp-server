@@ -1,4 +1,3 @@
-use once_cell::sync::OnceCell;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -12,7 +11,7 @@ use crate::mcp::sonarqube::types::{
 use crate::mcp::types::{CallToolResult, CallToolResultContent, ListProjectsResult, Project};
 use anyhow::Result;
 use jsonrpsee_server::RpcModule;
-use jsonrpsee_types::ErrorObject;
+use once_cell::sync::OnceCell;
 
 // Static constants for environment variable names
 /// SonarQube server URL environment variable
@@ -149,38 +148,54 @@ pub fn get_client() -> Result<Arc<SonarQubeClient>, SonarError> {
 /// # Returns
 ///
 /// Returns the RPC module with SonarQube tools registered
-pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
+pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> McpResult<()> {
     tracing::info!(
         "Legacy register_sonarqube_tools called - tools are now registered via RMCP SDK"
     );
 
-    module.register_async_method("sonarqube/metrics", |params, _| async move {
-        let request = params.parse::<SonarQubeMetricsRequest>()?;
-        sonarqube_get_metrics_legacy(request)
-            .await
-            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
-    })?;
+    module
+        .register_async_method("sonarqube/metrics", |params, _| async move {
+            let request = params.parse::<SonarQubeMetricsRequest>()?;
+            sonarqube_get_metrics_legacy(request)
+                .await
+                .map_err(|e| e.to_error_object())
+        })
+        .map_err(|e| {
+            McpError::InternalError(format!("Failed to register sonarqube/metrics: {}", e))
+        })?;
 
-    module.register_async_method("sonarqube/issues", |params, _| async move {
-        let request = params.parse::<SonarQubeIssuesRequest>()?;
-        sonarqube_get_issues_legacy(request)
-            .await
-            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
-    })?;
+    module
+        .register_async_method("sonarqube/issues", |params, _| async move {
+            let request = params.parse::<SonarQubeIssuesRequest>()?;
+            sonarqube_get_issues_legacy(request)
+                .await
+                .map_err(|e| e.to_error_object())
+        })
+        .map_err(|e| {
+            McpError::InternalError(format!("Failed to register sonarqube/issues: {}", e))
+        })?;
 
-    module.register_async_method("sonarqube/quality_gate", |params, _| async move {
-        let request = params.parse::<SonarQubeQualityGateRequest>()?;
-        sonarqube_get_quality_gate_legacy(request)
-            .await
-            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
-    })?;
+    module
+        .register_async_method("sonarqube/quality_gate", |params, _| async move {
+            let request = params.parse::<SonarQubeQualityGateRequest>()?;
+            sonarqube_get_quality_gate_legacy(request)
+                .await
+                .map_err(|e| e.to_error_object())
+        })
+        .map_err(|e| {
+            McpError::InternalError(format!("Failed to register sonarqube/quality_gate: {}", e))
+        })?;
 
-    module.register_async_method("sonarqube/projects", |params, _| async move {
-        let request = params.parse::<SonarQubeListProjectsRequest>()?;
-        list_projects_legacy(Some(request))
-            .await
-            .map_err(|e| ErrorObject::owned(-32603, format!("Internal error: {}", e), None::<()>))
-    })?;
+    module
+        .register_async_method("sonarqube/projects", |params, _| async move {
+            let request = params.parse::<SonarQubeListProjectsRequest>()?;
+            list_projects_legacy(Some(request))
+                .await
+                .map_err(|e| e.to_error_object())
+        })
+        .map_err(|e| {
+            McpError::InternalError(format!("Failed to register sonarqube/projects: {}", e))
+        })?;
 
     Ok(())
 }
@@ -188,9 +203,11 @@ pub fn register_sonarqube_tools(module: &mut RpcModule<()>) -> Result<()> {
 /// Legacy wrapper for sonarqube_get_metrics that uses global state
 ///
 /// This is kept for backward compatibility.
-async fn sonarqube_get_metrics_legacy(request: SonarQubeMetricsRequest) -> Result<CallToolResult> {
+async fn sonarqube_get_metrics_legacy(
+    request: SonarQubeMetricsRequest,
+) -> McpResult<CallToolResult> {
     #[allow(deprecated)]
-    let client = get_client()?;
+    let client = get_client().map_err(McpError::from)?;
 
     sonarqube_get_metrics_with_client(request, client).await
 }
@@ -212,7 +229,7 @@ async fn sonarqube_get_metrics_legacy(request: SonarQubeMetricsRequest) -> Resul
 pub async fn sonarqube_get_metrics(
     request: SonarQubeMetricsRequest,
     context: &ServerContext,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     sonarqube_get_metrics_with_client(request, context.client()).await
 }
 
@@ -220,13 +237,20 @@ pub async fn sonarqube_get_metrics(
 async fn sonarqube_get_metrics_with_client(
     request: SonarQubeMetricsRequest,
     client: Arc<SonarQubeClient>,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     let project_key = request.project_key;
 
     // Check if project exists
-    let projects = client.list_projects(None, None, None).await?;
+    let projects = client
+        .list_projects(None, None, None)
+        .await
+        .map_err(|e| McpError::from(e).with_log("get_metrics"))?;
+
     if !projects.components.iter().any(|p| p.key == project_key) {
-        return Err(anyhow::anyhow!("Project not found: {}", project_key));
+        return Err(
+            McpError::NotFound(format!("Project not found: {}", project_key))
+                .with_log("get_metrics"),
+        );
     }
 
     // Convert metrics to string slices if provided
@@ -238,11 +262,15 @@ async fn sonarqube_get_metrics_with_client(
     // Get metrics
     let metrics = client
         .get_metrics(&project_key, metrics_refs.as_deref().unwrap_or(&[]))
-        .await?;
+        .await
+        .map_err(|e| McpError::from(e).with_log("get_metrics"))?;
 
     let response = CallToolResult {
         content: vec![CallToolResultContent::Text {
-            text: serde_json::to_string_pretty(&metrics)?,
+            text: serde_json::to_string_pretty(&metrics).map_err(|e| {
+                McpError::SerializationError(format!("Failed to serialize metrics: {}", e))
+                    .with_log("get_metrics")
+            })?,
         }],
         is_error: false,
     };
@@ -253,9 +281,9 @@ async fn sonarqube_get_metrics_with_client(
 /// Legacy wrapper for sonarqube_get_issues that uses global state
 ///
 /// This is kept for backward compatibility.
-async fn sonarqube_get_issues_legacy(request: SonarQubeIssuesRequest) -> Result<CallToolResult> {
+async fn sonarqube_get_issues_legacy(request: SonarQubeIssuesRequest) -> McpResult<CallToolResult> {
     #[allow(deprecated)]
-    let client = get_client()?;
+    let client = get_client().map_err(McpError::from)?;
 
     sonarqube_get_issues_with_client(request, client).await
 }
@@ -277,7 +305,7 @@ async fn sonarqube_get_issues_legacy(request: SonarQubeIssuesRequest) -> Result<
 pub async fn sonarqube_get_issues(
     request: SonarQubeIssuesRequest,
     context: &ServerContext,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     sonarqube_get_issues_with_client(request, context.client()).await
 }
 
@@ -285,13 +313,20 @@ pub async fn sonarqube_get_issues(
 async fn sonarqube_get_issues_with_client(
     request: SonarQubeIssuesRequest,
     client: Arc<SonarQubeClient>,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     let project_key = request.project_key;
 
     // Check if project exists
-    let projects = client.list_projects(None, None, None).await?;
+    let projects = client
+        .list_projects(None, None, None)
+        .await
+        .map_err(|e| McpError::from(e).with_log("get_issues"))?;
+
     if !projects.components.iter().any(|p| p.key == project_key) {
-        return Err(anyhow::anyhow!("Project not found: {}", project_key));
+        return Err(
+            McpError::NotFound(format!("Project not found: {}", project_key))
+                .with_log("get_issues"),
+        );
     }
 
     // Create query parameters
@@ -328,11 +363,17 @@ async fn sonarqube_get_issues_with_client(
     params.statuses = statuses_refs.as_deref();
 
     // Get issues
-    let issues = client.get_issues(params).await?;
+    let issues = client
+        .get_issues(params)
+        .await
+        .map_err(|e| McpError::from(e).with_log("get_issues"))?;
 
     let response = CallToolResult {
         content: vec![CallToolResultContent::Text {
-            text: serde_json::to_string_pretty(&issues)?,
+            text: serde_json::to_string_pretty(&issues).map_err(|e| {
+                McpError::SerializationError(format!("Failed to serialize issues: {}", e))
+                    .with_log("get_issues")
+            })?,
         }],
         is_error: false,
     };
@@ -345,9 +386,9 @@ async fn sonarqube_get_issues_with_client(
 /// This is kept for backward compatibility.
 async fn sonarqube_get_quality_gate_legacy(
     request: SonarQubeQualityGateRequest,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     #[allow(deprecated)]
-    let client = get_client()?;
+    let client = get_client().map_err(McpError::from)?;
 
     sonarqube_get_quality_gate_with_client(request, client).await
 }
@@ -369,7 +410,7 @@ async fn sonarqube_get_quality_gate_legacy(
 pub async fn sonarqube_get_quality_gate(
     request: SonarQubeQualityGateRequest,
     context: &ServerContext,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     sonarqube_get_quality_gate_with_client(request, context.client()).await
 }
 
@@ -377,21 +418,34 @@ pub async fn sonarqube_get_quality_gate(
 async fn sonarqube_get_quality_gate_with_client(
     request: SonarQubeQualityGateRequest,
     client: Arc<SonarQubeClient>,
-) -> Result<CallToolResult> {
+) -> McpResult<CallToolResult> {
     let project_key = request.project_key;
 
     // Check if project exists
-    let projects = client.list_projects(None, None, None).await?;
+    let projects = client
+        .list_projects(None, None, None)
+        .await
+        .map_err(|e| McpError::from(e).with_log("get_quality_gate"))?;
+
     if !projects.components.iter().any(|p| p.key == project_key) {
-        return Err(anyhow::anyhow!("Project not found: {}", project_key));
+        return Err(
+            McpError::NotFound(format!("Project not found: {}", project_key))
+                .with_log("get_quality_gate"),
+        );
     }
 
     // Get quality gate status
-    let quality_gate = client.get_quality_gate(&project_key).await?;
+    let quality_gate = client
+        .get_quality_gate(&project_key)
+        .await
+        .map_err(|e| McpError::from(e).with_log("get_quality_gate"))?;
 
     let response = CallToolResult {
         content: vec![CallToolResultContent::Text {
-            text: serde_json::to_string_pretty(&quality_gate)?,
+            text: serde_json::to_string_pretty(&quality_gate).map_err(|e| {
+                McpError::SerializationError(format!("Failed to serialize quality gate: {}", e))
+                    .with_log("get_quality_gate")
+            })?,
         }],
         is_error: false,
     };

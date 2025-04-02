@@ -1,5 +1,6 @@
+use crate::mcp::errors::McpResult;
 use crate::mcp::types::*;
-use anyhow::Result;
+use tracing::info;
 
 /// Lists all prompts available in the MCP server.
 ///
@@ -15,7 +16,9 @@ use anyhow::Result;
 /// # Returns
 ///
 /// Returns a result containing the list of all available prompts
-pub async fn prompts_list(_request: Option<ListPromptsRequest>) -> Result<ListPromptsResult> {
+pub async fn prompts_list(_request: Option<ListPromptsRequest>) -> McpResult<ListPromptsResult> {
+    info!("Legacy prompts_list called - prompts are now handled by RMCP SDK");
+
     // NOTE: Prompts functionality is not currently implemented
     // Return an empty vector instead of loading from JSON file
     let prompts: Vec<Prompt> = Vec::new();
@@ -40,7 +43,12 @@ pub async fn prompts_list(_request: Option<ListPromptsRequest>) -> Result<ListPr
 ///
 /// Returns a result containing the requested prompt or a default empty result
 /// if the prompt is not found
-pub async fn prompts_get(request: GetPromptRequest) -> Result<PromptResult> {
+pub async fn prompts_get(request: GetPromptRequest) -> McpResult<PromptResult> {
+    info!(
+        "Legacy prompts_get called for '{}' - prompts are now handled by RMCP SDK",
+        request.name
+    );
+
     // NOTE: Prompts functionality is not currently implemented
     // Return a default empty prompt result with an explanatory message
     let response = PromptResult {
