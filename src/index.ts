@@ -189,8 +189,20 @@ mcpServer.tool(
   'projects',
   'List all SonarQube projects',
   {
-    page: z.number().positive().int().nullable().optional(),
-    page_size: z.number().positive().int().nullable().optional(),
+    page: z
+      .union([
+        z.number().positive().int(),
+        z.string().transform((val) => parseInt(val, 10) || null),
+      ])
+      .nullable()
+      .optional(),
+    page_size: z
+      .union([
+        z.number().positive().int(),
+        z.string().transform((val) => parseInt(val, 10) || null),
+      ])
+      .nullable()
+      .optional(),
   },
   handleSonarQubeProjects
 );
@@ -201,11 +213,26 @@ mcpServer.tool(
   {
     project_key: z.string(),
     severity: severitySchema,
-    page: z.number().positive().int().nullable().optional(),
-    page_size: z.number().positive().int().nullable().optional(),
+    page: z
+      .union([
+        z.number().positive().int(),
+        z.string().transform((val) => parseInt(val, 10) || null),
+      ])
+      .nullable()
+      .optional(),
+    page_size: z
+      .union([
+        z.number().positive().int(),
+        z.string().transform((val) => parseInt(val, 10) || null),
+      ])
+      .nullable()
+      .optional(),
     statuses: statusSchema,
     resolutions: resolutionSchema,
-    resolved: z.boolean().nullable().optional(),
+    resolved: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
     types: typeSchema,
     rules: z.array(z.string()).nullable().optional(),
     tags: z.array(z.string()).nullable().optional(),
@@ -220,10 +247,19 @@ mcpServer.tool(
     owasp_top10: z.array(z.string()).nullable().optional(),
     sans_top25: z.array(z.string()).nullable().optional(),
     sonarsource_security: z.array(z.string()).nullable().optional(),
-    on_component_only: z.boolean().nullable().optional(),
+    on_component_only: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
     facets: z.array(z.string()).nullable().optional(),
-    since_leak_period: z.boolean().nullable().optional(),
-    in_new_code_period: z.boolean().nullable().optional(),
+    since_leak_period: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
+    in_new_code_period: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
   },
   async (params: Record<string, unknown>) => {
     return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
