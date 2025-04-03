@@ -1,8 +1,8 @@
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
 use jsonrpsee_server::RpcModule;
 use tracing::info;
 
-use crate::mcp::types::{ListToolsRequest, ListToolsResult, Tool};
+use crate::mcp::core::types::{ListToolsRequest, ListToolsResult, Tool};
 use serde_json;
 
 /// Lists all available tools that the MCP server provides.

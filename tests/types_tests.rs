@@ -2,7 +2,7 @@ mod helpers;
 
 use serde_json::Value;
 use serde_json::json;
-use sonarqube_mcp_server::mcp::types::*;
+use sonarqube_mcp_server::mcp::core::types::*;
 use std::collections::HashMap;
 use url::Url;
 

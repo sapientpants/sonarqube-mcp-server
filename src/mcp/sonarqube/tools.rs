@@ -7,13 +7,14 @@
     since = "0.3.0",
     note = "Use specific feature modules instead of the combined tools module"
 )]
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
+use crate::mcp::core::types::CallToolResult;
+use crate::mcp::core::types::ListProjectsResult;
 use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::{
     SonarQubeIssuesRequest, SonarQubeListProjectsRequest, SonarQubeMetricsRequest,
     SonarQubeQualityGateRequest,
 };
-use crate::mcp::types::{CallToolResult, ListProjectsResult};
 use jsonrpsee_server::RpcModule;
 
 /// Re-exports for backward compatibility

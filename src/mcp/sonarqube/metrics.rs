@@ -1,13 +1,13 @@
 /// Metrics module for SonarQube integration
 ///
 /// This module provides functionality for retrieving metrics from SonarQube.
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
+use crate::mcp::core::types::{CallToolResult, CallToolResultContent};
 use crate::mcp::sonarqube::client::SonarQubeClient;
 #[allow(deprecated)]
 use crate::mcp::sonarqube::config::get_client;
 use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::SonarQubeMetricsRequest;
-use crate::mcp::types::{CallToolResult, CallToolResultContent};
 use std::sync::Arc;
 
 /// Legacy wrapper for sonarqube_get_metrics that uses global state

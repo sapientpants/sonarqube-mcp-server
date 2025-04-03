@@ -1,13 +1,13 @@
 /// Projects module for SonarQube integration
 ///
 /// This module provides functionality for listing and working with SonarQube projects.
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
+use crate::mcp::core::types::{ListProjectsResult, Project};
 use crate::mcp::sonarqube::client::SonarQubeClient;
 #[allow(deprecated)]
 use crate::mcp::sonarqube::config::get_client;
 use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::SonarQubeListProjectsRequest;
-use crate::mcp::types::{ListProjectsResult, Project};
 use std::sync::Arc;
 
 /// Legacy wrapper for list_projects that uses global state

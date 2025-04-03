@@ -1,21 +1,17 @@
+use sonarqube_mcp_server::mcp::core::types::CallToolResultContent;
 use sonarqube_mcp_server::mcp::sonarqube::context::ServerContext;
-use sonarqube_mcp_server::mcp::sonarqube::tools::sonarqube_get_issues;
-use sonarqube_mcp_server::mcp::sonarqube::tools::{SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV};
+use sonarqube_mcp_server::mcp::sonarqube::issues::sonarqube_get_issues;
 use sonarqube_mcp_server::mcp::sonarqube::types::SonarQubeConfig;
 use sonarqube_mcp_server::mcp::sonarqube::types::SonarQubeIssuesRequest;
-use sonarqube_mcp_server::mcp::types::CallToolResultContent;
 use std::env;
 
 #[tokio::test]
 async fn test_output_error_when_no_env_vars() {
-    // Remove environment variables if they exist
+    // Wrap env calls in unsafe block
     unsafe {
-        env::remove_var(SONARQUBE_URL_ENV);
-        env::remove_var(SONARQUBE_TOKEN_ENV);
+        env::remove_var("SONARQUBE_URL");
+        env::remove_var("SONARQUBE_TOKEN");
     }
-
-    // Initialize the client
-    let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
 
     // Create request for a non-existent project
     let request = SonarQubeIssuesRequest {
@@ -104,28 +100,25 @@ async fn test_output_error_when_no_env_vars() {
 #[tokio::test]
 async fn test_issues_output_formatting() {
     // Save and set environment variables
-    let original_url = env::var(SONARQUBE_URL_ENV).ok();
-    let original_token = env::var(SONARQUBE_TOKEN_ENV).ok();
+    let original_url = env::var("SONARQUBE_URL").ok();
+    let original_token = env::var("SONARQUBE_TOKEN").ok();
 
-    // Set test environment variables
+    // Set test environment variables - wrap in unsafe block
     unsafe {
-        env::set_var(SONARQUBE_URL_ENV, "https://example.com");
+        env::set_var("SONARQUBE_URL", "https://example.com");
+        env::set_var("SONARQUBE_TOKEN", "test-token");
     }
+
+    // Restore environment variables - wrap in unsafe block
     unsafe {
-        env::set_var(SONARQUBE_TOKEN_ENV, "test-token");
-    }
+        match original_url {
+            Some(url) => env::set_var("SONARQUBE_URL", url),
+            None => env::remove_var("SONARQUBE_URL"),
+        }
 
-    // Initialize the client
-    let _ = sonarqube_mcp_server::mcp::sonarqube::tools::init_sonarqube_client();
-
-    // Restore environment variables
-    match original_url {
-        Some(url) => unsafe { env::set_var(SONARQUBE_URL_ENV, url) },
-        None => unsafe { env::remove_var(SONARQUBE_URL_ENV) },
-    }
-
-    match original_token {
-        Some(token) => unsafe { env::set_var(SONARQUBE_TOKEN_ENV, token) },
-        None => unsafe { env::remove_var(SONARQUBE_TOKEN_ENV) },
+        match original_token {
+            Some(token) => env::set_var("SONARQUBE_TOKEN", token),
+            None => env::remove_var("SONARQUBE_TOKEN"),
+        }
     }
 }

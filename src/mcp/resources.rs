@@ -1,5 +1,5 @@
-use crate::mcp::errors::McpResult;
-use crate::mcp::types::ListResourcesResult;
+use crate::mcp::core::errors::McpResult;
+use crate::mcp::core::types::ListResourcesResult;
 use tracing::info;
 
 /// Lists all available resources that the MCP server provides.

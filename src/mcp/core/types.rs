@@ -71,7 +71,7 @@ pub struct ServerCapabilities {
 ///
 /// Contains information about a project in the system, typically used
 /// when listing available projects.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Project {
     /// Name of the project
     pub name: String,

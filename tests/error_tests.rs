@@ -1,5 +1,9 @@
-use sonarqube_mcp_server::mcp::errors::{
-    ApiError, McpError, ResultExt, from_sonar_err, map_anyhow_err,
+use sonarqube_mcp_server::mcp::core::errors::{
+    ApiError,
+    McpError,
+    /*McpResult,*/ ResultExt,
+    from_sonar_err, // Add ApiError and from_sonar_err, remove unused
+    /*error_codes,*/ /*log_error,*/ map_anyhow_err,
 };
 use sonarqube_mcp_server::mcp::sonarqube::types::SonarError;
 use std::io::{Error as IoError, ErrorKind};

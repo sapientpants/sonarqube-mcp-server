@@ -1,13 +1,13 @@
 /// Issues module for SonarQube integration
 ///
 /// This module provides functionality for retrieving and analyzing code issues from SonarQube.
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
+use crate::mcp::core::types::{CallToolResult, CallToolResultContent};
 use crate::mcp::sonarqube::client::SonarQubeClient;
 #[allow(deprecated)]
 use crate::mcp::sonarqube::config::get_client;
 use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::{IssuesQueryParams, SonarQubeIssuesRequest};
-use crate::mcp::types::{CallToolResult, CallToolResultContent};
 use std::sync::Arc;
 
 /// Legacy wrapper for sonarqube_get_issues that uses global state

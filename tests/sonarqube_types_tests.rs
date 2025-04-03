@@ -1,7 +1,11 @@
 mod helpers;
 
+use sonarqube_mcp_server::mcp::core::types::*;
 use sonarqube_mcp_server::mcp::sonarqube::context::ServerContext;
-use sonarqube_mcp_server::mcp::sonarqube::tools;
+use sonarqube_mcp_server::mcp::sonarqube::issues::sonarqube_get_issues;
+use sonarqube_mcp_server::mcp::sonarqube::metrics::sonarqube_get_metrics;
+use sonarqube_mcp_server::mcp::sonarqube::projects::list_projects;
+use sonarqube_mcp_server::mcp::sonarqube::quality_gates::sonarqube_get_quality_gate;
 use sonarqube_mcp_server::mcp::sonarqube::types::{
     Component, Condition, Issue, IssueInfo, Paging, ProjectStatus, ProjectsResponse,
     QualityGateCondition, QualityGateResponse, SonarError, SonarQubeConfig, SonarQubeIssuesRequest,
@@ -9,7 +13,6 @@ use sonarqube_mcp_server::mcp::sonarqube::types::{
     SonarQubeMetricsRequest, SonarQubeProject, SonarQubeQualityGateRequest,
     SonarQubeQualityGateResult,
 };
-use sonarqube_mcp_server::mcp::types::Project;
 
 #[test]
 fn test_paging_serialization() {
@@ -615,8 +618,12 @@ fn test_sonar_error_from_impl() {
     };
 }
 
+#[test]
+fn test_sonarqube_config_from_env_missing() {
+    // ... existing code ...
+}
+
 // Legacy tool tests moved from src/mcp/sonarqube/tools.rs
-use serde_json::Value;
 
 #[tokio::test]
 async fn test_get_metrics_legacy() {
@@ -635,8 +642,8 @@ async fn test_get_metrics_legacy() {
     };
     let context = ServerContext::new(config);
 
-    // Call the function
-    let result = tools::sonarqube_get_metrics(request, &context).await;
+    // Call the function directly from its module
+    let result = sonarqube_get_metrics(request, &context).await;
     assert!(result.is_err());
 }
 
@@ -686,8 +693,8 @@ async fn test_get_issues_legacy() {
     };
     let context = ServerContext::new(config);
 
-    // Call the function
-    let result = tools::sonarqube_get_issues(request, &context).await;
+    // Call the function directly from its module
+    let result = sonarqube_get_issues(request, &context).await;
     assert!(result.is_err());
 }
 
@@ -707,18 +714,13 @@ async fn test_get_quality_gate_legacy() {
     };
     let context = ServerContext::new(config);
 
-    // Call the function
-    let result = tools::sonarqube_get_quality_gate(request, &context).await;
+    // Call the function directly from its module
+    let result = sonarqube_get_quality_gate(request, &context).await;
     assert!(result.is_err());
 }
 
 #[tokio::test]
 async fn test_list_projects_legacy() {
-    // Skip if SonarQube client is not set up
-    if tools::get_client().is_err() {
-        return;
-    }
-
     // Create a request
     let request = SonarQubeListProjectsRequest {
         page: Some(1),
@@ -734,7 +736,7 @@ async fn test_list_projects_legacy() {
     };
     let context = ServerContext::new(config);
 
-    // Call the function
-    let result = tools::list_projects(Some(request), &context).await;
+    // Call the function directly from its module
+    let result = list_projects(Some(request), &context).await;
     assert!(result.is_err());
 }

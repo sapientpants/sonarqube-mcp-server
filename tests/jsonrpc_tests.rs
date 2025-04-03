@@ -3,8 +3,8 @@ mod tests {
     use jsonrpsee_core::server::RpcModule;
     use jsonrpsee_types::ErrorObject;
     use serde_json::{Value, json};
+    use sonarqube_mcp_server::mcp::core::types::*;
     use sonarqube_mcp_server::mcp::tools::register_tools;
-    use sonarqube_mcp_server::mcp::types::*;
 
     // Mock implementations of utilities functions for testing
     async fn notifications_initialized() -> anyhow::Result<()> {

@@ -195,44 +195,44 @@ impl From<anyhow::Error> for McpError {
             // Create a new instance instead of cloning
             return match sonar_error {
                 crate::mcp::sonarqube::types::SonarError::Http(err) => {
-                    Self::ExternalApiError(format!("SonarQube HTTP error: {}", err))
+                    McpError::ExternalApiError(format!("SonarQube HTTP error: {}", err))
                 }
                 crate::mcp::sonarqube::types::SonarError::Parse(msg) => {
-                    Self::SerializationError(msg.clone())
+                    McpError::SerializationError(msg.clone())
                 }
                 crate::mcp::sonarqube::types::SonarError::Api(msg) => {
-                    Self::ExternalApiError(msg.clone())
+                    McpError::ExternalApiError(msg.clone())
                 }
                 crate::mcp::sonarqube::types::SonarError::AuthError => {
-                    Self::AuthError("SonarQube authentication failed".to_string())
+                    McpError::AuthError("SonarQube authentication failed".to_string())
                 }
                 crate::mcp::sonarqube::types::SonarError::ProjectNotFound(key) => {
-                    Self::NotFound(format!("SonarQube project not found: {}", key))
+                    McpError::NotFound(format!("SonarQube project not found: {}", key))
                 }
                 crate::mcp::sonarqube::types::SonarError::Config(msg) => {
-                    Self::ConfigError(msg.clone())
+                    McpError::ConfigError(msg.clone())
                 }
             };
         }
         if let Some(io_error) = error.downcast_ref::<std::io::Error>() {
-            return Self::IoError(std::io::Error::new(io_error.kind(), io_error.to_string()));
+            return McpError::IoError(std::io::Error::new(io_error.kind(), io_error.to_string()));
         }
         if let Some(reqwest_error) = error.downcast_ref::<reqwest::Error>() {
             if let Some(url) = reqwest_error.url() {
-                return Self::ExternalApiError(format!(
+                return McpError::ExternalApiError(format!(
                     "Request to {} failed: {}",
                     url, reqwest_error
                 ));
             } else {
-                return Self::ExternalApiError(format!("Request failed: {}", reqwest_error));
+                return McpError::ExternalApiError(format!("Request failed: {}", reqwest_error));
             }
         }
         if let Some(serde_error) = error.downcast_ref::<serde_json::Error>() {
-            return Self::SerializationError(serde_error.to_string());
+            return McpError::SerializationError(serde_error.to_string());
         }
 
         // Default to InternalError
-        Self::InternalError(error.to_string())
+        McpError::InternalError(error.to_string())
     }
 }
 

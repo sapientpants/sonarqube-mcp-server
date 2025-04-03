@@ -512,7 +512,7 @@ pub struct ProjectsResponse {
 }
 
 /// Request parameters for listing SonarQube projects
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SonarQubeListProjectsRequest {
     /// Page number
     #[serde(skip_serializing_if = "Option::is_none")]

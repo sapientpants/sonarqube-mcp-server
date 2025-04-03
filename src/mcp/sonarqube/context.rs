@@ -8,7 +8,7 @@ use crate::mcp::sonarqube::types::SonarQubeConfig;
 /// This struct provides a central container for all server dependencies,
 /// enabling proper dependency injection throughout the codebase.
 /// It replaces the use of global state like static variables.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ServerContext {
     /// SonarQube client instance
     pub client: Arc<SonarQubeClient>,

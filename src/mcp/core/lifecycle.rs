@@ -7,11 +7,11 @@
 // through the ServerHandler trait implementation in the main module. This module
 // is kept for reference and backward compatibility during the transition.
 
-use crate::mcp::errors::McpResult;
+use crate::mcp::core::errors::McpResult;
 use serde_json::Value;
 use tracing::info;
 
-use crate::mcp::types::{
+use crate::mcp::core::types::{
     Implementation, InitializeRequest, InitializeResult, ResourcesCapabilities, ServerCapabilities,
     ToolsCapabilities,
 };

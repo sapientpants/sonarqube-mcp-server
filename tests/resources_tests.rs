@@ -1,7 +1,6 @@
 mod helpers;
 
 use sonarqube_mcp_server::mcp::resources::*;
-use sonarqube_mcp_server::mcp::types::*;
 
 #[tokio::test]
 async fn test_resources_list() {

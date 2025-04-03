@@ -141,6 +141,10 @@ The current module structure mixes concerns, with some modules having too many r
 - Rename modules to better reflect their purpose
 - Move code to more appropriate modules based on responsibility
 - Enforce clear interfaces between modules
+- Split the monolithic `src/mcp/types.rs` module into:
+  - `src/mcp/core/types.rs` for common MCP types
+  - `src/mcp/sonarqube/types.rs` for SonarQube-specific types
+- Updated all imports across the codebase to reflect the new `types` module structure
 
 This change improves the maintainability of the codebase by reorganizing modules around clear boundaries of responsibility, applying consistent naming conventions, and grouping related functionality together.
 

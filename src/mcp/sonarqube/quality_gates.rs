@@ -1,13 +1,13 @@
 /// Quality gates module for SonarQube integration
 ///
 /// This module provides functionality for assessing code quality based on SonarQube quality gates.
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
+use crate::mcp::core::types::{CallToolResult, CallToolResultContent};
 use crate::mcp::sonarqube::client::SonarQubeClient;
 #[allow(deprecated)]
 use crate::mcp::sonarqube::config::get_client;
 use crate::mcp::sonarqube::context::ServerContext;
 use crate::mcp::sonarqube::types::SonarQubeQualityGateRequest;
-use crate::mcp::types::{CallToolResult, CallToolResultContent};
 use std::sync::Arc;
 
 /// Legacy wrapper for sonarqube_get_quality_gate that uses global state

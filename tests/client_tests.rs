@@ -2,9 +2,6 @@ mod helpers;
 
 use helpers::{load_fixture, mock_base_url, mock_token, test_project_key};
 use sonarqube_mcp_server::mcp::sonarqube::client::SonarQubeClient;
-use sonarqube_mcp_server::mcp::sonarqube::tools::{
-    SONARQUBE_ORGANIZATION_ENV, SONARQUBE_TOKEN_ENV, SONARQUBE_URL_ENV,
-};
 use sonarqube_mcp_server::mcp::sonarqube::types::*;
 use wiremock::{
     Mock, MockServer, ResponseTemplate,

@@ -1,5 +1,5 @@
-use crate::mcp::errors::McpResult;
-use crate::mcp::types::*;
+use crate::mcp::core::errors::McpResult;
+use crate::mcp::core::types::*;
 use tracing::info;
 
 /// Lists all prompts available in the MCP server.

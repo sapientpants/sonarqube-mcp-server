@@ -18,10 +18,6 @@
 
 /// Configuration management module
 pub mod config;
-/// Module for error handling and standardization
-pub mod errors;
-/// Module for handling MCP protocol lifecycle
-pub mod lifecycle;
 /// Module for managing and exposing prompts to MCP clients
 pub mod prompts;
 /// Module for handling resource-related operations and endpoints
@@ -30,8 +26,9 @@ pub mod resources;
 pub mod sonarqube;
 /// Module for registering and exposing tools to MCP clients
 pub mod tools;
-/// Module containing data structure definitions for the MCP protocol
-pub mod types;
+
+/// Core MCP functionality (protocol types, errors, lifecycle)
+pub mod core;
 
 /// JSON-RPC protocol version used by the server
 const JSONRPC_VERSION: &str = "2.0";
@@ -45,8 +42,8 @@ const SERVER_NAME: &str = "sonarqube-mcp-server";
 /// Version of the server implementation
 const SERVER_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub use errors::{ApiError, McpError, McpResult, error_codes};
-pub use lifecycle::{exit, initialize, initialized, shutdown};
+pub use core::errors::{ApiError, McpError, McpResult, error_codes};
+pub use core::lifecycle::{exit, initialize, initialized, shutdown};
 /// Re-export key types for easier imports
 pub use resources::resources_list;
 pub use tools::{register_tools, tools_list};

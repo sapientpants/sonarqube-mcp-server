@@ -1,9 +1,8 @@
 mod helpers;
 
-use jsonrpsee_types::error::ErrorObject;
 use serde_json::Value;
-use sonarqube_mcp_server::mcp::lifecycle::*;
-use sonarqube_mcp_server::mcp::types::*;
+use sonarqube_mcp_server::mcp::core::lifecycle::*;
+use sonarqube_mcp_server::mcp::core::types::*;
 
 #[tokio::test]
 async fn test_initialize() {

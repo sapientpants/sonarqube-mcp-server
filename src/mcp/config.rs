@@ -4,7 +4,7 @@
 //! It supports loading configuration from multiple sources (environment variables,
 //! command-line arguments, and configuration files) with validation.
 
-use crate::mcp::errors::{McpError, McpResult};
+use crate::mcp::core::errors::{McpError, McpResult};
 use crate::server::Args;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
