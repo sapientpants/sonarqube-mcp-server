@@ -2,7 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SonarQubeClient, GetIssuesParams, ListProjectsParams } from './sonarqube.js';
+import { SonarQubeClient, IssuesParams, ProjectsParams, SonarQubeProject } from './sonarqube.js';
 import { z } from 'zod';
 
 // Initialize MCP server
@@ -11,6 +11,12 @@ export const mcpServer = new McpServer({
   version: '1.0.0',
 });
 
+const client = new SonarQubeClient(
+  process.env.SONARQUBE_TOKEN!,
+  process.env.SONARQUBE_URL,
+  process.env.SONARQUBE_ORGANIZATION
+);
+
 /**
  * Fetches and returns a list of all SonarQube projects
  * @param params Parameters for listing projects, including pagination and organization
@@ -18,37 +24,28 @@ export const mcpServer = new McpServer({
  * @throws Error if the SONARQUBE_TOKEN environment variable is not set
  */
 export async function handleSonarQubeProjects(params: {
-  organization?: string | null;
   page?: number | null;
   page_size?: number | null;
 }) {
-  const token = process.env.SONARQUBE_TOKEN;
-  if (!token) {
-    throw new Error('SONARQUBE_TOKEN environment variable is not set');
-  }
-
-  const baseUrl = process.env.SONARQUBE_URL || 'https://next.sonarqube.com/sonarqube';
-  const client = new SonarQubeClient(token, baseUrl);
-
-  const listParams: ListProjectsParams = {
-    organization: params.organization || undefined,
+  const projectsParams: ProjectsParams = {
     page: params.page || undefined,
     pageSize: params.page_size || undefined,
   };
 
-  const result = await client.listProjects(listParams);
-
+  const result = await client.listProjects(projectsParams);
   return {
     content: [
       {
         type: 'text' as const,
         text: JSON.stringify({
-          projects: result.projects.map((project) => ({
+          projects: result.projects.map((project: SonarQubeProject) => ({
             key: project.key,
             name: project.name,
             qualifier: project.qualifier,
             visibility: project.visibility,
             lastAnalysisDate: project.lastAnalysisDate,
+            revision: project.revision,
+            managed: project.managed,
           })),
           paging: result.paging,
         }),
@@ -62,17 +59,16 @@ export async function handleSonarQubeProjects(params: {
  * @param params Parameters from the MCP tool
  * @returns Parameters for the SonarQube client
  */
-function mapToSonarQubeParams(params: Record<string, unknown>): GetIssuesParams {
+function mapToSonarQubeParams(params: Record<string, unknown>): IssuesParams {
   return {
     projectKey: params.project_key as string,
-    severity: params.severity as GetIssuesParams['severity'],
-    organization: params.organization as string | undefined,
+    severity: params.severity as IssuesParams['severity'],
     page: params.page as number | undefined,
     pageSize: params.page_size as number | undefined,
-    statuses: params.statuses as GetIssuesParams['statuses'],
-    resolutions: params.resolutions as GetIssuesParams['resolutions'],
+    statuses: params.statuses as IssuesParams['statuses'],
+    resolutions: params.resolutions as IssuesParams['resolutions'],
     resolved: params.resolved as boolean | undefined,
-    types: params.types as GetIssuesParams['types'],
+    types: params.types as IssuesParams['types'],
     rules: params.rules as string[] | undefined,
     tags: params.tags as string[] | undefined,
     createdAfter: params.created_after as string | undefined,
@@ -99,14 +95,7 @@ function mapToSonarQubeParams(params: Record<string, unknown>): GetIssuesParams 
  * @returns A response containing the list of issues with their details
  * @throws Error if the SONARQUBE_TOKEN environment variable is not set
  */
-export async function handleSonarQubeGetIssues(params: GetIssuesParams) {
-  const token = process.env.SONARQUBE_TOKEN;
-  if (!token) {
-    throw new Error('SONARQUBE_TOKEN environment variable is not set');
-  }
-
-  const baseUrl = process.env.SONARQUBE_URL || 'https://next.sonarqube.com/sonarqube';
-  const client = new SonarQubeClient(token, baseUrl);
+export async function handleSonarQubeGetIssues(params: IssuesParams) {
   const result = await client.getIssues(params);
 
   return {
@@ -166,10 +155,9 @@ const typeSchema = z
 
 // Register SonarQube tools
 mcpServer.tool(
-  'list_projects',
+  'projects',
   'List all SonarQube projects',
   {
-    organization: z.string().nullable().optional(),
     page: z.number().positive().int().nullable().optional(),
     page_size: z.number().positive().int().nullable().optional(),
   },
@@ -177,12 +165,11 @@ mcpServer.tool(
 );
 
 mcpServer.tool(
-  'get_issues',
+  'issues',
   'Get issues for a SonarQube project',
   {
     project_key: z.string(),
     severity: severitySchema,
-    organization: z.string().nullable().optional(),
     page: z.number().positive().int().nullable().optional(),
     page_size: z.number().positive().int().nullable().optional(),
     statuses: statusSchema,

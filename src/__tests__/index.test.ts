@@ -30,18 +30,18 @@ describe('MCP Server', () => {
   describe('Tool registration', () => {
     it('has registered the SonarQube tools', () => {
       const toolNames = Object.keys((mcpServer as any)._registeredTools);
-      expect(toolNames).toContain('list_projects');
-      expect(toolNames).toContain('get_issues');
+      expect(toolNames).toContain('projects');
+      expect(toolNames).toContain('issues');
       expect(toolNames.length).toBe(2);
     });
   });
 
   // Add tests for sonarqube tools
-  describe('sonarqube_list_projects tool', () => {
+  describe('sonarqube_projects tool', () => {
     // These would be your SonarQube tests
   });
 
-  describe('sonarqube_get_issues tool', () => {
+  describe('sonarqube_issues tool', () => {
     // These would be your SonarQube issues tests
   });
 });

@@ -18,19 +18,23 @@ describe('SonarQubeClient', () => {
   describe('listProjects', () => {
     it('should fetch projects successfully', async () => {
       const mockResponse = {
-        projects: [
+        components: [
           {
             key: 'project1',
             name: 'Project 1',
             qualifier: 'TRK',
             visibility: 'public',
             lastAnalysisDate: '2023-01-01',
+            revision: 'cfb82f55c6ef32e61828c4cb3db2da12795fd767',
+            managed: false,
           },
           {
             key: 'project2',
             name: 'Project 2',
             qualifier: 'TRK',
             visibility: 'private',
+            revision: '7be96a94ac0c95a61ee6ee0ef9c6f808d386a355',
+            managed: false,
           },
         ],
         paging: {
@@ -47,17 +51,24 @@ describe('SonarQubeClient', () => {
         .reply(200, mockResponse);
 
       const result = await client.listProjects();
-      expect(result).toEqual(mockResponse);
+
+      // Should return transformed data with 'projects' instead of 'components'
+      expect(result.projects).toHaveLength(2);
+      expect(result.projects[0].key).toBe('project1');
+      expect(result.projects[1].key).toBe('project2');
+      expect(result.paging).toEqual(mockResponse.paging);
     });
 
     it('should handle pagination parameters', async () => {
       const mockResponse = {
-        projects: [
+        components: [
           {
             key: 'project3',
             name: 'Project 3',
             qualifier: 'TRK',
             visibility: 'public',
+            revision: 'abc12345def67890abc12345def67890abc12345',
+            managed: false,
           },
         ],
         paging: {
@@ -79,7 +90,10 @@ describe('SonarQubeClient', () => {
         organization: 'my-org',
       });
 
-      expect(result).toEqual(mockResponse);
+      // Should return transformed data with 'projects' instead of 'components'
+      expect(result.projects).toHaveLength(1);
+      expect(result.projects[0].key).toBe('project3');
+      expect(result.paging).toEqual(mockResponse.paging);
       expect(scope.isDone()).toBe(true);
     });
   });

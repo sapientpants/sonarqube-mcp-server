@@ -17,6 +17,8 @@ export interface SonarQubeProject {
   qualifier: string;
   visibility: string;
   lastAnalysisDate?: string;
+  revision?: string;
+  managed?: boolean;
 }
 
 /**
@@ -56,7 +58,7 @@ export interface SonarQubeIssuesResult {
 }
 
 /**
- * Interface for SonarQube projects result
+ * Interface for SonarQube projects result - Clean abstraction for consumers
  */
 export interface SonarQubeProjectsResult {
   projects: SonarQubeProject[];
@@ -70,10 +72,9 @@ export interface SonarQubeProjectsResult {
 /**
  * Interface for get issues parameters
  */
-export interface GetIssuesParams extends PaginationParams {
+export interface IssuesParams extends PaginationParams {
   projectKey: string;
   severity?: 'INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER';
-  organization?: string;
   statuses?: (
     | 'OPEN'
     | 'CONFIRMED'
@@ -109,8 +110,19 @@ export interface GetIssuesParams extends PaginationParams {
 /**
  * Interface for list projects parameters
  */
-export interface ListProjectsParams extends PaginationParams {
-  organization?: string;
+export interface ProjectsParams extends PaginationParams {}
+
+/**
+ * Interface for raw SonarQube component as returned by the API
+ */
+interface SonarQubeApiComponent {
+  key: string;
+  name: string;
+  qualifier: string;
+  visibility: string;
+  lastAnalysisDate?: string;
+  revision?: string;
+  managed?: boolean;
 }
 
 /**
@@ -119,15 +131,18 @@ export interface ListProjectsParams extends PaginationParams {
 export class SonarQubeClient {
   private baseUrl: string;
   private auth: { username: string; password: string };
+  private organization: string | null;
 
   /**
    * Creates a new SonarQube client
-   * @param baseUrl Base URL of the SonarQube instance (default: https://next.sonarqube.com/sonarqube)
    * @param token SonarQube authentication token
+   * @param baseUrl Base URL of the SonarQube instance (default: https://sonarcloud.io)
+   * @param organization Organization name
    */
-  constructor(token: string, baseUrl = 'https://next.sonarqube.com/sonarqube') {
+  constructor(token: string, baseUrl = 'https://sonarcloud.io', organization?: string | null) {
     this.baseUrl = baseUrl;
     this.auth = { username: token, password: '' };
+    this.organization = organization ?? null;
   }
 
   /**
@@ -135,19 +150,31 @@ export class SonarQubeClient {
    * @param params Pagination and organization parameters
    * @returns Promise with the list of projects
    */
-  async listProjects(params: ListProjectsParams = {}): Promise<SonarQubeProjectsResult> {
-    const { organization, page, pageSize } = params;
+  async listProjects(params: ProjectsParams = {}): Promise<SonarQubeProjectsResult> {
+    const { page, pageSize } = params;
 
     const response = await axios.get(`${this.baseUrl}/api/projects/search`, {
       auth: this.auth,
       params: {
-        organization,
+        organization: this.organization,
         p: page,
         ps: pageSize,
       },
     });
 
-    return response.data;
+    // Transform SonarQube 'components' to our clean 'projects' interface
+    return {
+      projects: response.data.components.map((component: SonarQubeApiComponent) => ({
+        key: component.key,
+        name: component.name,
+        qualifier: component.qualifier,
+        visibility: component.visibility,
+        lastAnalysisDate: component.lastAnalysisDate,
+        revision: component.revision,
+        managed: component.managed,
+      })),
+      paging: response.data.paging,
+    };
   }
 
   /**
@@ -155,11 +182,10 @@ export class SonarQubeClient {
    * @param params Parameters including project key, severity, pagination and organization
    * @returns Promise with the list of issues
    */
-  async getIssues(params: GetIssuesParams): Promise<SonarQubeIssuesResult> {
+  async getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult> {
     const {
       projectKey,
       severity,
-      organization,
       page,
       pageSize,
       statuses,
@@ -190,7 +216,7 @@ export class SonarQubeClient {
       params: {
         componentKeys: projectKey,
         severities: severity,
-        organization,
+        organization: this.organization,
         p: page,
         ps: pageSize,
         statuses: statuses?.join(','),
