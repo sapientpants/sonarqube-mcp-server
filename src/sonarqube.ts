@@ -22,25 +22,143 @@ export interface SonarQubeProject {
 }
 
 /**
+ * Interface for SonarQube issue impact
+ */
+export interface SonarQubeIssueImpact {
+  softwareQuality: string;
+  severity: string;
+}
+
+/**
+ * Interface for text range in SonarQube
+ */
+export interface SonarQubeTextRange {
+  startLine: number;
+  endLine: number;
+  startOffset: number;
+  endOffset: number;
+}
+
+/**
+ * Interface for message formatting in SonarQube
+ */
+export interface SonarQubeMessageFormatting {
+  start: number;
+  end: number;
+  type: string;
+}
+
+/**
+ * Interface for issue location in SonarQube
+ */
+export interface SonarQubeIssueLocation {
+  textRange: SonarQubeTextRange;
+  msg: string;
+  msgFormattings?: SonarQubeMessageFormatting[];
+}
+
+/**
+ * Interface for issue flow in SonarQube
+ */
+export interface SonarQubeIssueFlow {
+  locations: SonarQubeIssueLocation[];
+}
+
+/**
+ * Interface for issue comment in SonarQube
+ */
+export interface SonarQubeIssueComment {
+  key: string;
+  login: string;
+  htmlText: string;
+  markdown: string;
+  updatable: boolean;
+  createdAt: string;
+}
+
+/**
  * Interface for SonarQube issue
  */
 export interface SonarQubeIssue {
   key: string;
   rule: string;
-  severity: string;
   component: string;
   project: string;
   line?: number;
   hash?: string;
-  status: string;
+  textRange?: SonarQubeTextRange;
   message: string;
+  messageFormattings?: SonarQubeMessageFormatting[];
+  status: string;
+  issueStatus?: string;
   effort?: string;
   debt?: string;
   author?: string;
+  severity?: string;
   tags: string[];
   creationDate: string;
   updateDate: string;
-  type: string;
+  type?: string;
+  cleanCodeAttribute?: string;
+  cleanCodeAttributeCategory?: string;
+  prioritizedRule?: boolean;
+  impacts?: SonarQubeIssueImpact[];
+  comments?: SonarQubeIssueComment[];
+  transitions?: string[];
+  actions?: string[];
+  flows?: SonarQubeIssueFlow[];
+  quickFixAvailable?: boolean;
+  ruleDescriptionContextKey?: string;
+  codeVariants?: string[];
+}
+
+/**
+ * Interface for SonarQube component
+ */
+export interface SonarQubeComponent {
+  key: string;
+  enabled?: boolean;
+  qualifier: string;
+  name: string;
+  longName?: string;
+  path?: string;
+}
+
+/**
+ * Interface for SonarQube rule
+ */
+export interface SonarQubeRule {
+  key: string;
+  name: string;
+  status: string;
+  lang: string;
+  langName: string;
+}
+
+/**
+ * Interface for SonarQube user
+ */
+export interface SonarQubeUser {
+  login: string;
+  name: string;
+  active: boolean;
+  avatar?: string;
+}
+
+/**
+ * Interface for SonarQube facet value
+ */
+export interface SonarQubeFacetValue {
+  val: string;
+  count: number;
+}
+
+/**
+ * Interface for SonarQube facet
+ */
+export interface SonarQubeFacet {
+  property: string;
+  values: SonarQubeFacetValue[];
 }
 
 /**
@@ -48,8 +166,10 @@ export interface SonarQubeIssue {
  */
 export interface SonarQubeIssuesResult {
   issues: SonarQubeIssue[];
-  components: Record<string, unknown>[];
-  rules: Record<string, unknown>[];
+  components: SonarQubeComponent[];
+  rules: SonarQubeRule[];
+  users?: SonarQubeUser[];
+  facets?: SonarQubeFacet[];
   paging: {
     pageIndex: number;
     pageSize: number;

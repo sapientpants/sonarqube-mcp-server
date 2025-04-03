@@ -110,15 +110,55 @@ describe('SonarQubeClient', () => {
             project: 'project1',
             line: 42,
             status: 'OPEN',
+            issueStatus: 'ACCEPTED',
             message: 'Fix this issue',
+            messageFormattings: [
+              {
+                start: 0,
+                end: 4,
+                type: 'CODE',
+              },
+            ],
             tags: ['bug', 'security'],
             creationDate: '2023-01-01',
             updateDate: '2023-01-02',
             type: 'BUG',
+            cleanCodeAttribute: 'CLEAR',
+            cleanCodeAttributeCategory: 'INTENTIONAL',
+            prioritizedRule: false,
+            impacts: [
+              {
+                softwareQuality: 'SECURITY',
+                severity: 'HIGH',
+              },
+            ],
+            textRange: {
+              startLine: 42,
+              endLine: 42,
+              startOffset: 0,
+              endOffset: 100,
+            },
           },
         ],
-        components: [],
-        rules: [],
+        components: [
+          {
+            key: 'component1',
+            enabled: true,
+            qualifier: 'FIL',
+            name: 'Component 1',
+            longName: 'src/main/component1.java',
+            path: 'src/main/component1.java',
+          },
+        ],
+        rules: [
+          {
+            key: 'rule1',
+            name: 'Rule 1',
+            status: 'READY',
+            lang: 'java',
+            langName: 'Java',
+          },
+        ],
         paging: {
           pageIndex: 1,
           pageSize: 10,
@@ -134,6 +174,10 @@ describe('SonarQubeClient', () => {
 
       const result = await client.getIssues({ projectKey: 'project1' });
       expect(result).toEqual(mockResponse);
+      expect(result.issues[0].cleanCodeAttribute).toBe('CLEAR');
+      expect(result.issues[0].impacts?.[0].softwareQuality).toBe('SECURITY');
+      expect(result.components[0].qualifier).toBe('FIL');
+      expect(result.rules[0].lang).toBe('java');
     });
 
     it('should handle filtering by severity', async () => {
@@ -147,18 +191,42 @@ describe('SonarQubeClient', () => {
             project: 'project1',
             line: 100,
             status: 'OPEN',
+            issueStatus: 'CONFIRMED',
             message: 'Critical issue',
             tags: ['security'],
             creationDate: '2023-01-03',
             updateDate: '2023-01-03',
             type: 'VULNERABILITY',
+            cleanCodeAttribute: 'CLEAR',
+            cleanCodeAttributeCategory: 'RESPONSIBLE',
+            prioritizedRule: true,
+            impacts: [
+              {
+                softwareQuality: 'SECURITY',
+                severity: 'HIGH',
+              },
+            ],
           },
         ],
-        components: [],
-        rules: [],
+        components: [
+          {
+            key: 'component2',
+            qualifier: 'FIL',
+            name: 'Component 2',
+          },
+        ],
+        rules: [
+          {
+            key: 'rule2',
+            name: 'Rule 2',
+            status: 'READY',
+            lang: 'java',
+            langName: 'Java',
+          },
+        ],
         paging: {
           pageIndex: 1,
-          pageSize: 10,
+          pageSize: 5,
           total: 1,
         },
       };
