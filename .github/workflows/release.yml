@@ -85,43 +85,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  github-release:
-    name: GitHub Release
-    runs-on: ubuntu-latest
-    needs:
-      - ci
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 10.7.1
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm run build
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref, '-') }}
-          files: |
-            *.tar.gz
-            *.zip
-
   npm-release:
     name: NPM Release
     runs-on: ubuntu-latest
