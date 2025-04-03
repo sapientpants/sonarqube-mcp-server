@@ -221,6 +221,47 @@ The MCP protocol implementation is tightly coupled with SonarQube-specific funct
 - [ ] Make SonarQube integration a plugin to the core MCP server
 - [ ] Enable easy extension for other tool integrations
 
+### Current Status
+The codebase has already begun separating concerns by creating a `core` module within `mcp`. However, there are still areas where MCP protocol functionality is tightly coupled with SonarQube-specific implementations.
+
+### Planned Improvements
+
+1. **Create a Generic Server Interface**:
+   - [ ] Define a generic `McpServer` trait in `src/mcp/core/server.rs` that abstracts the MCP protocol handlers
+   - [ ] Move server protocol implementation from `SonarQubeMcpServer` into a base implementation of this trait
+   - [ ] Modify `SonarQubeMcpServer` to implement this trait and only add SonarQube-specific functionality
+
+2. **Refactor Configuration**:
+   - [ ] Split `Config` in `src/mcp/config.rs` into `McpConfig` (server, logging) and `SonarQubeConfig` (SonarQube-specific)
+   - [ ] Update configuration loading to handle both configurations independently
+   - [ ] Create a generic context type in `src/mcp/core/context.rs` that can be extended by specific implementations
+
+3. **Improve Tool Registration**:
+   - [ ] Create a generic tool registration mechanism in `src/mcp/core/tools.rs`
+   - [ ] Move SonarQube-specific tools to a dedicated registration function in the SonarQube module
+   - [ ] Enable plugins/extensions to register their own tools with the server
+
+4. **Separate Server Context**:
+   - [ ] Create a base `McpContext` in `src/mcp/core/context.rs` for common dependencies
+   - [ ] Make `ServerContext` in `src/mcp/sonarqube/context.rs` extend this base context
+   - [ ] Update dependency injection to use appropriate context types
+
+5. **Modularize Main Application**:
+   - [ ] Refactor `main.rs` to separate generic MCP server initialization from SonarQube-specific parts
+   - [ ] Create a proper plugin architecture that allows loading different tool providers
+   - [ ] Move SonarQube tool declarations from `main.rs` to the SonarQube module
+
+### Outcome
+After these changes, the codebase will have a clean separation between:
+1. The MCP protocol implementation (communication, lifecycle, base types)
+2. SonarQube-specific functionality (client, tools, types)
+
+This will make it easier to:
+- Maintain the core MCP protocol independently
+- Add support for other static analysis tools beyond SonarQube
+- Test components in isolation
+- Evolve the MCP protocol without affecting tool implementations
+
 ## 10. Performance Optimization
 
 ### Issue
