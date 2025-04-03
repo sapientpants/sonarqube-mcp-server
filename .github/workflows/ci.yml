@@ -1,66 +1,37 @@
+# This workflow runs CI checks for the project
+
 name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-
-env:
-  CARGO_TERM_COLOR: always
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Install latest stable Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-        components: rustfmt, clippy
-        
-    - name: Format check
-      run: cargo fmt -- --check
-
-    - name: Clippy
-      run: cargo clippy -- -D warnings
-
-    - name: Build
-      run: cargo build --verbose
-
-    - name: Install tarpaulin
-      run: cargo install cargo-tarpaulin
+      - uses: actions/checkout@v4
       
-    - name: Run tests
-      run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
-
-    - name: Report test coverage to DeepSource
-      uses: deepsourcelabs/test-coverage-action@master
-      with:
-        key: rust
-        coverage-file: lcov.info
-        dsn: ${{ secrets.DEEPSOURCE_DSN }}
-    
-
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        rust: [stable, beta]
-        include:
-          - os: ubuntu-latest
-            rust: nightly
-
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          toolchain: ${{ matrix.rust }}
-          override: true
+          node-version: '20'
           
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.7.0
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run CI scripts
+        run: pnpm run ci
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

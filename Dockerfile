@@ -1,53 +1,32 @@
-# Builder stage
-FROM rust:1-slim-bookworm as builder
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install required dependencies for building
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
 
-# Copy manifest files first to cache dependencies
-COPY Cargo.toml Cargo.lock ./
+# Install pnpm
+RUN npm install -g pnpm@10.7.0
 
-# Create a dummy src/main.rs to build dependencies
-RUN mkdir -p src && \
-    echo "fn main() {}" > src/main.rs && \
-    cargo build --release && \
-    rm -rf src
+# Disable Husky during Docker build
+ENV SKIP_HUSKY=1
+ENV NODE_ENV=production
 
-# Copy the actual source code
-COPY src/ src/
+# Install dependencies
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Build the application
-RUN cargo build --release
+# Copy source code
+COPY . .
 
-# Runtime stage
-FROM debian:bookworm-slim
+# Build TypeScript code
+RUN pnpm run build
 
-WORKDIR /app
+# Clean up dev dependencies and install production dependencies
+RUN rm -rf node_modules && \
+    pnpm install --frozen-lockfile --prod --ignore-scripts
 
-# Install runtime dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Expose the port the app runs on
+EXPOSE 3000
 
-# Copy the binary from the builder stage
-COPY --from=builder /app/target/release/sonarqube-mcp-server /usr/local/bin/
-
-# Set environment variables (these can be overridden at runtime)
-ENV SONARQUBE_URL=https://sonarqube.example.com
-ENV SONARQUBE_TOKEN=your-token-here
-# ENV SONARQUBE_ORGANIZATION=your-organization
-# ENV SONARQUBE_DEBUG=false
-
-# Expose port if needed (adjust based on your application)
-# EXPOSE 8080
-
-# Run the MCP server
-ENTRYPOINT ["sonarqube-mcp-server", "--mcp"] 
+# Start the server
+CMD ["node", "--experimental-specifier-resolution=node", "dist/index.js"] 
