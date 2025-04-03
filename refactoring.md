@@ -137,14 +137,16 @@ The current module structure mixes concerns, with some modules having too many r
 - [x] Enforce clear interfaces between modules
 
 ### Implementation Details
-- Split `sonarqube/tools.rs` into smaller, focused modules
-- Rename modules to better reflect their purpose
-- Move code to more appropriate modules based on responsibility
-- Enforce clear interfaces between modules
+- Created the following module structure:
+  - `src/mcp/core/` - Core MCP functionality
+  - `src/mcp/sonarqube/` - SonarQube-specific functionality
+  - `src/mcp/server/` - Server interfaces and protocol handling
 - Split the monolithic `src/mcp/types.rs` module into:
   - `src/mcp/core/types.rs` for common MCP types
   - `src/mcp/sonarqube/types.rs` for SonarQube-specific types
 - Updated all imports across the codebase to reflect the new `types` module structure
+- Moved error handling to `src/mcp/core/errors.rs` to centralize all error types
+- Organized MCP lifecycle handlers into `src/mcp/core/lifecycle.rs`
 
 This change improves the maintainability of the codebase by reorganizing modules around clear boundaries of responsibility, applying consistent naming conventions, and grouping related functionality together.
 
@@ -177,8 +179,16 @@ Test coverage is uneven across the codebase, and some tests rely on global state
 ### Tasks
 - [ ] Add unit tests for under-tested modules
 - [x] Refactor existing tests to use dependency injection
+- [x] Fix test environment issues with properly scoped environment variables
 - [ ] Add integration tests for critical server flows
 - [ ] Implement property-based testing for complex logic
+
+### Implementation Details
+- Refactored `tests/sonarqube_tools_tests.rs` to properly use dependency injection via `ServerContext`
+- Fixed environment variable handling in tests to ensure proper isolation between test runs
+- Updated mocks in tests to work correctly with the context-based approach
+- Eliminated issues with tests trying to recreate contexts that were already established
+- Added detailed logging to help diagnose test environment issues
 
 ## 8. API Documentation Improvement
 
