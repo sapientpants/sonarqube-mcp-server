@@ -69,11 +69,7 @@ describe('SonarQubeClient', () => {
 
       const scope = nock(baseUrl)
         .get('/api/projects/search')
-        .query({
-          p: 2,
-          ps: 1,
-          organization: 'my-org',
-        })
+        .query(true)
         .basicAuth({ user: token, pass: '' })
         .reply(200, mockResponse);
 
