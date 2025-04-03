@@ -5,6 +5,15 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { SonarQubeClient, IssuesParams, ProjectsParams, SonarQubeProject } from './sonarqube.js';
 import { z } from 'zod';
 
+/**
+ * Helper function to convert null to undefined
+ * @param value Any value that might be null
+ * @returns The original value or undefined if null
+ */
+function nullToUndefined<T>(value: T | null | undefined): T | undefined {
+  return value === null ? undefined : value;
+}
+
 // Initialize MCP server
 export const mcpServer = new McpServer({
   name: 'sonarqube-mcp-server',
@@ -28,8 +37,8 @@ export async function handleSonarQubeProjects(params: {
   page_size?: number | null;
 }) {
   const projectsParams: ProjectsParams = {
-    page: params.page || undefined,
-    pageSize: params.page_size || undefined,
+    page: nullToUndefined(params.page),
+    pageSize: nullToUndefined(params.page_size),
   };
 
   const result = await client.listProjects(projectsParams);
@@ -62,30 +71,30 @@ export async function handleSonarQubeProjects(params: {
 function mapToSonarQubeParams(params: Record<string, unknown>): IssuesParams {
   return {
     projectKey: params.project_key as string,
-    severity: params.severity as IssuesParams['severity'],
-    page: params.page as number | undefined,
-    pageSize: params.page_size as number | undefined,
-    statuses: params.statuses as IssuesParams['statuses'],
-    resolutions: params.resolutions as IssuesParams['resolutions'],
-    resolved: params.resolved as boolean | undefined,
-    types: params.types as IssuesParams['types'],
-    rules: params.rules as string[] | undefined,
-    tags: params.tags as string[] | undefined,
-    createdAfter: params.created_after as string | undefined,
-    createdBefore: params.created_before as string | undefined,
-    createdAt: params.created_at as string | undefined,
-    createdInLast: params.created_in_last as string | undefined,
-    assignees: params.assignees as string[] | undefined,
-    authors: params.authors as string[] | undefined,
-    cwe: params.cwe as string[] | undefined,
-    languages: params.languages as string[] | undefined,
-    owaspTop10: params.owasp_top10 as string[] | undefined,
-    sansTop25: params.sans_top25 as string[] | undefined,
-    sonarsourceSecurity: params.sonarsource_security as string[] | undefined,
-    onComponentOnly: params.on_component_only as boolean | undefined,
-    facets: params.facets as string[] | undefined,
-    sinceLeakPeriod: params.since_leak_period as boolean | undefined,
-    inNewCodePeriod: params.in_new_code_period as boolean | undefined,
+    severity: nullToUndefined(params.severity) as IssuesParams['severity'],
+    page: nullToUndefined(params.page) as number | undefined,
+    pageSize: nullToUndefined(params.page_size) as number | undefined,
+    statuses: nullToUndefined(params.statuses) as IssuesParams['statuses'],
+    resolutions: nullToUndefined(params.resolutions) as IssuesParams['resolutions'],
+    resolved: nullToUndefined(params.resolved) as boolean | undefined,
+    types: nullToUndefined(params.types) as IssuesParams['types'],
+    rules: nullToUndefined(params.rules) as string[] | undefined,
+    tags: nullToUndefined(params.tags) as string[] | undefined,
+    createdAfter: nullToUndefined(params.created_after) as string | undefined,
+    createdBefore: nullToUndefined(params.created_before) as string | undefined,
+    createdAt: nullToUndefined(params.created_at) as string | undefined,
+    createdInLast: nullToUndefined(params.created_in_last) as string | undefined,
+    assignees: nullToUndefined(params.assignees) as string[] | undefined,
+    authors: nullToUndefined(params.authors) as string[] | undefined,
+    cwe: nullToUndefined(params.cwe) as string[] | undefined,
+    languages: nullToUndefined(params.languages) as string[] | undefined,
+    owaspTop10: nullToUndefined(params.owasp_top10) as string[] | undefined,
+    sansTop25: nullToUndefined(params.sans_top25) as string[] | undefined,
+    sonarsourceSecurity: nullToUndefined(params.sonarsource_security) as string[] | undefined,
+    onComponentOnly: nullToUndefined(params.on_component_only) as boolean | undefined,
+    facets: nullToUndefined(params.facets) as string[] | undefined,
+    sinceLeakPeriod: nullToUndefined(params.since_leak_period) as boolean | undefined,
+    inNewCodePeriod: nullToUndefined(params.in_new_code_period) as boolean | undefined,
   };
 }
 
