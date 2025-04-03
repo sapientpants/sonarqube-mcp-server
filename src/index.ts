@@ -17,7 +17,7 @@ function nullToUndefined<T>(value: T | null | undefined): T | undefined {
 // Initialize MCP server
 export const mcpServer = new McpServer({
   name: 'sonarqube-mcp-server',
-  version: '1.0.0',
+  version: '1.0.0-pre',
 });
 
 const client = new SonarQubeClient(
