@@ -190,19 +190,13 @@ mcpServer.tool(
   'List all SonarQube projects',
   {
     page: z
-      .union([
-        z.number().positive().int(),
-        z.string().transform((val) => parseInt(val, 10) || null),
-      ])
-      .nullable()
-      .optional(),
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
     page_size: z
-      .union([
-        z.number().positive().int(),
-        z.string().transform((val) => parseInt(val, 10) || null),
-      ])
-      .nullable()
-      .optional(),
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
   handleSonarQubeProjects
 );
@@ -214,19 +208,13 @@ mcpServer.tool(
     project_key: z.string(),
     severity: severitySchema,
     page: z
-      .union([
-        z.number().positive().int(),
-        z.string().transform((val) => parseInt(val, 10) || null),
-      ])
-      .nullable()
-      .optional(),
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
     page_size: z
-      .union([
-        z.number().positive().int(),
-        z.string().transform((val) => parseInt(val, 10) || null),
-      ])
-      .nullable()
-      .optional(),
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
     statuses: statusSchema,
     resolutions: resolutionSchema,
     resolved: z
