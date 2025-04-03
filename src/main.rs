@@ -5,12 +5,19 @@
 
 use anyhow::Result;
 use clap::Parser;
-use rmcp::{Error as McpError, ServerHandler, ServiceExt, model::*, tool};
+use jsonrpsee::RpcModule;
+use jsonrpsee::server::ServerBuilder;
+use jsonrpsee::types::ErrorObjectOwned;
+use rmcp::{Error as RmcpError, ServerHandler, ServiceExt, model::*, tool};
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use std::net::SocketAddr;
+use tokio::signal;
+use tracing::{error, info};
 
-use crate::mcp::config::Config;
+use crate::mcp::core::config::{LoggingConfig, McpConfig, ServerConfig};
+use crate::mcp::sonarqube::config::SonarQubeConfig;
 use crate::mcp::sonarqube::context::ServerContext;
+use crate::mcp::sonarqube::types::SonarQubeConfig as SonarQubeClientConfig;
 use crate::server::Args;
 
 // Re-export the modules for backward compatibility
@@ -19,38 +26,53 @@ pub mod mcp;
 /// Module defining the JSON-RPC server infrastructure and endpoints
 pub mod server;
 
-/// SonarQube MCP server implementation
-#[derive(Clone)]
-struct SonarQubeMcpServer {
-    /// Server context containing all dependencies
+/// SonarQube MCP Server implementation
+pub struct SonarQubeMcpServer {
     context: ServerContext,
 }
 
 impl SonarQubeMcpServer {
-    fn new(args: &Args) -> Self {
-        // Load configuration using the new configuration system
-        let config = match Config::load_with_args(args) {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                // Log error and fall back to using command-line args directly
-                eprintln!(
-                    "Error loading configuration: {}. Using command-line args only.",
-                    e
-                );
-                let mut cfg = Config::default_config();
-                cfg.sonarqube.url = args.sonarqube_url.clone();
-                cfg.sonarqube.token = args.sonarqube_token.clone();
-                cfg.sonarqube.organization = args.sonarqube_organization.clone();
-                cfg
+    /// Create a new server instance
+    pub fn new(args: &Args) -> Result<Self, RmcpError> {
+        // Load configuration
+        let config = match McpConfig::default() {
+            cfg => {
+                if let Some(sonarqube_url) = args.sonarqube_url.as_ref() {
+                    let sonarqube_config = SonarQubeConfig {
+                        url: sonarqube_url.clone(),
+                        token: args.sonarqube_token.clone(),
+                        organization: args.sonarqube_organization.clone(),
+                        debug: Some(false),
+                    };
+                    cfg
+                } else {
+                    return Err(RmcpError::new(
+                        ErrorCode::ConfigurationError,
+                        "No SonarQube URL provided",
+                        None,
+                    ));
+                }
             }
         };
 
-        // Convert the new config to a SonarQube client config
-        let sonarqube_config = config.to_sonarqube_config();
+        // Create SonarQube client config
+        let sonarqube_client_config = SonarQubeClientConfig {
+            base_url: config.server.host.clone(),
+            token: config.server.host.clone(),
+            organization: None,
+        };
 
-        // Use the new constructor that takes both configs
-        let context = ServerContext::new_with_mcp_config(&config, sonarqube_config);
-        Self { context }
+        // Create server context
+        let context = ServerContext::new_with_mcp_context(&config, &sonarqube_client_config)
+            .map_err(|e| {
+                RmcpError::new(
+                    ErrorCode::ConfigurationError,
+                    format!("Failed to create server context: {}", e),
+                    None,
+                )
+            })?;
+
+        Ok(Self { context })
     }
 }
 
@@ -104,7 +126,7 @@ impl SonarQubeMcpServer {
     async fn list_projects(
         &self,
         #[tool(aggr)] request: ListProjectsRequest,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> Result<CallToolResult, RmcpError> {
         // Call SonarQube client
         let org_ref = request.organization.as_deref();
         match self
@@ -117,7 +139,8 @@ impl SonarQubeMcpServer {
                 let json_str = serde_json::to_string(&projects).unwrap_or_default();
                 Ok(CallToolResult::success(vec![Content::text(json_str)]))
             }
-            Err(e) => Err(McpError::internal_error(
+            Err(e) => Err(RmcpError::new(
+                ErrorCode::InternalError,
                 format!("Failed to list projects: {}", e),
                 None,
             )),
@@ -128,10 +151,7 @@ impl SonarQubeMcpServer {
     async fn get_issues(
         &self,
         #[tool(aggr)] request: GetIssuesRequest,
-    ) -> Result<CallToolResult, McpError> {
-        // We'll just use the default for severities since we can't easily
-        // create a static slice with a dynamic value
-
+    ) -> Result<CallToolResult, RmcpError> {
         // Build the query parameters
         let params = crate::mcp::sonarqube::types::IssuesQueryParams {
             project_key: &request.project_key,
@@ -173,7 +193,8 @@ impl SonarQubeMcpServer {
                 let json_str = serde_json::to_string(&issues).unwrap_or_default();
                 Ok(CallToolResult::success(vec![Content::text(json_str)]))
             }
-            Err(e) => Err(McpError::internal_error(
+            Err(e) => Err(RmcpError::new(
+                ErrorCode::InternalError,
                 format!("Failed to get issues: {}", e),
                 None,
             )),
@@ -197,51 +218,24 @@ impl ServerHandler for SonarQubeMcpServer {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+
+    // Load configuration
+    let _config = McpConfig::default();
+
     // Initialize tracing based on configuration
-    // For now, we'll use default settings but later we could use the config
     tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .with_max_level(tracing::Level::INFO)
-        .with_ansi(false)
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
-
-    // Parse command line arguments
-    let args = match Args::try_parse() {
-        Ok(args) => args,
-        Err(e) => {
-            // If help was requested, just exit with code 0
-            let err_str = e.to_string();
-            if err_str.contains("help") || err_str.contains("--help") {
-                // The error already printed help information
-                std::process::exit(0);
-            }
-            return Err(anyhow::anyhow!(
-                "Failed to parse command line arguments: {}",
-                e
-            ));
-        }
-    };
-
-    // Load configuration but for now, don't change existing behavior
-    // This serves as documentation for future refactoring
-    let _config = match Config::load_with_args(&args) {
-        Ok(config) => config,
-        Err(e) => {
-            eprintln!("Warning: Failed to load configuration: {}", e);
-            eprintln!("Continuing with command-line arguments only.");
-            // The SonarQubeMcpServer::new function will handle this case
-            Config::default_config()
-        }
-    };
 
     // If arguments are provided, display information and exit
     if args.is_args_available() {
-        server::display_info(&args).await;
+        info!("Arguments provided: {:?}", args);
         return Ok(());
     }
 
     // Create and initialize the server
-    let server = SonarQubeMcpServer::new(&args);
+    let server = SonarQubeMcpServer::new(&args)?;
     info!("Server initialized with configuration");
 
     // Run the server using stdio transport
@@ -270,7 +264,9 @@ async fn main() -> Result<()> {
 pub async fn display_info(args: &Args) {
     info!("Starting SonarQube MCP server...");
     info!("Using the official RMCP SDK for MCP communication");
-    info!("Connected to SonarQube at {}", args.sonarqube_url);
+    if let Some(url) = &args.sonarqube_url {
+        info!("Connected to SonarQube at {}", url);
+    }
     if let Some(org) = &args.sonarqube_organization {
         info!("Using SonarQube organization: {}", org);
     }

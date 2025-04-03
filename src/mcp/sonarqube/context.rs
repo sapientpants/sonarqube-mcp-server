@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use crate::mcp::config::Config;
+use crate::mcp::McpResult;
 use crate::mcp::core::context::{HasMcpContext, McpContext};
 use crate::mcp::sonarqube::client::SonarQubeClient;
-use crate::mcp::sonarqube::types::SonarQubeConfig;
+use crate::mcp::sonarqube::config::{Config as SonarQubeFullConfig, SonarQubeConfig};
+use crate::mcp::sonarqube::types::SonarQubeConfig as SonarQubeClientConfig;
 
 /// Server context containing shared dependencies
 ///
@@ -32,32 +33,54 @@ impl ServerContext {
     ///
     /// # Arguments
     ///
-    /// * `config` - SonarQube configuration including URL, token, and organization
-    pub fn new(config: SonarQubeConfig) -> Self {
-        let client = Arc::new(SonarQubeClient::new(config.clone()));
+    /// * `config` - Combined MCP and SonarQube configuration
+    pub fn new(config: SonarQubeFullConfig) -> Self {
+        let client_config = SonarQubeClientConfig {
+            base_url: config.sonarqube.url.clone(),
+            token: config.sonarqube.token.clone(),
+            organization: config.sonarqube.organization.clone(),
+        };
+
+        let client = Arc::new(SonarQubeClient::new(client_config));
+
+        // Clone sonarqube config to avoid borrowing after move
+        let sonarqube_config = config.sonarqube.clone();
+        let api_token = sonarqube_config.token.clone();
+        let server_url = sonarqube_config.url.clone();
+
         Self {
-            mcp: McpContext::default(),
+            mcp: McpContext::new(config.mcp),
             client,
-            config,
-            api_token: String::new(),
-            server_url: String::new(),
+            config: sonarqube_config,
+            api_token,
+            server_url,
         }
     }
 
-    /// Create a new server context with both MCP and SonarQube configuration
+    /// Create a new server context with separate mcp context and SonarQube configuration
     ///
     /// # Arguments
     ///
-    /// * `mcp_config` - MCP server configuration
+    /// * `mcp_context` - MCP context
     /// * `sonarqube_config` - SonarQube configuration
-    pub fn new_with_mcp_config(mcp_config: &Config, sonarqube_config: SonarQubeConfig) -> Self {
-        let client = Arc::new(SonarQubeClient::new(sonarqube_config.clone()));
+    pub fn new_with_mcp_context(
+        mcp_context: McpContext,
+        sonarqube_config: SonarQubeConfig,
+    ) -> Self {
+        let client_config = SonarQubeClientConfig {
+            base_url: sonarqube_config.url.clone(),
+            token: sonarqube_config.token.clone(),
+            organization: sonarqube_config.organization.clone(),
+        };
+
+        let client = Arc::new(SonarQubeClient::new(client_config));
+
         Self {
-            mcp: McpContext::new(mcp_config),
+            mcp: mcp_context,
             client,
-            config: sonarqube_config,
-            api_token: String::new(),
-            server_url: String::new(),
+            config: sonarqube_config.clone(),
+            api_token: sonarqube_config.token.clone(),
+            server_url: sonarqube_config.url.clone(),
         }
     }
 
@@ -92,13 +115,25 @@ impl ServerContext {
         let organization = std::env::var(SONARQUBE_ORGANIZATION_ENV).ok();
 
         // Create config
-        let config = SonarQubeConfig {
-            base_url,
-            token,
+        let client_config = SonarQubeClientConfig {
+            base_url: base_url.clone(),
+            token: token.clone(),
             organization,
         };
 
-        Ok(Self::new(config))
+        let sonarqube_config = SonarQubeConfig {
+            url: base_url,
+            token: token.clone(),
+            organization: client_config.organization.clone(),
+            debug: None,
+        };
+
+        let full_config = SonarQubeFullConfig {
+            mcp: crate::mcp::core::config::McpConfig::default_config(),
+            sonarqube: sonarqube_config,
+        };
+
+        Ok(Self::new(full_config))
     }
 
     /// Get the SonarQube client
@@ -119,6 +154,29 @@ impl ServerContext {
     /// Get the SonarQube configuration
     pub fn get_config(&self) -> &SonarQubeConfig {
         &self.config
+    }
+
+    /// Create a new server context with MCP config and SonarQube client config
+    ///
+    /// # Arguments
+    ///
+    /// * `mcp_config` - Legacy MCP server configuration
+    /// * `sonarqube_client_config` - SonarQube client configuration
+    #[deprecated(note = "Use ServerContext::new instead")]
+    pub fn new_with_mcp_config(
+        mcp_config: &crate::mcp::core::config::McpConfig,
+        sonarqube_client_config: &SonarQubeClientConfig,
+    ) -> McpResult<Self> {
+        let mcp_context = McpContext::new(mcp_config.clone());
+
+        let sonarqube_config = SonarQubeConfig {
+            url: sonarqube_client_config.base_url.clone(),
+            token: sonarqube_client_config.token.clone(),
+            organization: sonarqube_client_config.organization.clone(),
+            debug: Some(false), // Default to false since it's not in the client config
+        };
+
+        Ok(Self::new_with_mcp_context(mcp_context, sonarqube_config))
     }
 }
 

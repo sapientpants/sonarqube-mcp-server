@@ -9,15 +9,12 @@
 //! - Types and utilities for server operation
 //!
 //! The MCP module is organized into several submodules:
+//! - `core`: Core MCP protocol implementation and types
 //! - `prompts`: Handles AI prompts for SonarQube-related assistance
 //! - `resources`: Manages static resources like documentation and templates
 //! - `sonarqube`: Contains the SonarQube integration code (client, tools, types)
 //! - `tools`: Registers and exposes tools to MCP clients
-//! - `types`: Defines data structures used throughout the server
-//! - `lifecycle`: Handles MCP protocol lifecycle such as initialization
 
-/// Configuration management module
-pub mod config;
 /// Module for managing and exposing prompts to MCP clients
 pub mod prompts;
 /// Module for handling resource-related operations and endpoints
@@ -27,7 +24,7 @@ pub mod sonarqube;
 /// Module for registering and exposing tools to MCP clients
 pub mod tools;
 
-/// Core MCP functionality (protocol types, errors, lifecycle)
+/// Core MCP functionality (protocol types, errors, lifecycle, configuration)
 pub mod core;
 
 /// JSON-RPC protocol version used by the server
@@ -50,6 +47,13 @@ pub use tools::{register_tools, tools_list};
 
 /// Default API endpoint for the MCP server
 pub const DEFAULT_ENDPOINT: &str = "127.0.0.1:3000";
+
+/// Legacy configuration module (deprecated)
+#[deprecated(
+    since = "0.4.0",
+    note = "Use core::config for MCP configuration and sonarqube::config for SonarQube configuration"
+)]
+pub mod config;
 
 #[cfg(test)]
 mod tests {

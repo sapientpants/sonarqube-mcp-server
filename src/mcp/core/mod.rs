@@ -1,5 +1,7 @@
 //! Core MCP functionality (protocol types, errors, lifecycle)
 
+/// Configuration module
+pub mod config;
 /// Context for dependency injection
 pub mod context;
 /// Error handling types and utilities

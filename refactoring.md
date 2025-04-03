@@ -216,9 +216,9 @@ The MCP protocol implementation is tightly coupled with SonarQube-specific funct
 - Make it easier to reuse the MCP implementation for other tools
 
 ### Tasks
-- [ ] Separate core MCP protocol into its own module
-- [ ] Create clear interfaces between MCP protocol and SonarQube integration
-- [ ] Make SonarQube integration a plugin to the core MCP server
+- [x] Separate core MCP protocol into its own module
+- [x] Create clear interfaces between MCP protocol and SonarQube integration
+- [x] Make SonarQube integration a plugin to the core MCP server
 - [ ] Enable easy extension for other tool integrations
 
 ### Current Status
@@ -227,14 +227,14 @@ The codebase has already begun separating concerns by creating a `core` module w
 ### Planned Improvements
 
 1. **Create a Generic Server Interface**:
-   - [ ] Define a generic `McpServer` trait in `src/mcp/core/server.rs` that abstracts the MCP protocol handlers
-   - [ ] Move server protocol implementation from `SonarQubeMcpServer` into a base implementation of this trait
-   - [ ] Modify `SonarQubeMcpServer` to implement this trait and only add SonarQube-specific functionality
+   - [x] Define a generic `McpServer` trait in `src/mcp/core/server.rs` that abstracts the MCP protocol handlers
+   - [x] Move server protocol implementation from `SonarQubeMcpServer` into a base implementation of this trait
+   - [x] Modify `SonarQubeMcpServer` to implement this trait and only add SonarQube-specific functionality
 
 2. **Refactor Configuration**:
-   - [ ] Split `Config` in `src/mcp/config.rs` into `McpConfig` (server, logging) and `SonarQubeConfig` (SonarQube-specific)
-   - [ ] Update configuration loading to handle both configurations independently
-   - [ ] Create a generic context type in `src/mcp/core/context.rs` that can be extended by specific implementations
+   - [x] Split `Config` in `src/mcp/config.rs` into `McpConfig` (server, logging) and `SonarQubeConfig` (SonarQube-specific)
+   - [x] Update configuration loading to handle both configurations independently
+   - [x] Create a generic context type in `src/mcp/core/context.rs` that can be extended by specific implementations
 
 3. **Improve Tool Registration**:
    - [ ] Create a generic tool registration mechanism in `src/mcp/core/tools.rs`
@@ -242,9 +242,9 @@ The codebase has already begun separating concerns by creating a `core` module w
    - [ ] Enable plugins/extensions to register their own tools with the server
 
 4. **Separate Server Context**:
-   - [ ] Create a base `McpContext` in `src/mcp/core/context.rs` for common dependencies
-   - [ ] Make `ServerContext` in `src/mcp/sonarqube/context.rs` extend this base context
-   - [ ] Update dependency injection to use appropriate context types
+   - [x] Create a base `McpContext` in `src/mcp/core/context.rs` for common dependencies
+   - [x] Make `ServerContext` in `src/mcp/sonarqube/context.rs` extend this base context
+   - [x] Update dependency injection to use appropriate context types
 
 5. **Modularize Main Application**:
    - [ ] Refactor `main.rs` to separate generic MCP server initialization from SonarQube-specific parts

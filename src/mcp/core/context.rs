@@ -1,4 +1,4 @@
-use crate::mcp::config::Config;
+use crate::mcp::core::config::McpConfig;
 
 /// MCP server context
 ///
@@ -12,6 +12,8 @@ pub struct McpContext {
     pub server_version: String,
     /// Protocol version
     pub protocol_version: String,
+    /// MCP configuration
+    pub config: McpConfig,
 }
 
 impl McpContext {
@@ -20,11 +22,12 @@ impl McpContext {
     /// # Arguments
     ///
     /// * `config` - MCP configuration
-    pub fn new(_config: &Config) -> Self {
+    pub fn new(config: McpConfig) -> Self {
         Self {
-            server_name: "SonarQube MCP Server".to_string(),
+            server_name: config.server_name.clone(),
             server_version: env!("CARGO_PKG_VERSION").to_string(),
             protocol_version: "1.0".to_string(),
+            config,
         }
     }
 }
@@ -32,8 +35,8 @@ impl McpContext {
 impl Default for McpContext {
     /// Create a default MCP context
     fn default() -> Self {
-        let config = Config::default_config();
-        Self::new(&config)
+        let config = McpConfig::default_config();
+        Self::new(config)
     }
 }
 
