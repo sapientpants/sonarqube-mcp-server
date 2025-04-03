@@ -29,7 +29,7 @@
     "watch": "tsc -w",
     "test": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",
     "test:watch": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --watch",
-    "test:coverage": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --coverage",
+    "test:coverage": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --coverage --detectOpenHandles --forceExit",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -64,6 +64,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
+    "@jest/globals": "^29.7.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",

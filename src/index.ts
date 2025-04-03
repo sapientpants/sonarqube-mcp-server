@@ -5,6 +5,16 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { SonarQubeClient, IssuesParams, ProjectsParams, SonarQubeProject } from './sonarqube.js';
 import { z } from 'zod';
 
+interface Connectable {
+  connect: () => Promise<void>;
+}
+if (!(StdioServerTransport.prototype as unknown as Connectable).connect) {
+  (StdioServerTransport.prototype as unknown as Connectable).connect = async function () {
+    // Dummy connect method for compatibility with MCP server
+    return Promise.resolve();
+  };
+}
+
 /**
  * Helper function to convert null to undefined
  * @param value Any value that might be null
@@ -68,7 +78,7 @@ export async function handleSonarQubeProjects(params: {
  * @param params Parameters from the MCP tool
  * @returns Parameters for the SonarQube client
  */
-function mapToSonarQubeParams(params: Record<string, unknown>): IssuesParams {
+export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesParams {
   return {
     projectKey: params.project_key as string,
     severity: nullToUndefined(params.severity) as IssuesParams['severity'],
@@ -258,5 +268,8 @@ mcpServer.tool(
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
   const transport = new StdioServerTransport();
+  await (transport as unknown as Connectable).connect();
   await mcpServer.connect(transport);
 }
+
+export { nullToUndefined };

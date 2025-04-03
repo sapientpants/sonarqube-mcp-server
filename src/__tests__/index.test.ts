@@ -1,15 +1,35 @@
+/// <reference types="jest" />
+
 /**
  * @jest-environment node
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, jest } from '@jest/globals';
 import nock from 'nock';
-import { mcpServer } from '../index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 // Save environment variables
 const originalEnv = process.env;
+let mcpServer: any;
+let nullToUndefined: any;
+let handleSonarQubeProjects: any;
+let mapToSonarQubeParams: any;
+let handleSonarQubeGetIssues: any;
+
+interface Connectable {
+  connect: () => Promise<void>;
+}
 
 describe('MCP Server', () => {
+  beforeAll(async () => {
+    const module = await import('../index.js');
+    mcpServer = module.mcpServer;
+    nullToUndefined = module.nullToUndefined;
+    handleSonarQubeProjects = module.handleSonarQubeProjects;
+    mapToSonarQubeParams = module.mapToSonarQubeParams;
+    handleSonarQubeGetIssues = module.handleSonarQubeGetIssues;
+  });
+
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
@@ -34,15 +54,14 @@ describe('MCP Server', () => {
       expect(toolNames).toContain('issues');
       expect(toolNames.length).toBe(2);
     });
-  });
 
-  // Add tests for sonarqube tools
-  describe('sonarqube_projects tool', () => {
-    // These would be your SonarQube tests
-  });
-
-  describe('sonarqube_issues tool', () => {
-    // These would be your SonarQube issues tests
+    it('should register the issues tool with correct parameters', () => {
+      const toolNames = Object.keys((mcpServer as any)._registeredTools);
+      expect(toolNames).toContain('issues');
+      const issuesTool = (mcpServer as any)._registeredTools['issues'];
+      expect(issuesTool).toBeDefined();
+      expect(issuesTool.description).toBe('Get issues for a SonarQube project');
+    });
   });
 
   describe('nullToUndefined', () => {
@@ -61,7 +80,9 @@ describe('MCP Server', () => {
         .get('/api/projects/search')
         .query(true)
         .reply(200, {
-          components: [{ key: 'project1', name: 'Project 1', qualifier: 'TRK', visibility: 'public' }],
+          components: [
+            { key: 'project1', name: 'Project 1', qualifier: 'TRK', visibility: 'public' },
+          ],
           paging: { pageIndex: 1, pageSize: 1, total: 1 },
         });
 
@@ -92,6 +113,33 @@ describe('MCP Server', () => {
 
       const response = await handleSonarQubeGetIssues({ projectKey: 'key' });
       expect(response.content[0].text).toContain('issue1');
+    });
+  });
+
+  describe('Conditional server start', () => {
+    it('should not start the server if NODE_ENV is test', async () => {
+      process.env.NODE_ENV = 'test';
+      const connectSpy = jest.spyOn(StdioServerTransport.prototype as any, 'connect');
+      const mcpConnectSpy = jest.spyOn(mcpServer, 'connect');
+      const transport = new StdioServerTransport();
+      await (transport as unknown as Connectable).connect();
+      expect(connectSpy).toHaveBeenCalled();
+      expect(mcpConnectSpy).not.toHaveBeenCalled();
+      connectSpy.mockRestore();
+      mcpConnectSpy.mockRestore();
+    });
+
+    it('should start the server if NODE_ENV is not test', async () => {
+      process.env.NODE_ENV = 'development';
+      const connectSpy = jest.spyOn(StdioServerTransport.prototype as any, 'connect');
+      const mcpConnectSpy = jest.spyOn(mcpServer, 'connect');
+      const transport = new StdioServerTransport();
+      await (transport as unknown as Connectable).connect();
+      await mcpServer.connect(transport);
+      expect(connectSpy).toHaveBeenCalled();
+      expect(mcpConnectSpy).toHaveBeenCalled();
+      connectSpy.mockRestore();
+      mcpConnectSpy.mockRestore();
     });
   });
 });
