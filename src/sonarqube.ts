@@ -249,9 +249,9 @@ interface SonarQubeApiComponent {
  * SonarQube client for interacting with the SonarQube API
  */
 export class SonarQubeClient {
-  private baseUrl: string;
-  private auth: { username: string; password: string };
-  private organization: string | null;
+  private readonly baseUrl: string;
+  private readonly auth: { username: string; password: string };
+  private readonly organization: string | null;
 
   /**
    * Creates a new SonarQube client
