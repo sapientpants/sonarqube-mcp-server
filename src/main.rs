@@ -47,7 +47,9 @@ impl SonarQubeMcpServer {
 
         // Convert the new config to a SonarQube client config
         let sonarqube_config = config.to_sonarqube_config();
-        let context = ServerContext::new(sonarqube_config);
+
+        // Use the new constructor that takes both configs
+        let context = ServerContext::new_with_mcp_config(&config, sonarqube_config);
         Self { context }
     }
 }

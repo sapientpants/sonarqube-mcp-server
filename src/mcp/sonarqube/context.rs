@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::mcp::config::Config;
+use crate::mcp::core::context::{HasMcpContext, McpContext};
 use crate::mcp::sonarqube::client::SonarQubeClient;
 use crate::mcp::sonarqube::types::SonarQubeConfig;
 
@@ -7,13 +9,19 @@ use crate::mcp::sonarqube::types::SonarQubeConfig;
 ///
 /// This struct provides a central container for all server dependencies,
 /// enabling proper dependency injection throughout the codebase.
-/// It replaces the use of global state like static variables.
+/// It extends the base McpContext with SonarQube-specific functionality.
 #[derive(Debug, Clone)]
 pub struct ServerContext {
+    /// Base MCP context
+    pub mcp: McpContext,
     /// SonarQube client instance
     pub client: Arc<SonarQubeClient>,
     /// SonarQube configuration
     pub config: SonarQubeConfig,
+    /// SonarQube API token
+    pub api_token: String,
+    /// SonarQube server URL
+    pub server_url: String,
 }
 
 impl ServerContext {
@@ -27,7 +35,30 @@ impl ServerContext {
     /// * `config` - SonarQube configuration including URL, token, and organization
     pub fn new(config: SonarQubeConfig) -> Self {
         let client = Arc::new(SonarQubeClient::new(config.clone()));
-        Self { client, config }
+        Self {
+            mcp: McpContext::default(),
+            client,
+            config,
+            api_token: String::new(),
+            server_url: String::new(),
+        }
+    }
+
+    /// Create a new server context with both MCP and SonarQube configuration
+    ///
+    /// # Arguments
+    ///
+    /// * `mcp_config` - MCP server configuration
+    /// * `sonarqube_config` - SonarQube configuration
+    pub fn new_with_mcp_config(mcp_config: &Config, sonarqube_config: SonarQubeConfig) -> Self {
+        let client = Arc::new(SonarQubeClient::new(sonarqube_config.clone()));
+        Self {
+            mcp: McpContext::new(mcp_config),
+            client,
+            config: sonarqube_config,
+            api_token: String::new(),
+            server_url: String::new(),
+        }
     }
 
     /// Create a new context from environment variables
@@ -73,5 +104,27 @@ impl ServerContext {
     /// Get the SonarQube client
     pub fn client(&self) -> Arc<SonarQubeClient> {
         self.client.clone()
+    }
+
+    /// Get the SonarQube server URL
+    pub fn get_server_url(&self) -> &str {
+        &self.server_url
+    }
+
+    /// Get the SonarQube API token
+    pub fn get_api_token(&self) -> &str {
+        &self.api_token
+    }
+
+    /// Get the SonarQube configuration
+    pub fn get_config(&self) -> &SonarQubeConfig {
+        &self.config
+    }
+}
+
+// Implement HasMcpContext for ServerContext
+impl HasMcpContext for ServerContext {
+    fn mcp_context(&self) -> &McpContext {
+        &self.mcp
     }
 }
