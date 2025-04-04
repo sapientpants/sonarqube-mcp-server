@@ -178,11 +178,22 @@ export async function handleSonarQubeGetIssues(params: IssuesParams) {
  */
 export async function handleSonarQubeGetMetrics(params: MetricsParams) {
   const result = await client.getMetrics(params);
+
+  // Create a properly structured response matching the expected format
+  const response = {
+    metrics: result.metrics || [],
+    paging: result.paging || {
+      pageIndex: params.page || 1,
+      pageSize: params.pageSize || 100,
+      total: (result.metrics || []).length,
+    },
+  };
+
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify(result),
+        text: JSON.stringify(response),
       },
     ],
   };

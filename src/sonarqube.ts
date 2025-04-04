@@ -416,12 +416,19 @@ export class SonarQubeClient {
       },
     });
 
+    // Check if paging info exists, otherwise create a default
+    const paging = response.data.paging || {
+      pageIndex: page || 1,
+      pageSize: pageSize || 100,
+      total: response.data.metrics?.length || 0,
+    };
+
     return {
-      metrics: response.data.metrics,
+      metrics: response.data.metrics || [],
       paging: {
-        pageIndex: response.data.paging.pageIndex,
-        pageSize: response.data.paging.pageSize,
-        total: response.data.paging.total,
+        pageIndex: paging.pageIndex,
+        pageSize: paging.pageSize,
+        total: paging.total,
       },
     };
   }
