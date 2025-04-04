@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install pnpm
-RUN npm install -g pnpm@10.7.0
+RUN npm install -g pnpm@10.7.1
 
 # Disable Husky during Docker build
 ENV SKIP_HUSKY=1

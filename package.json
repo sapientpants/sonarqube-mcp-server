@@ -54,7 +54,7 @@
   "author": "Marc Tremblay <marc.tremblay@gmail.com>",
   "homepage": "https://github.com/sapientpants/sonarqube-mcp-server",
   "license": "MIT",
-  "packageManager": "pnpm@10.7.0",
+  "packageManager": "pnpm@10.7.1",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.8.0",
     "axios": "^1.8.4",
