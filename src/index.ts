@@ -2,7 +2,13 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SonarQubeClient, IssuesParams, ProjectsParams, SonarQubeProject } from './sonarqube.js';
+import {
+  SonarQubeClient,
+  IssuesParams,
+  ProjectsParams,
+  SonarQubeProject,
+  MetricsParams,
+} from './sonarqube.js';
 import { z } from 'zod';
 
 interface Connectable {
@@ -165,6 +171,34 @@ export async function handleSonarQubeGetIssues(params: IssuesParams) {
   };
 }
 
+/**
+ * Handler for getting SonarQube metrics
+ * @param params Parameters for the metrics request
+ * @returns Promise with the metrics result
+ */
+export async function handleSonarQubeGetMetrics(params: MetricsParams) {
+  const result = await client.getMetrics(params);
+
+  // Create a properly structured response matching the expected format
+  const response = {
+    metrics: result.metrics || [],
+    paging: result.paging || {
+      pageIndex: params.page || 1,
+      pageSize: params.pageSize || 100,
+      total: (result.metrics || []).length,
+    },
+  };
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(response),
+      },
+    ],
+  };
+}
+
 // Define SonarQube severity schema for validation
 const severitySchema = z
   .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
@@ -209,6 +243,36 @@ mcpServer.tool(
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
   handleSonarQubeProjects
+);
+
+mcpServer.tool(
+  'metrics',
+  'Get available metrics from SonarQube',
+  {
+    page: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page_size: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+  },
+  async (params: Record<string, unknown>) => {
+    const result = await handleSonarQubeGetMetrics({
+      page: nullToUndefined(params.page) as number | undefined,
+      pageSize: nullToUndefined(params.page_size) as number | undefined,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
 );
 
 mcpServer.tool(

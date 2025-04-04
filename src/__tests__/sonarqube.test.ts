@@ -358,4 +358,97 @@ describe('SonarQubeClient', () => {
       expect(scope.isDone()).toBe(true);
     });
   });
+
+  describe('getMetrics', () => {
+    it('should fetch metrics successfully', async () => {
+      const mockResponse = {
+        metrics: [
+          {
+            id: 'metric1',
+            key: 'team_size',
+            name: 'Team size',
+            description: 'Number of people in the team',
+            domain: 'Management',
+            type: 'INT',
+            direction: 0,
+            qualitative: false,
+            hidden: false,
+            custom: true,
+          },
+          {
+            id: 'metric2',
+            key: 'uncovered_lines',
+            name: 'Uncovered lines',
+            description: 'Uncovered lines',
+            domain: 'Tests',
+            type: 'INT',
+            direction: 1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        paging: {
+          pageIndex: 1,
+          pageSize: 100,
+          total: 2,
+        },
+      };
+
+      nock(baseUrl)
+        .get('/api/metrics/search')
+        .query(true)
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getMetrics();
+      expect(result).toEqual(mockResponse);
+      expect(result.metrics).toHaveLength(2);
+      expect(result.metrics[0].key).toBe('team_size');
+      expect(result.metrics[1].key).toBe('uncovered_lines');
+      expect(result.paging).toEqual(mockResponse.paging);
+    });
+
+    it('should handle pagination parameters', async () => {
+      const mockResponse = {
+        metrics: [
+          {
+            id: 'metric3',
+            key: 'code_coverage',
+            name: 'Code Coverage',
+            description: 'Code coverage percentage',
+            domain: 'Tests',
+            type: 'PERCENT',
+            direction: 1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        paging: {
+          pageIndex: 2,
+          pageSize: 1,
+          total: 3,
+        },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/metrics/search')
+        .query((actualQuery) => {
+          return actualQuery.p === '2' && actualQuery.ps === '1';
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getMetrics({
+        page: 2,
+        pageSize: 1,
+      });
+
+      expect(result.metrics).toHaveLength(1);
+      expect(result.metrics[0].key).toBe('code_coverage');
+      expect(result.paging).toEqual(mockResponse.paging);
+      expect(scope.isDone()).toBe(true);
+    });
+  });
 });
