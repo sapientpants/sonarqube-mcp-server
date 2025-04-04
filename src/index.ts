@@ -181,11 +181,11 @@ export async function handleSonarQubeGetMetrics(params: MetricsParams) {
 
   // Create a properly structured response matching the expected format
   const response = {
-    metrics: result.metrics || [],
-    paging: result.paging || {
-      pageIndex: params.page || 1,
-      pageSize: params.pageSize || 100,
-      total: (result.metrics || []).length,
+    metrics: result.metrics ?? [],
+    paging: result.paging ?? {
+      pageIndex: params.page ?? 1,
+      pageSize: params.pageSize ?? 100,
+      total: (result.metrics ?? []).length,
     },
   };
 
