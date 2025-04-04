@@ -15,11 +15,11 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 
 ## Features
 
-* **SonarQube API Integration**: Connects to SonarQube via REST API
-* **MCP Protocol Support**: Implements the Model Context Protocol for AI assistant integration
-* **TypeScript/Node.js**: Built with TypeScript for type safety and modern JavaScript features
-* **Cross-Platform**: Works on Linux, macOS, and Windows
-* **Robust Error Handling**: Comprehensive error handling for network, authentication, and parsing issues
+- List all SonarQube projects with pagination support
+- Get detailed issue information from SonarQube projects with extensive filtering options
+- Support for both SonarQube and SonarCloud
+- Comprehensive parameter validation using Zod schemas
+- Full TypeScript support
 
 ## Usage with Claude Desktop
 
@@ -86,13 +86,13 @@ The SonarQube MCP Server provides the following tools:
 
 ### SonarQube Tools
 
-1. `list_projects`: List all SonarQube projects
+1. `projects`: List all SonarQube projects
    * Parameters:
      * `organization` (optional) - Organization key for SonarQube Cloud
      * `page` (optional) - Page number for results pagination
      * `page_size` (optional) - Number of items per page
 
-2. `get_issues`: Get issues from a SonarQube project
+2. `issues`: Get issues from a SonarQube project
    * Parameters:
      * `project_key` (required) - The unique identifier for the SonarQube project
      * `severity` (optional) - Filter issues by severity (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
