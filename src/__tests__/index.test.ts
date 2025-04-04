@@ -19,6 +19,7 @@ let nullToUndefined: any;
 let handleSonarQubeProjects: any;
 let mapToSonarQubeParams: any;
 let handleSonarQubeGetIssues: any;
+let handleSonarQubeGetMetrics: any;
 
 interface Connectable {
   connect: () => Promise<void>;
@@ -32,6 +33,7 @@ describe('MCP Server', () => {
     handleSonarQubeProjects = module.handleSonarQubeProjects;
     mapToSonarQubeParams = module.mapToSonarQubeParams;
     handleSonarQubeGetIssues = module.handleSonarQubeGetIssues;
+    handleSonarQubeGetMetrics = module.handleSonarQubeGetMetrics;
   });
 
   beforeEach(() => {
@@ -56,7 +58,8 @@ describe('MCP Server', () => {
       const toolNames = Object.keys((mcpServer as any)._registeredTools);
       expect(toolNames).toContain('projects');
       expect(toolNames).toContain('issues');
-      expect(toolNames.length).toBe(2);
+      expect(toolNames).toContain('metrics');
+      expect(toolNames.length).toBe(3);
     });
 
     it('should register the issues tool with correct parameters', () => {
@@ -659,6 +662,60 @@ describe('MCP Server', () => {
           createdAfter: undefined,
         })
       );
+    });
+
+    it('should handle metrics tool parameters correctly', async () => {
+      // Mock SonarQube API response
+      nock('https://sonarcloud.io')
+        .get('/api/metrics/search')
+        .query(true)
+        .times(3)
+        .reply(200, {
+          metrics: [
+            {
+              id: 'metric1',
+              key: 'team_size',
+              name: 'Team size',
+              description: 'Number of people in the team',
+              domain: 'Management',
+              type: 'INT',
+              direction: 0,
+              qualitative: false,
+              hidden: false,
+              custom: true,
+            },
+          ],
+          paging: { pageIndex: 1, pageSize: 100, total: 1 },
+        });
+
+      // Test valid number strings
+      const validParams = { page: '2', page_size: '50' };
+      const validResult = await handleSonarQubeGetMetrics(validParams);
+      expect(validResult).toBeDefined();
+      expect(validResult.content).toBeDefined();
+      expect(validResult.content[0].type).toBe('text');
+      const validParsedResult = JSON.parse(validResult.content[0].text);
+      expect(validParsedResult.metrics).toBeDefined();
+      expect(validParsedResult.paging).toBeDefined();
+
+      // Test invalid number strings
+      const invalidParams = { page: 'invalid', page_size: 'invalid' };
+      const invalidResult = await handleSonarQubeGetMetrics(invalidParams);
+      expect(invalidResult).toBeDefined();
+      expect(invalidResult.content).toBeDefined();
+      expect(invalidResult.content[0].type).toBe('text');
+      const invalidParsedResult = JSON.parse(invalidResult.content[0].text);
+      expect(invalidParsedResult.metrics).toBeDefined();
+      expect(invalidParsedResult.paging).toBeDefined();
+
+      // Test undefined values
+      const undefinedResult = await handleSonarQubeGetMetrics({});
+      expect(undefinedResult).toBeDefined();
+      expect(undefinedResult.content).toBeDefined();
+      expect(undefinedResult.content[0].type).toBe('text');
+      const undefinedParsedResult = JSON.parse(undefinedResult.content[0].text);
+      expect(undefinedParsedResult.metrics).toBeDefined();
+      expect(undefinedParsedResult.paging).toBeDefined();
     });
   });
 

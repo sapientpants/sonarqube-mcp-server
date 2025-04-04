@@ -246,6 +246,39 @@ interface SonarQubeApiComponent {
 }
 
 /**
+ * Interface for SonarQube metric
+ */
+export interface SonarQubeMetric {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  domain: string;
+  type: string;
+  direction: number;
+  qualitative: boolean;
+  hidden: boolean;
+  custom: boolean;
+}
+
+/**
+ * Interface for SonarQube metrics result
+ */
+export interface SonarQubeMetricsResult {
+  metrics: SonarQubeMetric[];
+  paging: {
+    pageIndex: number;
+    pageSize: number;
+    total: number;
+  };
+}
+
+/**
+ * Interface for metrics parameters
+ */
+export interface MetricsParams extends PaginationParams {}
+
+/**
  * SonarQube client for interacting with the SonarQube API
  */
 export class SonarQubeClient {
@@ -364,5 +397,32 @@ export class SonarQubeClient {
     });
 
     return response.data;
+  }
+
+  /**
+   * Gets available metrics from SonarQube
+   * @param params Parameters including pagination
+   * @returns Promise with the list of metrics
+   */
+  async getMetrics(params: MetricsParams = {}): Promise<SonarQubeMetricsResult> {
+    const { page, pageSize } = params;
+
+    const response = await axios.get(`${this.baseUrl}/api/metrics/search`, {
+      auth: this.auth,
+      params: {
+        organization: this.organization,
+        p: page,
+        ps: pageSize,
+      },
+    });
+
+    return {
+      metrics: response.data.metrics,
+      paging: {
+        pageIndex: response.data.paging.pageIndex,
+        pageSize: response.data.paging.pageSize,
+        total: response.data.paging.total,
+      },
+    };
   }
 }
