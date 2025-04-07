@@ -71,7 +71,7 @@ importers:
         version: 15.5.0
       nock:
         specifier: ^14.0.2
-        version: 14.0.2
+        version: 14.0.3
       prettier:
         specifier: ^3.5.3
         version: 3.5.3
@@ -454,8 +454,8 @@ packages:
     resolution: {integrity: sha512-e06W7SwrontJDHwCawNO5SGxG+nU9AAx+jpHHZqGl/WrDBdWOpvirC+s58VpJTB5QemI4jTRcjWT4Pt3Q1NPQQ==}
     engines: {node: '>=18'}
 
-  '@mswjs/interceptors@0.38.0':
-    resolution: {integrity: sha512-nPHVM+LUl4V1kXPXuTcNN5OMD//ltCQ0lccuEagvidJdpbig3hP3W6/ctWHx6mee7vZIWE0L+Mqj3vx0ASlm/w==}
+  '@mswjs/interceptors@0.38.1':
+    resolution: {integrity: sha512-JWLtvwpj2aCk2UvLlSQ12BFF/wBJJd0NhhYf7cz4k+tMhymmLn8ss3irznjWPvOsASV2raqb5EjTw+NRoeVDag==}
     engines: {node: '>=18'}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -1882,8 +1882,8 @@ packages:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
 
-  nock@14.0.2:
-    resolution: {integrity: sha512-jDUBpCNY7KLyOF2FTiT4mLRxV2kpjo4YrcGtv3IMCIwqFKxOQFrmeXefvuEiWvS3ApPWQHAkakkkVpoOrDNCVg==}
+  nock@14.0.3:
+    resolution: {integrity: sha512-sJ9RNmCuYBqXDmGZZHgZ1D1441MqFOU4T5aeLGVGEB4OWI/2LM0mZlkfBQzQKdOfJypL+2nPPBugXKjixBn4kQ==}
     engines: {node: '>=18.20.0 <20 || >=20.12.1'}
 
   node-int64@0.4.0:
@@ -3086,7 +3086,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mswjs/interceptors@0.38.0':
+  '@mswjs/interceptors@0.38.1':
     dependencies:
       '@open-draft/deferred-promise': 2.2.0
       '@open-draft/logger': 0.3.0
@@ -4808,9 +4808,9 @@ snapshots:
 
   negotiator@1.0.0: {}
 
-  nock@14.0.2:
+  nock@14.0.3:
     dependencies:
-      '@mswjs/interceptors': 0.38.0
+      '@mswjs/interceptors': 0.38.1
       json-stringify-safe: 5.0.1
       propagate: 2.0.1
     transitivePeerDependencies:
