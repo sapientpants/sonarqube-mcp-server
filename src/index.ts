@@ -2,13 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  SonarQubeClient,
-  IssuesParams,
-  ProjectsParams,
-  SonarQubeProject,
-  MetricsParams,
-} from './sonarqube.js';
+import { PaginationParams, SonarQubeClient, IssuesParams, SonarQubeProject } from './sonarqube.js';
 import { z } from 'zod';
 
 interface Connectable {
@@ -52,7 +46,7 @@ export async function handleSonarQubeProjects(params: {
   page?: number | null;
   page_size?: number | null;
 }) {
-  const projectsParams: ProjectsParams = {
+  const projectsParams: PaginationParams = {
     page: nullToUndefined(params.page),
     pageSize: nullToUndefined(params.page_size),
   };
@@ -176,7 +170,7 @@ export async function handleSonarQubeGetIssues(params: IssuesParams) {
  * @param params Parameters for the metrics request
  * @returns Promise with the metrics result
  */
-export async function handleSonarQubeGetMetrics(params: MetricsParams) {
+export async function handleSonarQubeGetMetrics(params: PaginationParams) {
   const result = await client.getMetrics(params);
 
   // Create a properly structured response matching the expected format

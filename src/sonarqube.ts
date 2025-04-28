@@ -3,7 +3,7 @@ import axios from 'axios';
 /**
  * Interface for pagination parameters
  */
-interface PaginationParams {
+export interface PaginationParams {
   page?: number;
   pageSize?: number;
 }
@@ -228,11 +228,6 @@ export interface IssuesParams extends PaginationParams {
 }
 
 /**
- * Interface for list projects parameters
- */
-export interface ProjectsParams extends PaginationParams {}
-
-/**
  * Interface for raw SonarQube component as returned by the API
  */
 interface SonarQubeApiComponent {
@@ -274,11 +269,6 @@ export interface SonarQubeMetricsResult {
 }
 
 /**
- * Interface for metrics parameters
- */
-export interface MetricsParams extends PaginationParams {}
-
-/**
  * SonarQube client for interacting with the SonarQube API
  */
 export class SonarQubeClient {
@@ -303,7 +293,7 @@ export class SonarQubeClient {
    * @param params Pagination and organization parameters
    * @returns Promise with the list of projects
    */
-  async listProjects(params: ProjectsParams = {}): Promise<SonarQubeProjectsResult> {
+  async listProjects(params: PaginationParams = {}): Promise<SonarQubeProjectsResult> {
     const { page, pageSize } = params;
 
     const response = await axios.get(`${this.baseUrl}/api/projects/search`, {
@@ -404,7 +394,7 @@ export class SonarQubeClient {
    * @param params Parameters including pagination
    * @returns Promise with the list of metrics
    */
-  async getMetrics(params: MetricsParams = {}): Promise<SonarQubeMetricsResult> {
+  async getMetrics(params: PaginationParams = {}): Promise<SonarQubeMetricsResult> {
     const { page, pageSize } = params;
 
     const response = await axios.get(`${this.baseUrl}/api/metrics/search`, {
