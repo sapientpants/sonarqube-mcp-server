@@ -77,7 +77,7 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
       "command": "npx",
       "args": [
         "-y",
-        "sonarqube-mcp-server@1.1.0"
+        "sonarqube-mcp-server@1.0.1"
       ],
       "env": {
         "SONARQUBE_URL": "https://sonarqube.example.com",
