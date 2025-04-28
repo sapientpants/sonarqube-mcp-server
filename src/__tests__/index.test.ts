@@ -192,12 +192,14 @@ jest.mock('../index.js', () => {
 
 // Save environment variables
 const originalEnv = process.env;
+/* eslint-disable @typescript-eslint/no-explicit-any */
 let mcpServer: any;
 let nullToUndefined: any;
 let handleSonarQubeProjects: any;
 let mapToSonarQubeParams: any;
 let handleSonarQubeGetIssues: any;
 let handleSonarQubeGetMetrics: any;
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Connectable {
   connect: () => Promise<void>;
@@ -232,12 +234,15 @@ describe('MCP Server', () => {
   });
 
   describe('Tool registration', () => {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     let testServer: any;
     let registeredTools: Map<string, any>;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     beforeEach(() => {
       registeredTools = new Map();
       testServer = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tool: jest.fn((name: string, description: string, schema: any, handler: any) => {
           registeredTools.set(name, { description, schema, handler });
         }),
@@ -396,6 +401,7 @@ describe('MCP Server', () => {
   describe('Conditional server start', () => {
     it('should not start the server if NODE_ENV is test', async () => {
       process.env.NODE_ENV = 'test';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const connectSpy = jest.spyOn(StdioServerTransport.prototype as any, 'connect');
       const mcpConnectSpy = jest.spyOn(mcpServer, 'connect');
       const transport = new StdioServerTransport();
@@ -408,6 +414,7 @@ describe('MCP Server', () => {
 
     it('should start the server if NODE_ENV is not test', async () => {
       process.env.NODE_ENV = 'development';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const connectSpy = jest.spyOn(StdioServerTransport.prototype as any, 'connect');
       const mcpConnectSpy = jest.spyOn(mcpServer, 'connect');
       const transport = new StdioServerTransport();
@@ -898,7 +905,6 @@ describe('MCP Server', () => {
       });
 
       const originalHandler = handleSonarQubeGetMetrics;
-      //@ts-ignore - We're replacing the function temporarily
       handleSonarQubeGetMetrics = mockGetMetrics;
 
       // Create the lambda handler that's in the tool registration
@@ -928,7 +934,6 @@ describe('MCP Server', () => {
       });
 
       // Restore the original function
-      //@ts-ignore - We're restoring the original function
       handleSonarQubeGetMetrics = originalHandler;
     });
 
@@ -939,7 +944,6 @@ describe('MCP Server', () => {
       });
 
       const originalHandler = handleSonarQubeGetIssues;
-      //@ts-ignore - We're replacing the function temporarily
       handleSonarQubeGetIssues = mockGetIssues;
 
       // Mock mapToSonarQubeParams to return expected output
@@ -948,7 +952,6 @@ describe('MCP Server', () => {
         projectKey: 'test-project',
         severity: 'MAJOR',
       });
-      //@ts-ignore - We're replacing the function temporarily
       mapToSonarQubeParams = mockMapFunction;
 
       // Create the lambda handler that's in the tool registration
@@ -975,9 +978,7 @@ describe('MCP Server', () => {
       });
 
       // Restore the original functions
-      //@ts-ignore - We're restoring the original functions
       handleSonarQubeGetIssues = originalHandler;
-      //@ts-ignore - We're restoring the original functions
       mapToSonarQubeParams = originalMapFunction;
     });
   });
