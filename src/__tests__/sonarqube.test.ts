@@ -451,4 +451,70 @@ describe('SonarQubeClient', () => {
       expect(scope.isDone()).toBe(true);
     });
   });
+
+  describe('getHealth', () => {
+    it('should fetch health status successfully', async () => {
+      const mockResponse = {
+        health: 'GREEN',
+        causes: [],
+      };
+
+      nock(baseUrl)
+        .get('/api/system/health')
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getHealth();
+      expect(result).toEqual(mockResponse);
+      expect(result.health).toBe('GREEN');
+      expect(result.causes).toEqual([]);
+    });
+
+    it('should handle warning health status', async () => {
+      const mockResponse = {
+        health: 'YELLOW',
+        causes: ['Disk space low'],
+      };
+
+      nock(baseUrl)
+        .get('/api/system/health')
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getHealth();
+      expect(result).toEqual(mockResponse);
+      expect(result.health).toBe('YELLOW');
+      expect(result.causes).toContain('Disk space low');
+    });
+  });
+
+  describe('getStatus', () => {
+    it('should fetch system status successfully', async () => {
+      const mockResponse = {
+        id: '20230101-1234',
+        version: '10.3.0.82913',
+        status: 'UP',
+      };
+
+      nock(baseUrl)
+        .get('/api/system/status')
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getStatus();
+      expect(result).toEqual(mockResponse);
+      expect(result.id).toBe('20230101-1234');
+      expect(result.version).toBe('10.3.0.82913');
+      expect(result.status).toBe('UP');
+    });
+  });
+
+  describe('ping', () => {
+    it('should ping SonarQube successfully', async () => {
+      nock(baseUrl).get('/api/system/ping').basicAuth({ user: token, pass: '' }).reply(200, 'pong');
+
+      const result = await client.ping();
+      expect(result).toBe('pong');
+    });
+  });
 });

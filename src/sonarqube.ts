@@ -269,6 +269,29 @@ export interface SonarQubeMetricsResult {
 }
 
 /**
+ * Interface for SonarQube health status
+ */
+export interface SonarQubeHealthStatus {
+  health: 'GREEN' | 'YELLOW' | 'RED';
+  causes: string[];
+}
+
+/**
+ * Interface for SonarQube system status
+ */
+export interface SonarQubeSystemStatus {
+  id: string;
+  version: string;
+  status:
+    | 'UP'
+    | 'DOWN'
+    | 'STARTING'
+    | 'RESTARTING'
+    | 'DB_MIGRATION_NEEDED'
+    | 'DB_MIGRATION_RUNNING';
+}
+
+/**
  * SonarQube client for interacting with the SonarQube API
  */
 export class SonarQubeClient {
@@ -410,5 +433,41 @@ export class SonarQubeClient {
       metrics: response.data.metrics,
       paging: response.data.paging,
     };
+  }
+
+  /**
+   * Gets the health status of the SonarQube instance
+   * @returns Promise with the health status
+   */
+  async getHealth(): Promise<SonarQubeHealthStatus> {
+    const response = await axios.get(`${this.baseUrl}/api/system/health`, {
+      auth: this.auth,
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Gets the system status of the SonarQube instance
+   * @returns Promise with the system status
+   */
+  async getStatus(): Promise<SonarQubeSystemStatus> {
+    const response = await axios.get(`${this.baseUrl}/api/system/status`, {
+      auth: this.auth,
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Pings the SonarQube instance to check if it's up
+   * @returns Promise with the ping response
+   */
+  async ping(): Promise<string> {
+    const response = await axios.get(`${this.baseUrl}/api/system/ping`, {
+      auth: this.auth,
+    });
+
+    return response.data;
   }
 }
