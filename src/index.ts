@@ -193,6 +193,57 @@ export async function handleSonarQubeGetMetrics(params: PaginationParams) {
   };
 }
 
+/**
+ * Handler for getting SonarQube system health status
+ * @returns Promise with the health status result
+ */
+export async function handleSonarQubeGetHealth() {
+  const result = await client.getHealth();
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting SonarQube system status
+ * @returns Promise with the system status result
+ */
+export async function handleSonarQubeGetStatus() {
+  const result = await client.getStatus();
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for pinging SonarQube system
+ * @returns Promise with the ping result
+ */
+export async function handleSonarQubePing() {
+  const result = await client.ping();
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: result,
+      },
+    ],
+  };
+}
+
 // Define SonarQube severity schema for validation
 const severitySchema = z
   .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
@@ -320,6 +371,28 @@ mcpServer.tool(
   async (params: Record<string, unknown>) => {
     return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
   }
+);
+
+// Register system API tools
+mcpServer.tool(
+  'system_health',
+  'Get the health status of the SonarQube instance',
+  {},
+  handleSonarQubeGetHealth
+);
+
+mcpServer.tool(
+  'system_status',
+  'Get the status of the SonarQube instance',
+  {},
+  handleSonarQubeGetStatus
+);
+
+mcpServer.tool(
+  'system_ping',
+  'Ping the SonarQube instance to check if it is up',
+  {},
+  handleSonarQubePing
 );
 
 // Only start the server if not in test mode

@@ -86,6 +86,19 @@ beforeAll(() => {
         total: 1,
       },
     });
+
+  nock('http://localhost:9000').persist().get('/api/system/health').reply(200, {
+    health: 'GREEN',
+    causes: [],
+  });
+
+  nock('http://localhost:9000').persist().get('/api/system/status').reply(200, {
+    id: 'test-id',
+    version: '10.3.0.82913',
+    status: 'UP',
+  });
+
+  nock('http://localhost:9000').persist().get('/api/system/ping').reply(200, 'pong');
 });
 
 afterAll(() => {
@@ -172,6 +185,37 @@ const mockHandlers = {
       },
     ],
   }),
+  handleSonarQubeGetHealth: jest.fn().mockResolvedValue({
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          health: 'GREEN',
+          causes: [],
+        }),
+      },
+    ],
+  }),
+  handleSonarQubeGetStatus: jest.fn().mockResolvedValue({
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          id: 'test-id',
+          version: '10.3.0.82913',
+          status: 'UP',
+        }),
+      },
+    ],
+  }),
+  handleSonarQubePing: jest.fn().mockResolvedValue({
+    content: [
+      {
+        type: 'text' as const,
+        text: 'pong',
+      },
+    ],
+  }),
 };
 
 // Define the mock handlers but don't mock the entire module
@@ -199,6 +243,9 @@ let handleSonarQubeProjects: any;
 let mapToSonarQubeParams: any;
 let handleSonarQubeGetIssues: any;
 let handleSonarQubeGetMetrics: any;
+let handleSonarQubeGetHealth: any;
+let handleSonarQubeGetStatus: any;
+let handleSonarQubePing: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Connectable {
@@ -214,6 +261,9 @@ describe('MCP Server', () => {
     mapToSonarQubeParams = module.mapToSonarQubeParams;
     handleSonarQubeGetIssues = module.handleSonarQubeGetIssues;
     handleSonarQubeGetMetrics = module.handleSonarQubeGetMetrics;
+    handleSonarQubeGetHealth = module.handleSonarQubeGetHealth;
+    handleSonarQubeGetStatus = module.handleSonarQubeGetStatus;
+    handleSonarQubePing = module.handleSonarQubePing;
   });
 
   beforeEach(() => {
@@ -280,13 +330,37 @@ describe('MCP Server', () => {
         },
         mockHandlers.handleSonarQubeGetIssues
       );
+
+      testServer.tool(
+        'system_health',
+        'Get the health status of the SonarQube instance',
+        {},
+        mockHandlers.handleSonarQubeGetHealth
+      );
+
+      testServer.tool(
+        'system_status',
+        'Get the status of the SonarQube instance',
+        {},
+        mockHandlers.handleSonarQubeGetStatus
+      );
+
+      testServer.tool(
+        'system_ping',
+        'Ping the SonarQube instance to check if it is up',
+        {},
+        mockHandlers.handleSonarQubePing
+      );
     });
 
     it('should register all required tools', () => {
-      expect(registeredTools.size).toBe(3);
+      expect(registeredTools.size).toBe(6);
       expect(registeredTools.has('projects')).toBe(true);
       expect(registeredTools.has('metrics')).toBe(true);
       expect(registeredTools.has('issues')).toBe(true);
+      expect(registeredTools.has('system_health')).toBe(true);
+      expect(registeredTools.has('system_status')).toBe(true);
+      expect(registeredTools.has('system_ping')).toBe(true);
     });
 
     it('should register tools with correct descriptions', () => {
@@ -295,12 +369,28 @@ describe('MCP Server', () => {
         'Get available metrics from SonarQube'
       );
       expect(registeredTools.get('issues').description).toBe('Get issues for a SonarQube project');
+      expect(registeredTools.get('system_health').description).toBe(
+        'Get the health status of the SonarQube instance'
+      );
+      expect(registeredTools.get('system_status').description).toBe(
+        'Get the status of the SonarQube instance'
+      );
+      expect(registeredTools.get('system_ping').description).toBe(
+        'Ping the SonarQube instance to check if it is up'
+      );
     });
 
     it('should register tools with correct handlers', () => {
       expect(registeredTools.get('projects').handler).toBe(mockHandlers.handleSonarQubeProjects);
       expect(registeredTools.get('metrics').handler).toBe(mockHandlers.handleSonarQubeGetMetrics);
       expect(registeredTools.get('issues').handler).toBe(mockHandlers.handleSonarQubeGetIssues);
+      expect(registeredTools.get('system_health').handler).toBe(
+        mockHandlers.handleSonarQubeGetHealth
+      );
+      expect(registeredTools.get('system_status').handler).toBe(
+        mockHandlers.handleSonarQubeGetStatus
+      );
+      expect(registeredTools.get('system_ping').handler).toBe(mockHandlers.handleSonarQubePing);
     });
   });
 
@@ -395,6 +485,40 @@ describe('MCP Server', () => {
 
       const response = await handleSonarQubeGetMetrics({ page: 1, pageSize: 1 });
       expect(response.content[0].text).toContain('metric');
+    });
+  });
+
+  describe('handleSonarQubeGetHealth', () => {
+    it('should fetch and return health status', async () => {
+      nock('http://localhost:9000').get('/api/system/health').reply(200, {
+        health: 'GREEN',
+        causes: [],
+      });
+
+      const response = await handleSonarQubeGetHealth();
+      expect(response.content[0].text).toContain('GREEN');
+    });
+  });
+
+  describe('handleSonarQubeGetStatus', () => {
+    it('should fetch and return system status', async () => {
+      nock('http://localhost:9000').get('/api/system/status').reply(200, {
+        id: 'test-id',
+        version: '10.3.0.82913',
+        status: 'UP',
+      });
+
+      const response = await handleSonarQubeGetStatus();
+      expect(response.content[0].text).toContain('UP');
+    });
+  });
+
+  describe('handleSonarQubePing', () => {
+    it('should ping the system and return the result', async () => {
+      nock('http://localhost:9000').get('/api/system/ping').reply(200, 'pong');
+
+      const response = await handleSonarQubePing();
+      expect(response.content[0].text).toBe('pong');
     });
   });
 
