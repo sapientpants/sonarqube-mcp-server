@@ -52,12 +52,12 @@ let mapToSonarQubeParams: any;
 // Mock module functions that make network calls
 jest.mock('axios', () => ({
   get: jest.fn().mockImplementation(() => {
-    return Promise.resolve({ 
-      data: { 
+    return Promise.resolve({
+      data: {
         message: 'Success',
         components: [],
-        paging: { pageIndex: 1, pageSize: 10, total: 0 }
-      } 
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      },
     });
   }),
 }));
@@ -92,7 +92,7 @@ describe('Advanced MCP Server Tests', () => {
       // Test valid inputs
       expect(pageSchema.parse('10')).toBe(10);
       expect(pageSchema.parse('100')).toBe(100);
-      
+
       // Test invalid or empty inputs
       expect(pageSchema.parse('')).toBe(null);
       expect(pageSchema.parse('abc')).toBe(null);
@@ -108,11 +108,11 @@ describe('Advanced MCP Server Tests', () => {
       // Test string values
       expect(booleanSchema.parse('true')).toBe(true);
       expect(booleanSchema.parse('false')).toBe(false);
-      
+
       // Test boolean values
       expect(booleanSchema.parse(true)).toBe(true);
       expect(booleanSchema.parse(false)).toBe(false);
-      
+
       // Test null/undefined values
       expect(booleanSchema.parse(null)).toBe(null);
       expect(booleanSchema.parse(undefined)).toBe(undefined);
@@ -142,51 +142,51 @@ describe('Advanced MCP Server Tests', () => {
         page: 1,
         page_size: 10,
       };
-      
+
       const sonarQubeParams = mapToSonarQubeParams(mcpParams);
-      
+
       expect(sonarQubeParams.projectKey).toBe('test-project');
       expect(sonarQubeParams.severity).toBe('MAJOR');
       expect(sonarQubeParams.page).toBe(1);
       expect(sonarQubeParams.pageSize).toBe(10);
     });
-    
+
     it('should handle empty optional parameters', () => {
       const mcpParams = {
         project_key: 'test-project',
       };
-      
+
       const sonarQubeParams = mapToSonarQubeParams(mcpParams);
-      
+
       expect(sonarQubeParams.projectKey).toBe('test-project');
       expect(sonarQubeParams.severity).toBeUndefined();
       expect(sonarQubeParams.page).toBeUndefined();
       expect(sonarQubeParams.pageSize).toBeUndefined();
     });
-    
+
     it('should handle array parameters', () => {
       const mcpParams = {
         project_key: 'test-project',
         statuses: ['OPEN', 'CONFIRMED'],
         types: ['BUG', 'VULNERABILITY'],
       };
-      
+
       const sonarQubeParams = mapToSonarQubeParams(mcpParams);
-      
+
       expect(sonarQubeParams.projectKey).toBe('test-project');
       expect(sonarQubeParams.statuses).toEqual(['OPEN', 'CONFIRMED']);
       expect(sonarQubeParams.types).toEqual(['BUG', 'VULNERABILITY']);
     });
-    
+
     it('should handle boolean parameters', () => {
       const mcpParams = {
         project_key: 'test-project',
         resolved: true,
         on_component_only: false,
       };
-      
+
       const sonarQubeParams = mapToSonarQubeParams(mcpParams);
-      
+
       expect(sonarQubeParams.projectKey).toBe('test-project');
       expect(sonarQubeParams.resolved).toBe(true);
       expect(sonarQubeParams.onComponentOnly).toBe(false);

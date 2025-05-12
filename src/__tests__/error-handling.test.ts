@@ -30,47 +30,47 @@ let nullToUndefined: any;
 jest.mock('axios', () => ({
   get: jest.fn().mockImplementation((url) => {
     if (url.includes('unauthorized')) {
-      return Promise.reject({ 
-        response: { 
-          status: 401, 
-          data: { errors: [{ msg: 'Unauthorized' }] } 
-        } 
+      return Promise.reject({
+        response: {
+          status: 401,
+          data: { errors: [{ msg: 'Unauthorized' }] },
+        },
       });
     }
     if (url.includes('notfound')) {
-      return Promise.reject({ 
-        response: { 
-          status: 404, 
-          data: { errors: [{ msg: 'Not found' }] } 
-        } 
+      return Promise.reject({
+        response: {
+          status: 404,
+          data: { errors: [{ msg: 'Not found' }] },
+        },
       });
     }
     if (url.includes('badrequest')) {
-      return Promise.reject({ 
-        response: { 
-          status: 400, 
-          data: { errors: [{ msg: 'Bad request' }] } 
-        } 
+      return Promise.reject({
+        response: {
+          status: 400,
+          data: { errors: [{ msg: 'Bad request' }] },
+        },
       });
     }
     if (url.includes('servererror')) {
-      return Promise.reject({ 
-        response: { 
-          status: 500, 
-          data: { errors: [{ msg: 'Server error' }] } 
-        } 
+      return Promise.reject({
+        response: {
+          status: 500,
+          data: { errors: [{ msg: 'Server error' }] },
+        },
       });
     }
     if (url.includes('networkerror')) {
       return Promise.reject(new Error('Network error'));
     }
-    
-    return Promise.resolve({ 
-      data: { 
+
+    return Promise.resolve({
+      data: {
         message: 'Success',
         components: [],
-        paging: { pageIndex: 1, pageSize: 10, total: 0 }
-      } 
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      },
     });
   }),
 }));
@@ -97,17 +97,17 @@ describe('Error Handling', () => {
     it('should handle various input types correctly', () => {
       // Test nulls
       expect(nullToUndefined(null)).toBeUndefined();
-      
+
       // Test undefined
       expect(nullToUndefined(undefined)).toBeUndefined();
-      
+
       // Test various other types
       expect(nullToUndefined(0)).toBe(0);
       expect(nullToUndefined('')).toBe('');
       expect(nullToUndefined('test')).toBe('test');
       expect(nullToUndefined(false)).toBe(false);
       expect(nullToUndefined(true)).toBe(true);
-      
+
       // Test objects and arrays
       const obj = { test: 1 };
       const arr = [1, 2, 3];
@@ -120,7 +120,7 @@ describe('Error Handling', () => {
     it('should handle all parameters', async () => {
       const module = await import('../index.js');
       const mapToSonarQubeParams = module.mapToSonarQubeParams;
-      
+
       const params = mapToSonarQubeParams({
         project_key: 'test-project',
         severity: 'MAJOR',
@@ -148,7 +148,7 @@ describe('Error Handling', () => {
         since_leak_period: true,
         in_new_code_period: true,
       });
-      
+
       expect(params.projectKey).toBe('test-project');
       expect(params.severity).toBe('MAJOR');
       expect(params.page).toBe(1);
@@ -179,9 +179,9 @@ describe('Error Handling', () => {
     it('should handle empty parameters', async () => {
       const module = await import('../index.js');
       const mapToSonarQubeParams = module.mapToSonarQubeParams;
-      
+
       const params = mapToSonarQubeParams({ project_key: 'test-project' });
-      
+
       expect(params.projectKey).toBe('test-project');
       expect(params.severity).toBeUndefined();
       expect(params.statuses).toBeUndefined();
