@@ -2,7 +2,15 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { PaginationParams, SonarQubeClient, IssuesParams, SonarQubeProject } from './sonarqube.js';
+import {
+  PaginationParams,
+  SonarQubeClient,
+  IssuesParams,
+  SonarQubeProject,
+  ComponentMeasuresParams,
+  ComponentsMeasuresParams,
+  MeasuresHistoryParams,
+} from './sonarqube.js';
 import { z } from 'zod';
 
 interface Connectable {
@@ -244,6 +252,60 @@ export async function handleSonarQubePing() {
   };
 }
 
+/**
+ * Handler for getting measures for a specific component
+ * @param params Parameters for the component measures request
+ * @returns Promise with the component measures result
+ */
+export async function handleSonarQubeComponentMeasures(params: ComponentMeasuresParams) {
+  const result = await client.getComponentMeasures(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting measures for multiple components
+ * @param params Parameters for the components measures request
+ * @returns Promise with the components measures result
+ */
+export async function handleSonarQubeComponentsMeasures(params: ComponentsMeasuresParams) {
+  const result = await client.getComponentsMeasures(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting measures history for a component
+ * @param params Parameters for the measures history request
+ * @returns Promise with the measures history result
+ */
+export async function handleSonarQubeMeasuresHistory(params: MeasuresHistoryParams) {
+  const result = await client.getMeasuresHistory(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
 // Define SonarQube severity schema for validation
 const severitySchema = z
   .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
@@ -393,6 +455,104 @@ mcpServer.tool(
   'Ping the SonarQube instance to check if it is up',
   {},
   handleSonarQubePing
+);
+
+// Register measures API tools
+mcpServer.tool(
+  'measures_component',
+  'Get measures for a specific component',
+  {
+    component: z.string(),
+    metric_keys: z.union([z.string(), z.array(z.string())]),
+    additional_fields: z.array(z.string()).optional(),
+    branch: z.string().optional(),
+    pull_request: z.string().optional(),
+    period: z.string().optional(),
+  },
+  async (params: Record<string, unknown>) => {
+    return handleSonarQubeComponentMeasures({
+      component: params.component as string,
+      metricKeys: Array.isArray(params.metric_keys)
+        ? (params.metric_keys as string[])
+        : [params.metric_keys as string],
+      additionalFields: params.additional_fields as string[] | undefined,
+      branch: params.branch as string | undefined,
+      pullRequest: params.pull_request as string | undefined,
+      period: params.period as string | undefined,
+    });
+  }
+);
+
+mcpServer.tool(
+  'measures_components',
+  'Get measures for multiple components',
+  {
+    component_keys: z.union([z.string(), z.array(z.string())]),
+    metric_keys: z.union([z.string(), z.array(z.string())]),
+    additional_fields: z.array(z.string()).optional(),
+    branch: z.string().optional(),
+    pull_request: z.string().optional(),
+    period: z.string().optional(),
+    page: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page_size: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+  },
+  async (params: Record<string, unknown>) => {
+    return handleSonarQubeComponentsMeasures({
+      componentKeys: Array.isArray(params.component_keys)
+        ? (params.component_keys as string[])
+        : [params.component_keys as string],
+      metricKeys: Array.isArray(params.metric_keys)
+        ? (params.metric_keys as string[])
+        : [params.metric_keys as string],
+      additionalFields: params.additional_fields as string[] | undefined,
+      branch: params.branch as string | undefined,
+      pullRequest: params.pull_request as string | undefined,
+      period: params.period as string | undefined,
+      page: nullToUndefined(params.page) as number | undefined,
+      pageSize: nullToUndefined(params.page_size) as number | undefined,
+    });
+  }
+);
+
+mcpServer.tool(
+  'measures_history',
+  'Get measures history for a component',
+  {
+    component: z.string(),
+    metrics: z.union([z.string(), z.array(z.string())]),
+    from: z.string().optional(),
+    to: z.string().optional(),
+    branch: z.string().optional(),
+    pull_request: z.string().optional(),
+    page: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page_size: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+  },
+  async (params: Record<string, unknown>) => {
+    return handleSonarQubeMeasuresHistory({
+      component: params.component as string,
+      metrics: Array.isArray(params.metrics)
+        ? (params.metrics as string[])
+        : [params.metrics as string],
+      from: params.from as string | undefined,
+      to: params.to as string | undefined,
+      branch: params.branch as string | undefined,
+      pullRequest: params.pull_request as string | undefined,
+      page: nullToUndefined(params.page) as number | undefined,
+      pageSize: nullToUndefined(params.page_size) as number | undefined,
+    });
+  }
 );
 
 // Only start the server if not in test mode

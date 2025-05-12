@@ -228,6 +228,42 @@ export interface IssuesParams extends PaginationParams {
 }
 
 /**
+ * Interface for component measures parameters
+ */
+export interface ComponentMeasuresParams {
+  component: string;
+  metricKeys: string[];
+  additionalFields?: string[];
+  branch?: string;
+  pullRequest?: string;
+  period?: string;
+}
+
+/**
+ * Interface for components measures parameters
+ */
+export interface ComponentsMeasuresParams extends PaginationParams {
+  componentKeys: string[];
+  metricKeys: string[];
+  additionalFields?: string[];
+  branch?: string;
+  pullRequest?: string;
+  period?: string;
+}
+
+/**
+ * Interface for measures history parameters
+ */
+export interface MeasuresHistoryParams extends PaginationParams {
+  component: string;
+  metrics: string[];
+  from?: string;
+  to?: string;
+  branch?: string;
+  pullRequest?: string;
+}
+
+/**
  * Interface for raw SonarQube component as returned by the API
  */
 interface SonarQubeApiComponent {
@@ -266,6 +302,80 @@ export interface SonarQubeMetricsResult {
     pageSize: number;
     total: number;
   };
+}
+
+/**
+ * Interface for SonarQube measure
+ */
+export interface SonarQubeMeasure {
+  metric: string;
+  value?: string;
+  period?: {
+    index: number;
+    value: string;
+  };
+  bestValue?: boolean;
+}
+
+/**
+ * Interface for SonarQube measure component
+ */
+export interface SonarQubeMeasureComponent {
+  key: string;
+  name: string;
+  qualifier: string;
+  measures: SonarQubeMeasure[];
+}
+
+/**
+ * Interface for SonarQube component with measures result
+ */
+export interface SonarQubeComponentMeasuresResult {
+  component: SonarQubeMeasureComponent;
+  metrics: SonarQubeMetric[];
+  period?: {
+    index: number;
+    mode: string;
+    date: string;
+    parameter?: string;
+  };
+}
+
+/**
+ * Interface for SonarQube components with measures result
+ */
+export interface SonarQubeComponentsMeasuresResult {
+  components: SonarQubeMeasureComponent[];
+  metrics: SonarQubeMetric[];
+  paging: {
+    pageIndex: number;
+    pageSize: number;
+    total: number;
+  };
+  period?: {
+    index: number;
+    mode: string;
+    date: string;
+    parameter?: string;
+  };
+}
+
+/**
+ * Interface for SonarQube measures history result
+ */
+export interface SonarQubeMeasuresHistoryResult {
+  paging: {
+    pageIndex: number;
+    pageSize: number;
+    total: number;
+  };
+  measures: {
+    metric: string;
+    history: {
+      date: string;
+      value?: string;
+    }[];
+  }[];
 }
 
 /**
@@ -466,6 +576,95 @@ export class SonarQubeClient {
   async ping(): Promise<string> {
     const response = await axios.get(`${this.baseUrl}/api/system/ping`, {
       auth: this.auth,
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Gets measures for a specific component
+   * @param params Parameters including component key and metrics
+   * @returns Promise with the component measures result
+   */
+  async getComponentMeasures(
+    params: ComponentMeasuresParams
+  ): Promise<SonarQubeComponentMeasuresResult> {
+    const { component, metricKeys, additionalFields, branch, pullRequest, period } = params;
+
+    const response = await axios.get(`${this.baseUrl}/api/measures/component`, {
+      auth: this.auth,
+      params: {
+        component,
+        metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
+        additionalFields: additionalFields?.join(','),
+        branch,
+        pullRequest,
+        period,
+        organization: this.organization,
+      },
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Gets measures for multiple components
+   * @param params Parameters including component keys, metrics, and pagination
+   * @returns Promise with the components measures result
+   */
+  async getComponentsMeasures(
+    params: ComponentsMeasuresParams
+  ): Promise<SonarQubeComponentsMeasuresResult> {
+    const {
+      componentKeys,
+      metricKeys,
+      additionalFields,
+      branch,
+      pullRequest,
+      period,
+      page,
+      pageSize,
+    } = params;
+
+    const response = await axios.get(`${this.baseUrl}/api/measures/components`, {
+      auth: this.auth,
+      params: {
+        componentKeys: Array.isArray(componentKeys) ? componentKeys.join(',') : componentKeys,
+        metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
+        additionalFields: additionalFields?.join(','),
+        branch,
+        pullRequest,
+        period,
+        p: page,
+        ps: pageSize,
+        organization: this.organization,
+      },
+    });
+
+    return response.data;
+  }
+
+  /**
+   * Gets measures history for a component
+   * @param params Parameters including component, metrics, and date range
+   * @returns Promise with the measures history result
+   */
+  async getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult> {
+    const { component, metrics, from, to, branch, pullRequest, page, pageSize } = params;
+
+    const response = await axios.get(`${this.baseUrl}/api/measures/search_history`, {
+      auth: this.auth,
+      params: {
+        component,
+        metrics: Array.isArray(metrics) ? metrics.join(',') : metrics,
+        from,
+        to,
+        branch,
+        pullRequest,
+        p: page,
+        ps: pageSize,
+        organization: this.organization,
+      },
     });
 
     return response.data;
