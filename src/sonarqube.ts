@@ -235,7 +235,7 @@ export interface IssuesParams extends PaginationParams {
  */
 export interface ComponentMeasuresParams {
   component: string;
-  metricKeys: string[] | string;
+  metricKeys: string[];
   additionalFields?: string[];
   branch?: string;
   pullRequest?: string;
@@ -246,8 +246,8 @@ export interface ComponentMeasuresParams {
  * Interface for components measures parameters
  */
 export interface ComponentsMeasuresParams extends PaginationParams {
-  componentKeys: string[] | string;
-  metricKeys: string[] | string;
+  componentKeys: string[];
+  metricKeys: string[];
   additionalFields?: string[];
   branch?: string;
   pullRequest?: string;
@@ -259,7 +259,7 @@ export interface ComponentsMeasuresParams extends PaginationParams {
  */
 export interface MeasuresHistoryParams extends PaginationParams {
   component: string;
-  metrics: string[] | string;
+  metrics: string[];
   from?: string;
   to?: string;
   branch?: string;
