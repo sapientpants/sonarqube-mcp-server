@@ -104,6 +104,9 @@ The SonarQube MCP Server provides the following tools:
 2. `issues`: Get issues from a SonarQube project
    * Parameters:
      * `project_key` (required) - The unique identifier for the SonarQube project
+     * `branch` (optional) - Filter issues for a specific branch
+     * `pull_request` (optional) - Filter issues for a specific pull request
+     * `hotspots` (optional) - Filter for security hotspots
      * `severity` (optional) - Filter issues by severity (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
      * `organization` (optional) - Organization key for SonarQube Cloud
      * `page` (optional) - Page number for results pagination
@@ -188,4 +191,4 @@ pnpm run build
 
 ## License
 
-MIT 
+MIT
