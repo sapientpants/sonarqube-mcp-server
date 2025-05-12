@@ -25,7 +25,10 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 ## Features
 
 - List all SonarQube projects with pagination support
+- Get available metrics with descriptions and domains
 - Get detailed issue information from SonarQube projects with extensive filtering options
+- Access component measures with current values and historical trends
+- Monitor SonarQube system health and status
 - Support for both SonarQube and SonarCloud
 - Comprehensive parameter validation using Zod schemas
 - Full TypeScript support
@@ -77,7 +80,7 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
       "command": "npx",
       "args": [
         "-y",
-        "sonarqube-mcp-server@1.0.1"
+        "sonarqube-mcp-server@latest"
       ],
       "env": {
         "SONARQUBE_URL": "https://sonarqube.example.com",
@@ -97,18 +100,21 @@ The SonarQube MCP Server provides the following tools:
 
 1. `projects`: List all SonarQube projects
    * Parameters:
-     * `organization` (optional) - Organization key for SonarQube Cloud
      * `page` (optional) - Page number for results pagination
      * `page_size` (optional) - Number of items per page
 
-2. `issues`: Get issues from a SonarQube project
+2. `metrics`: Get available metrics from SonarQube
+   * Parameters:
+     * `page` (optional) - Page number for results pagination
+     * `page_size` (optional) - Number of items per page
+
+3. `issues`: Get issues from a SonarQube project
    * Parameters:
      * `project_key` (required) - The unique identifier for the SonarQube project
      * `branch` (optional) - Filter issues for a specific branch
      * `pull_request` (optional) - Filter issues for a specific pull request
      * `hotspots` (optional) - Filter for security hotspots
      * `severity` (optional) - Filter issues by severity (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
-     * `organization` (optional) - Organization key for SonarQube Cloud
      * `page` (optional) - Page number for results pagination
      * `page_size` (optional) - Number of items per page
      * `statuses` (optional) - Filter issues by status (array of: OPEN, CONFIRMED, REOPENED, RESOLVED, CLOSED, TO_REVIEW, IN_REVIEW, REVIEWED)
@@ -126,12 +132,54 @@ The SonarQube MCP Server provides the following tools:
      * `cwe` (optional) - Array of CWE identifiers to filter vulnerability issues
      * `languages` (optional) - Array of languages to filter issues
      * `owasp_top10` (optional) - Array of OWASP Top 10 categories to filter issues
-     * `sans_top25` (optional) - Array of SANS Top 25 categories to filter issues 
+     * `sans_top25` (optional) - Array of SANS Top 25 categories to filter issues
      * `sonarsource_security` (optional) - Array of SonarSource security categories to filter issues
      * `on_component_only` (optional) - Return only issues at the specified component level (true) or issues from the component's subtree (false)
      * `facets` (optional) - Array of facets to return along with the issues
      * `since_leak_period` (optional) - Return only issues created since the leak period
      * `in_new_code_period` (optional) - Return only issues created in the new code period
+
+4. `measures_component`: Get measures for a specific component
+   * Parameters:
+     * `component` (required) - Component key
+     * `metric_keys` (required) - Comma-separated list or array of metric keys
+     * `additional_fields` (optional) - Additional fields to return in the response
+     * `branch` (optional) - Branch name
+     * `pull_request` (optional) - Pull request key
+     * `period` (optional) - Period index
+
+5. `measures_components`: Get measures for multiple components
+   * Parameters:
+     * `component_keys` (required) - Comma-separated list or array of component keys
+     * `metric_keys` (required) - Comma-separated list or array of metric keys
+     * `additional_fields` (optional) - Additional fields to return in the response
+     * `branch` (optional) - Branch name
+     * `pull_request` (optional) - Pull request key
+     * `period` (optional) - Period index
+     * `page` (optional) - Page number for results pagination
+     * `page_size` (optional) - Number of items per page
+
+6. `measures_history`: Get measures history for a component
+   * Parameters:
+     * `component` (required) - Component key
+     * `metrics` (required) - Comma-separated list or array of metric keys
+     * `from` (optional) - Start date (format: YYYY-MM-DD)
+     * `to` (optional) - End date (format: YYYY-MM-DD)
+     * `branch` (optional) - Branch name
+     * `pull_request` (optional) - Pull request key
+     * `page` (optional) - Page number for results pagination
+     * `page_size` (optional) - Number of items per page
+
+### System API Tools
+
+1. `system_health`: Get the health status of the SonarQube instance
+   * No parameters required
+
+2. `system_status`: Get the status of the SonarQube instance
+   * No parameters required
+
+3. `system_ping`: Ping the SonarQube instance to check if it is up
+   * No parameters required
 
 ## Environment Variables
 
