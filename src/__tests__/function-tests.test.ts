@@ -14,7 +14,7 @@ describe('Utility Function Tests', () => {
     it('should convert null to undefined but preserve other values', () => {
       expect(nullToUndefined(null)).toBeUndefined();
       expect(nullToUndefined(undefined)).toBeUndefined();
-      
+
       // Other values should remain the same
       expect(nullToUndefined(0)).toBe(0);
       expect(nullToUndefined('')).toBe('');
@@ -22,7 +22,7 @@ describe('Utility Function Tests', () => {
       expect(nullToUndefined(123)).toBe(123);
       expect(nullToUndefined(false)).toBe(false);
       expect(nullToUndefined(true)).toBe(true);
-      
+
       // Objects and arrays should be passed through
       const obj = { test: 'value' };
       const arr = [1, 2, 3];

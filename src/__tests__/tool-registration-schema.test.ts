@@ -19,13 +19,13 @@ describe('Tool Registration Schemas', () => {
 
       // Valid number
       expect(pageSchema.parse('10')).toBe(10);
-      
+
       // Invalid number should return null
       expect(pageSchema.parse('not-a-number')).toBe(null);
-      
+
       // Empty string should return null
       expect(pageSchema.parse('')).toBe(null);
-      
+
       // Undefined should return null
       expect(pageSchema.parse(undefined)).toBe(null);
     });
@@ -42,19 +42,19 @@ describe('Tool Registration Schemas', () => {
 
       // String 'true' should become boolean true
       expect(booleanSchema.parse('true')).toBe(true);
-      
+
       // String 'false' should become boolean false
       expect(booleanSchema.parse('false')).toBe(false);
-      
+
       // Boolean true should remain true
       expect(booleanSchema.parse(true)).toBe(true);
-      
+
       // Boolean false should remain false
       expect(booleanSchema.parse(false)).toBe(false);
-      
+
       // Null should remain null
       expect(booleanSchema.parse(null)).toBe(null);
-      
+
       // Undefined should remain undefined
       expect(booleanSchema.parse(undefined)).toBe(undefined);
     });
@@ -75,13 +75,13 @@ describe('Tool Registration Schemas', () => {
       expect(severitySchema.parse('MAJOR')).toBe('MAJOR');
       expect(severitySchema.parse('CRITICAL')).toBe('CRITICAL');
       expect(severitySchema.parse('BLOCKER')).toBe('BLOCKER');
-      
+
       // Null should remain null
       expect(severitySchema.parse(null)).toBe(null);
-      
+
       // Undefined should remain undefined
       expect(severitySchema.parse(undefined)).toBe(undefined);
-      
+
       // Invalid values should throw
       expect(() => severitySchema.parse('INVALID')).toThrow();
     });
@@ -107,13 +107,13 @@ describe('Tool Registration Schemas', () => {
 
       // Valid array should pass through
       expect(statusSchema.parse(['OPEN', 'CONFIRMED'])).toEqual(['OPEN', 'CONFIRMED']);
-      
+
       // Null should remain null
       expect(statusSchema.parse(null)).toBe(null);
-      
+
       // Undefined should remain undefined
       expect(statusSchema.parse(undefined)).toBe(undefined);
-      
+
       // Invalid values should throw
       expect(() => statusSchema.parse(['INVALID'])).toThrow();
     });
@@ -197,7 +197,7 @@ describe('Tool Registration Schemas', () => {
 
       // Test with string
       expect(unionSchema.parse('single-value')).toBe('single-value');
-      
+
       // Test with array
       expect(unionSchema.parse(['value1', 'value2'])).toEqual(['value1', 'value2']);
     });

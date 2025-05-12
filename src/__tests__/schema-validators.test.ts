@@ -79,7 +79,10 @@ describe('Schema Validators and Transformers', () => {
       .nullable()
       .optional();
 
-    expect(resolutionSchema.parse(['FALSE-POSITIVE', 'WONTFIX'])).toEqual(['FALSE-POSITIVE', 'WONTFIX']);
+    expect(resolutionSchema.parse(['FALSE-POSITIVE', 'WONTFIX'])).toEqual([
+      'FALSE-POSITIVE',
+      'WONTFIX',
+    ]);
     expect(resolutionSchema.parse(null)).toBe(null);
     expect(resolutionSchema.parse(undefined)).toBe(undefined);
     expect(() => resolutionSchema.parse(['INVALID'])).toThrow();

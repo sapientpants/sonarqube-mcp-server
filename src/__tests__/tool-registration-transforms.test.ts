@@ -64,7 +64,10 @@ describe('Tool Registration Schema Transforms', () => {
       const componentKeysSchema = z.union([z.string(), z.array(z.string())]);
 
       expect(componentKeysSchema.parse('component1')).toBe('component1');
-      expect(componentKeysSchema.parse(['component1', 'component2'])).toEqual(['component1', 'component2']);
+      expect(componentKeysSchema.parse(['component1', 'component2'])).toEqual([
+        'component1',
+        'component2',
+      ]);
     });
   });
 
@@ -114,7 +117,10 @@ describe('Tool Registration Schema Transforms', () => {
         .nullable()
         .optional();
 
-      expect(resolutionSchema.parse(['FALSE-POSITIVE', 'WONTFIX'])).toEqual(['FALSE-POSITIVE', 'WONTFIX']);
+      expect(resolutionSchema.parse(['FALSE-POSITIVE', 'WONTFIX'])).toEqual([
+        'FALSE-POSITIVE',
+        'WONTFIX',
+      ]);
       expect(resolutionSchema.parse(null)).toBe(null);
       expect(resolutionSchema.parse(undefined)).toBe(undefined);
       expect(() => resolutionSchema.parse(['INVALID'])).toThrow();

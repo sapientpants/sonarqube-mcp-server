@@ -21,7 +21,7 @@ describe('Parameter Transformation Functions', () => {
       expect(nullToUndefined(123)).toBe(123);
       expect(nullToUndefined(false)).toBe(false);
       expect(nullToUndefined(true)).toBe(true);
-      
+
       const obj = { test: 'value' };
       const arr = [1, 2, 3];
       expect(nullToUndefined(obj)).toBe(obj);
