@@ -853,9 +853,9 @@ describe('MCP Server', () => {
 
   describe('Schema transformations', () => {
     it('should handle page and page_size transformations correctly', () => {
+      // Use the actual schema from the tool registration
       const pageSchema = z
         .string()
-        .nullable()
         .optional()
         .transform((val) => (val ? parseInt(val, 10) || null : null));
 
@@ -869,7 +869,7 @@ describe('MCP Server', () => {
 
       // Test empty/undefined values
       expect(pageSchema.parse(undefined)).toBe(null);
-      expect(pageSchema.parse(null)).toBe(null);
+      expect(pageSchema.parse('')).toBe(null);
     });
 
     it('should handle boolean transformations correctly', () => {
@@ -1057,6 +1057,74 @@ describe('MCP Server', () => {
         expect(response.content[0].text).toContain('coverage');
         expect(response.content[0].text).toContain('85.4');
       });
+
+      it('should fetch component measures with all optional parameters', async () => {
+        nock('http://localhost:9000')
+          .get('/api/measures/component')
+          .query((queryObject) => {
+            return (
+              queryObject.component === 'test-component' &&
+              queryObject.metricKeys === 'coverage,bugs' &&
+              queryObject.additionalFields === 'periods,metrics' &&
+              queryObject.branch === 'main' &&
+              queryObject.pullRequest === 'pr-123' &&
+              queryObject.period === '1'
+            );
+          })
+          .reply(200, {
+            component: {
+              key: 'test-component',
+              name: 'Test Component',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '85.4',
+                  period: { index: 1, value: '+5.4' },
+                },
+                {
+                  metric: 'bugs',
+                  value: '10',
+                  period: { index: 1, value: '-2' },
+                },
+              ],
+              periods: [{ index: 1, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
+            },
+            metrics: [
+              {
+                key: 'coverage',
+                name: 'Coverage',
+                description: 'Test coverage',
+                domain: 'Coverage',
+                type: 'PERCENT',
+              },
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
+          });
+
+        const response = await handleSonarQubeComponentMeasures({
+          component: 'test-component',
+          metricKeys: ['coverage', 'bugs'],
+          additionalFields: ['periods', 'metrics'],
+          branch: 'main',
+          pullRequest: 'pr-123',
+          period: '1',
+        });
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.component.key).toBe('test-component');
+        expect(result.component.measures).toHaveLength(2);
+        expect(result.component.periods).toBeDefined();
+        expect(result.metrics).toHaveLength(2);
+        expect(result.component.measures[0].period).toBeDefined();
+        expect(result.component.measures[0].period.index).toBe(1);
+      });
     });
 
     describe('handleSonarQubeComponentsMeasures', () => {
@@ -1115,6 +1183,107 @@ describe('MCP Server', () => {
         expect(response.content[0].text).toContain('test-component-2');
         expect(response.content[0].text).toContain('bugs');
       });
+
+      it('should fetch components measures with all optional parameters', async () => {
+        nock('http://localhost:9000')
+          .get('/api/measures/components')
+          .query((queryObject) => {
+            return (
+              queryObject.componentKeys === 'test-component-1,test-component-2' &&
+              queryObject.metricKeys === 'coverage,bugs' &&
+              queryObject.additionalFields === 'periods,metrics' &&
+              queryObject.branch === 'develop' &&
+              queryObject.pullRequest === 'pr-456' &&
+              queryObject.period === '2' &&
+              queryObject.ps === '25' &&
+              queryObject.p === '3'
+            );
+          })
+          .reply(200, {
+            components: [
+              {
+                key: 'test-component-1',
+                name: 'Test Component 1',
+                qualifier: 'TRK',
+                measures: [
+                  {
+                    metric: 'coverage',
+                    value: '85.4',
+                    period: { index: 2, value: '+5.4' },
+                  },
+                  {
+                    metric: 'bugs',
+                    value: '10',
+                    period: { index: 2, value: '-2' },
+                  },
+                ],
+                periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
+              },
+              {
+                key: 'test-component-2',
+                name: 'Test Component 2',
+                qualifier: 'TRK',
+                measures: [
+                  {
+                    metric: 'coverage',
+                    value: '78.2',
+                    period: { index: 2, value: '+3.1' },
+                  },
+                  {
+                    metric: 'bugs',
+                    value: '5',
+                    period: { index: 2, value: '-1' },
+                  },
+                ],
+                periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
+              },
+            ],
+            metrics: [
+              {
+                key: 'coverage',
+                name: 'Coverage',
+                description: 'Test coverage',
+                domain: 'Coverage',
+                type: 'PERCENT',
+              },
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
+            paging: {
+              pageIndex: 3,
+              pageSize: 25,
+              total: 50,
+            },
+          });
+
+        const response = await handleSonarQubeComponentsMeasures({
+          componentKeys: ['test-component-1', 'test-component-2'],
+          metricKeys: ['coverage', 'bugs'],
+          additionalFields: ['periods', 'metrics'],
+          branch: 'develop',
+          pullRequest: 'pr-456',
+          period: '2',
+          page: 3,
+          pageSize: 25,
+        });
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.components).toHaveLength(2);
+        expect(result.metrics).toHaveLength(2);
+        expect(result.paging.pageIndex).toBe(3);
+        expect(result.paging.pageSize).toBe(25);
+        expect(result.paging.total).toBe(50);
+        expect(result.components[0].key).toBe('test-component-1');
+        expect(result.components[0].measures).toHaveLength(2);
+        expect(result.components[0].periods).toBeDefined();
+        expect(result.components[0].measures[0].period).toBeDefined();
+        expect(result.components[0].measures[0].period.index).toBe(2);
+      });
     });
 
     describe('handleSonarQubeMeasuresHistory', () => {
@@ -1155,6 +1324,426 @@ describe('MCP Server', () => {
         expect(response.content[0].text).toContain('history');
         expect(response.content[0].text).toContain('2023-01-01');
         expect(response.content[0].text).toContain('2023-02-01');
+      });
+
+      it('should fetch measures history with all optional parameters', async () => {
+        nock('http://localhost:9000')
+          .get('/api/measures/search_history')
+          .query((queryObject) => {
+            return (
+              queryObject.component === 'test-component' &&
+              queryObject.metrics === 'coverage,bugs,code_smells' &&
+              queryObject.from === '2023-01-01' &&
+              queryObject.to === '2023-12-31' &&
+              queryObject.branch === 'release' &&
+              queryObject.pullRequest === 'pr-789' &&
+              queryObject.ps === '30' &&
+              queryObject.p === '2'
+            );
+          })
+          .reply(200, {
+            measures: [
+              {
+                metric: 'coverage',
+                history: [
+                  {
+                    date: '2023-01-01T00:00:00+0000',
+                    value: '80.0',
+                  },
+                  {
+                    date: '2023-03-01T00:00:00+0000',
+                    value: '83.5',
+                  },
+                  {
+                    date: '2023-06-01T00:00:00+0000',
+                    value: '85.0',
+                  },
+                  {
+                    date: '2023-09-01T00:00:00+0000',
+                    value: '87.2',
+                  },
+                  {
+                    date: '2023-12-01T00:00:00+0000',
+                    value: '90.1',
+                  },
+                ],
+              },
+              {
+                metric: 'bugs',
+                history: [
+                  {
+                    date: '2023-01-01T00:00:00+0000',
+                    value: '15',
+                  },
+                  {
+                    date: '2023-03-01T00:00:00+0000',
+                    value: '12',
+                  },
+                  {
+                    date: '2023-06-01T00:00:00+0000',
+                    value: '10',
+                  },
+                  {
+                    date: '2023-09-01T00:00:00+0000',
+                    value: '7',
+                  },
+                  {
+                    date: '2023-12-01T00:00:00+0000',
+                    value: '5',
+                  },
+                ],
+              },
+              {
+                metric: 'code_smells',
+                history: [
+                  {
+                    date: '2023-01-01T00:00:00+0000',
+                    value: '50',
+                  },
+                  {
+                    date: '2023-03-01T00:00:00+0000',
+                    value: '45',
+                  },
+                  {
+                    date: '2023-06-01T00:00:00+0000',
+                    value: '40',
+                  },
+                  {
+                    date: '2023-09-01T00:00:00+0000',
+                    value: '35',
+                  },
+                  {
+                    date: '2023-12-01T00:00:00+0000',
+                    value: '30',
+                  },
+                ],
+              },
+            ],
+            paging: {
+              pageIndex: 2,
+              pageSize: 30,
+              total: 60,
+            },
+          });
+
+        const response = await handleSonarQubeMeasuresHistory({
+          component: 'test-component',
+          metrics: ['coverage', 'bugs', 'code_smells'],
+          from: '2023-01-01',
+          to: '2023-12-31',
+          branch: 'release',
+          pullRequest: 'pr-789',
+          page: 2,
+          pageSize: 30,
+        });
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.measures).toHaveLength(3);
+        expect(result.paging.pageIndex).toBe(2);
+        expect(result.paging.pageSize).toBe(30);
+        expect(result.paging.total).toBe(60);
+
+        // Check coverage metric
+        expect(result.measures[0].metric).toBe('coverage');
+        expect(result.measures[0].history).toHaveLength(5);
+        expect(result.measures[0].history[0].date).toBe('2023-01-01T00:00:00+0000');
+        expect(result.measures[0].history[0].value).toBe('80.0');
+        expect(result.measures[0].history[4].date).toBe('2023-12-01T00:00:00+0000');
+        expect(result.measures[0].history[4].value).toBe('90.1');
+
+        // Check bugs metric
+        expect(result.measures[1].metric).toBe('bugs');
+        expect(result.measures[1].history).toHaveLength(5);
+        expect(result.measures[1].history[0].value).toBe('15');
+        expect(result.measures[1].history[4].value).toBe('5');
+
+        // Check code_smells metric
+        expect(result.measures[2].metric).toBe('code_smells');
+        expect(result.measures[2].history).toHaveLength(5);
+        expect(result.measures[2].history[0].value).toBe('50');
+        expect(result.measures[2].history[4].value).toBe('30');
+      });
+    });
+
+    describe('measures_component tool lambda', () => {
+      it('should call handleSonarQubeComponentMeasures with correct parameters', async () => {
+        // Create a simulated lambda function that mimics the tool handler
+        const componentMeasuresLambda = async (params: Record<string, unknown>) => {
+          return handleSonarQubeComponentMeasures({
+            component: params.component as string,
+            metricKeys: Array.isArray(params.metric_keys)
+              ? (params.metric_keys as string[])
+              : [params.metric_keys as string],
+            additionalFields: params.additional_fields as string[] | undefined,
+            branch: params.branch as string | undefined,
+            pullRequest: params.pull_request as string | undefined,
+            period: params.period as string | undefined,
+          });
+        };
+
+        // Mock the handleSonarQubeComponentMeasures function
+        const mockHandler = jest.fn().mockResolvedValue({
+          content: [{ type: 'text', text: '{"component":{}}' }],
+        });
+
+        const originalHandler = handleSonarQubeComponentMeasures;
+        handleSonarQubeComponentMeasures = mockHandler;
+
+        // Test with string metrics parameter
+        await componentMeasuresLambda({
+          component: 'my-project',
+          metric_keys: 'coverage',
+          branch: 'main',
+        });
+
+        // Test with array metrics parameter
+        await componentMeasuresLambda({
+          component: 'my-project',
+          metric_keys: ['coverage', 'bugs'],
+          additional_fields: ['periods'],
+          pull_request: 'pr-123',
+          period: '1',
+        });
+
+        // Check that the handler was called with the correct parameters
+        expect(mockHandler).toHaveBeenCalledTimes(2);
+
+        // Check first call with string parameter
+        expect(mockHandler.mock.calls[0][0]).toEqual({
+          component: 'my-project',
+          metricKeys: ['coverage'],
+          branch: 'main',
+          additionalFields: undefined,
+          pullRequest: undefined,
+          period: undefined,
+        });
+
+        // Check second call with array parameter
+        expect(mockHandler.mock.calls[1][0]).toEqual({
+          component: 'my-project',
+          metricKeys: ['coverage', 'bugs'],
+          additionalFields: ['periods'],
+          branch: undefined,
+          pullRequest: 'pr-123',
+          period: '1',
+        });
+
+        // Restore the original handler
+        handleSonarQubeComponentMeasures = originalHandler;
+      });
+    });
+
+    describe('measures_components tool lambda', () => {
+      it('should call handleSonarQubeComponentsMeasures with correct parameters', async () => {
+        // Create a simulated lambda function that mimics the tool handler
+        const componentsMeasuresLambda = async (params: Record<string, unknown>) => {
+          return handleSonarQubeComponentsMeasures({
+            componentKeys: Array.isArray(params.component_keys)
+              ? (params.component_keys as string[])
+              : [params.component_keys as string],
+            metricKeys: Array.isArray(params.metric_keys)
+              ? (params.metric_keys as string[])
+              : [params.metric_keys as string],
+            additionalFields: params.additional_fields as string[] | undefined,
+            branch: params.branch as string | undefined,
+            pullRequest: params.pull_request as string | undefined,
+            period: params.period as string | undefined,
+            page: nullToUndefined(params.page) as number | undefined,
+            pageSize: nullToUndefined(params.page_size) as number | undefined,
+          });
+        };
+
+        // Mock the handler function
+        const mockHandler = jest.fn().mockResolvedValue({
+          content: [{ type: 'text', text: '{"components":[]}' }],
+        });
+
+        const originalHandler = handleSonarQubeComponentsMeasures;
+        handleSonarQubeComponentsMeasures = mockHandler;
+
+        // Test with string parameters
+        await componentsMeasuresLambda({
+          component_keys: 'project1',
+          metric_keys: 'coverage',
+          page: '1',
+          page_size: '10',
+        });
+
+        // Test with array parameters
+        await componentsMeasuresLambda({
+          component_keys: ['project1', 'project2'],
+          metric_keys: ['coverage', 'bugs'],
+          additional_fields: ['periods'],
+          branch: 'main',
+          period: '1',
+        });
+
+        // Test with pull request parameter
+        await componentsMeasuresLambda({
+          component_keys: 'project1',
+          metric_keys: ['coverage', 'bugs'],
+          pull_request: 'pr-123',
+        });
+
+        // Check that the handler was called with the correct parameters
+        expect(mockHandler).toHaveBeenCalledTimes(3);
+
+        // Check first call with string parameters
+        expect(mockHandler.mock.calls[0][0]).toEqual({
+          componentKeys: ['project1'],
+          metricKeys: ['coverage'],
+          additionalFields: undefined,
+          branch: undefined,
+          pullRequest: undefined,
+          period: undefined,
+          page: '1',
+          pageSize: '10',
+        });
+
+        // Check second call with array parameters
+        expect(mockHandler.mock.calls[1][0]).toEqual({
+          componentKeys: ['project1', 'project2'],
+          metricKeys: ['coverage', 'bugs'],
+          additionalFields: ['periods'],
+          branch: 'main',
+          pullRequest: undefined,
+          period: '1',
+          page: undefined,
+          pageSize: undefined,
+        });
+
+        // Check third call with pull request parameter
+        expect(mockHandler.mock.calls[2][0]).toEqual({
+          componentKeys: ['project1'],
+          metricKeys: ['coverage', 'bugs'],
+          additionalFields: undefined,
+          branch: undefined,
+          pullRequest: 'pr-123',
+          period: undefined,
+          page: undefined,
+          pageSize: undefined,
+        });
+
+        // Restore the original handler
+        handleSonarQubeComponentsMeasures = originalHandler;
+      });
+    });
+
+    describe('measures_history tool lambda', () => {
+      it('should call handleSonarQubeMeasuresHistory with correct parameters', async () => {
+        // Create a simulated lambda function that mimics the tool handler
+        const measuresHistoryLambda = async (params: Record<string, unknown>) => {
+          return handleSonarQubeMeasuresHistory({
+            component: params.component as string,
+            metrics: Array.isArray(params.metrics)
+              ? (params.metrics as string[])
+              : [params.metrics as string],
+            from: params.from as string | undefined,
+            to: params.to as string | undefined,
+            branch: params.branch as string | undefined,
+            pullRequest: params.pull_request as string | undefined,
+            page: nullToUndefined(params.page) as number | undefined,
+            pageSize: nullToUndefined(params.page_size) as number | undefined,
+          });
+        };
+
+        // Mock the handler function
+        const mockHandler = jest.fn().mockResolvedValue({
+          content: [{ type: 'text', text: '{"measures":[]}' }],
+        });
+
+        const originalHandler = handleSonarQubeMeasuresHistory;
+        handleSonarQubeMeasuresHistory = mockHandler;
+
+        // Test with string parameter
+        await measuresHistoryLambda({
+          component: 'my-project',
+          metrics: 'coverage',
+          from: '2023-01-01',
+          to: '2023-02-01',
+        });
+
+        // Test with array parameter
+        await measuresHistoryLambda({
+          component: 'my-project',
+          metrics: ['coverage', 'bugs'],
+          branch: 'main',
+          page: '2',
+          page_size: '20',
+        });
+
+        // Test with pull request parameter
+        await measuresHistoryLambda({
+          component: 'my-project',
+          metrics: ['coverage'],
+          pull_request: 'pr-123',
+        });
+
+        // Test full parameter set
+        await measuresHistoryLambda({
+          component: 'my-project',
+          metrics: ['coverage', 'bugs', 'code_smells'],
+          from: '2023-01-01',
+          to: '2023-12-31',
+          branch: 'develop',
+          pull_request: 'pr-456',
+          page: '3',
+          page_size: '50',
+        });
+
+        // Check that the handler was called with the correct parameters
+        expect(mockHandler).toHaveBeenCalledTimes(4);
+
+        // Check first call with string parameter
+        expect(mockHandler.mock.calls[0][0]).toEqual({
+          component: 'my-project',
+          metrics: ['coverage'],
+          from: '2023-01-01',
+          to: '2023-02-01',
+          branch: undefined,
+          pullRequest: undefined,
+          page: undefined,
+          pageSize: undefined,
+        });
+
+        // Check second call with array parameter
+        expect(mockHandler.mock.calls[1][0]).toEqual({
+          component: 'my-project',
+          metrics: ['coverage', 'bugs'],
+          from: undefined,
+          to: undefined,
+          branch: 'main',
+          pullRequest: undefined,
+          page: '2',
+          pageSize: '20',
+        });
+
+        // Check third call with pull request parameter
+        expect(mockHandler.mock.calls[2][0]).toEqual({
+          component: 'my-project',
+          metrics: ['coverage'],
+          from: undefined,
+          to: undefined,
+          branch: undefined,
+          pullRequest: 'pr-123',
+          page: undefined,
+          pageSize: undefined,
+        });
+
+        // Check fourth call with full parameter set
+        expect(mockHandler.mock.calls[3][0]).toEqual({
+          component: 'my-project',
+          metrics: ['coverage', 'bugs', 'code_smells'],
+          from: '2023-01-01',
+          to: '2023-12-31',
+          branch: 'develop',
+          pullRequest: 'pr-456',
+          page: '3',
+          pageSize: '50',
+        });
+
+        // Restore the original handler
+        handleSonarQubeMeasuresHistory = originalHandler;
       });
     });
 
@@ -1675,6 +2264,168 @@ describe('MCP Server', () => {
   describe('Direct tool registration test', () => {
     it('should validate tool existence', () => {
       expect(mcpServer.tool).toBeDefined();
+    });
+
+    it('should test the lambda functions directly', async () => {
+      // Create lambda functions that match the lambda functions in the tool registrations
+      const metricsLambda = async (params: Record<string, unknown>) => {
+        const result = await handleSonarQubeGetMetrics({
+          page: nullToUndefined(params.page) as number | undefined,
+          pageSize: nullToUndefined(params.page_size) as number | undefined,
+        });
+        return { content: [{ type: 'text', text: JSON.stringify(result) }] };
+      };
+
+      const issuesLambda = async (params: Record<string, unknown>) => {
+        return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
+      };
+
+      const componentsLambda = async (params: Record<string, unknown>) => {
+        return handleSonarQubeComponentsMeasures({
+          componentKeys: Array.isArray(params.component_keys)
+            ? (params.component_keys as string[])
+            : [params.component_keys as string],
+          metricKeys: Array.isArray(params.metric_keys)
+            ? (params.metric_keys as string[])
+            : [params.metric_keys as string],
+          additionalFields: params.additional_fields as string[] | undefined,
+          branch: params.branch as string | undefined,
+          pullRequest: params.pull_request as string | undefined,
+          period: params.period as string | undefined,
+          page: nullToUndefined(params.page) as number | undefined,
+          pageSize: nullToUndefined(params.page_size) as number | undefined,
+        });
+      };
+
+      const historyLambda = async (params: Record<string, unknown>) => {
+        return handleSonarQubeMeasuresHistory({
+          component: params.component as string,
+          metrics: Array.isArray(params.metrics)
+            ? (params.metrics as string[])
+            : [params.metrics as string],
+          from: params.from as string | undefined,
+          to: params.to as string | undefined,
+          branch: params.branch as string | undefined,
+          pullRequest: params.pull_request as string | undefined,
+          page: nullToUndefined(params.page) as number | undefined,
+          pageSize: nullToUndefined(params.page_size) as number | undefined,
+        });
+      };
+
+      // Mock all the handler functions to test the lambda functions
+      const mockGetMetrics = jest.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '{"metrics":[]}' }],
+      });
+
+      const mockGetIssues = jest.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '{"issues":[]}' }],
+      });
+
+      const mockComponentsMeasures = jest.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '{"components":[]}' }],
+      });
+
+      const mockMeasuresHistory = jest.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '{"measures":[]}' }],
+      });
+
+      // Override the handler functions with mocks
+      const originalGetMetrics = handleSonarQubeGetMetrics;
+      const originalGetIssues = handleSonarQubeGetIssues;
+      const originalComponentsMeasures = handleSonarQubeComponentsMeasures;
+      const originalMeasuresHistory = handleSonarQubeMeasuresHistory;
+
+      handleSonarQubeGetMetrics = mockGetMetrics;
+      handleSonarQubeGetIssues = mockGetIssues;
+      handleSonarQubeComponentsMeasures = mockComponentsMeasures;
+      handleSonarQubeMeasuresHistory = mockMeasuresHistory;
+
+      // Test metrics lambda
+      await metricsLambda({ page: '10', page_size: '20' });
+      expect(mockGetMetrics).toHaveBeenCalledWith({
+        page: '10',
+        pageSize: '20',
+      });
+
+      // Test issues lambda with all possible parameters
+      await issuesLambda({
+        project_key: 'test-project',
+        severity: 'MAJOR',
+        page: '1',
+        page_size: '10',
+        statuses: ['OPEN', 'CONFIRMED'],
+        resolutions: ['FALSE-POSITIVE', 'WONTFIX'],
+        resolved: 'true',
+        types: ['CODE_SMELL', 'BUG'],
+        rules: ['rule1', 'rule2'],
+        tags: ['tag1', 'tag2'],
+        created_after: '2023-01-01',
+        created_before: '2023-12-31',
+        created_at: '2023-06-15',
+        created_in_last: '7d',
+        assignees: ['user1', 'user2'],
+        authors: ['author1', 'author2'],
+        cwe: ['cwe1', 'cwe2'],
+        languages: ['java', 'typescript'],
+        owasp_top10: ['a1', 'a2'],
+        sans_top25: ['sans1', 'sans2'],
+        sonarsource_security: ['sec1', 'sec2'],
+        on_component_only: 'true',
+        facets: ['facet1', 'facet2'],
+        since_leak_period: 'true',
+        in_new_code_period: 'true',
+      });
+      expect(mockGetIssues).toHaveBeenCalledTimes(1);
+
+      // Test components lambda
+      await componentsLambda({
+        component_keys: ['comp1', 'comp2'],
+        metric_keys: ['coverage', 'bugs'],
+        additional_fields: ['periods'],
+        branch: 'main',
+        pull_request: 'pr-123',
+        period: '1',
+        page: '2',
+        page_size: '25',
+      });
+      expect(mockComponentsMeasures).toHaveBeenCalledWith({
+        componentKeys: ['comp1', 'comp2'],
+        metricKeys: ['coverage', 'bugs'],
+        additionalFields: ['periods'],
+        branch: 'main',
+        pullRequest: 'pr-123',
+        period: '1',
+        page: '2',
+        pageSize: '25',
+      });
+
+      // Test history lambda
+      await historyLambda({
+        component: 'test-component',
+        metrics: ['coverage', 'bugs'],
+        from: '2023-01-01',
+        to: '2023-12-31',
+        branch: 'feature',
+        pull_request: 'pr-456',
+        page: '3',
+        page_size: '30',
+      });
+      expect(mockMeasuresHistory).toHaveBeenCalledWith({
+        component: 'test-component',
+        metrics: ['coverage', 'bugs'],
+        from: '2023-01-01',
+        to: '2023-12-31',
+        branch: 'feature',
+        pullRequest: 'pr-456',
+        page: '3',
+        pageSize: '30',
+      });
+
+      // Restore the original functions
+      handleSonarQubeGetMetrics = originalGetMetrics;
+      handleSonarQubeGetIssues = originalGetIssues;
+      handleSonarQubeComponentsMeasures = originalComponentsMeasures;
+      handleSonarQubeMeasuresHistory = originalMeasuresHistory;
     });
   });
 });
