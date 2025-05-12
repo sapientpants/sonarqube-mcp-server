@@ -6,6 +6,7 @@
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { z } from 'zod';
+import { nullToUndefined } from '../index.js';
 
 // Save original environment
 const originalEnv = process.env;
@@ -85,6 +86,22 @@ describe('Lambda Functions in index.ts', () => {
   afterEach(() => {
     process.env = originalEnv;
     jest.clearAllMocks();
+  });
+
+  describe('Utility Functions', () => {
+    describe('nullToUndefined', () => {
+      it('should convert null to undefined', () => {
+        expect(nullToUndefined(null)).toBeUndefined();
+      });
+
+      it('should pass through non-null values', () => {
+        expect(nullToUndefined('value')).toBe('value');
+        expect(nullToUndefined(123)).toBe(123);
+        expect(nullToUndefined(0)).toBe(0);
+        expect(nullToUndefined(false)).toBe(false);
+        expect(nullToUndefined(undefined)).toBeUndefined();
+      });
+    });
   });
 
   describe('Schema Transformations', () => {

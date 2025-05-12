@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from '@jest/globals';
 import { mapToSonarQubeParams, nullToUndefined } from '../index.js';
+import { z } from 'zod';
 
 describe('Parameter Transformation Functions', () => {
   describe('nullToUndefined', () => {
@@ -150,6 +151,114 @@ describe('Parameter Transformation Functions', () => {
 
       expect(result2.statuses).toBeUndefined();
       expect(result2.types).toBeUndefined();
+    });
+  });
+
+  describe('Schema Transformations', () => {
+    describe('Page Parameter Transformation', () => {
+      it('should transform string values to numbers or null', () => {
+        const pageSchema = z
+          .string()
+          .optional()
+          .transform((val) => (val ? parseInt(val, 10) || null : null));
+
+        // Test valid numeric strings
+        expect(pageSchema.parse('1')).toBe(1);
+        expect(pageSchema.parse('100')).toBe(100);
+
+        // Test invalid values
+        expect(pageSchema.parse('invalid')).toBe(null);
+        expect(pageSchema.parse('')).toBe(null);
+        expect(pageSchema.parse(undefined)).toBe(null);
+      });
+    });
+
+    describe('Boolean Parameter Transformation', () => {
+      it('should transform string "true"/"false" to boolean values', () => {
+        const booleanSchema = z
+          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .nullable()
+          .optional();
+
+        // String values
+        expect(booleanSchema.parse('true')).toBe(true);
+        expect(booleanSchema.parse('false')).toBe(false);
+
+        // Boolean values should pass through
+        expect(booleanSchema.parse(true)).toBe(true);
+        expect(booleanSchema.parse(false)).toBe(false);
+
+        // Null/undefined values
+        expect(booleanSchema.parse(null)).toBe(null);
+        expect(booleanSchema.parse(undefined)).toBe(undefined);
+      });
+    });
+
+    describe('Enum Arrays Parameter Transformation', () => {
+      it('should validate enum arrays correctly', () => {
+        const statusSchema = z
+          .array(
+            z.enum([
+              'OPEN',
+              'CONFIRMED',
+              'REOPENED',
+              'RESOLVED',
+              'CLOSED',
+              'TO_REVIEW',
+              'IN_REVIEW',
+              'REVIEWED',
+            ])
+          )
+          .nullable()
+          .optional();
+
+        // Valid values
+        expect(statusSchema.parse(['OPEN', 'CONFIRMED'])).toEqual(['OPEN', 'CONFIRMED']);
+
+        // Null/undefined values
+        expect(statusSchema.parse(null)).toBe(null);
+        expect(statusSchema.parse(undefined)).toBe(undefined);
+
+        // Invalid values should throw
+        expect(() => statusSchema.parse(['INVALID'])).toThrow();
+      });
+
+      it('should validate resolution enums', () => {
+        const resolutionSchema = z
+          .array(z.enum(['FALSE-POSITIVE', 'WONTFIX', 'FIXED', 'REMOVED']))
+          .nullable()
+          .optional();
+
+        // Valid values
+        expect(resolutionSchema.parse(['FALSE-POSITIVE', 'WONTFIX'])).toEqual([
+          'FALSE-POSITIVE',
+          'WONTFIX',
+        ]);
+
+        // Null/undefined values
+        expect(resolutionSchema.parse(null)).toBe(null);
+        expect(resolutionSchema.parse(undefined)).toBe(undefined);
+
+        // Invalid values should throw
+        expect(() => resolutionSchema.parse(['INVALID'])).toThrow();
+      });
+
+      it('should validate issue type enums', () => {
+        const typeSchema = z
+          .array(z.enum(['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT']))
+          .nullable()
+          .optional();
+
+        // Valid values
+        expect(typeSchema.parse(['CODE_SMELL', 'BUG'])).toEqual(['CODE_SMELL', 'BUG']);
+
+        // Null/undefined values
+        expect(typeSchema.parse(null)).toBe(null);
+        expect(typeSchema.parse(undefined)).toBe(undefined);
+
+        // Invalid values should throw
+        expect(() => typeSchema.parse(['INVALID'])).toThrow();
+      });
     });
   });
 });
