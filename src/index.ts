@@ -28,7 +28,7 @@ if (!(StdioServerTransport.prototype as unknown as Connectable).connect) {
  * @param value Any value that might be null
  * @returns The original value or undefined if null
  */
-function nullToUndefined<T>(value: T | null | undefined): T | undefined {
+export function nullToUndefined<T>(value: T | null | undefined): T | undefined {
   return value === null ? undefined : value;
 }
 
@@ -335,6 +335,110 @@ const typeSchema = z
   .nullable()
   .optional();
 
+// Lambda functions for the MCP tools
+/**
+ * Lambda function for projects tool
+ */
+export const projectsLambdaHandler = handleSonarQubeProjects;
+
+/**
+ * Lambda function for metrics tool
+ */
+export const metricsLambdaHandler = async (params: {
+  page: number | null;
+  page_size: number | null;
+}) => {
+  const result = await handleSonarQubeGetMetrics({
+    page: nullToUndefined(params.page),
+    pageSize: nullToUndefined(params.page_size),
+  });
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result, null, 2),
+      },
+    ],
+  };
+};
+
+/**
+ * Lambda function for issues tool
+ */
+export const issuesLambdaHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
+};
+
+/**
+ * Lambda function for system_health tool
+ */
+export const healthLambdaHandler = handleSonarQubeGetHealth;
+
+/**
+ * Lambda function for system_status tool
+ */
+export const statusLambdaHandler = handleSonarQubeGetStatus;
+
+/**
+ * Lambda function for system_ping tool
+ */
+export const pingLambdaHandler = handleSonarQubePing;
+
+/**
+ * Lambda function for measures_component tool
+ */
+export const componentMeasuresLambdaHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeComponentMeasures({
+    component: params.component as string,
+    metricKeys: Array.isArray(params.metric_keys)
+      ? (params.metric_keys as string[])
+      : [params.metric_keys as string],
+    additionalFields: params.additional_fields as string[] | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+    period: params.period as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for measures_components tool
+ */
+export const componentsMeasuresLambdaHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeComponentsMeasures({
+    componentKeys: Array.isArray(params.component_keys)
+      ? (params.component_keys as string[])
+      : [params.component_keys as string],
+    metricKeys: Array.isArray(params.metric_keys)
+      ? (params.metric_keys as string[])
+      : [params.metric_keys as string],
+    additionalFields: params.additional_fields as string[] | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+    period: params.period as string | undefined,
+    page: nullToUndefined(params.page) as number | undefined,
+    pageSize: nullToUndefined(params.page_size) as number | undefined,
+  });
+};
+
+/**
+ * Lambda function for measures_history tool
+ */
+export const measuresHistoryLambdaHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeMeasuresHistory({
+    component: params.component as string,
+    metrics: Array.isArray(params.metrics)
+      ? (params.metrics as string[])
+      : [params.metrics as string],
+    from: params.from as string | undefined,
+    to: params.to as string | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+    page: nullToUndefined(params.page) as number | undefined,
+    pageSize: nullToUndefined(params.page_size) as number | undefined,
+  });
+};
+
 // Register SonarQube tools
 mcpServer.tool(
   'projects',
@@ -349,7 +453,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  handleSonarQubeProjects
+  projectsLambdaHandler
 );
 
 mcpServer.tool(
@@ -365,21 +469,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  async (params: Record<string, unknown>) => {
-    const result = await handleSonarQubeGetMetrics({
-      page: nullToUndefined(params.page) as number | undefined,
-      pageSize: nullToUndefined(params.page_size) as number | undefined,
-    });
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(result, null, 2),
-        },
-      ],
-    };
-  }
+  metricsLambdaHandler
 );
 
 mcpServer.tool(
@@ -430,9 +520,7 @@ mcpServer.tool(
       .nullable()
       .optional(),
   },
-  async (params: Record<string, unknown>) => {
-    return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
-  }
+  issuesLambdaHandler
 );
 
 // Register system API tools
@@ -440,21 +528,21 @@ mcpServer.tool(
   'system_health',
   'Get the health status of the SonarQube instance',
   {},
-  handleSonarQubeGetHealth
+  healthLambdaHandler
 );
 
 mcpServer.tool(
   'system_status',
   'Get the status of the SonarQube instance',
   {},
-  handleSonarQubeGetStatus
+  statusLambdaHandler
 );
 
 mcpServer.tool(
   'system_ping',
   'Ping the SonarQube instance to check if it is up',
   {},
-  handleSonarQubePing
+  pingLambdaHandler
 );
 
 // Register measures API tools
@@ -469,18 +557,7 @@ mcpServer.tool(
     pull_request: z.string().optional(),
     period: z.string().optional(),
   },
-  async (params: Record<string, unknown>) => {
-    return handleSonarQubeComponentMeasures({
-      component: params.component as string,
-      metricKeys: Array.isArray(params.metric_keys)
-        ? (params.metric_keys as string[])
-        : [params.metric_keys as string],
-      additionalFields: params.additional_fields as string[] | undefined,
-      branch: params.branch as string | undefined,
-      pullRequest: params.pull_request as string | undefined,
-      period: params.period as string | undefined,
-    });
-  }
+  componentMeasuresLambdaHandler
 );
 
 mcpServer.tool(
@@ -502,22 +579,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  async (params: Record<string, unknown>) => {
-    return handleSonarQubeComponentsMeasures({
-      componentKeys: Array.isArray(params.component_keys)
-        ? (params.component_keys as string[])
-        : [params.component_keys as string],
-      metricKeys: Array.isArray(params.metric_keys)
-        ? (params.metric_keys as string[])
-        : [params.metric_keys as string],
-      additionalFields: params.additional_fields as string[] | undefined,
-      branch: params.branch as string | undefined,
-      pullRequest: params.pull_request as string | undefined,
-      period: params.period as string | undefined,
-      page: nullToUndefined(params.page) as number | undefined,
-      pageSize: nullToUndefined(params.page_size) as number | undefined,
-    });
-  }
+  componentsMeasuresLambdaHandler
 );
 
 mcpServer.tool(
@@ -539,20 +601,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  async (params: Record<string, unknown>) => {
-    return handleSonarQubeMeasuresHistory({
-      component: params.component as string,
-      metrics: Array.isArray(params.metrics)
-        ? (params.metrics as string[])
-        : [params.metrics as string],
-      from: params.from as string | undefined,
-      to: params.to as string | undefined,
-      branch: params.branch as string | undefined,
-      pullRequest: params.pull_request as string | undefined,
-      page: nullToUndefined(params.page) as number | undefined,
-      pageSize: nullToUndefined(params.page_size) as number | undefined,
-    });
-  }
+  measuresHistoryLambdaHandler
 );
 
 // Only start the server if not in test mode
@@ -563,4 +612,4 @@ if (process.env.NODE_ENV !== 'test') {
   await mcpServer.connect(transport);
 }
 
-export { nullToUndefined };
+// Export statement for nullToUndefined is redundant since it's already exported above

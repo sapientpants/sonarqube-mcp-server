@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { apiGet } from './api.js';
 
 /**
  * Interface for pagination parameters
@@ -235,7 +235,7 @@ export interface IssuesParams extends PaginationParams {
  */
 export interface ComponentMeasuresParams {
   component: string;
-  metricKeys: string[];
+  metricKeys: string[] | string;
   additionalFields?: string[];
   branch?: string;
   pullRequest?: string;
@@ -246,8 +246,8 @@ export interface ComponentMeasuresParams {
  * Interface for components measures parameters
  */
 export interface ComponentsMeasuresParams extends PaginationParams {
-  componentKeys: string[];
-  metricKeys: string[];
+  componentKeys: string[] | string;
+  metricKeys: string[] | string;
   additionalFields?: string[];
   branch?: string;
   pullRequest?: string;
@@ -259,7 +259,7 @@ export interface ComponentsMeasuresParams extends PaginationParams {
  */
 export interface MeasuresHistoryParams extends PaginationParams {
   component: string;
-  metrics: string[];
+  metrics: string[] | string;
   from?: string;
   to?: string;
   branch?: string;
@@ -432,18 +432,20 @@ export class SonarQubeClient {
   async listProjects(params: PaginationParams = {}): Promise<SonarQubeProjectsResult> {
     const { page, pageSize } = params;
 
-    const response = await axios.get(`${this.baseUrl}/api/projects/search`, {
-      auth: this.auth,
-      params: {
-        organization: this.organization,
-        p: page,
-        ps: pageSize,
-      },
-    });
+    const queryParams = {
+      organization: this.organization,
+      p: page,
+      ps: pageSize,
+    };
+
+    const response = await apiGet<{
+      components: SonarQubeApiComponent[];
+      paging: { pageIndex: number; pageSize: number; total: number };
+    }>(this.baseUrl, this.auth, '/api/projects/search', queryParams);
 
     // Transform SonarQube 'components' to our clean 'projects' interface
     return {
-      projects: response.data.components.map((component: SonarQubeApiComponent) => ({
+      projects: response.components.map((component: SonarQubeApiComponent) => ({
         key: component.key,
         name: component.name,
         qualifier: component.qualifier,
@@ -452,7 +454,7 @@ export class SonarQubeClient {
         revision: component.revision,
         managed: component.managed,
       })),
-      paging: response.data.paging,
+      paging: response.paging,
     };
   }
 
@@ -493,42 +495,44 @@ export class SonarQubeClient {
       hotspots,
     } = params;
 
-    const response = await axios.get(`${this.baseUrl}/api/issues/search`, {
-      auth: this.auth,
-      params: {
-        componentKeys: projectKey,
-        branch,
-        severities: severity,
-        organization: this.organization,
-        p: page,
-        ps: pageSize,
-        statuses: statuses?.join(','),
-        resolutions: resolutions?.join(','),
-        resolved,
-        types: types?.join(','),
-        rules: rules?.join(','),
-        tags: tags?.join(','),
-        createdAfter,
-        createdBefore,
-        createdAt,
-        createdInLast,
-        assignees: assignees?.join(','),
-        authors: authors?.join(','),
-        cwe: cwe?.join(','),
-        languages: languages?.join(','),
-        owaspTop10: owaspTop10?.join(','),
-        sansTop25: sansTop25?.join(','),
-        sonarsourceSecurity: sonarsourceSecurity?.join(','),
-        onComponentOnly,
-        facets: facets?.join(','),
-        sinceLeakPeriod,
-        inNewCodePeriod,
-        pullRequest,
-        hotspots,
-      },
-    });
+    const queryParams = {
+      componentKeys: projectKey,
+      branch,
+      severities: severity,
+      organization: this.organization,
+      p: page,
+      ps: pageSize,
+      statuses: statuses?.join(','),
+      resolutions: resolutions?.join(','),
+      resolved,
+      types: types?.join(','),
+      rules: rules?.join(','),
+      tags: tags?.join(','),
+      createdAfter,
+      createdBefore,
+      createdAt,
+      createdInLast,
+      assignees: assignees?.join(','),
+      authors: authors?.join(','),
+      cwe: cwe?.join(','),
+      languages: languages?.join(','),
+      owaspTop10: owaspTop10?.join(','),
+      sansTop25: sansTop25?.join(','),
+      sonarsourceSecurity: sonarsourceSecurity?.join(','),
+      onComponentOnly,
+      facets: facets?.join(','),
+      sinceLeakPeriod,
+      inNewCodePeriod,
+      pullRequest,
+      hotspots,
+    };
 
-    return response.data;
+    return apiGet<SonarQubeIssuesResult>(
+      this.baseUrl,
+      this.auth,
+      '/api/issues/search',
+      queryParams
+    );
   }
 
   /**
@@ -539,18 +543,20 @@ export class SonarQubeClient {
   async getMetrics(params: PaginationParams = {}): Promise<SonarQubeMetricsResult> {
     const { page, pageSize } = params;
 
-    const response = await axios.get(`${this.baseUrl}/api/metrics/search`, {
-      auth: this.auth,
-      params: {
-        organization: this.organization,
-        p: page,
-        ps: pageSize,
-      },
-    });
+    const queryParams = {
+      organization: this.organization,
+      p: page,
+      ps: pageSize,
+    };
+
+    const response = await apiGet<{
+      metrics: SonarQubeMetric[];
+      paging: { pageIndex: number; pageSize: number; total: number };
+    }>(this.baseUrl, this.auth, '/api/metrics/search', queryParams);
 
     return {
-      metrics: response.data.metrics,
-      paging: response.data.paging,
+      metrics: response.metrics,
+      paging: response.paging,
     };
   }
 
@@ -559,11 +565,7 @@ export class SonarQubeClient {
    * @returns Promise with the health status
    */
   async getHealth(): Promise<SonarQubeHealthStatus> {
-    const response = await axios.get(`${this.baseUrl}/api/system/health`, {
-      auth: this.auth,
-    });
-
-    return response.data;
+    return apiGet<SonarQubeHealthStatus>(this.baseUrl, this.auth, '/api/system/health');
   }
 
   /**
@@ -571,11 +573,7 @@ export class SonarQubeClient {
    * @returns Promise with the system status
    */
   async getStatus(): Promise<SonarQubeSystemStatus> {
-    const response = await axios.get(`${this.baseUrl}/api/system/status`, {
-      auth: this.auth,
-    });
-
-    return response.data;
+    return apiGet<SonarQubeSystemStatus>(this.baseUrl, this.auth, '/api/system/status');
   }
 
   /**
@@ -583,11 +581,7 @@ export class SonarQubeClient {
    * @returns Promise with the ping response
    */
   async ping(): Promise<string> {
-    const response = await axios.get(`${this.baseUrl}/api/system/ping`, {
-      auth: this.auth,
-    });
-
-    return response.data;
+    return apiGet<string>(this.baseUrl, this.auth, '/api/system/ping');
   }
 
   /**
@@ -600,20 +594,22 @@ export class SonarQubeClient {
   ): Promise<SonarQubeComponentMeasuresResult> {
     const { component, metricKeys, additionalFields, branch, pullRequest, period } = params;
 
-    const response = await axios.get(`${this.baseUrl}/api/measures/component`, {
-      auth: this.auth,
-      params: {
-        component,
-        metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-        additionalFields: additionalFields?.join(','),
-        branch,
-        pullRequest,
-        period,
-        organization: this.organization,
-      },
-    });
+    const queryParams = {
+      component,
+      metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
+      additionalFields: additionalFields?.join(','),
+      branch,
+      pullRequest,
+      period,
+      organization: this.organization,
+    };
 
-    return response.data;
+    return apiGet<SonarQubeComponentMeasuresResult>(
+      this.baseUrl,
+      this.auth,
+      '/api/measures/component',
+      queryParams
+    );
   }
 
   /**
@@ -635,22 +631,24 @@ export class SonarQubeClient {
       pageSize,
     } = params;
 
-    const response = await axios.get(`${this.baseUrl}/api/measures/components`, {
-      auth: this.auth,
-      params: {
-        componentKeys: Array.isArray(componentKeys) ? componentKeys.join(',') : componentKeys,
-        metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-        additionalFields: additionalFields?.join(','),
-        branch,
-        pullRequest,
-        period,
-        p: page,
-        ps: pageSize,
-        organization: this.organization,
-      },
-    });
+    const queryParams = {
+      componentKeys: Array.isArray(componentKeys) ? componentKeys.join(',') : componentKeys,
+      metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
+      additionalFields: additionalFields?.join(','),
+      branch,
+      pullRequest,
+      period,
+      p: page,
+      ps: pageSize,
+      organization: this.organization,
+    };
 
-    return response.data;
+    return apiGet<SonarQubeComponentsMeasuresResult>(
+      this.baseUrl,
+      this.auth,
+      '/api/measures/components',
+      queryParams
+    );
   }
 
   /**
@@ -661,21 +659,23 @@ export class SonarQubeClient {
   async getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult> {
     const { component, metrics, from, to, branch, pullRequest, page, pageSize } = params;
 
-    const response = await axios.get(`${this.baseUrl}/api/measures/search_history`, {
-      auth: this.auth,
-      params: {
-        component,
-        metrics: Array.isArray(metrics) ? metrics.join(',') : metrics,
-        from,
-        to,
-        branch,
-        pullRequest,
-        p: page,
-        ps: pageSize,
-        organization: this.organization,
-      },
-    });
+    const queryParams = {
+      component,
+      metrics: Array.isArray(metrics) ? metrics.join(',') : metrics,
+      from,
+      to,
+      branch,
+      pullRequest,
+      p: page,
+      ps: pageSize,
+      organization: this.organization,
+    };
 
-    return response.data;
+    return apiGet<SonarQubeMeasuresHistoryResult>(
+      this.baseUrl,
+      this.auth,
+      '/api/measures/search_history',
+      queryParams
+    );
   }
 }
