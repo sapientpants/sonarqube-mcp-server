@@ -339,12 +339,15 @@ const typeSchema = z
 /**
  * Lambda function for projects tool
  */
-export const projectsHandler = handleSonarQubeProjects;
+export const projectsLambdaHandler = handleSonarQubeProjects;
 
 /**
  * Lambda function for metrics tool
  */
-export const metricsHandler = async (params: { page: number | null; page_size: number | null }) => {
+export const metricsLambdaHandler = async (params: {
+  page: number | null;
+  page_size: number | null;
+}) => {
   const result = await handleSonarQubeGetMetrics({
     page: nullToUndefined(params.page),
     pageSize: nullToUndefined(params.page_size),
@@ -363,29 +366,29 @@ export const metricsHandler = async (params: { page: number | null; page_size: n
 /**
  * Lambda function for issues tool
  */
-export const issuesHandler = async (params: Record<string, unknown>) => {
+export const issuesLambdaHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
 };
 
 /**
  * Lambda function for system_health tool
  */
-export const healthHandler = handleSonarQubeGetHealth;
+export const healthLambdaHandler = handleSonarQubeGetHealth;
 
 /**
  * Lambda function for system_status tool
  */
-export const statusHandler = handleSonarQubeGetStatus;
+export const statusLambdaHandler = handleSonarQubeGetStatus;
 
 /**
  * Lambda function for system_ping tool
  */
-export const pingHandler = handleSonarQubePing;
+export const pingLambdaHandler = handleSonarQubePing;
 
 /**
  * Lambda function for measures_component tool
  */
-export const componentMeasuresHandler = async (params: Record<string, unknown>) => {
+export const componentMeasuresLambdaHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponentMeasures({
     component: params.component as string,
     metricKeys: Array.isArray(params.metric_keys)
@@ -401,7 +404,7 @@ export const componentMeasuresHandler = async (params: Record<string, unknown>) 
 /**
  * Lambda function for measures_components tool
  */
-export const componentsMeasuresHandler = async (params: Record<string, unknown>) => {
+export const componentsMeasuresLambdaHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponentsMeasures({
     componentKeys: Array.isArray(params.component_keys)
       ? (params.component_keys as string[])
@@ -421,7 +424,7 @@ export const componentsMeasuresHandler = async (params: Record<string, unknown>)
 /**
  * Lambda function for measures_history tool
  */
-export const measuresHistoryHandler = async (params: Record<string, unknown>) => {
+export const measuresHistoryLambdaHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeMeasuresHistory({
     component: params.component as string,
     metrics: Array.isArray(params.metrics)
@@ -450,7 +453,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  projectsHandler
+  projectsLambdaHandler
 );
 
 mcpServer.tool(
@@ -466,7 +469,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  metricsHandler
+  metricsLambdaHandler
 );
 
 mcpServer.tool(
@@ -517,7 +520,7 @@ mcpServer.tool(
       .nullable()
       .optional(),
   },
-  issuesHandler
+  issuesLambdaHandler
 );
 
 // Register system API tools
@@ -525,12 +528,22 @@ mcpServer.tool(
   'system_health',
   'Get the health status of the SonarQube instance',
   {},
-  healthHandler
+  healthLambdaHandler
 );
 
-mcpServer.tool('system_status', 'Get the status of the SonarQube instance', {}, statusHandler);
+mcpServer.tool(
+  'system_status',
+  'Get the status of the SonarQube instance',
+  {},
+  statusLambdaHandler
+);
 
-mcpServer.tool('system_ping', 'Ping the SonarQube instance to check if it is up', {}, pingHandler);
+mcpServer.tool(
+  'system_ping',
+  'Ping the SonarQube instance to check if it is up',
+  {},
+  pingLambdaHandler
+);
 
 // Register measures API tools
 mcpServer.tool(
@@ -544,7 +557,7 @@ mcpServer.tool(
     pull_request: z.string().optional(),
     period: z.string().optional(),
   },
-  componentMeasuresHandler
+  componentMeasuresLambdaHandler
 );
 
 mcpServer.tool(
@@ -566,7 +579,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  componentsMeasuresHandler
+  componentsMeasuresLambdaHandler
 );
 
 mcpServer.tool(
@@ -588,7 +601,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  measuresHistoryHandler
+  measuresHistoryLambdaHandler
 );
 
 // Only start the server if not in test mode
