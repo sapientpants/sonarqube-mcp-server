@@ -99,6 +99,117 @@ beforeAll(() => {
   });
 
   nock('http://localhost:9000').persist().get('/api/system/ping').reply(200, 'pong');
+
+  // Mock SonarQube measures API responses
+  nock('http://localhost:9000')
+    .persist()
+    .get('/api/measures/component')
+    .query(true)
+    .reply(200, {
+      component: {
+        key: 'test-project',
+        name: 'Test Project',
+        qualifier: 'TRK',
+        measures: [
+          {
+            metric: 'coverage',
+            value: '85.4',
+          },
+          {
+            metric: 'bugs',
+            value: '12',
+          },
+        ],
+      },
+      metrics: [
+        {
+          key: 'coverage',
+          name: 'Coverage',
+          description: 'Test coverage percentage',
+          domain: 'Coverage',
+          type: 'PERCENT',
+        },
+        {
+          key: 'bugs',
+          name: 'Bugs',
+          description: 'Number of bugs',
+          domain: 'Reliability',
+          type: 'INT',
+        },
+      ],
+    });
+
+  nock('http://localhost:9000')
+    .persist()
+    .get('/api/measures/components')
+    .query(true)
+    .reply(200, {
+      components: [
+        {
+          key: 'test-project-1',
+          name: 'Test Project 1',
+          qualifier: 'TRK',
+          measures: [
+            {
+              metric: 'coverage',
+              value: '85.4',
+            },
+          ],
+        },
+        {
+          key: 'test-project-2',
+          name: 'Test Project 2',
+          qualifier: 'TRK',
+          measures: [
+            {
+              metric: 'coverage',
+              value: '72.1',
+            },
+          ],
+        },
+      ],
+      metrics: [
+        {
+          key: 'coverage',
+          name: 'Coverage',
+          description: 'Test coverage percentage',
+          domain: 'Coverage',
+          type: 'PERCENT',
+        },
+      ],
+      paging: {
+        pageIndex: 1,
+        pageSize: 100,
+        total: 2,
+      },
+    });
+
+  nock('http://localhost:9000')
+    .persist()
+    .get('/api/measures/search_history')
+    .query(true)
+    .reply(200, {
+      measures: [
+        {
+          metric: 'coverage',
+          history: [
+            {
+              date: '2023-01-01T00:00:00+0000',
+              value: '85.4',
+            },
+            {
+              date: '2023-02-01T00:00:00+0000',
+              value: '87.2',
+            },
+          ],
+        },
+      ],
+      paging: {
+        pageIndex: 1,
+        pageSize: 100,
+        total: 1,
+      },
+    });
 });
 
 afterAll(() => {
@@ -216,6 +327,122 @@ const mockHandlers = {
       },
     ],
   }),
+  handleSonarQubeComponentMeasures: jest.fn().mockResolvedValue({
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          component: {
+            key: 'test-project',
+            name: 'Test Project',
+            qualifier: 'TRK',
+            measures: [
+              {
+                metric: 'coverage',
+                value: '85.4',
+              },
+              {
+                metric: 'bugs',
+                value: '12',
+              },
+            ],
+          },
+          metrics: [
+            {
+              key: 'coverage',
+              name: 'Coverage',
+              description: 'Test coverage percentage',
+              domain: 'Coverage',
+              type: 'PERCENT',
+            },
+            {
+              key: 'bugs',
+              name: 'Bugs',
+              description: 'Number of bugs',
+              domain: 'Reliability',
+              type: 'INT',
+            },
+          ],
+        }),
+      },
+    ],
+  }),
+  handleSonarQubeComponentsMeasures: jest.fn().mockResolvedValue({
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          components: [
+            {
+              key: 'test-project-1',
+              name: 'Test Project 1',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '85.4',
+                },
+              ],
+            },
+            {
+              key: 'test-project-2',
+              name: 'Test Project 2',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '72.1',
+                },
+              ],
+            },
+          ],
+          metrics: [
+            {
+              key: 'coverage',
+              name: 'Coverage',
+              description: 'Test coverage percentage',
+              domain: 'Coverage',
+              type: 'PERCENT',
+            },
+          ],
+          paging: {
+            pageIndex: 1,
+            pageSize: 100,
+            total: 2,
+          },
+        }),
+      },
+    ],
+  }),
+  handleSonarQubeMeasuresHistory: jest.fn().mockResolvedValue({
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          measures: [
+            {
+              metric: 'coverage',
+              history: [
+                {
+                  date: '2023-01-01T00:00:00+0000',
+                  value: '85.4',
+                },
+                {
+                  date: '2023-02-01T00:00:00+0000',
+                  value: '87.2',
+                },
+              ],
+            },
+          ],
+          paging: {
+            pageIndex: 1,
+            pageSize: 100,
+            total: 1,
+          },
+        }),
+      },
+    ],
+  }),
 };
 
 // Define the mock handlers but don't mock the entire module
@@ -246,6 +473,9 @@ let handleSonarQubeGetMetrics: any;
 let handleSonarQubeGetHealth: any;
 let handleSonarQubeGetStatus: any;
 let handleSonarQubePing: any;
+let handleSonarQubeComponentMeasures: any;
+let handleSonarQubeComponentsMeasures: any;
+let handleSonarQubeMeasuresHistory: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Connectable {
@@ -264,6 +494,9 @@ describe('MCP Server', () => {
     handleSonarQubeGetHealth = module.handleSonarQubeGetHealth;
     handleSonarQubeGetStatus = module.handleSonarQubeGetStatus;
     handleSonarQubePing = module.handleSonarQubePing;
+    handleSonarQubeComponentMeasures = module.handleSonarQubeComponentMeasures;
+    handleSonarQubeComponentsMeasures = module.handleSonarQubeComponentsMeasures;
+    handleSonarQubeMeasuresHistory = module.handleSonarQubeMeasuresHistory;
   });
 
   beforeEach(() => {
@@ -351,16 +584,65 @@ describe('MCP Server', () => {
         {},
         mockHandlers.handleSonarQubePing
       );
+
+      testServer.tool(
+        'measures_component',
+        'Get measures for a specific component',
+        {
+          component: {},
+          metric_keys: {},
+          additional_fields: {},
+          branch: {},
+          pull_request: {},
+          period: {},
+        },
+        mockHandlers.handleSonarQubeComponentMeasures
+      );
+
+      testServer.tool(
+        'measures_components',
+        'Get measures for multiple components',
+        {
+          component_keys: {},
+          metric_keys: {},
+          additional_fields: {},
+          branch: {},
+          pull_request: {},
+          period: {},
+          page: {},
+          page_size: {},
+        },
+        mockHandlers.handleSonarQubeComponentsMeasures
+      );
+
+      testServer.tool(
+        'measures_history',
+        'Get measures history for a component',
+        {
+          component: {},
+          metrics: {},
+          from: {},
+          to: {},
+          branch: {},
+          pull_request: {},
+          page: {},
+          page_size: {},
+        },
+        mockHandlers.handleSonarQubeMeasuresHistory
+      );
     });
 
     it('should register all required tools', () => {
-      expect(registeredTools.size).toBe(6);
+      expect(registeredTools.size).toBe(9);
       expect(registeredTools.has('projects')).toBe(true);
       expect(registeredTools.has('metrics')).toBe(true);
       expect(registeredTools.has('issues')).toBe(true);
       expect(registeredTools.has('system_health')).toBe(true);
       expect(registeredTools.has('system_status')).toBe(true);
       expect(registeredTools.has('system_ping')).toBe(true);
+      expect(registeredTools.has('measures_component')).toBe(true);
+      expect(registeredTools.has('measures_components')).toBe(true);
+      expect(registeredTools.has('measures_history')).toBe(true);
     });
 
     it('should register tools with correct descriptions', () => {
@@ -378,6 +660,15 @@ describe('MCP Server', () => {
       expect(registeredTools.get('system_ping').description).toBe(
         'Ping the SonarQube instance to check if it is up'
       );
+      expect(registeredTools.get('measures_component').description).toBe(
+        'Get measures for a specific component'
+      );
+      expect(registeredTools.get('measures_components').description).toBe(
+        'Get measures for multiple components'
+      );
+      expect(registeredTools.get('measures_history').description).toBe(
+        'Get measures history for a component'
+      );
     });
 
     it('should register tools with correct handlers', () => {
@@ -391,6 +682,15 @@ describe('MCP Server', () => {
         mockHandlers.handleSonarQubeGetStatus
       );
       expect(registeredTools.get('system_ping').handler).toBe(mockHandlers.handleSonarQubePing);
+      expect(registeredTools.get('measures_component').handler).toBe(
+        mockHandlers.handleSonarQubeComponentMeasures
+      );
+      expect(registeredTools.get('measures_components').handler).toBe(
+        mockHandlers.handleSonarQubeComponentsMeasures
+      );
+      expect(registeredTools.get('measures_history').handler).toBe(
+        mockHandlers.handleSonarQubeMeasuresHistory
+      );
     });
   });
 
@@ -719,6 +1019,143 @@ describe('MCP Server', () => {
   describe('Tool handlers', () => {
     beforeEach(() => {
       jest.resetAllMocks();
+    });
+
+    describe('handleSonarQubeComponentMeasures', () => {
+      it('should fetch and return component measures', async () => {
+        nock('http://localhost:9000')
+          .get('/api/measures/component')
+          .query(true)
+          .reply(200, {
+            component: {
+              key: 'test-component',
+              name: 'Test Component',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '85.4',
+                },
+              ],
+            },
+            metrics: [
+              {
+                key: 'coverage',
+                name: 'Coverage',
+                description: 'Test coverage',
+                domain: 'Coverage',
+                type: 'PERCENT',
+              },
+            ],
+          });
+
+        const response = await handleSonarQubeComponentMeasures({
+          component: 'test-component',
+          metricKeys: ['coverage'],
+        });
+        expect(response.content[0].text).toContain('test-component');
+        expect(response.content[0].text).toContain('coverage');
+        expect(response.content[0].text).toContain('85.4');
+      });
+    });
+
+    describe('handleSonarQubeComponentsMeasures', () => {
+      it('should fetch and return measures for multiple components', async () => {
+        nock('http://localhost:9000')
+          .get('/api/measures/components')
+          .query(true)
+          .reply(200, {
+            components: [
+              {
+                key: 'test-component-1',
+                name: 'Test Component 1',
+                qualifier: 'TRK',
+                measures: [
+                  {
+                    metric: 'bugs',
+                    value: '10',
+                  },
+                ],
+              },
+              {
+                key: 'test-component-2',
+                name: 'Test Component 2',
+                qualifier: 'TRK',
+                measures: [
+                  {
+                    metric: 'bugs',
+                    value: '5',
+                  },
+                ],
+              },
+            ],
+            metrics: [
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
+            paging: {
+              pageIndex: 1,
+              pageSize: 100,
+              total: 2,
+            },
+          });
+
+        const response = await handleSonarQubeComponentsMeasures({
+          componentKeys: ['test-component-1', 'test-component-2'],
+          metricKeys: ['bugs'],
+          page: 1,
+          pageSize: 100,
+        });
+        expect(response.content[0].text).toContain('test-component-1');
+        expect(response.content[0].text).toContain('test-component-2');
+        expect(response.content[0].text).toContain('bugs');
+      });
+    });
+
+    describe('handleSonarQubeMeasuresHistory', () => {
+      it('should fetch and return measures history', async () => {
+        nock('http://localhost:9000')
+          .get('/api/measures/search_history')
+          .query(true)
+          .reply(200, {
+            measures: [
+              {
+                metric: 'coverage',
+                history: [
+                  {
+                    date: '2023-01-01T00:00:00+0000',
+                    value: '80.0',
+                  },
+                  {
+                    date: '2023-02-01T00:00:00+0000',
+                    value: '85.0',
+                  },
+                ],
+              },
+            ],
+            paging: {
+              pageIndex: 1,
+              pageSize: 100,
+              total: 1,
+            },
+          });
+
+        const response = await handleSonarQubeMeasuresHistory({
+          component: 'test-component',
+          metrics: ['coverage'],
+          from: '2023-01-01',
+          to: '2023-02-01',
+        });
+        expect(response.content[0].text).toContain('coverage');
+        expect(response.content[0].text).toContain('history');
+        expect(response.content[0].text).toContain('2023-01-01');
+        expect(response.content[0].text).toContain('2023-02-01');
+      });
     });
 
     it('should fully process SonarQube projects response', async () => {

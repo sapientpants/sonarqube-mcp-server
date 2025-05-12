@@ -517,4 +517,419 @@ describe('SonarQubeClient', () => {
       expect(result).toBe('pong');
     });
   });
+
+  describe('getComponentMeasures', () => {
+    it('should fetch component measures successfully', async () => {
+      const mockResponse = {
+        component: {
+          key: 'my-project',
+          name: 'My Project',
+          qualifier: 'TRK',
+          measures: [
+            {
+              metric: 'complexity',
+              value: '42',
+              bestValue: false,
+            },
+            {
+              metric: 'bugs',
+              value: '5',
+              bestValue: false,
+            },
+          ],
+        },
+        metrics: [
+          {
+            id: 'metric1',
+            key: 'complexity',
+            name: 'Complexity',
+            description: 'Cyclomatic complexity',
+            domain: 'Complexity',
+            type: 'INT',
+            direction: -1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+          {
+            id: 'metric2',
+            key: 'bugs',
+            name: 'Bugs',
+            description: 'Number of bugs',
+            domain: 'Reliability',
+            type: 'INT',
+            direction: -1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+      };
+
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query((queryObj) => {
+          return queryObj.component === 'my-project' && queryObj.metricKeys === 'complexity,bugs';
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getComponentMeasures({
+        component: 'my-project',
+        metricKeys: ['complexity', 'bugs'],
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(result.component.key).toBe('my-project');
+      expect(result.component.measures).toHaveLength(2);
+      expect(result.metrics).toHaveLength(2);
+      expect(result.component.measures[0].metric).toBe('complexity');
+      expect(result.component.measures[0].value).toBe('42');
+    });
+
+    it('should handle additional parameters', async () => {
+      const mockResponse = {
+        component: {
+          key: 'my-project',
+          name: 'My Project',
+          qualifier: 'TRK',
+          measures: [
+            {
+              metric: 'coverage',
+              value: '87.5',
+              bestValue: false,
+            },
+          ],
+        },
+        metrics: [
+          {
+            id: 'metric3',
+            key: 'coverage',
+            name: 'Coverage',
+            description: 'Test coverage',
+            domain: 'Coverage',
+            type: 'PERCENT',
+            direction: 1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        period: {
+          index: 1,
+          mode: 'previous_version',
+          date: '2023-01-01T00:00:00+0000',
+        },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/measures/component')
+        .query((queryObj) => {
+          return (
+            queryObj.component === 'my-project' &&
+            queryObj.metricKeys === 'coverage' &&
+            queryObj.additionalFields === 'periods' &&
+            queryObj.branch === 'main'
+          );
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getComponentMeasures({
+        component: 'my-project',
+        metricKeys: 'coverage',
+        additionalFields: ['periods'],
+        branch: 'main',
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(scope.isDone()).toBe(true);
+      expect(result.period?.mode).toBe('previous_version');
+    });
+  });
+
+  describe('getComponentsMeasures', () => {
+    it('should fetch multiple components measures successfully', async () => {
+      const mockResponse = {
+        components: [
+          {
+            key: 'project1',
+            name: 'Project 1',
+            qualifier: 'TRK',
+            measures: [
+              {
+                metric: 'bugs',
+                value: '12',
+              },
+              {
+                metric: 'vulnerabilities',
+                value: '5',
+              },
+            ],
+          },
+          {
+            key: 'project2',
+            name: 'Project 2',
+            qualifier: 'TRK',
+            measures: [
+              {
+                metric: 'bugs',
+                value: '7',
+              },
+              {
+                metric: 'vulnerabilities',
+                value: '0',
+                bestValue: true,
+              },
+            ],
+          },
+        ],
+        metrics: [
+          {
+            id: 'metric2',
+            key: 'bugs',
+            name: 'Bugs',
+            description: 'Number of bugs',
+            domain: 'Reliability',
+            type: 'INT',
+            direction: -1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+          {
+            id: 'metric3',
+            key: 'vulnerabilities',
+            name: 'Vulnerabilities',
+            description: 'Number of vulnerabilities',
+            domain: 'Security',
+            type: 'INT',
+            direction: -1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        paging: {
+          pageIndex: 1,
+          pageSize: 100,
+          total: 2,
+        },
+      };
+
+      nock(baseUrl)
+        .get('/api/measures/components')
+        .query((queryObj) => {
+          return (
+            queryObj.componentKeys === 'project1,project2' &&
+            queryObj.metricKeys === 'bugs,vulnerabilities'
+          );
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getComponentsMeasures({
+        componentKeys: ['project1', 'project2'],
+        metricKeys: ['bugs', 'vulnerabilities'],
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(result.components).toHaveLength(2);
+      expect(result.components[0].key).toBe('project1');
+      expect(result.components[1].key).toBe('project2');
+      expect(result.components[0].measures).toHaveLength(2);
+      expect(result.components[1].measures).toHaveLength(2);
+      expect(result.metrics).toHaveLength(2);
+      expect(result.paging.total).toBe(2);
+    });
+
+    it('should handle pagination and additional parameters', async () => {
+      const mockResponse = {
+        components: [
+          {
+            key: 'project3',
+            name: 'Project 3',
+            qualifier: 'TRK',
+            measures: [
+              {
+                metric: 'code_smells',
+                value: '45',
+              },
+            ],
+          },
+        ],
+        metrics: [
+          {
+            id: 'metric4',
+            key: 'code_smells',
+            name: 'Code Smells',
+            description: 'Number of code smells',
+            domain: 'Maintainability',
+            type: 'INT',
+            direction: -1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        paging: {
+          pageIndex: 2,
+          pageSize: 1,
+          total: 3,
+        },
+        period: {
+          index: 1,
+          mode: 'previous_version',
+          date: '2023-01-01T00:00:00+0000',
+        },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/measures/components')
+        .query((queryObj) => {
+          return (
+            queryObj.componentKeys === 'project1,project2,project3' &&
+            queryObj.metricKeys === 'code_smells' &&
+            queryObj.p === '2' &&
+            queryObj.ps === '1' &&
+            queryObj.additionalFields === 'periods' &&
+            queryObj.branch === 'main'
+          );
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getComponentsMeasures({
+        componentKeys: 'project1,project2,project3',
+        metricKeys: 'code_smells',
+        page: 2,
+        pageSize: 1,
+        additionalFields: ['periods'],
+        branch: 'main',
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(scope.isDone()).toBe(true);
+      expect(result.components).toHaveLength(1);
+      expect(result.paging.pageIndex).toBe(2);
+      expect(result.paging.pageSize).toBe(1);
+      expect(result.period?.mode).toBe('previous_version');
+    });
+  });
+
+  describe('getMeasuresHistory', () => {
+    it('should fetch measures history successfully', async () => {
+      const mockResponse = {
+        paging: {
+          pageIndex: 1,
+          pageSize: 100,
+          total: 2,
+        },
+        measures: [
+          {
+            metric: 'coverage',
+            history: [
+              {
+                date: '2023-01-01T00:00:00+0000',
+                value: '85.5',
+              },
+              {
+                date: '2023-01-02T00:00:00+0000',
+                value: '87.2',
+              },
+            ],
+          },
+          {
+            metric: 'bugs',
+            history: [
+              {
+                date: '2023-01-01T00:00:00+0000',
+                value: '12',
+              },
+              {
+                date: '2023-01-02T00:00:00+0000',
+                value: '5',
+              },
+            ],
+          },
+        ],
+      };
+
+      nock(baseUrl)
+        .get('/api/measures/search_history')
+        .query((queryObj) => {
+          return queryObj.component === 'my-project' && queryObj.metrics === 'coverage,bugs';
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getMeasuresHistory({
+        component: 'my-project',
+        metrics: ['coverage', 'bugs'],
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(result.measures).toHaveLength(2);
+      expect(result.measures[0].metric).toBe('coverage');
+      expect(result.measures[1].metric).toBe('bugs');
+      expect(result.measures[0].history).toHaveLength(2);
+      expect(result.measures[1].history).toHaveLength(2);
+      expect(result.paging.total).toBe(2);
+    });
+
+    it('should handle date range and pagination parameters', async () => {
+      const mockResponse = {
+        paging: {
+          pageIndex: 1,
+          pageSize: 100,
+          total: 1,
+        },
+        measures: [
+          {
+            metric: 'code_smells',
+            history: [
+              {
+                date: '2023-01-15T00:00:00+0000',
+                value: '45',
+              },
+              {
+                date: '2023-01-20T00:00:00+0000',
+                value: '32',
+              },
+            ],
+          },
+        ],
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/measures/search_history')
+        .query((queryObj) => {
+          return (
+            queryObj.component === 'my-project' &&
+            queryObj.metrics === 'code_smells' &&
+            queryObj.from === '2023-01-15' &&
+            queryObj.to === '2023-01-31' &&
+            queryObj.branch === 'main'
+          );
+        })
+        .basicAuth({ user: token, pass: '' })
+        .reply(200, mockResponse);
+
+      const result = await client.getMeasuresHistory({
+        component: 'my-project',
+        metrics: 'code_smells',
+        from: '2023-01-15',
+        to: '2023-01-31',
+        branch: 'main',
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(scope.isDone()).toBe(true);
+      expect(result.measures).toHaveLength(1);
+      expect(result.measures[0].metric).toBe('code_smells');
+      expect(result.measures[0].history).toHaveLength(2);
+      expect(result.measures[0].history[0].date).toBe('2023-01-15T00:00:00+0000');
+      expect(result.measures[0].history[1].date).toBe('2023-01-20T00:00:00+0000');
+    });
+  });
 });
