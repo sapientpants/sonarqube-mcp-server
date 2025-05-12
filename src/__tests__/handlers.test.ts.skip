@@ -36,13 +36,13 @@ jest.mock('axios', () => ({
 // Import the function we want to test
 import { nullToUndefined } from '../index.js';
 
-// Now import the lambda handlers - these will use our mocked handlers
+// Now import the handlers - these will use our mocked handlers
 import {
-  metricsLambdaHandler,
-  issuesLambdaHandler,
-  componentMeasuresLambdaHandler,
-  componentsMeasuresLambdaHandler,
-  measuresHistoryLambdaHandler,
+  metricsHandler,
+  issuesHandler,
+  componentMeasuresHandler,
+  componentsMeasuresHandler,
+  measuresHistoryHandler,
 } from '../index.js';
 
 // Simple tests that don't require HTTP calls
@@ -63,15 +63,15 @@ describe('Utility Function Tests', () => {
 });
 
 // Lambda handler tests
-describe('Lambda Handlers', () => {
+describe('Handlers', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // Test metricsLambdaHandler
-  it('metricsLambdaHandler should transform parameters correctly', async () => {
+  // Test metricsHandler
+  it('metricsHandler should transform parameters correctly', async () => {
     const params = { page: 5, page_size: 20 };
-    const result = await metricsLambdaHandler(params);
+    const result = await metricsHandler(params);
 
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
@@ -79,15 +79,15 @@ describe('Lambda Handlers', () => {
     expect(result.content[0].type).toBe('text');
   });
 
-  // Test issuesLambdaHandler
-  it('issuesLambdaHandler should handle parameters correctly', async () => {
+  // Test issuesHandler
+  it('issuesHandler should handle parameters correctly', async () => {
     const params = {
       project_key: 'test-project',
       severity: 'MAJOR',
       statuses: ['OPEN', 'CONFIRMED'],
     };
 
-    const result = await issuesLambdaHandler(params);
+    const result = await issuesHandler(params);
 
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
@@ -95,14 +95,14 @@ describe('Lambda Handlers', () => {
     expect(result.content[0].type).toBe('text');
   });
 
-  // Test componentMeasuresLambdaHandler
-  it('componentMeasuresLambdaHandler should transform string metric_keys to array', async () => {
+  // Test componentMeasuresHandler
+  it('componentMeasuresHandler should transform string metric_keys to array', async () => {
     const params = {
       component: 'test-component',
       metric_keys: 'coverage',
     };
 
-    const result = await componentMeasuresLambdaHandler(params);
+    const result = await componentMeasuresHandler(params);
 
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
@@ -110,8 +110,8 @@ describe('Lambda Handlers', () => {
     expect(result.content[0].type).toBe('text');
   });
 
-  // Test componentsMeasuresLambdaHandler
-  it('componentsMeasuresLambdaHandler should transform string parameters', async () => {
+  // Test componentsMeasuresHandler
+  it('componentsMeasuresHandler should transform string parameters', async () => {
     const params = {
       component_keys: 'test-component',
       metric_keys: 'coverage',
@@ -119,7 +119,7 @@ describe('Lambda Handlers', () => {
       page_size: 20,
     };
 
-    const result = await componentsMeasuresLambdaHandler(params);
+    const result = await componentsMeasuresHandler(params);
 
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
@@ -127,8 +127,8 @@ describe('Lambda Handlers', () => {
     expect(result.content[0].type).toBe('text');
   });
 
-  // Test measuresHistoryLambdaHandler
-  it('measuresHistoryLambdaHandler should transform string parameters', async () => {
+  // Test measuresHistoryHandler
+  it('measuresHistoryHandler should transform string parameters', async () => {
     const params = {
       component: 'test-component',
       metrics: 'coverage',
@@ -136,7 +136,7 @@ describe('Lambda Handlers', () => {
       to: '2023-12-31',
     };
 
-    const result = await measuresHistoryLambdaHandler(params);
+    const result = await measuresHistoryHandler(params);
 
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
