@@ -194,6 +194,7 @@ export interface SonarQubeProjectsResult {
  */
 export interface IssuesParams extends PaginationParams {
   projectKey: string;
+  branch?: string;
   severity?: 'INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER';
   statuses?: (
     | 'OPEN'
@@ -225,6 +226,8 @@ export interface IssuesParams extends PaginationParams {
   facets?: string[];
   sinceLeakPeriod?: boolean;
   inNewCodePeriod?: boolean;
+  pullRequest?: string;
+  hotspots?: boolean;
 }
 
 /**
@@ -461,6 +464,7 @@ export class SonarQubeClient {
   async getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult> {
     const {
       projectKey,
+      branch,
       severity,
       page,
       pageSize,
@@ -485,12 +489,15 @@ export class SonarQubeClient {
       facets,
       sinceLeakPeriod,
       inNewCodePeriod,
+      pullRequest,
+      hotspots,
     } = params;
 
     const response = await axios.get(`${this.baseUrl}/api/issues/search`, {
       auth: this.auth,
       params: {
         componentKeys: projectKey,
+        branch,
         severities: severity,
         organization: this.organization,
         p: page,
@@ -516,6 +523,8 @@ export class SonarQubeClient {
         facets: facets?.join(','),
         sinceLeakPeriod,
         inNewCodePeriod,
+        pullRequest,
+        hotspots,
       },
     });
 
