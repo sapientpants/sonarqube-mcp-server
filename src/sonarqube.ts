@@ -469,6 +469,95 @@ export interface ProjectQualityGateParams {
 }
 
 /**
+ * Interface for source code location parameters
+ */
+export interface SourceCodeParams {
+  key: string;
+  from?: number;
+  to?: number;
+  branch?: string;
+  pullRequest?: string;
+}
+
+/**
+ * Interface for SCM blame parameters
+ */
+export interface ScmBlameParams {
+  key: string;
+  from?: number;
+  to?: number;
+  branch?: string;
+  pullRequest?: string;
+}
+
+/**
+ * Interface for line issue in source code
+ */
+export interface SonarQubeLineIssue {
+  line: number;
+  issues: SonarQubeIssue[];
+}
+
+/**
+ * Interface for SCM author information
+ */
+export interface SonarQubeScmAuthor {
+  revision: string;
+  date: string;
+  author: string;
+}
+
+/**
+ * Interface for source code line with annotations
+ */
+export interface SonarQubeSourceLine {
+  line: number;
+  code: string;
+  scmAuthor?: string;
+  scmDate?: string;
+  scmRevision?: string;
+  duplicated?: boolean;
+  isNew?: boolean;
+  lineHits?: number;
+  conditions?: number;
+  coveredConditions?: number;
+  highlightedText?: string;
+  issues?: SonarQubeIssue[];
+}
+
+/**
+ * Interface for source code result
+ */
+export interface SonarQubeSourceResult {
+  component: {
+    key: string;
+    path?: string;
+    qualifier: string;
+    name: string;
+    longName?: string;
+    language?: string;
+  };
+  sources: SonarQubeSourceLine[];
+}
+
+/**
+ * Interface for SCM blame result
+ */
+export interface SonarQubeScmBlameResult {
+  component: {
+    key: string;
+    path?: string;
+    qualifier: string;
+    name: string;
+    longName?: string;
+    language?: string;
+  };
+  sources: {
+    [lineNumber: string]: SonarQubeScmAuthor;
+  };
+}
+
+/**
  * Interface for SonarQube client
  */
 export interface ISonarQubeClient {
@@ -490,6 +579,10 @@ export interface ISonarQubeClient {
   getProjectQualityGateStatus(
     params: ProjectQualityGateParams
   ): Promise<SonarQubeQualityGateStatus>;
+
+  // Source Code API methods
+  getSourceCode(params: SourceCodeParams): Promise<SonarQubeSourceResult>;
+  getScmBlame(params: ScmBlameParams): Promise<SonarQubeScmBlameResult>;
 }
 
 /**
@@ -840,6 +933,99 @@ export class SonarQubeClient implements ISonarQubeClient {
       this.baseUrl,
       this.auth,
       '/api/qualitygates/project_status',
+      queryParams
+    );
+  }
+
+  /**
+   * Gets source code with optional SCM and issue annotations
+   * @param params Parameters including component key, line range, branch, and pull request
+   * @returns Promise with the source code and annotations
+   */
+  async getSourceCode(params: SourceCodeParams): Promise<SonarQubeSourceResult> {
+    const { key, from, to, branch, pullRequest } = params;
+
+    const queryParams = {
+      key,
+      from,
+      to,
+      branch,
+      pullRequest,
+      organization: this.organization,
+    };
+
+    // Call the raw sources API
+    const sources = await this.httpClient.get<{
+      sources: Array<{
+        line: number;
+        code: string;
+        scmAuthor?: string;
+        scmDate?: string;
+        scmRevision?: string;
+      }>;
+      component: {
+        key: string;
+        path?: string;
+        qualifier: string;
+        name: string;
+        longName?: string;
+        language?: string;
+      };
+    }>(this.baseUrl, this.auth, '/api/sources/raw', queryParams);
+
+    // Get issues for this component to annotate the source
+    if (key) {
+      try {
+        const issues = await this.getIssues({
+          projectKey: key,
+          branch,
+          pullRequest,
+          onComponentOnly: true,
+        });
+
+        // Map issues to source lines
+        const sourceLines = sources.sources.map((line) => {
+          const lineIssues = issues.issues.filter((issue) => issue.line === line.line);
+          return {
+            ...line,
+            issues: lineIssues.length > 0 ? lineIssues : undefined,
+          };
+        });
+
+        return {
+          component: sources.component,
+          sources: sourceLines,
+        };
+      } catch {
+        // If issues retrieval fails, just return the source without annotations
+        return sources;
+      }
+    }
+
+    return sources;
+  }
+
+  /**
+   * Gets SCM blame information for a file
+   * @param params Parameters including component key, line range, branch, and pull request
+   * @returns Promise with the blame information
+   */
+  async getScmBlame(params: ScmBlameParams): Promise<SonarQubeScmBlameResult> {
+    const { key, from, to, branch, pullRequest } = params;
+
+    const queryParams = {
+      key,
+      from,
+      to,
+      branch,
+      pullRequest,
+      organization: this.organization,
+    };
+
+    return this.httpClient.get<SonarQubeScmBlameResult>(
+      this.baseUrl,
+      this.auth,
+      '/api/sources/scm',
       queryParams
     );
   }
