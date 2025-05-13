@@ -405,6 +405,70 @@ export interface SonarQubeSystemStatus {
 }
 
 /**
+ * Interface for SonarQube quality gate condition
+ */
+export interface SonarQubeQualityGateCondition {
+  id: string;
+  metric: string;
+  op: string;
+  error: string;
+}
+
+/**
+ * Interface for SonarQube quality gate
+ */
+export interface SonarQubeQualityGate {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  isBuiltIn?: boolean;
+  conditions?: SonarQubeQualityGateCondition[];
+}
+
+/**
+ * Interface for SonarQube quality gates list result
+ */
+export interface SonarQubeQualityGatesResult {
+  qualitygates: SonarQubeQualityGate[];
+  default: string;
+  actions?: {
+    create?: boolean;
+  };
+}
+
+/**
+ * Interface for SonarQube quality gate status
+ */
+export interface SonarQubeQualityGateStatus {
+  projectStatus: {
+    status: 'OK' | 'WARN' | 'ERROR' | 'NONE';
+    conditions: Array<{
+      status: 'OK' | 'WARN' | 'ERROR';
+      metricKey: string;
+      comparator: string;
+      errorThreshold: string;
+      actualValue: string;
+    }>;
+    periods?: Array<{
+      index: number;
+      mode: string;
+      date: string;
+      parameter?: string;
+    }>;
+    ignoredConditions: boolean;
+  };
+}
+
+/**
+ * Interface for project quality gate params
+ */
+export interface ProjectQualityGateParams {
+  projectKey: string;
+  branch?: string;
+  pullRequest?: string;
+}
+
+/**
  * Interface for SonarQube client
  */
 export interface ISonarQubeClient {
@@ -419,6 +483,13 @@ export interface ISonarQubeClient {
     params: ComponentsMeasuresParams
   ): Promise<SonarQubeComponentsMeasuresResult>;
   getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult>;
+
+  // Quality Gates API methods
+  listQualityGates(): Promise<SonarQubeQualityGatesResult>;
+  getQualityGate(id: string): Promise<SonarQubeQualityGate>;
+  getProjectQualityGateStatus(
+    params: ProjectQualityGateParams
+  ): Promise<SonarQubeQualityGateStatus>;
 }
 
 /**
@@ -708,6 +779,67 @@ export class SonarQubeClient implements ISonarQubeClient {
       this.baseUrl,
       this.auth,
       '/api/measures/search_history',
+      queryParams
+    );
+  }
+
+  /**
+   * Lists all quality gates from SonarQube
+   * @returns Promise with the list of quality gates
+   */
+  async listQualityGates(): Promise<SonarQubeQualityGatesResult> {
+    const queryParams = {
+      organization: this.organization,
+    };
+
+    return this.httpClient.get<SonarQubeQualityGatesResult>(
+      this.baseUrl,
+      this.auth,
+      '/api/qualitygates/list',
+      queryParams
+    );
+  }
+
+  /**
+   * Gets details of a quality gate including its conditions
+   * @param id The ID of the quality gate
+   * @returns Promise with the quality gate details
+   */
+  async getQualityGate(id: string): Promise<SonarQubeQualityGate> {
+    const queryParams = {
+      id,
+      organization: this.organization,
+    };
+
+    return this.httpClient.get<SonarQubeQualityGate>(
+      this.baseUrl,
+      this.auth,
+      '/api/qualitygates/show',
+      queryParams
+    );
+  }
+
+  /**
+   * Gets quality gate status for a specific project
+   * @param params Parameters including project key, branch, and pull request
+   * @returns Promise with the project's quality gate status
+   */
+  async getProjectQualityGateStatus(
+    params: ProjectQualityGateParams
+  ): Promise<SonarQubeQualityGateStatus> {
+    const { projectKey, branch, pullRequest } = params;
+
+    const queryParams = {
+      projectKey,
+      branch,
+      pullRequest,
+      organization: this.organization,
+    };
+
+    return this.httpClient.get<SonarQubeQualityGateStatus>(
+      this.baseUrl,
+      this.auth,
+      '/api/qualitygates/project_status',
       queryParams
     );
   }

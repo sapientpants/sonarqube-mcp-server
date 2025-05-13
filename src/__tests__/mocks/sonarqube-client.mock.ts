@@ -6,12 +6,16 @@ import {
   IssuesParams,
   MeasuresHistoryParams,
   PaginationParams,
+  ProjectQualityGateParams,
   SonarQubeComponentMeasuresResult,
   SonarQubeComponentsMeasuresResult,
   SonarQubeHealthStatus,
   SonarQubeIssuesResult,
   SonarQubeMetricsResult,
   SonarQubeProjectsResult,
+  SonarQubeQualityGate,
+  SonarQubeQualityGateStatus,
+  SonarQubeQualityGatesResult,
   SonarQubeSystemStatus,
   SonarQubeMeasuresHistoryResult,
 } from '../../sonarqube.js';
@@ -30,6 +34,9 @@ export class MockSonarQubeClient implements ISonarQubeClient {
   getComponentMeasuresMock: jest.Mock = jest.fn();
   getComponentsMeasuresMock: jest.Mock = jest.fn();
   getMeasuresHistoryMock: jest.Mock = jest.fn();
+  listQualityGatesMock: jest.Mock = jest.fn();
+  getQualityGateMock: jest.Mock = jest.fn();
+  getProjectQualityGateStatusMock: jest.Mock = jest.fn();
 
   constructor() {
     this.setupDefaultMocks();
@@ -76,6 +83,20 @@ export class MockSonarQubeClient implements ISonarQubeClient {
     return this.getMeasuresHistoryMock(params) as Promise<SonarQubeMeasuresHistoryResult>;
   }
 
+  async listQualityGates(): Promise<SonarQubeQualityGatesResult> {
+    return this.listQualityGatesMock() as Promise<SonarQubeQualityGatesResult>;
+  }
+
+  async getQualityGate(id: string): Promise<SonarQubeQualityGate> {
+    return this.getQualityGateMock(id) as Promise<SonarQubeQualityGate>;
+  }
+
+  async getProjectQualityGateStatus(
+    params: ProjectQualityGateParams
+  ): Promise<SonarQubeQualityGateStatus> {
+    return this.getProjectQualityGateStatusMock(params) as Promise<SonarQubeQualityGateStatus>;
+  }
+
   // Reset all mocks
   reset() {
     this.listProjectsMock.mockReset();
@@ -87,6 +108,9 @@ export class MockSonarQubeClient implements ISonarQubeClient {
     this.getComponentMeasuresMock.mockReset();
     this.getComponentsMeasuresMock.mockReset();
     this.getMeasuresHistoryMock.mockReset();
+    this.listQualityGatesMock.mockReset();
+    this.getQualityGateMock.mockReset();
+    this.getProjectQualityGateStatusMock.mockReset();
 
     // Re-setup default mock implementations
     this.setupDefaultMocks();
@@ -258,6 +282,61 @@ export class MockSonarQubeClient implements ISonarQubeClient {
         ],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       } as SonarQubeMeasuresHistoryResult)
+    );
+
+    // List quality gates
+    this.listQualityGatesMock.mockImplementation(() =>
+      Promise.resolve({
+        qualitygates: [
+          {
+            id: '1',
+            name: 'Sonar way',
+            isDefault: true,
+            isBuiltIn: true,
+          },
+        ],
+        default: '1',
+        actions: {
+          create: true,
+        },
+      } as SonarQubeQualityGatesResult)
+    );
+
+    // Get quality gate
+    this.getQualityGateMock.mockImplementation(() =>
+      Promise.resolve({
+        id: '1',
+        name: 'Sonar way',
+        isDefault: true,
+        isBuiltIn: true,
+        conditions: [
+          {
+            id: '3',
+            metric: 'new_coverage',
+            op: 'LT',
+            error: '80',
+          },
+        ],
+      } as SonarQubeQualityGate)
+    );
+
+    // Get project quality gate status
+    this.getProjectQualityGateStatusMock.mockImplementation(() =>
+      Promise.resolve({
+        projectStatus: {
+          status: 'OK',
+          conditions: [
+            {
+              status: 'OK',
+              metricKey: 'new_reliability_rating',
+              comparator: 'GT',
+              errorThreshold: '1',
+              actualValue: '1',
+            },
+          ],
+          ignoredConditions: false,
+        },
+      } as SonarQubeQualityGateStatus)
     );
   }
 }
