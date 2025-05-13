@@ -4,6 +4,11 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 /**
+ * Type alias for parameter record types
+ */
+export type ParamRecord = Record<string, string | number | boolean | string[] | undefined | null>;
+
+/**
  * Interface for HTTP client
  */
 export interface HttpClient {
@@ -11,7 +16,7 @@ export interface HttpClient {
     baseUrl: string,
     auth: { username: string; password: string },
     endpoint: string,
-    params?: Record<string, string | number | boolean | string[] | undefined | null>
+    params?: ParamRecord
   ): Promise<T>;
 
   post<T>(
@@ -19,7 +24,7 @@ export interface HttpClient {
     auth: { username: string; password: string },
     endpoint: string,
     data: Record<string, unknown>,
-    params?: Record<string, string | number | boolean | string[] | undefined | null>
+    params?: ParamRecord
   ): Promise<T>;
 }
 
@@ -39,7 +44,7 @@ export class AxiosHttpClient implements HttpClient {
     baseUrl: string,
     auth: { username: string; password: string },
     endpoint: string,
-    params?: Record<string, string | number | boolean | string[] | undefined | null>
+    params?: ParamRecord
   ): Promise<T> {
     const config: AxiosRequestConfig = {
       auth,
@@ -64,7 +69,7 @@ export class AxiosHttpClient implements HttpClient {
     auth: { username: string; password: string },
     endpoint: string,
     data: Record<string, unknown>,
-    params?: Record<string, string | number | boolean | string[] | undefined | null>
+    params?: ParamRecord
   ): Promise<T> {
     const config: AxiosRequestConfig = {
       auth,
@@ -91,7 +96,7 @@ export async function apiGet<T>(
   baseUrl: string,
   auth: { username: string; password: string },
   endpoint: string,
-  params?: Record<string, string | number | boolean | string[] | undefined | null>
+  params?: ParamRecord
 ): Promise<T> {
   return defaultHttpClient.get<T>(baseUrl, auth, endpoint, params);
 }
@@ -110,7 +115,7 @@ export async function apiPost<T>(
   auth: { username: string; password: string },
   endpoint: string,
   data: Record<string, unknown>,
-  params?: Record<string, string | number | boolean | string[] | undefined | null>
+  params?: ParamRecord
 ): Promise<T> {
   return defaultHttpClient.post<T>(baseUrl, auth, endpoint, data, params);
 }
