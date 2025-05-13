@@ -9,19 +9,24 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 export type ParamRecord = Record<string, string | number | boolean | string[] | undefined | null>;
 
 /**
+ * Type alias for authentication credentials
+ */
+export type AuthCredentials = { username: string; password: string };
+
+/**
  * Interface for HTTP client
  */
 export interface HttpClient {
   get<T>(
     baseUrl: string,
-    auth: { username: string; password: string },
+    auth: AuthCredentials,
     endpoint: string,
     params?: ParamRecord
   ): Promise<T>;
 
   post<T>(
     baseUrl: string,
-    auth: { username: string; password: string },
+    auth: AuthCredentials,
     endpoint: string,
     data: Record<string, unknown>,
     params?: ParamRecord
@@ -42,7 +47,7 @@ export class AxiosHttpClient implements HttpClient {
    */
   async get<T>(
     baseUrl: string,
-    auth: { username: string; password: string },
+    auth: AuthCredentials,
     endpoint: string,
     params?: ParamRecord
   ): Promise<T> {
@@ -66,7 +71,7 @@ export class AxiosHttpClient implements HttpClient {
    */
   async post<T>(
     baseUrl: string,
-    auth: { username: string; password: string },
+    auth: AuthCredentials,
     endpoint: string,
     data: Record<string, unknown>,
     params?: ParamRecord
@@ -94,7 +99,7 @@ const defaultHttpClient = new AxiosHttpClient();
  */
 export async function apiGet<T>(
   baseUrl: string,
-  auth: { username: string; password: string },
+  auth: AuthCredentials,
   endpoint: string,
   params?: ParamRecord
 ): Promise<T> {
@@ -112,7 +117,7 @@ export async function apiGet<T>(
  */
 export async function apiPost<T>(
   baseUrl: string,
-  auth: { username: string; password: string },
+  auth: AuthCredentials,
   endpoint: string,
   data: Record<string, unknown>,
   params?: ParamRecord
