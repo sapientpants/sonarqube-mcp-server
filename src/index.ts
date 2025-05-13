@@ -37,6 +37,19 @@ export function nullToUndefined<T>(value: T | null | undefined): T | undefined {
   return value === null ? undefined : value;
 }
 
+/**
+ * Helper function to transform string to number or null
+ * @param val String value to transform
+ * @returns Number or null if conversion fails
+ */
+export function stringToNumberTransform(val: string | null | undefined): number | null | undefined {
+  if (val === null || val === undefined) {
+    return val;
+  }
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) ? null : parsed;
+}
+
 // Initialize MCP server
 export const mcpServer = new McpServer({
   name: 'sonarqube-mcp-server',
@@ -661,14 +674,8 @@ mcpServer.tool(
   'projects',
   'List all SonarQube projects',
   {
-    page: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    page_size: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
   },
   projectsMcpHandler
 );
@@ -677,14 +684,8 @@ mcpServer.tool(
   'metrics',
   'Get available metrics from SonarQube',
   {
-    page: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    page_size: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
   },
   metricsMcpHandler
 );
@@ -695,14 +696,8 @@ mcpServer.tool(
   {
     project_key: z.string(),
     severity: severitySchema,
-    page: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    page_size: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
     statuses: statusSchema,
     resolutions: resolutionSchema,
     resolved: z
@@ -782,14 +777,8 @@ mcpServer.tool(
     branch: z.string().optional(),
     pull_request: z.string().optional(),
     period: z.string().optional(),
-    page: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    page_size: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
   },
   componentsMeasuresMcpHandler
 );
@@ -804,14 +793,8 @@ mcpServer.tool(
     to: z.string().optional(),
     branch: z.string().optional(),
     pull_request: z.string().optional(),
-    page: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    page_size: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
   },
   measuresHistoryMcpHandler
 );
@@ -845,14 +828,8 @@ mcpServer.tool(
   'View source code with issues highlighted',
   {
     key: z.string(),
-    from: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    to: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    from: z.string().optional().transform(stringToNumberTransform),
+    to: z.string().optional().transform(stringToNumberTransform),
     branch: z.string().optional(),
     pull_request: z.string().optional(),
   },
@@ -864,14 +841,8 @@ mcpServer.tool(
   'Get SCM blame information for source code',
   {
     key: z.string(),
-    from: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
-    to: z
-      .string()
-      .optional()
-      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    from: z.string().optional().transform(stringToNumberTransform),
+    to: z.string().optional().transform(stringToNumberTransform),
     branch: z.string().optional(),
     pull_request: z.string().optional(),
   },
