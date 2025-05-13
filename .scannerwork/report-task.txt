@@ -1,0 +1,6 @@
+projectKey=sonarqube-mcp-server
+serverUrl=http://localhost:9000
+serverVersion=25.4.0.105899
+dashboardUrl=http://localhost:9000/dashboard?id=sonarqube-mcp-server
+ceTaskId=40cbeea4-68cf-4724-823c-e186d960c109
+ceTaskUrl=http://localhost:9000/api/ce/task?id=40cbeea4-68cf-4724-823c-e186d960c109
