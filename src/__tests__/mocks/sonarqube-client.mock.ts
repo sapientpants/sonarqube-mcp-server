@@ -7,6 +7,8 @@ import {
   MeasuresHistoryParams,
   PaginationParams,
   ProjectQualityGateParams,
+  ScmBlameParams,
+  SourceCodeParams,
   SonarQubeComponentMeasuresResult,
   SonarQubeComponentsMeasuresResult,
   SonarQubeHealthStatus,
@@ -16,6 +18,8 @@ import {
   SonarQubeQualityGate,
   SonarQubeQualityGateStatus,
   SonarQubeQualityGatesResult,
+  SonarQubeScmBlameResult,
+  SonarQubeSourceResult,
   SonarQubeSystemStatus,
   SonarQubeMeasuresHistoryResult,
 } from '../../sonarqube.js';
@@ -37,6 +41,8 @@ export class MockSonarQubeClient implements ISonarQubeClient {
   listQualityGatesMock: jest.Mock = jest.fn();
   getQualityGateMock: jest.Mock = jest.fn();
   getProjectQualityGateStatusMock: jest.Mock = jest.fn();
+  getSourceCodeMock: jest.Mock = jest.fn();
+  getScmBlameMock: jest.Mock = jest.fn();
 
   constructor() {
     this.setupDefaultMocks();
@@ -97,6 +103,14 @@ export class MockSonarQubeClient implements ISonarQubeClient {
     return this.getProjectQualityGateStatusMock(params) as Promise<SonarQubeQualityGateStatus>;
   }
 
+  async getSourceCode(params: SourceCodeParams): Promise<SonarQubeSourceResult> {
+    return this.getSourceCodeMock(params) as Promise<SonarQubeSourceResult>;
+  }
+
+  async getScmBlame(params: ScmBlameParams): Promise<SonarQubeScmBlameResult> {
+    return this.getScmBlameMock(params) as Promise<SonarQubeScmBlameResult>;
+  }
+
   // Reset all mocks
   reset() {
     this.listProjectsMock.mockReset();
@@ -111,6 +125,8 @@ export class MockSonarQubeClient implements ISonarQubeClient {
     this.listQualityGatesMock.mockReset();
     this.getQualityGateMock.mockReset();
     this.getProjectQualityGateStatusMock.mockReset();
+    this.getSourceCodeMock.mockReset();
+    this.getScmBlameMock.mockReset();
 
     // Re-setup default mock implementations
     this.setupDefaultMocks();
@@ -337,6 +353,74 @@ export class MockSonarQubeClient implements ISonarQubeClient {
           ignoredConditions: false,
         },
       } as SonarQubeQualityGateStatus)
+    );
+
+    // Get source code
+    this.getSourceCodeMock.mockImplementation(() =>
+      Promise.resolve({
+        component: {
+          key: 'test-component',
+          path: 'src/test.js',
+          qualifier: 'FIL',
+          name: 'test.js',
+          longName: 'src/test.js',
+          language: 'js',
+        },
+        sources: [
+          {
+            line: 1,
+            code: 'function test() {',
+            scmAuthor: 'developer',
+            scmDate: '2023-01-01',
+            scmRevision: 'abc123',
+          },
+          {
+            line: 2,
+            code: '  return "test";',
+            scmAuthor: 'developer',
+            scmDate: '2023-01-01',
+            scmRevision: 'abc123',
+          },
+          {
+            line: 3,
+            code: '}',
+            scmAuthor: 'developer',
+            scmDate: '2023-01-01',
+            scmRevision: 'abc123',
+          },
+        ],
+      } as SonarQubeSourceResult)
+    );
+
+    // Get SCM blame
+    this.getScmBlameMock.mockImplementation(() =>
+      Promise.resolve({
+        component: {
+          key: 'test-component',
+          path: 'src/test.js',
+          qualifier: 'FIL',
+          name: 'test.js',
+          longName: 'src/test.js',
+          language: 'js',
+        },
+        sources: {
+          '1': {
+            author: 'developer',
+            date: '2023-01-01',
+            revision: 'abc123',
+          },
+          '2': {
+            author: 'developer',
+            date: '2023-01-01',
+            revision: 'abc123',
+          },
+          '3': {
+            author: 'developer',
+            date: '2023-01-01',
+            revision: 'abc123',
+          },
+        },
+      } as SonarQubeScmBlameResult)
     );
   }
 }

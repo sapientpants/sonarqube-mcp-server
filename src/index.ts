@@ -11,6 +11,8 @@ import {
   ComponentsMeasuresParams,
   MeasuresHistoryParams,
   ProjectQualityGateParams,
+  SourceCodeParams,
+  ScmBlameParams,
   createSonarQubeClient,
 } from './sonarqube.js';
 import { AxiosHttpClient } from './api.js';
@@ -408,6 +410,50 @@ export async function handleSonarQubeProjectQualityGateStatus(
   };
 }
 
+/**
+ * Handler for getting source code with issues
+ * @param params Parameters for the source code request
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the source code and annotations
+ */
+export async function handleSonarQubeGetSourceCode(
+  params: SourceCodeParams,
+  client: ISonarQubeClient = defaultClient
+) {
+  const result = await client.getSourceCode(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting SCM blame information
+ * @param params Parameters for the SCM blame request
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the blame information
+ */
+export async function handleSonarQubeGetScmBlame(
+  params: ScmBlameParams,
+  client: ISonarQubeClient = defaultClient
+) {
+  const result = await client.getScmBlame(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
 // Define SonarQube severity schema for validation
 const severitySchema = z
   .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
@@ -563,6 +609,32 @@ export const projectQualityGateStatusHandler = async (params: Record<string, unk
   });
 };
 
+/**
+ * Lambda function for source_code tool
+ */
+export const sourceCodeHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeGetSourceCode({
+    key: params.key as string,
+    from: nullToUndefined(params.from) as number | undefined,
+    to: nullToUndefined(params.to) as number | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for scm_blame tool
+ */
+export const scmBlameHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeGetScmBlame({
+    key: params.key as string,
+    from: nullToUndefined(params.from) as number | undefined,
+    to: nullToUndefined(params.to) as number | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+  });
+};
+
 // Wrapper functions for MCP registration that don't expose the client parameter
 const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
 const metricsMcpHandler = (params: Record<string, unknown>) =>
@@ -581,6 +653,8 @@ const qualityGatesMcpHandler = () => qualityGatesHandler();
 const qualityGateMcpHandler = (params: Record<string, unknown>) => qualityGateHandler(params);
 const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
   projectQualityGateStatusHandler(params);
+const sourceCodeMcpHandler = (params: Record<string, unknown>) => sourceCodeHandler(params);
+const scmBlameMcpHandler = (params: Record<string, unknown>) => scmBlameHandler(params);
 
 // Register SonarQube tools
 mcpServer.tool(
@@ -763,6 +837,45 @@ mcpServer.tool(
     pull_request: z.string().optional(),
   },
   projectQualityGateStatusMcpHandler
+);
+
+// Register Source Code API tools
+mcpServer.tool(
+  'source_code',
+  'View source code with issues highlighted',
+  {
+    key: z.string(),
+    from: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    to: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    branch: z.string().optional(),
+    pull_request: z.string().optional(),
+  },
+  sourceCodeMcpHandler
+);
+
+mcpServer.tool(
+  'scm_blame',
+  'Get SCM blame information for source code',
+  {
+    key: z.string(),
+    from: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    to: z
+      .string()
+      .optional()
+      .transform((val) => (val ? parseInt(val, 10) || null : null)),
+    branch: z.string().optional(),
+    pull_request: z.string().optional(),
+  },
+  scmBlameMcpHandler
 );
 
 // Only start the server if not in test mode
