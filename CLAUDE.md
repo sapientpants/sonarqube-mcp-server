@@ -45,6 +45,10 @@ pnpm validate
 pnpm inspect
 ```
 
+## Git Guidelines
+
+NEVER use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks.
+
 ## Architecture Overview
 
 This project is a Model Context Protocol (MCP) server for SonarQube, which allows AI assistants to interact with SonarQube instances through the MCP protocol.

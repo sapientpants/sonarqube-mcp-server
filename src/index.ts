@@ -393,7 +393,7 @@ export const metricsHandler = async (params: { page: number | null; page_size: n
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify(result, null, 2),
+        text: JSON.stringify(result),
       },
     ],
   };
@@ -658,4 +658,4 @@ if (process.env.NODE_ENV !== 'test') {
   await mcpServer.connect(transport);
 }
 
-// Export statement for nullToUndefined is redundant since it's already exported above
+// nullToUndefined is already exported at line 33
