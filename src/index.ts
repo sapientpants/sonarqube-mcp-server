@@ -4,13 +4,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   PaginationParams,
-  SonarQubeClient,
+  ISonarQubeClient,
   IssuesParams,
   SonarQubeProject,
   ComponentMeasuresParams,
   ComponentsMeasuresParams,
   MeasuresHistoryParams,
+  createSonarQubeClient,
 } from './sonarqube.js';
+import { AxiosHttpClient } from './api.js';
 import { z } from 'zod';
 
 interface Connectable {
@@ -38,22 +40,36 @@ export const mcpServer = new McpServer({
   version: '1.1.0',
 });
 
-const client = new SonarQubeClient(
-  process.env.SONARQUBE_TOKEN!,
-  process.env.SONARQUBE_URL,
-  process.env.SONARQUBE_ORGANIZATION
-);
+// Create HTTP client
+const httpClient = new AxiosHttpClient();
+
+// Create the SonarQube client
+export const createDefaultClient = (): ISonarQubeClient => {
+  return createSonarQubeClient(
+    process.env.SONARQUBE_TOKEN!,
+    process.env.SONARQUBE_URL,
+    process.env.SONARQUBE_ORGANIZATION,
+    httpClient
+  );
+};
+
+// Default client instance for backward compatibility
+const defaultClient = createDefaultClient();
 
 /**
  * Fetches and returns a list of all SonarQube projects
  * @param params Parameters for listing projects, including pagination and organization
+ * @param client Optional SonarQube client instance
  * @returns A response containing the list of projects with their details
  * @throws Error if the SONARQUBE_TOKEN environment variable is not set
  */
-export async function handleSonarQubeProjects(params: {
-  page?: number | null;
-  page_size?: number | null;
-}) {
+export async function handleSonarQubeProjects(
+  params: {
+    page?: number | null;
+    page_size?: number | null;
+  },
+  client: ISonarQubeClient = defaultClient
+) {
   const projectsParams: PaginationParams = {
     page: nullToUndefined(params.page),
     pageSize: nullToUndefined(params.page_size),
@@ -119,10 +135,14 @@ export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesPar
 /**
  * Fetches and returns issues from a specified SonarQube project
  * @param params Parameters for fetching issues, including project key, severity, and pagination
+ * @param client Optional SonarQube client instance
  * @returns A response containing the list of issues with their details
  * @throws Error if the SONARQUBE_TOKEN environment variable is not set
  */
-export async function handleSonarQubeGetIssues(params: IssuesParams) {
+export async function handleSonarQubeGetIssues(
+  params: IssuesParams,
+  client: ISonarQubeClient = defaultClient
+) {
   const result = await client.getIssues(params);
 
   return {
@@ -176,9 +196,13 @@ export async function handleSonarQubeGetIssues(params: IssuesParams) {
 /**
  * Handler for getting SonarQube metrics
  * @param params Parameters for the metrics request
+ * @param client Optional SonarQube client instance
  * @returns Promise with the metrics result
  */
-export async function handleSonarQubeGetMetrics(params: PaginationParams) {
+export async function handleSonarQubeGetMetrics(
+  params: PaginationParams,
+  client: ISonarQubeClient = defaultClient
+) {
   const result = await client.getMetrics(params);
 
   // Create a properly structured response matching the expected format
@@ -203,9 +227,10 @@ export async function handleSonarQubeGetMetrics(params: PaginationParams) {
 
 /**
  * Handler for getting SonarQube system health status
+ * @param client Optional SonarQube client instance
  * @returns Promise with the health status result
  */
-export async function handleSonarQubeGetHealth() {
+export async function handleSonarQubeGetHealth(client: ISonarQubeClient = defaultClient) {
   const result = await client.getHealth();
 
   return {
@@ -220,9 +245,10 @@ export async function handleSonarQubeGetHealth() {
 
 /**
  * Handler for getting SonarQube system status
+ * @param client Optional SonarQube client instance
  * @returns Promise with the system status result
  */
-export async function handleSonarQubeGetStatus() {
+export async function handleSonarQubeGetStatus(client: ISonarQubeClient = defaultClient) {
   const result = await client.getStatus();
 
   return {
@@ -237,9 +263,10 @@ export async function handleSonarQubeGetStatus() {
 
 /**
  * Handler for pinging SonarQube system
+ * @param client Optional SonarQube client instance
  * @returns Promise with the ping result
  */
-export async function handleSonarQubePing() {
+export async function handleSonarQubePing(client: ISonarQubeClient = defaultClient) {
   const result = await client.ping();
 
   return {
@@ -255,9 +282,13 @@ export async function handleSonarQubePing() {
 /**
  * Handler for getting measures for a specific component
  * @param params Parameters for the component measures request
+ * @param client Optional SonarQube client instance
  * @returns Promise with the component measures result
  */
-export async function handleSonarQubeComponentMeasures(params: ComponentMeasuresParams) {
+export async function handleSonarQubeComponentMeasures(
+  params: ComponentMeasuresParams,
+  client: ISonarQubeClient = defaultClient
+) {
   const result = await client.getComponentMeasures(params);
 
   return {
@@ -273,9 +304,13 @@ export async function handleSonarQubeComponentMeasures(params: ComponentMeasures
 /**
  * Handler for getting measures for multiple components
  * @param params Parameters for the components measures request
+ * @param client Optional SonarQube client instance
  * @returns Promise with the components measures result
  */
-export async function handleSonarQubeComponentsMeasures(params: ComponentsMeasuresParams) {
+export async function handleSonarQubeComponentsMeasures(
+  params: ComponentsMeasuresParams,
+  client: ISonarQubeClient = defaultClient
+) {
   const result = await client.getComponentsMeasures(params);
 
   return {
@@ -291,9 +326,13 @@ export async function handleSonarQubeComponentsMeasures(params: ComponentsMeasur
 /**
  * Handler for getting measures history for a component
  * @param params Parameters for the measures history request
+ * @param client Optional SonarQube client instance
  * @returns Promise with the measures history result
  */
-export async function handleSonarQubeMeasuresHistory(params: MeasuresHistoryParams) {
+export async function handleSonarQubeMeasuresHistory(
+  params: MeasuresHistoryParams,
+  client: ISonarQubeClient = defaultClient
+) {
   const result = await client.getMeasuresHistory(params);
 
   return {
@@ -436,6 +475,17 @@ export const measuresHistoryHandler = async (params: Record<string, unknown>) =>
   });
 };
 
+// Wrapper functions for MCP registration that don't expose the client parameter
+const projectsMcpHandler = (params: any) => projectsHandler(params);
+const metricsMcpHandler = (params: any) => metricsHandler(params);
+const issuesMcpHandler = (params: any) => issuesHandler(params);
+const healthMcpHandler = () => healthHandler();
+const statusMcpHandler = () => statusHandler();
+const pingMcpHandler = () => pingHandler();
+const componentMeasuresMcpHandler = (params: any) => componentMeasuresHandler(params);
+const componentsMeasuresMcpHandler = (params: any) => componentsMeasuresHandler(params);
+const measuresHistoryMcpHandler = (params: any) => measuresHistoryHandler(params);
+
 // Register SonarQube tools
 mcpServer.tool(
   'projects',
@@ -450,7 +500,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  projectsHandler
+  projectsMcpHandler
 );
 
 mcpServer.tool(
@@ -466,7 +516,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  metricsHandler
+  metricsMcpHandler
 );
 
 mcpServer.tool(
@@ -517,7 +567,7 @@ mcpServer.tool(
       .nullable()
       .optional(),
   },
-  issuesHandler
+  issuesMcpHandler
 );
 
 // Register system API tools
@@ -525,12 +575,17 @@ mcpServer.tool(
   'system_health',
   'Get the health status of the SonarQube instance',
   {},
-  healthHandler
+  healthMcpHandler
 );
 
-mcpServer.tool('system_status', 'Get the status of the SonarQube instance', {}, statusHandler);
+mcpServer.tool('system_status', 'Get the status of the SonarQube instance', {}, statusMcpHandler);
 
-mcpServer.tool('system_ping', 'Ping the SonarQube instance to check if it is up', {}, pingHandler);
+mcpServer.tool(
+  'system_ping',
+  'Ping the SonarQube instance to check if it is up',
+  {},
+  pingMcpHandler
+);
 
 // Register measures API tools
 mcpServer.tool(
@@ -544,7 +599,7 @@ mcpServer.tool(
     pull_request: z.string().optional(),
     period: z.string().optional(),
   },
-  componentMeasuresHandler
+  componentMeasuresMcpHandler
 );
 
 mcpServer.tool(
@@ -566,7 +621,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  componentsMeasuresHandler
+  componentsMeasuresMcpHandler
 );
 
 mcpServer.tool(
@@ -588,7 +643,7 @@ mcpServer.tool(
       .optional()
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
-  measuresHistoryHandler
+  measuresHistoryMcpHandler
 );
 
 // Only start the server if not in test mode

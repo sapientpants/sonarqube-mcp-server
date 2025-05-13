@@ -1,4 +1,4 @@
-import { apiGet } from './api.js';
+import { HttpClient, AxiosHttpClient } from './api.js';
 
 /**
  * Interface for pagination parameters
@@ -405,23 +405,48 @@ export interface SonarQubeSystemStatus {
 }
 
 /**
+ * Interface for SonarQube client
+ */
+export interface ISonarQubeClient {
+  listProjects(params?: PaginationParams): Promise<SonarQubeProjectsResult>;
+  getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult>;
+  getMetrics(params?: PaginationParams): Promise<SonarQubeMetricsResult>;
+  getHealth(): Promise<SonarQubeHealthStatus>;
+  getStatus(): Promise<SonarQubeSystemStatus>;
+  ping(): Promise<string>;
+  getComponentMeasures(params: ComponentMeasuresParams): Promise<SonarQubeComponentMeasuresResult>;
+  getComponentsMeasures(
+    params: ComponentsMeasuresParams
+  ): Promise<SonarQubeComponentsMeasuresResult>;
+  getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult>;
+}
+
+/**
  * SonarQube client for interacting with the SonarQube API
  */
-export class SonarQubeClient {
+export class SonarQubeClient implements ISonarQubeClient {
   private readonly baseUrl: string;
   private readonly auth: { username: string; password: string };
   private readonly organization: string | null;
+  private readonly httpClient: HttpClient;
 
   /**
    * Creates a new SonarQube client
    * @param token SonarQube authentication token
    * @param baseUrl Base URL of the SonarQube instance (default: https://sonarcloud.io)
    * @param organization Organization name
+   * @param httpClient HTTP client implementation (optional)
    */
-  constructor(token: string, baseUrl = 'https://sonarcloud.io', organization?: string | null) {
+  constructor(
+    token: string,
+    baseUrl = 'https://sonarcloud.io',
+    organization?: string | null,
+    httpClient?: HttpClient
+  ) {
     this.baseUrl = baseUrl;
     this.auth = { username: token, password: '' };
     this.organization = organization ?? null;
+    this.httpClient = httpClient ?? new AxiosHttpClient();
   }
 
   /**
@@ -438,7 +463,7 @@ export class SonarQubeClient {
       ps: pageSize,
     };
 
-    const response = await apiGet<{
+    const response = await this.httpClient.get<{
       components: SonarQubeApiComponent[];
       paging: { pageIndex: number; pageSize: number; total: number };
     }>(this.baseUrl, this.auth, '/api/projects/search', queryParams);
@@ -527,7 +552,7 @@ export class SonarQubeClient {
       hotspots,
     };
 
-    return apiGet<SonarQubeIssuesResult>(
+    return this.httpClient.get<SonarQubeIssuesResult>(
       this.baseUrl,
       this.auth,
       '/api/issues/search',
@@ -549,7 +574,7 @@ export class SonarQubeClient {
       ps: pageSize,
     };
 
-    const response = await apiGet<{
+    const response = await this.httpClient.get<{
       metrics: SonarQubeMetric[];
       paging: { pageIndex: number; pageSize: number; total: number };
     }>(this.baseUrl, this.auth, '/api/metrics/search', queryParams);
@@ -565,7 +590,11 @@ export class SonarQubeClient {
    * @returns Promise with the health status
    */
   async getHealth(): Promise<SonarQubeHealthStatus> {
-    return apiGet<SonarQubeHealthStatus>(this.baseUrl, this.auth, '/api/system/health');
+    return this.httpClient.get<SonarQubeHealthStatus>(
+      this.baseUrl,
+      this.auth,
+      '/api/system/health'
+    );
   }
 
   /**
@@ -573,7 +602,11 @@ export class SonarQubeClient {
    * @returns Promise with the system status
    */
   async getStatus(): Promise<SonarQubeSystemStatus> {
-    return apiGet<SonarQubeSystemStatus>(this.baseUrl, this.auth, '/api/system/status');
+    return this.httpClient.get<SonarQubeSystemStatus>(
+      this.baseUrl,
+      this.auth,
+      '/api/system/status'
+    );
   }
 
   /**
@@ -581,7 +614,7 @@ export class SonarQubeClient {
    * @returns Promise with the ping response
    */
   async ping(): Promise<string> {
-    return apiGet<string>(this.baseUrl, this.auth, '/api/system/ping');
+    return this.httpClient.get<string>(this.baseUrl, this.auth, '/api/system/ping');
   }
 
   /**
@@ -604,7 +637,7 @@ export class SonarQubeClient {
       organization: this.organization,
     };
 
-    return apiGet<SonarQubeComponentMeasuresResult>(
+    return this.httpClient.get<SonarQubeComponentMeasuresResult>(
       this.baseUrl,
       this.auth,
       '/api/measures/component',
@@ -643,7 +676,7 @@ export class SonarQubeClient {
       organization: this.organization,
     };
 
-    return apiGet<SonarQubeComponentsMeasuresResult>(
+    return this.httpClient.get<SonarQubeComponentsMeasuresResult>(
       this.baseUrl,
       this.auth,
       '/api/measures/components',
@@ -671,11 +704,28 @@ export class SonarQubeClient {
       organization: this.organization,
     };
 
-    return apiGet<SonarQubeMeasuresHistoryResult>(
+    return this.httpClient.get<SonarQubeMeasuresHistoryResult>(
       this.baseUrl,
       this.auth,
       '/api/measures/search_history',
       queryParams
     );
   }
+}
+
+/**
+ * Factory function to create a SonarQube client
+ * @param token SonarQube authentication token
+ * @param baseUrl Base URL of the SonarQube instance
+ * @param organization Organization name
+ * @param httpClient HTTP client implementation
+ * @returns A new SonarQube client instance
+ */
+export function createSonarQubeClient(
+  token: string,
+  baseUrl?: string,
+  organization?: string | null,
+  httpClient?: HttpClient
+): ISonarQubeClient {
+  return new SonarQubeClient(token, baseUrl, organization, httpClient);
 }
