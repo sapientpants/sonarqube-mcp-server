@@ -10,6 +10,7 @@ import {
   ComponentMeasuresParams,
   ComponentsMeasuresParams,
   MeasuresHistoryParams,
+  ProjectQualityGateParams,
   createSonarQubeClient,
 } from './sonarqube.js';
 import { AxiosHttpClient } from './api.js';
@@ -345,6 +346,68 @@ export async function handleSonarQubeMeasuresHistory(
   };
 }
 
+/**
+ * Handler for listing quality gates
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the list of quality gates
+ */
+export async function handleSonarQubeListQualityGates(client: ISonarQubeClient = defaultClient) {
+  const result = await client.listQualityGates();
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting quality gate details
+ * @param params Parameters for the quality gate request
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the quality gate details
+ */
+export async function handleSonarQubeGetQualityGate(
+  params: { id: string },
+  client: ISonarQubeClient = defaultClient
+) {
+  const result = await client.getQualityGate(params.id);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting project quality gate status
+ * @param params Parameters for the project quality gate status request
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the project quality gate status
+ */
+export async function handleSonarQubeProjectQualityGateStatus(
+  params: ProjectQualityGateParams,
+  client: ISonarQubeClient = defaultClient
+) {
+  const result = await client.getProjectQualityGateStatus(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
 // Define SonarQube severity schema for validation
 const severitySchema = z
   .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
@@ -475,6 +538,31 @@ export const measuresHistoryHandler = async (params: Record<string, unknown>) =>
   });
 };
 
+/**
+ * Lambda function for quality_gates tool
+ */
+export const qualityGatesHandler = handleSonarQubeListQualityGates;
+
+/**
+ * Lambda function for quality_gate tool
+ */
+export const qualityGateHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeGetQualityGate({
+    id: params.id as string,
+  });
+};
+
+/**
+ * Lambda function for project_quality_gate_status tool
+ */
+export const projectQualityGateStatusHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeProjectQualityGateStatus({
+    projectKey: params.project_key as string,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+  });
+};
+
 // Wrapper functions for MCP registration that don't expose the client parameter
 const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
 const metricsMcpHandler = (params: Record<string, unknown>) =>
@@ -489,6 +577,10 @@ const componentsMeasuresMcpHandler = (params: Record<string, unknown>) =>
   componentsMeasuresHandler(params);
 const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
   measuresHistoryHandler(params);
+const qualityGatesMcpHandler = () => qualityGatesHandler();
+const qualityGateMcpHandler = (params: Record<string, unknown>) => qualityGateHandler(params);
+const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
+  projectQualityGateStatusHandler(params);
 
 // Register SonarQube tools
 mcpServer.tool(
@@ -648,6 +740,34 @@ mcpServer.tool(
       .transform((val) => (val ? parseInt(val, 10) || null : null)),
   },
   measuresHistoryMcpHandler
+);
+
+// Register Quality Gates API tools
+mcpServer.tool(
+  'quality_gates',
+  'List available quality gates',
+  {},
+  qualityGatesMcpHandler
+);
+
+mcpServer.tool(
+  'quality_gate',
+  'Get quality gate conditions',
+  {
+    id: z.string(),
+  },
+  qualityGateMcpHandler
+);
+
+mcpServer.tool(
+  'project_quality_gate_status',
+  'Get project quality gate status',
+  {
+    project_key: z.string(),
+    branch: z.string().optional(),
+    pull_request: z.string().optional(),
+  },
+  projectQualityGateStatusMcpHandler
 );
 
 // Only start the server if not in test mode
