@@ -483,11 +483,13 @@ export interface ISonarQubeClient {
     params: ComponentsMeasuresParams
   ): Promise<SonarQubeComponentsMeasuresResult>;
   getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult>;
-  
+
   // Quality Gates API methods
   listQualityGates(): Promise<SonarQubeQualityGatesResult>;
   getQualityGate(id: string): Promise<SonarQubeQualityGate>;
-  getProjectQualityGateStatus(params: ProjectQualityGateParams): Promise<SonarQubeQualityGateStatus>;
+  getProjectQualityGateStatus(
+    params: ProjectQualityGateParams
+  ): Promise<SonarQubeQualityGateStatus>;
 }
 
 /**

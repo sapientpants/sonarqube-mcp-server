@@ -743,12 +743,7 @@ mcpServer.tool(
 );
 
 // Register Quality Gates API tools
-mcpServer.tool(
-  'quality_gates',
-  'List available quality gates',
-  {},
-  qualityGatesMcpHandler
-);
+mcpServer.tool('quality_gates', 'List available quality gates', {}, qualityGatesMcpHandler);
 
 mcpServer.tool(
   'quality_gate',
