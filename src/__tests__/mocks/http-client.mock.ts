@@ -6,8 +6,8 @@ import { HttpClient } from '../../api.js';
  */
 export class MockHttpClient implements HttpClient {
   constructor(
-    private readonly getMock = jest.fn(),
-    private readonly postMock = jest.fn()
+    private readonly getMock: jest.Mock = jest.fn(),
+    private readonly postMock: jest.Mock = jest.fn()
   ) {}
 
   /**
@@ -206,7 +206,6 @@ export class MockHttpClient implements HttpClient {
    * @param response The mock response to return
    */
   mockGetEndpoint(endpoint: string, response: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     this.getMock.mockImplementation((baseUrl, auth, reqEndpoint, _params) => {
       if (reqEndpoint === endpoint) {
         return Promise.resolve(response);

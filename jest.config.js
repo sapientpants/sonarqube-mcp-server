@@ -27,6 +27,7 @@ export default {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/*.test.ts',
+    '!src/__tests__/mocks/**/*.ts',
   ],
   coverageReporters: ['text', 'lcov'],
   testPathIgnorePatterns: [

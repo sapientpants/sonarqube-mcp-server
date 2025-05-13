@@ -21,15 +21,15 @@ import {
  */
 export class MockSonarQubeClient implements ISonarQubeClient {
   // Mock implementations for each client method
-  listProjectsMock = jest.fn();
-  getIssuesMock = jest.fn();
-  getMetricsMock = jest.fn();
-  getHealthMock = jest.fn();
-  getStatusMock = jest.fn();
-  pingMock = jest.fn();
-  getComponentMeasuresMock = jest.fn();
-  getComponentsMeasuresMock = jest.fn();
-  getMeasuresHistoryMock = jest.fn();
+  listProjectsMock: jest.Mock = jest.fn();
+  getIssuesMock: jest.Mock = jest.fn();
+  getMetricsMock: jest.Mock = jest.fn();
+  getHealthMock: jest.Mock = jest.fn();
+  getStatusMock: jest.Mock = jest.fn();
+  pingMock: jest.Mock = jest.fn();
+  getComponentMeasuresMock: jest.Mock = jest.fn();
+  getComponentsMeasuresMock: jest.Mock = jest.fn();
+  getMeasuresHistoryMock: jest.Mock = jest.fn();
 
   constructor() {
     this.setupDefaultMocks();
@@ -37,43 +37,43 @@ export class MockSonarQubeClient implements ISonarQubeClient {
 
   // ISonarQubeClient implementation that delegates to the mocks
   async listProjects(params?: PaginationParams): Promise<SonarQubeProjectsResult> {
-    return this.listProjectsMock(params);
+    return this.listProjectsMock(params) as Promise<SonarQubeProjectsResult>;
   }
 
   async getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult> {
-    return this.getIssuesMock(params);
+    return this.getIssuesMock(params) as Promise<SonarQubeIssuesResult>;
   }
 
   async getMetrics(params?: PaginationParams): Promise<SonarQubeMetricsResult> {
-    return this.getMetricsMock(params);
+    return this.getMetricsMock(params) as Promise<SonarQubeMetricsResult>;
   }
 
   async getHealth(): Promise<SonarQubeHealthStatus> {
-    return this.getHealthMock();
+    return this.getHealthMock() as Promise<SonarQubeHealthStatus>;
   }
 
   async getStatus(): Promise<SonarQubeSystemStatus> {
-    return this.getStatusMock();
+    return this.getStatusMock() as Promise<SonarQubeSystemStatus>;
   }
 
   async ping(): Promise<string> {
-    return this.pingMock();
+    return this.pingMock() as Promise<string>;
   }
 
   async getComponentMeasures(
     params: ComponentMeasuresParams
   ): Promise<SonarQubeComponentMeasuresResult> {
-    return this.getComponentMeasuresMock(params);
+    return this.getComponentMeasuresMock(params) as Promise<SonarQubeComponentMeasuresResult>;
   }
 
   async getComponentsMeasures(
     params: ComponentsMeasuresParams
   ): Promise<SonarQubeComponentsMeasuresResult> {
-    return this.getComponentsMeasuresMock(params);
+    return this.getComponentsMeasuresMock(params) as Promise<SonarQubeComponentsMeasuresResult>;
   }
 
   async getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult> {
-    return this.getMeasuresHistoryMock(params);
+    return this.getMeasuresHistoryMock(params) as Promise<SonarQubeMeasuresHistoryResult>;
   }
 
   // Reset all mocks
@@ -95,113 +95,94 @@ export class MockSonarQubeClient implements ISonarQubeClient {
   // Setup default mock implementations for all methods
   private setupDefaultMocks() {
     // List projects
-    this.listProjectsMock.mockResolvedValue({
-      projects: [
-        {
-          key: 'test-project',
-          name: 'Test Project',
-          qualifier: 'TRK',
-          visibility: 'public',
-          lastAnalysisDate: '2023-01-01',
-          revision: 'abc123',
-          managed: false,
-        },
-      ],
-      paging: { pageIndex: 1, pageSize: 10, total: 1 },
-    });
-
-    // Get issues
-    this.getIssuesMock.mockResolvedValue({
-      issues: [
-        {
-          key: 'issue1',
-          rule: 'rule1',
-          severity: 'MAJOR',
-          component: 'comp1',
-          project: 'proj1',
-          line: 1,
-          status: 'OPEN',
-          message: 'Test issue',
-          tags: [],
-          creationDate: '2023-01-01',
-          updateDate: '2023-01-01',
-        },
-      ],
-      components: [],
-      rules: [],
-      paging: { pageIndex: 1, pageSize: 10, total: 1 },
-    });
-
-    // Get metrics
-    this.getMetricsMock.mockResolvedValue({
-      metrics: [
-        {
-          id: '1',
-          key: 'coverage',
-          name: 'Coverage',
-          description: 'Test coverage',
-          domain: 'Coverage',
-          type: 'PERCENT',
-          direction: 1,
-          qualitative: true,
-          hidden: false,
-          custom: false,
-        },
-      ],
-      paging: { pageIndex: 1, pageSize: 10, total: 1 },
-    });
-
-    // Get health
-    this.getHealthMock.mockResolvedValue({
-      health: 'GREEN',
-      causes: [],
-    });
-
-    // Get status
-    this.getStatusMock.mockResolvedValue({
-      id: 'test-id',
-      version: '10.3.0.82913',
-      status: 'UP',
-    });
-
-    // Ping
-    this.pingMock.mockResolvedValue('pong');
-
-    // Get component measures
-    this.getComponentMeasuresMock.mockResolvedValue({
-      component: {
-        key: 'test-component',
-        name: 'Test Component',
-        qualifier: 'TRK',
-        measures: [
+    this.listProjectsMock.mockImplementation(() =>
+      Promise.resolve({
+        projects: [
           {
-            metric: 'coverage',
-            value: '85.4',
+            key: 'test-project',
+            name: 'Test Project',
+            qualifier: 'TRK',
+            visibility: 'public',
+            lastAnalysisDate: '2023-01-01',
+            revision: 'abc123',
+            managed: false,
           },
         ],
-      },
-      metrics: [
-        {
-          id: '1',
-          key: 'coverage',
-          name: 'Coverage',
-          description: 'Test coverage percentage',
-          domain: 'Coverage',
-          type: 'PERCENT',
-          direction: 1,
-          qualitative: true,
-          hidden: false,
-          custom: false,
-        },
-      ],
-    });
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      } as SonarQubeProjectsResult)
+    );
 
-    // Get components measures
-    this.getComponentsMeasuresMock.mockResolvedValue({
-      components: [
-        {
-          key: 'test-component-1',
-          name: 'Test Component 1',
+    // Get issues
+    this.getIssuesMock.mockImplementation(() =>
+      Promise.resolve({
+        issues: [
+          {
+            key: 'issue1',
+            rule: 'rule1',
+            severity: 'MAJOR',
+            component: 'comp1',
+            project: 'proj1',
+            line: 1,
+            status: 'OPEN',
+            message: 'Test issue',
+            tags: [],
+            creationDate: '2023-01-01',
+            updateDate: '2023-01-01',
+          },
+        ],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      } as SonarQubeIssuesResult)
+    );
+
+    // Get metrics
+    this.getMetricsMock.mockImplementation(() =>
+      Promise.resolve({
+        metrics: [
+          {
+            id: '1',
+            key: 'coverage',
+            name: 'Coverage',
+            description: 'Test coverage',
+            domain: 'Coverage',
+            type: 'PERCENT',
+            direction: 1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      } as SonarQubeMetricsResult)
+    );
+
+    // Get health
+    this.getHealthMock.mockImplementation(() =>
+      Promise.resolve({
+        health: 'GREEN',
+        causes: [],
+      } as SonarQubeHealthStatus)
+    );
+
+    // Get status
+    this.getStatusMock.mockImplementation(() =>
+      Promise.resolve({
+        id: 'test-id',
+        version: '10.3.0.82913',
+        status: 'UP',
+      } as SonarQubeSystemStatus)
+    );
+
+    // Ping
+    this.pingMock.mockImplementation(() => Promise.resolve('pong'));
+
+    // Get component measures
+    this.getComponentMeasuresMock.mockImplementation(() =>
+      Promise.resolve({
+        component: {
+          key: 'test-component',
+          name: 'Test Component',
           qualifier: 'TRK',
           measures: [
             {
@@ -210,38 +191,73 @@ export class MockSonarQubeClient implements ISonarQubeClient {
             },
           ],
         },
-      ],
-      metrics: [
-        {
-          id: '1',
-          key: 'coverage',
-          name: 'Coverage',
-          description: 'Test coverage percentage',
-          domain: 'Coverage',
-          type: 'PERCENT',
-          direction: 1,
-          qualitative: true,
-          hidden: false,
-          custom: false,
-        },
-      ],
-      paging: { pageIndex: 1, pageSize: 10, total: 1 },
-    });
+        metrics: [
+          {
+            id: '1',
+            key: 'coverage',
+            name: 'Coverage',
+            description: 'Test coverage percentage',
+            domain: 'Coverage',
+            type: 'PERCENT',
+            direction: 1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+      } as SonarQubeComponentMeasuresResult)
+    );
+
+    // Get components measures
+    this.getComponentsMeasuresMock.mockImplementation(() =>
+      Promise.resolve({
+        components: [
+          {
+            key: 'test-component-1',
+            name: 'Test Component 1',
+            qualifier: 'TRK',
+            measures: [
+              {
+                metric: 'coverage',
+                value: '85.4',
+              },
+            ],
+          },
+        ],
+        metrics: [
+          {
+            id: '1',
+            key: 'coverage',
+            name: 'Coverage',
+            description: 'Test coverage percentage',
+            domain: 'Coverage',
+            type: 'PERCENT',
+            direction: 1,
+            qualitative: true,
+            hidden: false,
+            custom: false,
+          },
+        ],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      } as SonarQubeComponentsMeasuresResult)
+    );
 
     // Get measures history
-    this.getMeasuresHistoryMock.mockResolvedValue({
-      measures: [
-        {
-          metric: 'coverage',
-          history: [
-            {
-              date: '2023-01-01',
-              value: '85.4',
-            },
-          ],
-        },
-      ],
-      paging: { pageIndex: 1, pageSize: 10, total: 1 },
-    });
+    this.getMeasuresHistoryMock.mockImplementation(() =>
+      Promise.resolve({
+        measures: [
+          {
+            metric: 'coverage',
+            history: [
+              {
+                date: '2023-01-01',
+                value: '85.4',
+              },
+            ],
+          },
+        ],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      } as SonarQubeMeasuresHistoryResult)
+    );
   }
 }

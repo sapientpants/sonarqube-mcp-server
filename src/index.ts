@@ -476,15 +476,19 @@ export const measuresHistoryHandler = async (params: Record<string, unknown>) =>
 };
 
 // Wrapper functions for MCP registration that don't expose the client parameter
-const projectsMcpHandler = (params: any) => projectsHandler(params);
-const metricsMcpHandler = (params: any) => metricsHandler(params);
-const issuesMcpHandler = (params: any) => issuesHandler(params);
+const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
+const metricsMcpHandler = (params: Record<string, unknown>) =>
+  metricsHandler(params as { page: number | null; page_size: number | null });
+const issuesMcpHandler = (params: Record<string, unknown>) => issuesHandler(params);
 const healthMcpHandler = () => healthHandler();
 const statusMcpHandler = () => statusHandler();
 const pingMcpHandler = () => pingHandler();
-const componentMeasuresMcpHandler = (params: any) => componentMeasuresHandler(params);
-const componentsMeasuresMcpHandler = (params: any) => componentsMeasuresHandler(params);
-const measuresHistoryMcpHandler = (params: any) => measuresHistoryHandler(params);
+const componentMeasuresMcpHandler = (params: Record<string, unknown>) =>
+  componentMeasuresHandler(params);
+const componentsMeasuresMcpHandler = (params: Record<string, unknown>) =>
+  componentsMeasuresHandler(params);
+const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
+  measuresHistoryHandler(params);
 
 // Register SonarQube tools
 mcpServer.tool(
