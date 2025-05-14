@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/sapientpants-sonarqube-mcp-server-badge.png)](https://mseep.ai/app/sapientpants-sonarqube-mcp-server)
+
 # SonarQube MCP Server
 
 [![CI](https://github.com/sapientpants/sonarqube-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/sapientpants/sonarqube-mcp-server/actions/workflows/ci.yml)
