@@ -4,9 +4,12 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 /**
- * Type alias for parameter record types
+ * Type alias for query parameter types
  */
-export type ParamRecord = Record<string, string | number | boolean | string[] | undefined | null>;
+export type QueryParameters = Record<
+  string,
+  string | number | boolean | string[] | undefined | null
+>;
 
 /**
  * Type alias for authentication credentials
@@ -21,7 +24,7 @@ export interface HttpClient {
     baseUrl: string,
     auth: AuthCredentials,
     endpoint: string,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T>;
 
   post<T>(
@@ -29,7 +32,7 @@ export interface HttpClient {
     auth: AuthCredentials,
     endpoint: string,
     data: Record<string, unknown>,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T>;
 }
 
@@ -49,7 +52,7 @@ export class AxiosHttpClient implements HttpClient {
     baseUrl: string,
     auth: AuthCredentials,
     endpoint: string,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T> {
     const config: AxiosRequestConfig = {
       auth,
@@ -74,7 +77,7 @@ export class AxiosHttpClient implements HttpClient {
     auth: AuthCredentials,
     endpoint: string,
     data: Record<string, unknown>,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T> {
     const config: AxiosRequestConfig = {
       auth,
@@ -87,40 +90,4 @@ export class AxiosHttpClient implements HttpClient {
 }
 
 // Export a default instance for backward compatibility
-const defaultHttpClient = new AxiosHttpClient();
-
-/**
- * Makes a GET request to the SonarQube API
- * @param baseUrl The base URL of the SonarQube instance
- * @param auth The authentication credentials
- * @param endpoint The API endpoint to call
- * @param params The query parameters to include
- * @returns Promise with the API response data
- */
-export async function apiGet<T>(
-  baseUrl: string,
-  auth: AuthCredentials,
-  endpoint: string,
-  params?: ParamRecord
-): Promise<T> {
-  return defaultHttpClient.get<T>(baseUrl, auth, endpoint, params);
-}
-
-/**
- * Makes a POST request to the SonarQube API
- * @param baseUrl The base URL of the SonarQube instance
- * @param auth The authentication credentials
- * @param endpoint The API endpoint to call
- * @param data The request body data
- * @param params The query parameters to include
- * @returns Promise with the API response data
- */
-export async function apiPost<T>(
-  baseUrl: string,
-  auth: AuthCredentials,
-  endpoint: string,
-  data: Record<string, unknown>,
-  params?: ParamRecord
-): Promise<T> {
-  return defaultHttpClient.post<T>(baseUrl, auth, endpoint, data, params);
-}
+export const defaultHttpClient = new AxiosHttpClient();

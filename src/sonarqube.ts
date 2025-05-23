@@ -1,6 +1,20 @@
 import { HttpClient, AxiosHttpClient } from './api.js';
 
 /**
+ * Default SonarQube URL
+ */
+const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
+
+/**
+ * Helper function to convert array to comma-separated string
+ * @param value Array of strings or undefined
+ * @returns Comma-separated string or undefined
+ */
+function arrayToCommaSeparated(value: string[] | undefined): string | undefined {
+  return value?.join(',');
+}
+
+/**
  * Interface for pagination parameters
  */
 export interface PaginationParams {
@@ -264,19 +278,6 @@ export interface MeasuresHistoryParams extends PaginationParams {
   to?: string;
   branch?: string;
   pullRequest?: string;
-}
-
-/**
- * Interface for raw SonarQube component as returned by the API
- */
-interface SonarQubeApiComponent {
-  key: string;
-  name: string;
-  qualifier: string;
-  visibility: string;
-  lastAnalysisDate?: string;
-  revision?: string;
-  managed?: boolean;
 }
 
 /**
@@ -603,7 +604,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   constructor(
     token: string,
-    baseUrl = 'https://sonarcloud.io',
+    baseUrl = DEFAULT_SONARQUBE_URL,
     organization?: string | null,
     httpClient?: HttpClient
   ) {
@@ -628,13 +629,13 @@ export class SonarQubeClient implements ISonarQubeClient {
     };
 
     const response = await this.httpClient.get<{
-      components: SonarQubeApiComponent[];
+      components: SonarQubeProject[];
       paging: { pageIndex: number; pageSize: number; total: number };
     }>(this.baseUrl, this.auth, '/api/projects/search', queryParams);
 
     // Transform SonarQube 'components' to our clean 'projects' interface
     return {
-      projects: response.components.map((component: SonarQubeApiComponent) => ({
+      projects: response.components.map((component: SonarQubeProject) => ({
         key: component.key,
         name: component.name,
         qualifier: component.qualifier,
@@ -691,25 +692,25 @@ export class SonarQubeClient implements ISonarQubeClient {
       organization: this.organization,
       p: page,
       ps: pageSize,
-      statuses: statuses?.join(','),
-      resolutions: resolutions?.join(','),
+      statuses: arrayToCommaSeparated(statuses),
+      resolutions: arrayToCommaSeparated(resolutions),
       resolved,
-      types: types?.join(','),
-      rules: rules?.join(','),
-      tags: tags?.join(','),
+      types: arrayToCommaSeparated(types),
+      rules: arrayToCommaSeparated(rules),
+      tags: arrayToCommaSeparated(tags),
       createdAfter,
       createdBefore,
       createdAt,
       createdInLast,
-      assignees: assignees?.join(','),
-      authors: authors?.join(','),
-      cwe: cwe?.join(','),
-      languages: languages?.join(','),
-      owaspTop10: owaspTop10?.join(','),
-      sansTop25: sansTop25?.join(','),
-      sonarsourceSecurity: sonarsourceSecurity?.join(','),
+      assignees: arrayToCommaSeparated(assignees),
+      authors: arrayToCommaSeparated(authors),
+      cwe: arrayToCommaSeparated(cwe),
+      languages: arrayToCommaSeparated(languages),
+      owaspTop10: arrayToCommaSeparated(owaspTop10),
+      sansTop25: arrayToCommaSeparated(sansTop25),
+      sonarsourceSecurity: arrayToCommaSeparated(sonarsourceSecurity),
       onComponentOnly,
-      facets: facets?.join(','),
+      facets: arrayToCommaSeparated(facets),
       sinceLeakPeriod,
       inNewCodePeriod,
       pullRequest,
@@ -794,7 +795,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const queryParams = {
       component,
       metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-      additionalFields: additionalFields?.join(','),
+      additionalFields: arrayToCommaSeparated(additionalFields),
       branch,
       pullRequest,
       period,
@@ -831,7 +832,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const queryParams = {
       componentKeys: Array.isArray(componentKeys) ? componentKeys.join(',') : componentKeys,
       metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-      additionalFields: additionalFields?.join(','),
+      additionalFields: arrayToCommaSeparated(additionalFields),
       branch,
       pullRequest,
       period,
@@ -996,8 +997,10 @@ export class SonarQubeClient implements ISonarQubeClient {
           component: sources.component,
           sources: sourceLines,
         };
-      } catch {
-        // If issues retrieval fails, just return the source without annotations
+      } catch (error) {
+        // Log the error for debugging but continue with source code without annotations
+        console.error('Failed to retrieve issues for source code annotation:', error);
+        // Return source code without issue annotations
         return sources;
       }
     }
