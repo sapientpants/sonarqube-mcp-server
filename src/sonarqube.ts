@@ -1,6 +1,11 @@
 import { HttpClient, AxiosHttpClient } from './api.js';
 
 /**
+ * Default SonarQube URL
+ */
+const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
+
+/**
  * Helper function to convert array to comma-separated string
  * @param value Array of strings or undefined
  * @returns Comma-separated string or undefined
@@ -612,7 +617,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   constructor(
     token: string,
-    baseUrl = 'https://sonarcloud.io',
+    baseUrl = DEFAULT_SONARQUBE_URL,
     organization?: string | null,
     httpClient?: HttpClient
   ) {

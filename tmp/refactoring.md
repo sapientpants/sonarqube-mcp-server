@@ -21,11 +21,12 @@ This document tracks the refactoring tasks to improve code structure, readabilit
 ### 2. SonarQube Client Refactoring
 
 #### Task 2.1: Extract parameter transformation helper (sonarqube.ts)
-- [ ] Create `arrayToCommaSeparated` helper function
-- [ ] Apply to repeated patterns in:
+- [x] Create `arrayToCommaSeparated` helper function
+- [x] Apply to repeated patterns in:
   - getIssues (lines 624-717)
   - getMeasuresComponent (lines 796-841)
   - getMeasuresComponents (lines 859-869)
+- **Completed**: Created helper function and applied to all array?.join(',') patterns
 
 #### Task 2.2: Extract API URL constant (sonarqube.ts:606)
 - [ ] Replace magic string 'https://sonarcloud.io' with `DEFAULT_SONARQUBE_URL` constant
