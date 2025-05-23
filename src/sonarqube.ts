@@ -1010,8 +1010,10 @@ export class SonarQubeClient implements ISonarQubeClient {
           component: sources.component,
           sources: sourceLines,
         };
-      } catch {
-        // If issues retrieval fails, just return the source without annotations
+      } catch (error) {
+        // Log the error for debugging but continue with source code without annotations
+        console.error('Failed to retrieve issues for source code annotation:', error);
+        // Return source code without issue annotations
         return sources;
       }
     }

@@ -29,7 +29,8 @@ This document tracks the refactoring tasks to improve code structure, readabilit
 - **Completed**: Created helper function and applied to all array?.join(',') patterns
 
 #### Task 2.2: Extract API URL constant (sonarqube.ts:606)
-- [ ] Replace magic string 'https://sonarcloud.io' with `DEFAULT_SONARQUBE_URL` constant
+- [x] Replace magic string 'https://sonarcloud.io' with `DEFAULT_SONARQUBE_URL` constant
+- **Completed**: Extracted constant and updated constructor parameter default value
 
 #### Task 2.3: Improve error handling in getSourceCode (sonarqube.ts:977-1003)
 - [ ] Add proper error logging instead of silently failing
