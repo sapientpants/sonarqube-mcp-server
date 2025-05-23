@@ -14,8 +14,9 @@ This document tracks the refactoring tasks to improve code structure, readabilit
 - **Completed**: Renamed throughout api.ts
 
 #### Task 1.2: Remove redundant wrapper functions (api.ts:100-126)
-- [ ] Remove `apiGet` and `apiPost` functions that just delegate to `defaultHttpClient`
+- [x] Remove `apiGet` and `apiPost` functions that just delegate to `defaultHttpClient`
 - Update all imports to use `defaultHttpClient` directly
+- **Completed**: Removed wrapper functions and updated tests to use AxiosHttpClient directly
 
 ### 2. SonarQube Client Refactoring
 

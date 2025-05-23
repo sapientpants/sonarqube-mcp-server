@@ -1,6 +1,15 @@
 import { HttpClient, AxiosHttpClient } from './api.js';
 
 /**
+ * Helper function to convert array to comma-separated string
+ * @param value Array of strings or undefined
+ * @returns Comma-separated string or undefined
+ */
+function arrayToCommaSeparated(value: string[] | undefined): string | undefined {
+  return value?.join(',');
+}
+
+/**
  * Interface for pagination parameters
  */
 export interface PaginationParams {
@@ -691,25 +700,25 @@ export class SonarQubeClient implements ISonarQubeClient {
       organization: this.organization,
       p: page,
       ps: pageSize,
-      statuses: statuses?.join(','),
-      resolutions: resolutions?.join(','),
+      statuses: arrayToCommaSeparated(statuses),
+      resolutions: arrayToCommaSeparated(resolutions),
       resolved,
-      types: types?.join(','),
-      rules: rules?.join(','),
-      tags: tags?.join(','),
+      types: arrayToCommaSeparated(types),
+      rules: arrayToCommaSeparated(rules),
+      tags: arrayToCommaSeparated(tags),
       createdAfter,
       createdBefore,
       createdAt,
       createdInLast,
-      assignees: assignees?.join(','),
-      authors: authors?.join(','),
-      cwe: cwe?.join(','),
-      languages: languages?.join(','),
-      owaspTop10: owaspTop10?.join(','),
-      sansTop25: sansTop25?.join(','),
-      sonarsourceSecurity: sonarsourceSecurity?.join(','),
+      assignees: arrayToCommaSeparated(assignees),
+      authors: arrayToCommaSeparated(authors),
+      cwe: arrayToCommaSeparated(cwe),
+      languages: arrayToCommaSeparated(languages),
+      owaspTop10: arrayToCommaSeparated(owaspTop10),
+      sansTop25: arrayToCommaSeparated(sansTop25),
+      sonarsourceSecurity: arrayToCommaSeparated(sonarsourceSecurity),
       onComponentOnly,
-      facets: facets?.join(','),
+      facets: arrayToCommaSeparated(facets),
       sinceLeakPeriod,
       inNewCodePeriod,
       pullRequest,
@@ -794,7 +803,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const queryParams = {
       component,
       metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-      additionalFields: additionalFields?.join(','),
+      additionalFields: arrayToCommaSeparated(additionalFields),
       branch,
       pullRequest,
       period,
@@ -831,7 +840,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const queryParams = {
       componentKeys: Array.isArray(componentKeys) ? componentKeys.join(',') : componentKeys,
       metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-      additionalFields: additionalFields?.join(','),
+      additionalFields: arrayToCommaSeparated(additionalFields),
       branch,
       pullRequest,
       period,
