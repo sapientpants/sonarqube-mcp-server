@@ -4,9 +4,12 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 
 /**
- * Type alias for parameter record types
+ * Type alias for query parameter types
  */
-export type ParamRecord = Record<string, string | number | boolean | string[] | undefined | null>;
+export type QueryParameters = Record<
+  string,
+  string | number | boolean | string[] | undefined | null
+>;
 
 /**
  * Type alias for authentication credentials
@@ -21,7 +24,7 @@ export interface HttpClient {
     baseUrl: string,
     auth: AuthCredentials,
     endpoint: string,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T>;
 
   post<T>(
@@ -29,7 +32,7 @@ export interface HttpClient {
     auth: AuthCredentials,
     endpoint: string,
     data: Record<string, unknown>,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T>;
 }
 
@@ -49,7 +52,7 @@ export class AxiosHttpClient implements HttpClient {
     baseUrl: string,
     auth: AuthCredentials,
     endpoint: string,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T> {
     const config: AxiosRequestConfig = {
       auth,
@@ -74,7 +77,7 @@ export class AxiosHttpClient implements HttpClient {
     auth: AuthCredentials,
     endpoint: string,
     data: Record<string, unknown>,
-    params?: ParamRecord
+    params?: QueryParameters
   ): Promise<T> {
     const config: AxiosRequestConfig = {
       auth,
@@ -101,7 +104,7 @@ export async function apiGet<T>(
   baseUrl: string,
   auth: AuthCredentials,
   endpoint: string,
-  params?: ParamRecord
+  params?: QueryParameters
 ): Promise<T> {
   return defaultHttpClient.get<T>(baseUrl, auth, endpoint, params);
 }
@@ -120,7 +123,7 @@ export async function apiPost<T>(
   auth: AuthCredentials,
   endpoint: string,
   data: Record<string, unknown>,
-  params?: ParamRecord
+  params?: QueryParameters
 ): Promise<T> {
   return defaultHttpClient.post<T>(baseUrl, auth, endpoint, data, params);
 }
