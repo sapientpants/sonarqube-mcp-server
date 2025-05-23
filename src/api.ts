@@ -90,40 +90,4 @@ export class AxiosHttpClient implements HttpClient {
 }
 
 // Export a default instance for backward compatibility
-const defaultHttpClient = new AxiosHttpClient();
-
-/**
- * Makes a GET request to the SonarQube API
- * @param baseUrl The base URL of the SonarQube instance
- * @param auth The authentication credentials
- * @param endpoint The API endpoint to call
- * @param params The query parameters to include
- * @returns Promise with the API response data
- */
-export async function apiGet<T>(
-  baseUrl: string,
-  auth: AuthCredentials,
-  endpoint: string,
-  params?: QueryParameters
-): Promise<T> {
-  return defaultHttpClient.get<T>(baseUrl, auth, endpoint, params);
-}
-
-/**
- * Makes a POST request to the SonarQube API
- * @param baseUrl The base URL of the SonarQube instance
- * @param auth The authentication credentials
- * @param endpoint The API endpoint to call
- * @param data The request body data
- * @param params The query parameters to include
- * @returns Promise with the API response data
- */
-export async function apiPost<T>(
-  baseUrl: string,
-  auth: AuthCredentials,
-  endpoint: string,
-  data: Record<string, unknown>,
-  params?: QueryParameters
-): Promise<T> {
-  return defaultHttpClient.post<T>(baseUrl, auth, endpoint, data, params);
-}
+export const defaultHttpClient = new AxiosHttpClient();

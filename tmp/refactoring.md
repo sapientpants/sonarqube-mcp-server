@@ -8,9 +8,10 @@ This document tracks the refactoring tasks to improve code structure, readabilit
 ### 1. API Module Improvements ✅
 
 #### Task 1.1: Rename generic type alias (api.ts:9)
-- [ ] Rename `ParamRecord` to `QueryParameters` for better clarity
+- [x] Rename `ParamRecord` to `QueryParameters` for better clarity
 - Current: `export type ParamRecord = Record<string, string | number | boolean | string[] | undefined | null>;`
 - Target: `export type QueryParameters = Record<string, string | number | boolean | string[] | undefined | null>;`
+- **Completed**: Renamed throughout api.ts
 
 #### Task 1.2: Remove redundant wrapper functions (api.ts:100-126)
 - [ ] Remove `apiGet` and `apiPost` functions that just delegate to `defaultHttpClient`

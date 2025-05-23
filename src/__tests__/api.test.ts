@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import axios from 'axios';
-import { apiGet, apiPost } from '../api';
+import { AxiosHttpClient } from '../api';
 
 // Mock axios manually since jest.mock with ES modules can be problematic
 beforeEach(() => {
@@ -17,8 +17,13 @@ describe('API Module', () => {
   const baseUrl = 'https://sonarqube.example.com';
   const auth = { username: 'test-token', password: '' };
   const endpoint = '/api/test/endpoint';
+  let httpClient: AxiosHttpClient;
 
-  describe('apiGet', () => {
+  beforeEach(() => {
+    httpClient = new AxiosHttpClient();
+  });
+
+  describe('AxiosHttpClient.get', () => {
     it('should make a GET request and return data', async () => {
       const mockResponse = { data: { key: 'value' } };
 
@@ -26,7 +31,7 @@ describe('API Module', () => {
       const originalAxiosGet = axios.get;
       axios.get = jest.fn().mockResolvedValue(mockResponse);
 
-      const result = await apiGet(baseUrl, auth, endpoint);
+      const result = await httpClient.get(baseUrl, auth, endpoint);
 
       expect(axios.get).toHaveBeenCalledWith(`${baseUrl}${endpoint}`, { auth, params: undefined });
       expect(result).toEqual(mockResponse.data);
@@ -43,7 +48,7 @@ describe('API Module', () => {
       const originalAxiosGet = axios.get;
       axios.get = jest.fn().mockResolvedValue(mockResponse);
 
-      const result = await apiGet(baseUrl, auth, endpoint, params);
+      const result = await httpClient.get(baseUrl, auth, endpoint, params);
 
       expect(axios.get).toHaveBeenCalledWith(`${baseUrl}${endpoint}`, { auth, params });
       expect(result).toEqual(mockResponse.data);
@@ -60,7 +65,7 @@ describe('API Module', () => {
       const originalAxiosGet = axios.get;
       axios.get = jest.fn().mockResolvedValue(mockResponse);
 
-      const result = await apiGet(baseUrl, auth, endpoint, params);
+      const result = await httpClient.get(baseUrl, auth, endpoint, params);
 
       expect(axios.get).toHaveBeenCalledWith(`${baseUrl}${endpoint}`, { auth, params });
       expect(result).toEqual(mockResponse.data);
@@ -76,14 +81,14 @@ describe('API Module', () => {
       const originalAxiosGet = axios.get;
       axios.get = jest.fn().mockRejectedValue(new Error(errorMessage));
 
-      await expect(apiGet(baseUrl, auth, endpoint)).rejects.toThrow(errorMessage);
+      await expect(httpClient.get(baseUrl, auth, endpoint)).rejects.toThrow(errorMessage);
 
       // Restore original
       axios.get = originalAxiosGet;
     });
   });
 
-  describe('apiPost', () => {
+  describe('AxiosHttpClient.post', () => {
     it('should make a POST request and return data', async () => {
       const mockResponse = { data: { id: 123, status: 'created' } };
       const postData = { name: 'Test', value: 42 };
@@ -92,7 +97,7 @@ describe('API Module', () => {
       const originalAxiosPost = axios.post;
       axios.post = jest.fn().mockResolvedValue(mockResponse);
 
-      const result = await apiPost(baseUrl, auth, endpoint, postData);
+      const result = await httpClient.post(baseUrl, auth, endpoint, postData);
 
       expect(axios.post).toHaveBeenCalledWith(`${baseUrl}${endpoint}`, postData, {
         auth,
@@ -113,7 +118,7 @@ describe('API Module', () => {
       const originalAxiosPost = axios.post;
       axios.post = jest.fn().mockResolvedValue(mockResponse);
 
-      const result = await apiPost(baseUrl, auth, endpoint, postData, params);
+      const result = await httpClient.post(baseUrl, auth, endpoint, postData, params);
 
       expect(axios.post).toHaveBeenCalledWith(`${baseUrl}${endpoint}`, postData, { auth, params });
       expect(result).toEqual(mockResponse.data);
@@ -130,7 +135,9 @@ describe('API Module', () => {
       const originalAxiosPost = axios.post;
       axios.post = jest.fn().mockRejectedValue(new Error(errorMessage));
 
-      await expect(apiPost(baseUrl, auth, endpoint, postData)).rejects.toThrow(errorMessage);
+      await expect(httpClient.post(baseUrl, auth, endpoint, postData)).rejects.toThrow(
+        errorMessage
+      );
 
       // Restore original
       axios.post = originalAxiosPost;
