@@ -281,19 +281,6 @@ export interface MeasuresHistoryParams extends PaginationParams {
 }
 
 /**
- * Interface for raw SonarQube component as returned by the API
- */
-interface SonarQubeApiComponent {
-  key: string;
-  name: string;
-  qualifier: string;
-  visibility: string;
-  lastAnalysisDate?: string;
-  revision?: string;
-  managed?: boolean;
-}
-
-/**
  * Interface for SonarQube metric
  */
 export interface SonarQubeMetric {
@@ -642,13 +629,13 @@ export class SonarQubeClient implements ISonarQubeClient {
     };
 
     const response = await this.httpClient.get<{
-      components: SonarQubeApiComponent[];
+      components: SonarQubeProject[];
       paging: { pageIndex: number; pageSize: number; total: number };
     }>(this.baseUrl, this.auth, '/api/projects/search', queryParams);
 
     // Transform SonarQube 'components' to our clean 'projects' interface
     return {
-      projects: response.components.map((component: SonarQubeApiComponent) => ({
+      projects: response.components.map((component: SonarQubeProject) => ({
         key: component.key,
         name: component.name,
         qualifier: component.qualifier,

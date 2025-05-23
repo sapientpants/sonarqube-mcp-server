@@ -33,8 +33,9 @@ This document tracks the refactoring tasks to improve code structure, readabilit
 - **Completed**: Extracted constant and updated constructor parameter default value
 
 #### Task 2.3: Improve error handling in getSourceCode (sonarqube.ts:977-1003)
-- [ ] Add proper error logging instead of silently failing
-- [ ] Consider throwing or returning error state
+- [x] Add proper error logging instead of silently failing
+- [x] Consider throwing or returning error state
+- **Completed**: Added console.error logging while maintaining graceful degradation
 
 #### Task 2.4: Extract types to separate files
 - [ ] Create `src/types/` directory
