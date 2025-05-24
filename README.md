@@ -534,10 +534,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [MCP Specification](https://github.com/modelcontextprotocol/specification)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 
-### Related Projects
-- [DeepSource MCP Server](https://github.com/sapientpants/deepsource-mcp-server)
-- [MCP Servers List](https://github.com/modelcontextprotocol/servers)
-
 ---
 
 <p align="center">
