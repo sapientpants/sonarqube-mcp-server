@@ -483,16 +483,6 @@ The project maintains high code quality through:
 - **Cause**: Incorrect URL or network issues
 - **Solution**: Verify `SONARQUBE_URL` and network connectivity
 
-### Debugging
-
-Enable debug logging by setting the `DEBUG` environment variable:
-```json
-{
-  "env": {
-    "DEBUG": "sonarqube:*"
-  }
-}
-```
 
 ### FAQ
 
