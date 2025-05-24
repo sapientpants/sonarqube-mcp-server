@@ -1,0 +1,238 @@
+# Contributing to SonarQube MCP Server
+
+Thank you for your interest in contributing to the SonarQube MCP Server! This document provides guidelines and instructions for contributing to the project.
+
+## Code of Conduct
+
+By participating in this project, you agree to abide by our code of conduct: be respectful, inclusive, and constructive in all interactions.
+
+## How to Contribute
+
+### Reporting Issues
+
+1. **Check existing issues** first to avoid duplicates
+2. **Use issue templates** when available
+3. **Provide detailed information**:
+   - Steps to reproduce
+   - Expected behavior
+   - Actual behavior
+   - Environment details (OS, Node version, etc.)
+   - Error messages and logs
+
+### Submitting Pull Requests
+
+1. **Fork the repository** and create your branch from `main`
+2. **Install dependencies** with `pnpm install`
+3. **Make your changes**:
+   - Write clear, concise commit messages
+   - Follow the existing code style
+   - Add tests for new features
+   - Update documentation as needed
+4. **Test your changes**:
+   - Run `pnpm test` to ensure all tests pass
+   - Run `pnpm lint` to check code style
+   - Run `pnpm check-types` for TypeScript validation
+   - Run `pnpm validate` to run all checks
+5. **Submit the pull request**:
+   - Provide a clear description of the changes
+   - Reference any related issues
+   - Ensure CI checks pass
+
+## Development Setup
+
+### Prerequisites
+
+- Node.js 20 or higher
+- pnpm 10.7.0 or higher
+- Git
+
+### Setup Steps
+
+```bash
+# Clone your fork
+git clone https://github.com/your-username/sonarqube-mcp-server.git
+cd sonarqube-mcp-server
+
+# Install dependencies
+pnpm install
+
+# Build the project
+pnpm build
+
+# Run tests
+pnpm test
+
+# Start development mode
+pnpm dev
+```
+
+### Development Commands
+
+```bash
+# Build the project
+pnpm build
+
+# Run in development mode with watch
+pnpm dev
+
+# Run all tests
+pnpm test
+
+# Run tests with coverage
+pnpm test:coverage
+
+# Run a specific test file
+NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest src/__tests__/file-name.test.ts
+
+# Lint code
+pnpm lint
+
+# Fix linting issues
+pnpm lint:fix
+
+# Check TypeScript types
+pnpm check-types
+
+# Format code
+pnpm format
+
+# Check formatting
+pnpm format:check
+
+# Run all validations
+pnpm validate
+
+# Inspect MCP schema
+pnpm inspect
+```
+
+## Coding Standards
+
+### TypeScript
+
+- Use TypeScript for all new code
+- Provide proper type definitions
+- Avoid using `any` type
+- Use interfaces for object shapes
+- Export types that might be used by consumers
+
+### Code Style
+
+- Follow the existing code style
+- Use ESLint and Prettier configurations
+- Write self-documenting code
+- Add comments for complex logic
+- Keep functions small and focused
+
+### Testing
+
+- Write tests for all new features
+- Maintain or improve code coverage
+- Use descriptive test names
+- Mock external dependencies
+- Test error cases and edge conditions
+
+### Git Commit Messages
+
+Follow conventional commit format:
+
+```
+type(scope): subject
+
+body
+
+footer
+```
+
+Types:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `test`: Test additions or changes
+- `chore`: Build process or auxiliary tool changes
+
+Example:
+```
+feat(api): add support for branch filtering
+
+Add branch parameter to issues endpoint to allow filtering
+issues by specific branch
+
+Closes #123
+```
+
+## Project Structure
+
+```
+sonarqube-mcp-server/
+├── src/
+│   ├── __tests__/      # Test files
+│   ├── api.ts          # API module for HTTP requests
+│   ├── index.ts        # MCP server entry point
+│   └── sonarqube.ts    # SonarQube client implementation
+├── dist/               # Compiled output
+├── package.json        # Project configuration
+├── tsconfig.json       # TypeScript configuration
+├── jest.config.js      # Jest test configuration
+└── eslint.config.js    # ESLint configuration
+```
+
+## Testing Guidelines
+
+### Unit Tests
+
+- Test individual functions and methods
+- Mock external dependencies
+- Cover edge cases and error scenarios
+- Use descriptive test names
+
+### Integration Tests
+
+- Test API endpoints with mocked HTTP responses
+- Verify parameter transformation
+- Test error handling and retries
+
+### Test Structure
+
+```typescript
+describe('ComponentName', () => {
+  describe('methodName', () => {
+    it('should handle normal case', () => {
+      // Test implementation
+    });
+
+    it('should handle error case', () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+## Documentation
+
+- Update README.md for user-facing changes
+- Add JSDoc comments for public APIs
+- Include examples for new features
+- Keep documentation clear and concise
+
+## Release Process
+
+1. Ensure all tests pass
+2. Update version in package.json
+3. Update CHANGELOG.md
+4. Create a pull request
+5. After merge, create a release tag
+6. Publish to npm
+
+## Need Help?
+
+- Check the [README](README.md) for general information
+- Look at existing code for examples
+- Ask questions in GitHub issues
+- Review closed PRs for similar changes
+
+## Recognition
+
+Contributors will be recognized in the project documentation. Thank you for helping improve the SonarQube MCP Server!
