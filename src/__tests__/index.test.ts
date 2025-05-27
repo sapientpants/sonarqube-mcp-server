@@ -1190,6 +1190,37 @@ describe('MCP Server', () => {
             ],
           });
 
+        // Mock the additional call to get metrics from first component
+        nock('http://localhost:9000')
+          .get('/api/measures/component')
+          .query({
+            component: 'test-component-1',
+            metricKeys: 'bugs',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            component: {
+              key: 'test-component-1',
+              name: 'Test Component 1',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'bugs',
+                  value: '10',
+                },
+              ],
+            },
+            metrics: [
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
+          });
+
         const response = await handleSonarQubeComponentsMeasures({
           componentKeys: ['test-component-1', 'test-component-2'],
           metricKeys: ['bugs'],
@@ -1275,6 +1306,112 @@ describe('MCP Server', () => {
             },
           });
 
+        // Mock the additional call to get metrics from first component
+        nock('http://localhost:9000')
+          .get('/api/measures/component')
+          .query({
+            component: 'test-component-1',
+            metricKeys: 'coverage,bugs',
+            additionalFields: 'periods,metrics',
+            branch: 'develop',
+            pullRequest: 'pr-456',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            component: {
+              key: 'test-component-1',
+              name: 'Test Component 1',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '85.4',
+                  period: { index: 2, value: '+5.4' },
+                },
+                {
+                  metric: 'bugs',
+                  value: '10',
+                  period: { index: 2, value: '-2' },
+                },
+              ],
+              periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
+            },
+            metrics: [
+              {
+                key: 'coverage',
+                name: 'Coverage',
+                description: 'Test coverage',
+                domain: 'Coverage',
+                type: 'PERCENT',
+              },
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
+            period: {
+              index: 2,
+              mode: 'previous_version',
+              date: '2023-01-01T00:00:00+0000',
+            },
+          });
+
+        // Mock second component
+        nock('http://localhost:9000')
+          .get('/api/measures/component')
+          .query({
+            component: 'test-component-2',
+            metricKeys: 'coverage,bugs',
+            additionalFields: 'periods,metrics',
+            branch: 'develop',
+            pullRequest: 'pr-456',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            component: {
+              key: 'test-component-2',
+              name: 'Test Component 2',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '78.2',
+                  period: { index: 2, value: '+3.1' },
+                },
+                {
+                  metric: 'bugs',
+                  value: '5',
+                  period: { index: 2, value: '-1' },
+                },
+              ],
+              periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
+            },
+            metrics: [
+              {
+                key: 'coverage',
+                name: 'Coverage',
+                description: 'Test coverage',
+                domain: 'Coverage',
+                type: 'PERCENT',
+              },
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
+            period: {
+              index: 2,
+              mode: 'previous_version',
+              date: '2023-01-01T00:00:00+0000',
+            },
+          });
+
         const response = await handleSonarQubeComponentsMeasures({
           componentKeys: ['test-component-1', 'test-component-2'],
           metricKeys: ['coverage', 'bugs'],
@@ -1282,16 +1419,16 @@ describe('MCP Server', () => {
           branch: 'develop',
           pullRequest: 'pr-456',
           period: '2',
-          page: 3,
+          page: 1,
           pageSize: 25,
         });
 
         const result = JSON.parse(response.content[0].text);
         expect(result.components).toHaveLength(2);
         expect(result.metrics).toHaveLength(2);
-        expect(result.paging.pageIndex).toBe(3);
+        expect(result.paging.pageIndex).toBe(1);
         expect(result.paging.pageSize).toBe(25);
-        expect(result.paging.total).toBe(50);
+        expect(result.paging.total).toBe(2);
         expect(result.components[0].key).toBe('test-component-1');
         expect(result.components[0].measures).toHaveLength(2);
         expect(result.components[0].periods).toBeDefined();

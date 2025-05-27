@@ -49,18 +49,7 @@ let nullToUndefined: any;
 let mapToSonarQubeParams: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-// Mock module functions that make network calls
-jest.mock('axios', () => ({
-  get: jest.fn().mockImplementation(() => {
-    return Promise.resolve({
-      data: {
-        message: 'Success',
-        components: [],
-        paging: { pageIndex: 1, pageSize: 10, total: 0 },
-      },
-    });
-  }),
-}));
+// No need to mock axios anymore since we're using sonarqube-web-api-client
 
 describe('Advanced MCP Server Tests', () => {
   beforeAll(async () => {

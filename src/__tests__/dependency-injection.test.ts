@@ -5,26 +5,19 @@
  */
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { MockHttpClient } from './mocks/http-client.mock.js';
 import { createDefaultClient } from '../index.js';
 import { createSonarQubeClient } from '../sonarqube.js';
 
 // Save original environment variables
 const originalEnv = process.env;
 
-describe('Dependency Injection Tests', () => {
-  let mockHttpClient: MockHttpClient;
-
+describe('Client Configuration Tests', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
     process.env.SONARQUBE_TOKEN = 'test-token';
     process.env.SONARQUBE_URL = 'http://localhost:9000';
     process.env.SONARQUBE_ORGANIZATION = 'test-org';
-
-    // Create fresh mock instances for each test
-    mockHttpClient = new MockHttpClient();
-    mockHttpClient.mockCommonEndpoints();
   });
 
   afterEach(() => {
@@ -39,12 +32,6 @@ describe('Dependency Injection Tests', () => {
       expect(client).toBeDefined();
     });
 
-    it('should create a client with custom HTTP client', () => {
-      // Test that we can inject a custom HTTP client
-      const client = createSonarQubeClient('test-token', undefined, undefined, mockHttpClient);
-      expect(client).toBeDefined();
-    });
-
     it('should create a default client using environment variables', () => {
       // Test the default client creation function
       const client = createDefaultClient();
@@ -55,12 +42,12 @@ describe('Dependency Injection Tests', () => {
       const customUrl = 'https://custom-sonar.example.com';
       const customOrg = 'custom-org';
 
-      const client = createSonarQubeClient('test-token', customUrl, customOrg, mockHttpClient);
+      const client = createSonarQubeClient('test-token', customUrl, customOrg);
       expect(client).toBeDefined();
     });
 
     it('should handle null organization parameter', () => {
-      const client = createSonarQubeClient('test-token', undefined, null, mockHttpClient);
+      const client = createSonarQubeClient('test-token', undefined, null);
       expect(client).toBeDefined();
     });
   });

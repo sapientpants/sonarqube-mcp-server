@@ -6,17 +6,7 @@
 
 import { describe, it, expect, jest } from '@jest/globals';
 
-// Mock the modules that index.js imports first
-jest.mock('axios', () => ({
-  get: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        metrics: [{ key: 'test-metric', name: 'Test Metric' }],
-        paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      },
-    })
-  ),
-}));
+// No need to mock axios anymore since we're using sonarqube-web-api-client
 
 jest.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
   McpServer: jest.fn().mockImplementation(() => ({

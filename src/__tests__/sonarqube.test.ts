@@ -720,16 +720,43 @@ describe('SonarQubeClient', () => {
         },
       };
 
+      // Mock individual component calls
       nock(baseUrl)
-        .get('/api/measures/components')
-        .query((queryObj) => {
-          return (
-            queryObj.componentKeys === 'project1,project2' &&
-            queryObj.metricKeys === 'bugs,vulnerabilities'
-          );
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'bugs,vulnerabilities',
         })
         .matchHeader('authorization', 'Bearer test-token')
-        .reply(200, mockResponse);
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
+
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project2',
+          metricKeys: 'bugs,vulnerabilities',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[1],
+          metrics: mockResponse.metrics,
+        });
+
+      // Mock the additional call for metrics from first component
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'bugs,vulnerabilities',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
 
       const result = await client.getComponentsMeasures({
         componentKeys: ['project1', 'project2'],
@@ -787,20 +814,82 @@ describe('SonarQubeClient', () => {
         },
       };
 
-      const scope = nock(baseUrl)
-        .get('/api/measures/components')
-        .query((queryObj) => {
-          return (
-            queryObj.componentKeys === 'project1,project2,project3' &&
-            queryObj.metricKeys === 'code_smells' &&
-            queryObj.p === '2' &&
-            queryObj.ps === '1' &&
-            queryObj.additionalFields === 'periods' &&
-            queryObj.branch === 'main'
-          );
+      // Mock individual component calls - all three components
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
         })
         .matchHeader('authorization', 'Bearer test-token')
-        .reply(200, mockResponse);
+        .reply(200, {
+          component: {
+            key: 'project1',
+            name: 'Project 1',
+            qualifier: 'TRK',
+            measures: [{ metric: 'code_smells', value: '10' }],
+          },
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
+
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project2',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: {
+            key: 'project2',
+            name: 'Project 2',
+            qualifier: 'TRK',
+            measures: [{ metric: 'code_smells', value: '20' }],
+          },
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
+
+      const scope = nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project3',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
+
+      // Mock the additional call for metrics from first component
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: {
+            key: 'project1',
+            name: 'Project 1',
+            qualifier: 'TRK',
+            measures: [{ metric: 'code_smells', value: '10' }],
+          },
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
 
       const result = await client.getComponentsMeasures({
         componentKeys: 'project1,project2,project3',
@@ -811,12 +900,14 @@ describe('SonarQubeClient', () => {
         branch: 'main',
       });
 
-      expect(result).toEqual(mockResponse);
-      expect(scope.isDone()).toBe(true);
+      // Since we paginate after fetching all components, we should have only 1 result
       expect(result.components).toHaveLength(1);
+      expect(result.components[0].key).toBe('project2'); // Page 2, size 1 would show the 2nd component
       expect(result.paging.pageIndex).toBe(2);
       expect(result.paging.pageSize).toBe(1);
+      expect(result.paging.total).toBe(3); // Total of 3 components
       expect(result.period?.mode).toBe('previous_version');
+      expect(scope.isDone()).toBe(true);
     });
   });
 

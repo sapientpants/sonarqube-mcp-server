@@ -295,8 +295,8 @@ export interface ComponentMeasuresParams {
  * Interface for components measures parameters
  */
 export interface ComponentsMeasuresParams extends PaginationParams {
-  componentKeys: string[];
-  metricKeys: string[];
+  componentKeys: string[] | string;
+  metricKeys: string[] | string;
   additionalFields?: string[];
   branch?: string;
   pullRequest?: string;
@@ -949,11 +949,18 @@ export class SonarQubeClient implements ISonarQubeClient {
       ps: pageSize,
     });
 
+    // The API might return paging info
+    const paging = (
+      response as unknown as {
+        paging?: { pageIndex: number; pageSize: number; total: number };
+      }
+    ).paging;
+
     return {
       metrics: response.metrics as SonarQubeMetric[],
-      paging: {
-        pageIndex: 1,
-        pageSize: 100,
+      paging: paging || {
+        pageIndex: page || 1,
+        pageSize: pageSize || 100,
         total: response.metrics.length,
       },
     };
@@ -1025,10 +1032,25 @@ export class SonarQubeClient implements ISonarQubeClient {
       params;
 
     // Use Promise.all to fetch measures for multiple components
-    const componentKeysArray = Array.isArray(componentKeys) ? componentKeys : [componentKeys];
-    const metricKeysArray = Array.isArray(metricKeys) ? metricKeys : [metricKeys as string];
+    let componentKeysArray: string[];
+    if (Array.isArray(componentKeys)) {
+      componentKeysArray = componentKeys;
+    } else if (typeof componentKeys === 'string' && componentKeys.includes(',')) {
+      componentKeysArray = componentKeys.split(',');
+    } else {
+      componentKeysArray = [componentKeys as string];
+    }
 
-    const componentsPromises = componentKeysArray.map(async (componentKey) => {
+    let metricKeysArray: string[];
+    if (Array.isArray(metricKeys)) {
+      metricKeysArray = metricKeys;
+    } else if (typeof metricKeys === 'string' && metricKeys.includes(',')) {
+      metricKeysArray = metricKeys.split(',');
+    } else {
+      metricKeysArray = [metricKeys as string];
+    }
+
+    const componentsPromises = componentKeysArray.map(async (componentKey: string) => {
       const result = await this.webApiClient.measures.component({
         component: componentKey,
         metricKeys: metricKeysArray,
@@ -1037,11 +1059,12 @@ export class SonarQubeClient implements ISonarQubeClient {
         pullRequest,
       });
 
+      const component = result.component || result;
       return {
-        key: result.component.key,
-        name: result.component.name,
-        qualifier: result.component.qualifier,
-        measures: result.component.measures,
+        key: component.key,
+        name: component.name,
+        qualifier: component.qualifier,
+        measures: component.measures || [],
       };
     });
 
@@ -1170,7 +1193,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the source code and annotations
    */
   async getSourceCode(params: SourceCodeParams): Promise<SonarQubeSourceResult> {
-    const { key, branch, pullRequest } = params;
+    const { key, from, to, branch, pullRequest } = params;
 
     // Get raw source code
     const response = await this.webApiClient.sources.raw({
@@ -1182,11 +1205,22 @@ export class SonarQubeClient implements ISonarQubeClient {
     // Transform the response to match our interface
     // The raw method returns a string with lines separated by newlines
     const lines = response.split('\n');
+    let sourcesArray = lines.map((line, index) => ({
+      line: index + 1,
+      code: line,
+    }));
+
+    // Apply line range filtering if specified
+    if (from !== undefined || to !== undefined) {
+      const startLine = from || 1;
+      const endLine = to || sourcesArray.length;
+      sourcesArray = sourcesArray.filter(
+        (source) => source.line >= startLine && source.line <= endLine
+      );
+    }
+
     const sources = {
-      sources: lines.map((line, index) => ({
-        line: index + 1,
-        code: line,
-      })),
+      sources: sourcesArray,
       component: {
         key,
         qualifier: 'FIL', // Default for files
@@ -1199,7 +1233,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     if (key) {
       try {
         const issues = await this.getIssues({
-          projectKey: key,
+          projects: [key],
           branch,
           pullRequest,
           onComponentOnly: true,
