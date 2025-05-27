@@ -76,7 +76,9 @@ describe('SonarQube Source Code API', () => {
       // Mock the issues API call
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .reply(200, {
           issues: [
             {
@@ -91,6 +93,8 @@ describe('SonarQube Source Code API', () => {
               creationDate: '2021-01-01T00:00:00Z',
               updateDate: '2021-01-01T00:00:00Z',
               status: 'OPEN',
+              effort: '5min',
+              type: 'CODE_SMELL',
             },
           ],
           components: [],
@@ -140,7 +144,9 @@ describe('SonarQube Source Code API', () => {
       // Mock a failed issues API call
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .replyWithError('Issues API error');
 
       const result = await client.getSourceCode(params);
@@ -216,7 +222,9 @@ describe('SonarQube Source Code API', () => {
       // Mock the issues API call (no issues this time)
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .reply(200, {
           issues: [],
           components: [],
@@ -261,7 +269,9 @@ describe('SonarQube Source Code API', () => {
       // Mock the issues API call
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .reply(200, {
           issues: [],
           components: [],

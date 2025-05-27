@@ -1245,44 +1245,24 @@ describe('MCP Server', () => {
           })
           .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {
-            components: [
-              {
-                key: 'test-component-1',
-                name: 'Test Component 1',
-                qualifier: 'TRK',
-                measures: [
-                  {
-                    metric: 'coverage',
-                    value: '85.4',
-                    period: { index: 2, value: '+5.4' },
-                  },
-                  {
-                    metric: 'bugs',
-                    value: '10',
-                    period: { index: 2, value: '-2' },
-                  },
-                ],
-                periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
-              },
-              {
-                key: 'test-component-2',
-                name: 'Test Component 2',
-                qualifier: 'TRK',
-                measures: [
-                  {
-                    metric: 'coverage',
-                    value: '78.2',
-                    period: { index: 2, value: '+3.1' },
-                  },
-                  {
-                    metric: 'bugs',
-                    value: '5',
-                    period: { index: 2, value: '-1' },
-                  },
-                ],
-                periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
-              },
-            ],
+            component: {
+              key: 'test-component-1',
+              name: 'Test Component 1',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'coverage',
+                  value: '85.4',
+                  period: { index: 2, value: '+5.4' },
+                },
+                {
+                  metric: 'bugs',
+                  value: '10',
+                  period: { index: 2, value: '-2' },
+                },
+              ],
+              periods: [{ index: 2, mode: 'previous_version', date: '2023-01-01T00:00:00+0000' }],
+            },
             metrics: [
               {
                 key: 'coverage',

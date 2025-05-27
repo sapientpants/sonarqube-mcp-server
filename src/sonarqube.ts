@@ -364,6 +364,12 @@ export interface SonarQubeMeasureComponent {
   name: string;
   qualifier: string;
   measures: SonarQubeMeasure[];
+  periods?: Array<{
+    index: number;
+    mode: string;
+    date: string;
+    parameter?: string;
+  }>;
 }
 
 /**
@@ -1065,6 +1071,7 @@ export class SonarQubeClient implements ISonarQubeClient {
         name: component.name,
         qualifier: component.qualifier,
         measures: component.measures || [],
+        periods: (component as unknown as SonarQubeMeasureComponent).periods,
       };
     });
 
