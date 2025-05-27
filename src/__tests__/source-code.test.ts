@@ -12,6 +12,16 @@ describe('SonarQube Source Code API', () => {
   const token = 'fake-token';
   let client: SonarQubeClient;
 
+  // Helper function to mock raw source code API response
+  const mockRawSourceResponse = (
+    key: string,
+    sourceCode: string,
+    query?: Record<string, unknown>
+  ) => {
+    const queryMatcher = query ? query : { key };
+    return nock(baseUrl).get('/api/sources/raw').query(queryMatcher).reply(200, sourceCode);
+  };
+
   beforeEach(() => {
     client = createSonarQubeClient(token, baseUrl) as SonarQubeClient;
     nock.disableNetConnect();
@@ -68,10 +78,7 @@ describe('SonarQube Source Code API', () => {
       };
 
       // Mock the source code API call - raw endpoint returns plain text
-      nock(baseUrl)
-        .get('/api/sources/raw')
-        .query({ key: params.key })
-        .reply(200, 'function main() {\n  console.log("Hello, world!");\n}');
+      mockRawSourceResponse(params.key, 'function main() {\n  console.log("Hello, world!");\n}');
 
       // Mock the issues API call
       nock(baseUrl)
@@ -136,10 +143,7 @@ describe('SonarQube Source Code API', () => {
       };
 
       // Mock the source code API call - raw endpoint returns plain text
-      nock(baseUrl)
-        .get('/api/sources/raw')
-        .query({ key: params.key })
-        .reply(200, 'function main() {');
+      mockRawSourceResponse(params.key, 'function main() {');
 
       // Mock a failed issues API call
       nock(baseUrl)
@@ -161,7 +165,7 @@ describe('SonarQube Source Code API', () => {
       };
 
       // Mock the source code API call - raw endpoint returns plain text
-      nock(baseUrl).get('/api/sources/raw').query(true).reply(200, 'function main() {');
+      mockRawSourceResponse('', 'function main() {', true);
 
       const result = await client.getSourceCode(params);
 
@@ -214,10 +218,7 @@ describe('SonarQube Source Code API', () => {
       };
 
       // Mock the raw source code API call - returns plain text with multiple lines
-      nock(baseUrl)
-        .get('/api/sources/raw')
-        .query({ key: params.key })
-        .reply(200, 'function main() {\n  console.log("Hello, world!");\n}');
+      mockRawSourceResponse(params.key, 'function main() {\n  console.log("Hello, world!");\n}');
 
       // Mock the issues API call (no issues this time)
       nock(baseUrl)
@@ -261,10 +262,7 @@ describe('SonarQube Source Code API', () => {
       };
 
       // Mock the raw source code API call - returns plain text
-      nock(baseUrl)
-        .get('/api/sources/raw')
-        .query({ key: params.key })
-        .reply(200, 'function main() {');
+      mockRawSourceResponse(params.key, 'function main() {');
 
       // Mock the issues API call
       nock(baseUrl)

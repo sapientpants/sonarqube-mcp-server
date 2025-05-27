@@ -9,6 +9,9 @@ import nock from 'nock';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+// Store original env vars
+const originalEnv = { ...process.env };
+
 // Mock environment variables
 process.env.SONARQUBE_TOKEN = 'test-token';
 process.env.SONARQUBE_URL = 'http://localhost:9000';
@@ -462,7 +465,7 @@ jest.mock('../index.js', () => {
 });
 
 // Save environment variables
-const originalEnv = process.env;
+// Using the originalEnv declared at the top of the file
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let mcpServer: any;
 let nullToUndefined: any;
@@ -502,6 +505,9 @@ describe('MCP Server', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
+    // Ensure test environment variables are set
+    process.env.SONARQUBE_TOKEN = 'test-token';
+    process.env.SONARQUBE_URL = 'http://localhost:9000';
     nock.cleanAll();
   });
 
@@ -2557,6 +2563,63 @@ describe('MCP Server', () => {
       handleSonarQubeGetIssues = originalGetIssues;
       handleSonarQubeComponentsMeasures = originalComponentsMeasures;
       handleSonarQubeMeasuresHistory = originalMeasuresHistory;
+    });
+  });
+
+  describe('Environment Variable Validation', () => {
+    beforeEach(() => {
+      // Clear the module cache to force re-evaluation
+      jest.resetModules();
+      // Store current env vars
+      process.env = { ...originalEnv };
+    });
+
+    afterEach(() => {
+      // Restore env vars
+      process.env = { ...originalEnv };
+    });
+
+    it('should throw error when SONARQUBE_TOKEN is missing', async () => {
+      delete process.env.SONARQUBE_TOKEN;
+
+      await expect(async () => {
+        const module = await import('../index.js');
+        module.createDefaultClient();
+      }).rejects.toThrow('SONARQUBE_TOKEN environment variable is required');
+    });
+
+    it('should throw error when SONARQUBE_URL is invalid', async () => {
+      process.env.SONARQUBE_TOKEN = 'test-token';
+      process.env.SONARQUBE_URL = 'not-a-valid-url';
+
+      await expect(async () => {
+        const module = await import('../index.js');
+        module.createDefaultClient();
+      }).rejects.toThrow('Invalid SONARQUBE_URL');
+    });
+
+    it('should accept valid SONARQUBE_URL', async () => {
+      process.env.SONARQUBE_TOKEN = 'test-token';
+      process.env.SONARQUBE_URL = 'https://sonarcloud.io';
+
+      const module = await import('../index.js');
+      expect(() => module.createDefaultClient()).not.toThrow();
+    });
+
+    it('should work without SONARQUBE_URL (uses default)', async () => {
+      process.env.SONARQUBE_TOKEN = 'test-token';
+      delete process.env.SONARQUBE_URL;
+
+      const module = await import('../index.js');
+      expect(() => module.createDefaultClient()).not.toThrow();
+    });
+
+    it('should accept valid SONARQUBE_ORGANIZATION', async () => {
+      process.env.SONARQUBE_TOKEN = 'test-token';
+      process.env.SONARQUBE_ORGANIZATION = 'my-org';
+
+      const module = await import('../index.js');
+      expect(() => module.createDefaultClient()).not.toThrow();
     });
   });
 });

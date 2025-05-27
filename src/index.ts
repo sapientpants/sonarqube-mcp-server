@@ -55,8 +55,40 @@ export const mcpServer = new McpServer({
   version: '1.1.0',
 });
 
+// Validate environment variables
+const validateEnvironmentVariables = () => {
+  if (!process.env.SONARQUBE_TOKEN) {
+    throw new Error(
+      'SONARQUBE_TOKEN environment variable is required. ' +
+        'Please set it to your SonarQube/SonarCloud authentication token.'
+    );
+  }
+
+  if (process.env.SONARQUBE_URL) {
+    try {
+      new URL(process.env.SONARQUBE_URL);
+    } catch {
+      throw new Error(
+        `Invalid SONARQUBE_URL: "${process.env.SONARQUBE_URL}". ` +
+          'Please provide a valid URL (e.g., https://sonarcloud.io or https://your-sonarqube-instance.com).'
+      );
+    }
+  }
+
+  if (
+    process.env.SONARQUBE_ORGANIZATION &&
+    typeof process.env.SONARQUBE_ORGANIZATION !== 'string'
+  ) {
+    throw new Error(
+      'Invalid SONARQUBE_ORGANIZATION. Please provide a valid organization key as a string.'
+    );
+  }
+};
+
 // Create the SonarQube client
 export const createDefaultClient = (): ISonarQubeClient => {
+  validateEnvironmentVariables();
+
   return createSonarQubeClient(
     process.env.SONARQUBE_TOKEN!,
     process.env.SONARQUBE_URL,
@@ -65,7 +97,20 @@ export const createDefaultClient = (): ISonarQubeClient => {
 };
 
 // Default client instance for backward compatibility
-const defaultClient = createDefaultClient();
+// Created lazily to allow environment variable validation at runtime
+let defaultClient: ISonarQubeClient | null = null;
+
+const getDefaultClient = (): ISonarQubeClient => {
+  if (!defaultClient) {
+    defaultClient = createDefaultClient();
+  }
+  return defaultClient;
+};
+
+// Export for testing purposes
+export const resetDefaultClient = () => {
+  defaultClient = null;
+};
 
 /**
  * Fetches and returns a list of all SonarQube projects
@@ -79,7 +124,7 @@ export async function handleSonarQubeProjects(
     page?: number | null;
     page_size?: number | null;
   },
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const projectsParams: PaginationParams = {
     page: nullToUndefined(params.page),
@@ -152,7 +197,7 @@ export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesPar
  */
 export async function handleSonarQubeGetIssues(
   params: IssuesParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getIssues(params);
 
@@ -212,7 +257,7 @@ export async function handleSonarQubeGetIssues(
  */
 export async function handleSonarQubeGetMetrics(
   params: PaginationParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getMetrics(params);
 
@@ -241,7 +286,7 @@ export async function handleSonarQubeGetMetrics(
  * @param client Optional SonarQube client instance
  * @returns Promise with the health status result
  */
-export async function handleSonarQubeGetHealth(client: ISonarQubeClient = defaultClient) {
+export async function handleSonarQubeGetHealth(client: ISonarQubeClient = getDefaultClient()) {
   const result = await client.getHealth();
 
   return {
@@ -259,7 +304,7 @@ export async function handleSonarQubeGetHealth(client: ISonarQubeClient = defaul
  * @param client Optional SonarQube client instance
  * @returns Promise with the system status result
  */
-export async function handleSonarQubeGetStatus(client: ISonarQubeClient = defaultClient) {
+export async function handleSonarQubeGetStatus(client: ISonarQubeClient = getDefaultClient()) {
   const result = await client.getStatus();
 
   return {
@@ -277,7 +322,7 @@ export async function handleSonarQubeGetStatus(client: ISonarQubeClient = defaul
  * @param client Optional SonarQube client instance
  * @returns Promise with the ping result
  */
-export async function handleSonarQubePing(client: ISonarQubeClient = defaultClient) {
+export async function handleSonarQubePing(client: ISonarQubeClient = getDefaultClient()) {
   const result = await client.ping();
 
   return {
@@ -298,7 +343,7 @@ export async function handleSonarQubePing(client: ISonarQubeClient = defaultClie
  */
 export async function handleSonarQubeComponentMeasures(
   params: ComponentMeasuresParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getComponentMeasures(params);
 
@@ -320,7 +365,7 @@ export async function handleSonarQubeComponentMeasures(
  */
 export async function handleSonarQubeComponentsMeasures(
   params: ComponentsMeasuresParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getComponentsMeasures(params);
 
@@ -342,7 +387,7 @@ export async function handleSonarQubeComponentsMeasures(
  */
 export async function handleSonarQubeMeasuresHistory(
   params: MeasuresHistoryParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getMeasuresHistory(params);
 
@@ -361,7 +406,9 @@ export async function handleSonarQubeMeasuresHistory(
  * @param client Optional SonarQube client instance
  * @returns Promise with the list of quality gates
  */
-export async function handleSonarQubeListQualityGates(client: ISonarQubeClient = defaultClient) {
+export async function handleSonarQubeListQualityGates(
+  client: ISonarQubeClient = getDefaultClient()
+) {
   const result = await client.listQualityGates();
 
   return {
@@ -382,7 +429,7 @@ export async function handleSonarQubeListQualityGates(client: ISonarQubeClient =
  */
 export async function handleSonarQubeGetQualityGate(
   params: { id: string },
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getQualityGate(params.id);
 
@@ -404,7 +451,7 @@ export async function handleSonarQubeGetQualityGate(
  */
 export async function handleSonarQubeProjectQualityGateStatus(
   params: ProjectQualityGateParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getProjectQualityGateStatus(params);
 
@@ -426,7 +473,7 @@ export async function handleSonarQubeProjectQualityGateStatus(
  */
 export async function handleSonarQubeGetSourceCode(
   params: SourceCodeParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getSourceCode(params);
 
@@ -448,7 +495,7 @@ export async function handleSonarQubeGetSourceCode(
  */
 export async function handleSonarQubeGetScmBlame(
   params: ScmBlameParams,
-  client: ISonarQubeClient = defaultClient
+  client: ISonarQubeClient = getDefaultClient()
 ) {
   const result = await client.getScmBlame(params);
 

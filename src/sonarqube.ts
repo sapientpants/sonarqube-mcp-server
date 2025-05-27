@@ -1028,6 +1028,13 @@ export class SonarQubeClient implements ISonarQubeClient {
 
   /**
    * Gets measures for multiple components
+   *
+   * **Performance Note**: This method uses an N+1 API pattern where it makes one API call per component.
+   * For large numbers of components, this can result in many API calls. Consider:
+   * - Using pagination to limit the number of components fetched at once
+   * - Batching requests if you need measures for many components
+   * - Using the single component API (`getComponentMeasures`) when possible
+   *
    * @param params Parameters including component keys, metrics, and pagination
    * @returns Promise with the components measures result
    */
@@ -1038,6 +1045,7 @@ export class SonarQubeClient implements ISonarQubeClient {
       params;
 
     // Use Promise.all to fetch measures for multiple components
+    // Note: This results in N+1 API calls (one per component)
     let componentKeysArray: string[];
     if (Array.isArray(componentKeys)) {
       componentKeysArray = componentKeys;
