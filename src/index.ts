@@ -15,7 +15,6 @@ import {
   ScmBlameParams,
   createSonarQubeClient,
 } from './sonarqube.js';
-import { AxiosHttpClient } from './api.js';
 import { z } from 'zod';
 
 interface Connectable {
@@ -56,16 +55,12 @@ export const mcpServer = new McpServer({
   version: '1.1.0',
 });
 
-// Create HTTP client
-const httpClient = new AxiosHttpClient();
-
 // Create the SonarQube client
 export const createDefaultClient = (): ISonarQubeClient => {
   return createSonarQubeClient(
     process.env.SONARQUBE_TOKEN!,
     process.env.SONARQUBE_URL,
-    process.env.SONARQUBE_ORGANIZATION,
-    httpClient
+    process.env.SONARQUBE_ORGANIZATION
   );
 };
 

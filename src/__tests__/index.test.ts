@@ -1067,10 +1067,10 @@ describe('MCP Server', () => {
               queryObject.metricKeys === 'coverage,bugs' &&
               queryObject.additionalFields === 'periods,metrics' &&
               queryObject.branch === 'main' &&
-              queryObject.pullRequest === 'pr-123' &&
-              queryObject.period === '1'
+              queryObject.pullRequest === 'pr-123'
             );
           })
+          .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {
             component: {
               key: 'test-component',
@@ -1129,34 +1129,26 @@ describe('MCP Server', () => {
 
     describe('handleSonarQubeComponentsMeasures', () => {
       it('should fetch and return measures for multiple components', async () => {
+        // Mock individual component measure calls
         nock('http://localhost:9000')
-          .get('/api/measures/components')
-          .query(true)
+          .get('/api/measures/component')
+          .query({
+            component: 'test-component-1',
+            metricKeys: 'bugs',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {
-            components: [
-              {
-                key: 'test-component-1',
-                name: 'Test Component 1',
-                qualifier: 'TRK',
-                measures: [
-                  {
-                    metric: 'bugs',
-                    value: '10',
-                  },
-                ],
-              },
-              {
-                key: 'test-component-2',
-                name: 'Test Component 2',
-                qualifier: 'TRK',
-                measures: [
-                  {
-                    metric: 'bugs',
-                    value: '5',
-                  },
-                ],
-              },
-            ],
+            component: {
+              key: 'test-component-1',
+              name: 'Test Component 1',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'bugs',
+                  value: '10',
+                },
+              ],
+            },
             metrics: [
               {
                 key: 'bugs',
@@ -1166,11 +1158,36 @@ describe('MCP Server', () => {
                 type: 'INT',
               },
             ],
-            paging: {
-              pageIndex: 1,
-              pageSize: 100,
-              total: 2,
+          });
+
+        nock('http://localhost:9000')
+          .get('/api/measures/component')
+          .query({
+            component: 'test-component-2',
+            metricKeys: 'bugs',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            component: {
+              key: 'test-component-2',
+              name: 'Test Component 2',
+              qualifier: 'TRK',
+              measures: [
+                {
+                  metric: 'bugs',
+                  value: '5',
+                },
+              ],
             },
+            metrics: [
+              {
+                key: 'bugs',
+                name: 'Bugs',
+                description: 'Number of bugs',
+                domain: 'Reliability',
+                type: 'INT',
+              },
+            ],
           });
 
         const response = await handleSonarQubeComponentsMeasures({
@@ -1185,20 +1202,17 @@ describe('MCP Server', () => {
       });
 
       it('should fetch components measures with all optional parameters', async () => {
+        // Mock individual component measure calls with optional parameters
         nock('http://localhost:9000')
-          .get('/api/measures/components')
-          .query((queryObject) => {
-            return (
-              queryObject.componentKeys === 'test-component-1,test-component-2' &&
-              queryObject.metricKeys === 'coverage,bugs' &&
-              queryObject.additionalFields === 'periods,metrics' &&
-              queryObject.branch === 'develop' &&
-              queryObject.pullRequest === 'pr-456' &&
-              queryObject.period === '2' &&
-              queryObject.ps === '25' &&
-              queryObject.p === '3'
-            );
+          .get('/api/measures/component')
+          .query({
+            component: 'test-component-1',
+            metricKeys: 'coverage,bugs',
+            additionalFields: 'periods,metrics',
+            branch: 'develop',
+            pullRequest: 'pr-456',
           })
+          .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {
             components: [
               {

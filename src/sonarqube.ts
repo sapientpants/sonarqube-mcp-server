@@ -1,18 +1,9 @@
-import { HttpClient, AxiosHttpClient } from './api.js';
+import { SonarQubeClient as WebApiClient, MeasuresAdditionalField } from 'sonarqube-web-api-client';
 
 /**
  * Default SonarQube URL
  */
 const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
-
-/**
- * Helper function to convert array to comma-separated string
- * @param value Array of strings or undefined
- * @returns Comma-separated string or undefined
- */
-function arrayToCommaSeparated(value: string[] | undefined): string | undefined {
-  return value?.join(',');
-}
 
 /**
  * Interface for pagination parameters
@@ -207,9 +198,20 @@ export interface SonarQubeProjectsResult {
  * Interface for get issues parameters
  */
 export interface IssuesParams extends PaginationParams {
-  projectKey: string;
+  // Component filters
+  projectKey?: string;
+  componentKeys?: string[];
+  components?: string[];
+  projects?: string[];
+  onComponentOnly?: boolean;
+
+  // Branch and PR
   branch?: string;
-  severity?: 'INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER';
+  pullRequest?: string;
+
+  // Issue filters
+  issues?: string[];
+  severities?: ('INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER')[];
   statuses?: (
     | 'OPEN'
     | 'CONFIRMED'
@@ -223,25 +225,58 @@ export interface IssuesParams extends PaginationParams {
   resolutions?: ('FALSE-POSITIVE' | 'WONTFIX' | 'FIXED' | 'REMOVED')[];
   resolved?: boolean;
   types?: ('CODE_SMELL' | 'BUG' | 'VULNERABILITY' | 'SECURITY_HOTSPOT')[];
+
+  // Clean Code taxonomy
+  cleanCodeAttributeCategories?: ('ADAPTABLE' | 'CONSISTENT' | 'INTENTIONAL' | 'RESPONSIBLE')[];
+  impactSeverities?: ('HIGH' | 'MEDIUM' | 'LOW')[];
+  impactSoftwareQualities?: ('MAINTAINABILITY' | 'RELIABILITY' | 'SECURITY')[];
+  issueStatuses?: ('OPEN' | 'CONFIRMED' | 'RESOLVED' | 'REOPENED' | 'CLOSED')[];
+
+  // Rules and tags
   rules?: string[];
   tags?: string[];
+
+  // Date filters
   createdAfter?: string;
   createdBefore?: string;
   createdAt?: string;
   createdInLast?: string;
+
+  // Assignment
+  assigned?: boolean;
   assignees?: string[];
+  author?: string;
   authors?: string[];
+
+  // Security standards
   cwe?: string[];
-  languages?: string[];
   owaspTop10?: string[];
+  owaspTop10v2021?: string[];
   sansTop25?: string[];
   sonarsourceSecurity?: string[];
-  onComponentOnly?: boolean;
+  sonarsourceSecurityCategory?: string[];
+
+  // Languages
+  languages?: string[];
+
+  // Facets
   facets?: string[];
+  facetMode?: 'effort' | 'count';
+
+  // New code
   sinceLeakPeriod?: boolean;
   inNewCodePeriod?: boolean;
-  pullRequest?: string;
+
+  // Sorting
+  s?: string;
+  asc?: boolean;
+
+  // Additional fields
+  additionalFields?: string[];
+
+  // Deprecated
   hotspots?: boolean;
+  severity?: 'INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER';
 }
 
 /**
@@ -590,28 +625,18 @@ export interface ISonarQubeClient {
  * SonarQube client for interacting with the SonarQube API
  */
 export class SonarQubeClient implements ISonarQubeClient {
-  private readonly baseUrl: string;
-  private readonly auth: { username: string; password: string };
+  private readonly webApiClient: WebApiClient;
   private readonly organization: string | null;
-  private readonly httpClient: HttpClient;
 
   /**
    * Creates a new SonarQube client
    * @param token SonarQube authentication token
    * @param baseUrl Base URL of the SonarQube instance (default: https://sonarcloud.io)
    * @param organization Organization name
-   * @param httpClient HTTP client implementation (optional)
    */
-  constructor(
-    token: string,
-    baseUrl = DEFAULT_SONARQUBE_URL,
-    organization?: string | null,
-    httpClient?: HttpClient
-  ) {
-    this.baseUrl = baseUrl;
-    this.auth = { username: token, password: '' };
+  constructor(token: string, baseUrl = DEFAULT_SONARQUBE_URL, organization?: string | null) {
+    this.webApiClient = new WebApiClient(baseUrl, token, organization ?? undefined);
     this.organization = organization ?? null;
-    this.httpClient = httpClient ?? new AxiosHttpClient();
   }
 
   /**
@@ -622,20 +647,20 @@ export class SonarQubeClient implements ISonarQubeClient {
   async listProjects(params: PaginationParams = {}): Promise<SonarQubeProjectsResult> {
     const { page, pageSize } = params;
 
-    const queryParams = {
-      organization: this.organization,
-      p: page,
-      ps: pageSize,
-    };
+    const builder = this.webApiClient.projects.search();
 
-    const response = await this.httpClient.get<{
-      components: SonarQubeProject[];
-      paging: { pageIndex: number; pageSize: number; total: number };
-    }>(this.baseUrl, this.auth, '/api/projects/search', queryParams);
+    if (page !== undefined) {
+      builder.page(page);
+    }
+    if (pageSize !== undefined) {
+      builder.pageSize(pageSize);
+    }
 
-    // Transform SonarQube 'components' to our clean 'projects' interface
+    const response = await builder.execute();
+
+    // Transform to our interface
     return {
-      projects: response.components.map((component: SonarQubeProject) => ({
+      projects: response.components.map((component) => ({
         key: component.key,
         name: component.name,
         qualifier: component.qualifier,
@@ -655,74 +680,260 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   async getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult> {
     const {
+      // Component filters
       projectKey,
+      componentKeys,
+      components,
+      projects,
+      onComponentOnly,
+
+      // Branch and PR
       branch,
-      severity,
-      page,
-      pageSize,
+      pullRequest,
+
+      // Issue filters
+      issues,
+      severities,
+      severity, // deprecated
       statuses,
       resolutions,
       resolved,
       types,
+
+      // Clean Code taxonomy
+      cleanCodeAttributeCategories,
+      impactSeverities,
+      impactSoftwareQualities,
+      issueStatuses,
+
+      // Rules and tags
       rules,
       tags,
+
+      // Date filters
       createdAfter,
       createdBefore,
       createdAt,
       createdInLast,
+
+      // Assignment
+      assigned,
       assignees,
+      author,
       authors,
+
+      // Security standards
       cwe,
-      languages,
       owaspTop10,
+      owaspTop10v2021,
       sansTop25,
       sonarsourceSecurity,
-      onComponentOnly,
+      sonarsourceSecurityCategory,
+
+      // Languages
+      languages,
+
+      // Facets
       facets,
+      facetMode,
+
+      // New code
       sinceLeakPeriod,
       inNewCodePeriod,
-      pullRequest,
-      hotspots,
+
+      // Sorting
+      s,
+      asc,
+
+      // Additional fields
+      additionalFields,
+
+      // Pagination
+      page,
+      pageSize,
     } = params;
 
-    const queryParams = {
-      componentKeys: projectKey,
-      branch,
-      severities: severity,
-      organization: this.organization,
-      p: page,
-      ps: pageSize,
-      statuses: arrayToCommaSeparated(statuses),
-      resolutions: arrayToCommaSeparated(resolutions),
-      resolved,
-      types: arrayToCommaSeparated(types),
-      rules: arrayToCommaSeparated(rules),
-      tags: arrayToCommaSeparated(tags),
-      createdAfter,
-      createdBefore,
-      createdAt,
-      createdInLast,
-      assignees: arrayToCommaSeparated(assignees),
-      authors: arrayToCommaSeparated(authors),
-      cwe: arrayToCommaSeparated(cwe),
-      languages: arrayToCommaSeparated(languages),
-      owaspTop10: arrayToCommaSeparated(owaspTop10),
-      sansTop25: arrayToCommaSeparated(sansTop25),
-      sonarsourceSecurity: arrayToCommaSeparated(sonarsourceSecurity),
-      onComponentOnly,
-      facets: arrayToCommaSeparated(facets),
-      sinceLeakPeriod,
-      inNewCodePeriod,
-      pullRequest,
-      hotspots,
-    };
+    const builder = this.webApiClient.issues.search();
 
-    return this.httpClient.get<SonarQubeIssuesResult>(
-      this.baseUrl,
-      this.auth,
-      '/api/issues/search',
-      queryParams
-    );
+    // Component filters
+    if (projectKey) {
+      builder.withProjects([projectKey]);
+    }
+    if (componentKeys) {
+      builder.withComponents(componentKeys);
+    }
+    if (components) {
+      builder.withComponents(components);
+    }
+    if (projects) {
+      builder.withProjects(projects);
+    }
+    if (onComponentOnly) {
+      builder.onComponentOnly();
+    }
+
+    // Branch and PR
+    if (branch) {
+      builder.onBranch(branch);
+    }
+    if (pullRequest) {
+      builder.onPullRequest(pullRequest);
+    }
+
+    // Issue filters
+    if (issues) {
+      builder.withIssues(issues);
+    }
+    if (severities) {
+      builder.withSeverities(severities);
+    }
+    if (severity) {
+      // deprecated
+      builder.withSeverities([severity]);
+    }
+
+    // Add pagination
+    if (page !== undefined) {
+      builder.page(page);
+    }
+    if (pageSize !== undefined) {
+      builder.pageSize(pageSize);
+    }
+
+    // Issue status and resolution
+    if (statuses) {
+      builder.withStatuses(statuses);
+    }
+    if (resolutions) {
+      builder.withResolutions(resolutions);
+    }
+    if (resolved !== undefined) {
+      if (resolved) {
+        builder.onlyResolved();
+      } else {
+        builder.onlyUnresolved();
+      }
+    }
+    if (types) {
+      builder.withTypes(types);
+    }
+
+    // Clean Code taxonomy
+    if (cleanCodeAttributeCategories) {
+      builder.withCleanCodeAttributeCategories(cleanCodeAttributeCategories);
+    }
+    if (impactSeverities) {
+      builder.withImpactSeverities(impactSeverities);
+    }
+    if (impactSoftwareQualities) {
+      builder.withImpactSoftwareQualities(impactSoftwareQualities);
+    }
+    if (issueStatuses) {
+      builder.withIssueStatuses(issueStatuses);
+    }
+
+    // Rules and tags
+    if (rules) {
+      builder.withRules(rules);
+    }
+    if (tags) {
+      builder.withTags(tags);
+    }
+
+    // Date filters
+    if (createdAfter) {
+      builder.createdAfter(createdAfter);
+    }
+    if (createdBefore) {
+      builder.createdBefore(createdBefore);
+    }
+    if (createdAt) {
+      builder.createdAt(createdAt);
+    }
+    if (createdInLast) {
+      builder.createdInLast(createdInLast);
+    }
+
+    // Assignment
+    if (assigned !== undefined) {
+      if (assigned) {
+        builder.onlyAssigned();
+      } else {
+        builder.onlyUnassigned();
+      }
+    }
+    if (assignees) {
+      builder.assignedToAny(assignees);
+    }
+    if (author) {
+      builder.byAuthor(author);
+    }
+    if (authors) {
+      builder.byAuthors(authors);
+    }
+
+    // Security standards
+    if (cwe) {
+      builder.withCwe(cwe);
+    }
+    if (owaspTop10) {
+      builder.withOwaspTop10(owaspTop10);
+    }
+    if (owaspTop10v2021) {
+      builder.withOwaspTop10v2021(owaspTop10v2021);
+    }
+    if (sansTop25) {
+      builder.withSansTop25(sansTop25);
+    }
+    if (sonarsourceSecurity) {
+      builder.withSonarSourceSecurity(sonarsourceSecurity);
+    }
+    if (sonarsourceSecurityCategory) {
+      builder.withSonarSourceSecurityNew(sonarsourceSecurityCategory);
+    }
+
+    // Languages
+    if (languages) {
+      builder.withLanguages(languages);
+    }
+
+    // Facets
+    if (facets) {
+      builder.withFacets(facets);
+    }
+    if (facetMode) {
+      builder.withFacetMode(facetMode);
+    }
+
+    // New code
+    if (sinceLeakPeriod) {
+      builder.sinceLeakPeriod();
+    }
+    if (inNewCodePeriod) {
+      builder.inNewCodePeriod();
+    }
+
+    // Sorting
+    if (s) {
+      builder.sortBy(s, asc);
+    }
+
+    // Additional fields
+    if (additionalFields) {
+      builder.withAdditionalFields(additionalFields);
+    }
+
+    const response = await builder.execute();
+
+    // Transform to our interface
+    return {
+      issues: response.issues as SonarQubeIssue[],
+      components: response.components || [],
+      rules: (response.rules || []) as SonarQubeRule[],
+      users: response.users,
+      facets: response.facets,
+      paging: response.paging || { pageIndex: 1, pageSize: 100, total: 0 },
+    };
   }
 
   /**
@@ -733,20 +944,18 @@ export class SonarQubeClient implements ISonarQubeClient {
   async getMetrics(params: PaginationParams = {}): Promise<SonarQubeMetricsResult> {
     const { page, pageSize } = params;
 
-    const queryParams = {
-      organization: this.organization,
+    const response = await this.webApiClient.metrics.search({
       p: page,
       ps: pageSize,
-    };
-
-    const response = await this.httpClient.get<{
-      metrics: SonarQubeMetric[];
-      paging: { pageIndex: number; pageSize: number; total: number };
-    }>(this.baseUrl, this.auth, '/api/metrics/search', queryParams);
+    });
 
     return {
-      metrics: response.metrics,
-      paging: response.paging,
+      metrics: response.metrics as SonarQubeMetric[],
+      paging: {
+        pageIndex: 1,
+        pageSize: 100,
+        total: response.metrics.length,
+      },
     };
   }
 
@@ -755,11 +964,11 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the health status
    */
   async getHealth(): Promise<SonarQubeHealthStatus> {
-    return this.httpClient.get<SonarQubeHealthStatus>(
-      this.baseUrl,
-      this.auth,
-      '/api/system/health'
-    );
+    const response = await this.webApiClient.system.health();
+    return {
+      health: response.health,
+      causes: response.causes || [],
+    };
   }
 
   /**
@@ -767,11 +976,12 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the system status
    */
   async getStatus(): Promise<SonarQubeSystemStatus> {
-    return this.httpClient.get<SonarQubeSystemStatus>(
-      this.baseUrl,
-      this.auth,
-      '/api/system/status'
-    );
+    const response = await this.webApiClient.system.status();
+    return {
+      id: response.id,
+      version: response.version,
+      status: response.status,
+    };
   }
 
   /**
@@ -779,7 +989,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the ping response
    */
   async ping(): Promise<string> {
-    return this.httpClient.get<string>(this.baseUrl, this.auth, '/api/system/ping');
+    return this.webApiClient.system.ping();
   }
 
   /**
@@ -790,24 +1000,17 @@ export class SonarQubeClient implements ISonarQubeClient {
   async getComponentMeasures(
     params: ComponentMeasuresParams
   ): Promise<SonarQubeComponentMeasuresResult> {
-    const { component, metricKeys, additionalFields, branch, pullRequest, period } = params;
+    const { component, metricKeys, additionalFields, branch, pullRequest } = params;
 
-    const queryParams = {
+    const response = await this.webApiClient.measures.component({
       component,
-      metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-      additionalFields: arrayToCommaSeparated(additionalFields),
+      metricKeys: Array.isArray(metricKeys) ? metricKeys : [metricKeys as string],
+      additionalFields: additionalFields as MeasuresAdditionalField[] | undefined,
       branch,
       pullRequest,
-      period,
-      organization: this.organization,
-    };
+    });
 
-    return this.httpClient.get<SonarQubeComponentMeasuresResult>(
-      this.baseUrl,
-      this.auth,
-      '/api/measures/component',
-      queryParams
-    );
+    return response as SonarQubeComponentMeasuresResult;
   }
 
   /**
@@ -818,35 +1021,60 @@ export class SonarQubeClient implements ISonarQubeClient {
   async getComponentsMeasures(
     params: ComponentsMeasuresParams
   ): Promise<SonarQubeComponentsMeasuresResult> {
-    const {
-      componentKeys,
-      metricKeys,
-      additionalFields,
-      branch,
-      pullRequest,
-      period,
-      page,
-      pageSize,
-    } = params;
+    const { componentKeys, metricKeys, additionalFields, branch, pullRequest, page, pageSize } =
+      params;
 
-    const queryParams = {
-      componentKeys: Array.isArray(componentKeys) ? componentKeys.join(',') : componentKeys,
-      metricKeys: Array.isArray(metricKeys) ? metricKeys.join(',') : metricKeys,
-      additionalFields: arrayToCommaSeparated(additionalFields),
+    // Use Promise.all to fetch measures for multiple components
+    const componentKeysArray = Array.isArray(componentKeys) ? componentKeys : [componentKeys];
+    const metricKeysArray = Array.isArray(metricKeys) ? metricKeys : [metricKeys as string];
+
+    const componentsPromises = componentKeysArray.map(async (componentKey) => {
+      const result = await this.webApiClient.measures.component({
+        component: componentKey,
+        metricKeys: metricKeysArray,
+        additionalFields: additionalFields as MeasuresAdditionalField[] | undefined,
+        branch,
+        pullRequest,
+      });
+
+      return {
+        key: result.component.key,
+        name: result.component.name,
+        qualifier: result.component.qualifier,
+        measures: result.component.measures,
+      };
+    });
+
+    const components = await Promise.all(componentsPromises);
+
+    // Get metrics from the first component response (they should be the same for all)
+    const firstResult = await this.webApiClient.measures.component({
+      component: componentKeysArray[0],
+      metricKeys: metricKeysArray,
+      additionalFields: additionalFields as MeasuresAdditionalField[] | undefined,
       branch,
       pullRequest,
-      period,
-      p: page,
-      ps: pageSize,
-      organization: this.organization,
+    });
+
+    // Apply pagination manually
+    const startIndex = ((page || 1) - 1) * (pageSize || 100);
+    const endIndex = startIndex + (pageSize || 100);
+    const paginatedComponents = components.slice(startIndex, endIndex);
+
+    return {
+      components: paginatedComponents,
+      metrics: (firstResult.metrics || []) as SonarQubeMetric[],
+      paging: {
+        pageIndex: page || 1,
+        pageSize: pageSize || 100,
+        total: components.length,
+      },
+      period: (
+        firstResult as unknown as {
+          period?: { index: number; mode: string; date: string; parameter?: string };
+        }
+      ).period,
     };
-
-    return this.httpClient.get<SonarQubeComponentsMeasuresResult>(
-      this.baseUrl,
-      this.auth,
-      '/api/measures/components',
-      queryParams
-    );
   }
 
   /**
@@ -857,24 +1085,35 @@ export class SonarQubeClient implements ISonarQubeClient {
   async getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult> {
     const { component, metrics, from, to, branch, pullRequest, page, pageSize } = params;
 
-    const queryParams = {
+    const builder = this.webApiClient.measures.searchHistory(
       component,
-      metrics: Array.isArray(metrics) ? metrics.join(',') : metrics,
-      from,
-      to,
-      branch,
-      pullRequest,
-      p: page,
-      ps: pageSize,
-      organization: this.organization,
-    };
-
-    return this.httpClient.get<SonarQubeMeasuresHistoryResult>(
-      this.baseUrl,
-      this.auth,
-      '/api/measures/search_history',
-      queryParams
+      Array.isArray(metrics) ? metrics : [metrics as string]
     );
+
+    if (from) {
+      builder.from(from);
+    }
+    if (to) {
+      builder.to(to);
+    }
+    if (branch) {
+      builder.withBranch(branch);
+    }
+    if (pullRequest) {
+      builder.withPullRequest(pullRequest);
+    }
+    if (page !== undefined) {
+      builder.page(page);
+    }
+    if (pageSize !== undefined) {
+      builder.pageSize(pageSize);
+    }
+
+    const response = await builder.execute();
+    return {
+      ...response,
+      paging: response.paging || { pageIndex: 1, pageSize: 100, total: 0 },
+    };
   }
 
   /**
@@ -882,16 +1121,12 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the list of quality gates
    */
   async listQualityGates(): Promise<SonarQubeQualityGatesResult> {
-    const queryParams = {
-      organization: this.organization,
+    const response = await this.webApiClient.qualityGates.list();
+    return {
+      qualitygates: response.qualitygates as SonarQubeQualityGate[],
+      default: response.default || '',
+      actions: (response as unknown as { actions?: { create?: boolean } }).actions,
     };
-
-    return this.httpClient.get<SonarQubeQualityGatesResult>(
-      this.baseUrl,
-      this.auth,
-      '/api/qualitygates/list',
-      queryParams
-    );
   }
 
   /**
@@ -900,17 +1135,14 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the quality gate details
    */
   async getQualityGate(id: string): Promise<SonarQubeQualityGate> {
-    const queryParams = {
-      id,
-      organization: this.organization,
+    const response = await this.webApiClient.qualityGates.get({ id });
+    return {
+      id: response.id,
+      name: response.name,
+      isDefault: response.isDefault,
+      isBuiltIn: response.isBuiltIn,
+      conditions: response.conditions as unknown as SonarQubeQualityGateCondition[],
     };
-
-    return this.httpClient.get<SonarQubeQualityGate>(
-      this.baseUrl,
-      this.auth,
-      '/api/qualitygates/show',
-      queryParams
-    );
   }
 
   /**
@@ -923,19 +1155,13 @@ export class SonarQubeClient implements ISonarQubeClient {
   ): Promise<SonarQubeQualityGateStatus> {
     const { projectKey, branch, pullRequest } = params;
 
-    const queryParams = {
+    const response = await this.webApiClient.qualityGates.getProjectStatus({
       projectKey,
       branch,
       pullRequest,
-      organization: this.organization,
-    };
+    });
 
-    return this.httpClient.get<SonarQubeQualityGateStatus>(
-      this.baseUrl,
-      this.auth,
-      '/api/qualitygates/project_status',
-      queryParams
-    );
+    return response as unknown as SonarQubeQualityGateStatus;
   }
 
   /**
@@ -944,35 +1170,30 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the source code and annotations
    */
   async getSourceCode(params: SourceCodeParams): Promise<SonarQubeSourceResult> {
-    const { key, from, to, branch, pullRequest } = params;
+    const { key, branch, pullRequest } = params;
 
-    const queryParams = {
+    // Get raw source code
+    const response = await this.webApiClient.sources.raw({
       key,
-      from,
-      to,
-      branch,
-      pullRequest,
-      organization: this.organization,
-    };
+      ...(branch && { branch }),
+      ...(pullRequest && { pullRequest }),
+    });
 
-    // Call the raw sources API
-    const sources = await this.httpClient.get<{
-      sources: Array<{
-        line: number;
-        code: string;
-        scmAuthor?: string;
-        scmDate?: string;
-        scmRevision?: string;
-      }>;
+    // Transform the response to match our interface
+    // The raw method returns a string with lines separated by newlines
+    const lines = response.split('\n');
+    const sources = {
+      sources: lines.map((line, index) => ({
+        line: index + 1,
+        code: line,
+      })),
       component: {
-        key: string;
-        path?: string;
-        qualifier: string;
-        name: string;
-        longName?: string;
-        language?: string;
-      };
-    }>(this.baseUrl, this.auth, '/api/sources/raw', queryParams);
+        key,
+        qualifier: 'FIL', // Default for files
+        name: key.split('/').pop() || key,
+        longName: key,
+      },
+    };
 
     // Get issues for this component to annotate the source
     if (key) {
@@ -1014,23 +1235,15 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the blame information
    */
   async getScmBlame(params: ScmBlameParams): Promise<SonarQubeScmBlameResult> {
-    const { key, from, to, branch, pullRequest } = params;
+    const { key, from, to } = params;
 
-    const queryParams = {
+    const response = await this.webApiClient.sources.scm({
       key,
-      from,
-      to,
-      branch,
-      pullRequest,
-      organization: this.organization,
-    };
+      ...(from && { from }),
+      ...(to && { to }),
+    });
 
-    return this.httpClient.get<SonarQubeScmBlameResult>(
-      this.baseUrl,
-      this.auth,
-      '/api/sources/scm',
-      queryParams
-    );
+    return response as unknown as SonarQubeScmBlameResult;
   }
 }
 
@@ -1039,14 +1252,12 @@ export class SonarQubeClient implements ISonarQubeClient {
  * @param token SonarQube authentication token
  * @param baseUrl Base URL of the SonarQube instance
  * @param organization Organization name
- * @param httpClient HTTP client implementation
  * @returns A new SonarQube client instance
  */
 export function createSonarQubeClient(
   token: string,
   baseUrl?: string,
-  organization?: string | null,
-  httpClient?: HttpClient
+  organization?: string | null
 ): ISonarQubeClient {
-  return new SonarQubeClient(token, baseUrl, organization, httpClient);
+  return new SonarQubeClient(token, baseUrl, organization);
 }

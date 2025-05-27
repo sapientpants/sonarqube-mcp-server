@@ -47,7 +47,7 @@ describe('SonarQubeClient', () => {
       nock(baseUrl)
         .get('/api/projects/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.listProjects();
@@ -81,7 +81,7 @@ describe('SonarQubeClient', () => {
       const scope = nock(baseUrl)
         .get('/api/projects/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.listProjects({
@@ -169,7 +169,7 @@ describe('SonarQubeClient', () => {
       nock(baseUrl)
         .get('/api/issues/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({ projectKey: 'project1' });
@@ -234,12 +234,12 @@ describe('SonarQubeClient', () => {
       const scope = nock(baseUrl)
         .get('/api/issues/search')
         .query({
-          componentKeys: 'project1',
+          projects: 'project1',
           severities: 'CRITICAL',
           p: 1,
           ps: 5,
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({
@@ -284,7 +284,7 @@ describe('SonarQubeClient', () => {
         .get('/api/issues/search')
         .query((queryObj) => {
           return (
-            queryObj.componentKeys === 'project1' &&
+            queryObj.projects === 'project1' &&
             queryObj.statuses === 'RESOLVED,CLOSED' &&
             queryObj.types === 'CODE_SMELL' &&
             queryObj.tags === 'code-smell,performance' &&
@@ -292,7 +292,7 @@ describe('SonarQubeClient', () => {
             queryObj.languages === 'java,typescript'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({
@@ -338,13 +338,13 @@ describe('SonarQubeClient', () => {
         .get('/api/issues/search')
         .query((queryObj) => {
           return (
-            queryObj.componentKeys === 'project1' &&
+            queryObj.projects === 'project1' &&
             queryObj.resolved === 'false' &&
             queryObj.sinceLeakPeriod === 'true' &&
             queryObj.inNewCodePeriod === 'true'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({
@@ -398,7 +398,7 @@ describe('SonarQubeClient', () => {
       nock(baseUrl)
         .get('/api/metrics/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMetrics();
@@ -437,7 +437,7 @@ describe('SonarQubeClient', () => {
         .query((actualQuery) => {
           return actualQuery.p === '2' && actualQuery.ps === '1';
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMetrics({
@@ -461,7 +461,7 @@ describe('SonarQubeClient', () => {
 
       nock(baseUrl)
         .get('/api/system/health')
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getHealth();
@@ -478,7 +478,7 @@ describe('SonarQubeClient', () => {
 
       nock(baseUrl)
         .get('/api/system/health')
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getHealth();
@@ -498,7 +498,7 @@ describe('SonarQubeClient', () => {
 
       nock(baseUrl)
         .get('/api/system/status')
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getStatus();
@@ -511,7 +511,10 @@ describe('SonarQubeClient', () => {
 
   describe('ping', () => {
     it('should ping SonarQube successfully', async () => {
-      nock(baseUrl).get('/api/system/ping').basicAuth({ user: token, pass: '' }).reply(200, 'pong');
+      nock(baseUrl)
+        .get('/api/system/ping')
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, 'pong');
 
       const result = await client.ping();
       expect(result).toBe('pong');
@@ -571,7 +574,7 @@ describe('SonarQubeClient', () => {
         .query((queryObj) => {
           return queryObj.component === 'my-project' && queryObj.metricKeys === 'complexity,bugs';
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getComponentMeasures({
@@ -632,7 +635,7 @@ describe('SonarQubeClient', () => {
             queryObj.branch === 'main'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getComponentMeasures({
@@ -725,7 +728,7 @@ describe('SonarQubeClient', () => {
             queryObj.metricKeys === 'bugs,vulnerabilities'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getComponentsMeasures({
@@ -796,7 +799,7 @@ describe('SonarQubeClient', () => {
             queryObj.branch === 'main'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getComponentsMeasures({
@@ -860,7 +863,7 @@ describe('SonarQubeClient', () => {
         .query((queryObj) => {
           return queryObj.component === 'my-project' && queryObj.metrics === 'coverage,bugs';
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMeasuresHistory({
@@ -912,7 +915,7 @@ describe('SonarQubeClient', () => {
             queryObj.branch === 'main'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMeasuresHistory({
