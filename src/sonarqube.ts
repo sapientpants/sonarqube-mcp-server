@@ -1,4 +1,7 @@
 import { SonarQubeClient as WebApiClient, MeasuresAdditionalField } from 'sonarqube-web-api-client';
+import { createLogger } from './utils/logger.js';
+
+const logger = createLogger('sonarqube');
 
 /**
  * Default SonarQube URL
@@ -652,31 +655,38 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   async listProjects(params: PaginationParams = {}): Promise<SonarQubeProjectsResult> {
     const { page, pageSize } = params;
+    logger.debug('Listing projects', { page, pageSize, organization: this.organization });
 
-    const builder = this.webApiClient.projects.search();
+    try {
+      const builder = this.webApiClient.projects.search();
 
-    if (page !== undefined) {
-      builder.page(page);
+      if (page !== undefined) {
+        builder.page(page);
+      }
+      if (pageSize !== undefined) {
+        builder.pageSize(pageSize);
+      }
+
+      const response = await builder.execute();
+      logger.debug('Projects retrieved successfully', { count: response.components.length });
+
+      // Transform to our interface
+      return {
+        projects: response.components.map((component) => ({
+          key: component.key,
+          name: component.name,
+          qualifier: component.qualifier,
+          visibility: component.visibility,
+          lastAnalysisDate: component.lastAnalysisDate,
+          revision: component.revision,
+          managed: component.managed,
+        })),
+        paging: response.paging,
+      };
+    } catch (error) {
+      logger.error('Failed to list projects', error);
+      throw error;
     }
-    if (pageSize !== undefined) {
-      builder.pageSize(pageSize);
-    }
-
-    const response = await builder.execute();
-
-    // Transform to our interface
-    return {
-      projects: response.components.map((component) => ({
-        key: component.key,
-        name: component.name,
-        qualifier: component.qualifier,
-        visibility: component.visibility,
-        lastAnalysisDate: component.lastAnalysisDate,
-        revision: component.revision,
-        managed: component.managed,
-      })),
-      paging: response.paging,
-    };
   }
 
   /**
@@ -1269,7 +1279,7 @@ export class SonarQubeClient implements ISonarQubeClient {
         };
       } catch (error) {
         // Log the error for debugging but continue with source code without annotations
-        console.error('Failed to retrieve issues for source code annotation:', error);
+        logger.error('Failed to retrieve issues for source code annotation', error);
         // Return source code without issue annotations
         return sources;
       }
