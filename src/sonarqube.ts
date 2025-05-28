@@ -686,118 +686,14 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @returns Promise with the list of issues
    */
   async getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult> {
-    const {
-      // Component filters
-      projectKey,
-      componentKeys,
-      components,
-      projects,
-      onComponentOnly,
-
-      // Branch and PR
-      branch,
-      pullRequest,
-
-      // Issue filters
-      issues,
-      severities,
-      severity, // deprecated
-      statuses,
-      resolutions,
-      resolved,
-      types,
-
-      // Clean Code taxonomy
-      cleanCodeAttributeCategories,
-      impactSeverities,
-      impactSoftwareQualities,
-      issueStatuses,
-
-      // Rules and tags
-      rules,
-      tags,
-
-      // Date filters
-      createdAfter,
-      createdBefore,
-      createdAt,
-      createdInLast,
-
-      // Assignment
-      assigned,
-      assignees,
-      author,
-      authors,
-
-      // Security standards
-      cwe,
-      owaspTop10,
-      owaspTop10v2021,
-      sansTop25,
-      sonarsourceSecurity,
-      sonarsourceSecurityCategory,
-
-      // Languages
-      languages,
-
-      // Facets
-      facets,
-      facetMode,
-
-      // New code
-      sinceLeakPeriod,
-      inNewCodePeriod,
-
-      // Sorting
-      s,
-      asc,
-
-      // Additional fields
-      additionalFields,
-
-      // Pagination
-      page,
-      pageSize,
-    } = params;
-
+    const { page, pageSize } = params;
     const builder = this.webApiClient.issues.search();
 
-    // Component filters
-    if (projectKey) {
-      builder.withProjects([projectKey]);
-    }
-    if (componentKeys) {
-      builder.withComponents(componentKeys);
-    }
-    if (components) {
-      builder.withComponents(components);
-    }
-    if (projects) {
-      builder.withProjects(projects);
-    }
-    if (onComponentOnly) {
-      builder.onComponentOnly();
-    }
-
-    // Branch and PR
-    if (branch) {
-      builder.onBranch(branch);
-    }
-    if (pullRequest) {
-      builder.onPullRequest(pullRequest);
-    }
-
-    // Issue filters
-    if (issues) {
-      builder.withIssues(issues);
-    }
-    if (severities) {
-      builder.withSeverities(severities);
-    }
-    if (severity) {
-      // deprecated
-      builder.withSeverities([severity]);
-    }
+    // Apply all filters using helper methods
+    this.applyComponentFilters(builder, params);
+    this.applyIssueFilters(builder, params);
+    this.applyDateAndAssignmentFilters(builder, params);
+    this.applySecurityAndMetadataFilters(builder, params);
 
     // Add pagination
     if (page !== undefined) {
@@ -807,139 +703,16 @@ export class SonarQubeClient implements ISonarQubeClient {
       builder.pageSize(pageSize);
     }
 
-    // Issue status and resolution
-    if (statuses) {
-      builder.withStatuses(statuses);
-    }
-    if (resolutions) {
-      builder.withResolutions(resolutions);
-    }
-    if (resolved !== undefined) {
-      if (resolved) {
-        builder.onlyResolved();
-      } else {
-        builder.onlyUnresolved();
-      }
-    }
-    if (types) {
-      builder.withTypes(types);
-    }
-
-    // Clean Code taxonomy
-    if (cleanCodeAttributeCategories) {
-      builder.withCleanCodeAttributeCategories(cleanCodeAttributeCategories);
-    }
-    if (impactSeverities) {
-      builder.withImpactSeverities(impactSeverities);
-    }
-    if (impactSoftwareQualities) {
-      builder.withImpactSoftwareQualities(impactSoftwareQualities);
-    }
-    if (issueStatuses) {
-      builder.withIssueStatuses(issueStatuses);
-    }
-
-    // Rules and tags
-    if (rules) {
-      builder.withRules(rules);
-    }
-    if (tags) {
-      builder.withTags(tags);
-    }
-
-    // Date filters
-    if (createdAfter) {
-      builder.createdAfter(createdAfter);
-    }
-    if (createdBefore) {
-      builder.createdBefore(createdBefore);
-    }
-    if (createdAt) {
-      builder.createdAt(createdAt);
-    }
-    if (createdInLast) {
-      builder.createdInLast(createdInLast);
-    }
-
-    // Assignment
-    if (assigned !== undefined) {
-      if (assigned) {
-        builder.onlyAssigned();
-      } else {
-        builder.onlyUnassigned();
-      }
-    }
-    if (assignees) {
-      builder.assignedToAny(assignees);
-    }
-    if (author) {
-      builder.byAuthor(author);
-    }
-    if (authors) {
-      builder.byAuthors(authors);
-    }
-
-    // Security standards
-    if (cwe) {
-      builder.withCwe(cwe);
-    }
-    if (owaspTop10) {
-      builder.withOwaspTop10(owaspTop10);
-    }
-    if (owaspTop10v2021) {
-      builder.withOwaspTop10v2021(owaspTop10v2021);
-    }
-    if (sansTop25) {
-      builder.withSansTop25(sansTop25);
-    }
-    if (sonarsourceSecurity) {
-      builder.withSonarSourceSecurity(sonarsourceSecurity);
-    }
-    if (sonarsourceSecurityCategory) {
-      builder.withSonarSourceSecurityNew(sonarsourceSecurityCategory);
-    }
-
-    // Languages
-    if (languages) {
-      builder.withLanguages(languages);
-    }
-
-    // Facets
-    if (facets) {
-      builder.withFacets(facets);
-    }
-    if (facetMode) {
-      builder.withFacetMode(facetMode);
-    }
-
-    // New code
-    if (sinceLeakPeriod) {
-      builder.sinceLeakPeriod();
-    }
-    if (inNewCodePeriod) {
-      builder.inNewCodePeriod();
-    }
-
-    // Sorting
-    if (s) {
-      builder.sortBy(s, asc);
-    }
-
-    // Additional fields
-    if (additionalFields) {
-      builder.withAdditionalFields(additionalFields);
-    }
-
     const response = await builder.execute();
 
     // Transform to our interface
     return {
       issues: response.issues as SonarQubeIssue[],
-      components: response.components || [],
-      rules: (response.rules || []) as SonarQubeRule[],
+      components: response.components ?? [],
+      rules: (response.rules ?? []) as SonarQubeRule[],
       users: response.users,
       facets: response.facets,
-      paging: response.paging || { pageIndex: 1, pageSize: 100, total: 0 },
+      paging: response.paging ?? { pageIndex: 1, pageSize: 100, total: 0 },
     };
   }
 
@@ -965,9 +738,9 @@ export class SonarQubeClient implements ISonarQubeClient {
 
     return {
       metrics: response.metrics as SonarQubeMetric[],
-      paging: paging || {
-        pageIndex: page || 1,
-        pageSize: pageSize || 100,
+      paging: paging ?? {
+        pageIndex: page ?? 1,
+        pageSize: pageSize ?? 100,
         total: response.metrics.length,
       },
     };
@@ -981,7 +754,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const response = await this.webApiClient.system.health();
     return {
       health: response.health,
-      causes: response.causes || [],
+      causes: response.causes ?? [],
     };
   }
 
@@ -1074,12 +847,12 @@ export class SonarQubeClient implements ISonarQubeClient {
         pullRequest,
       });
 
-      const component = result.component || result;
+      const component = result.component ?? result;
       return {
         key: component.key,
         name: component.name,
         qualifier: component.qualifier,
-        measures: component.measures || [],
+        measures: component.measures ?? [],
         periods: (component as unknown as SonarQubeMeasureComponent).periods,
       };
     });
@@ -1096,16 +869,16 @@ export class SonarQubeClient implements ISonarQubeClient {
     });
 
     // Apply pagination manually
-    const startIndex = ((page || 1) - 1) * (pageSize || 100);
-    const endIndex = startIndex + (pageSize || 100);
+    const startIndex = ((page ?? 1) - 1) * (pageSize ?? 100);
+    const endIndex = startIndex + (pageSize ?? 100);
     const paginatedComponents = components.slice(startIndex, endIndex);
 
     return {
       components: paginatedComponents,
-      metrics: (firstResult.metrics || []) as SonarQubeMetric[],
+      metrics: (firstResult.metrics ?? []) as SonarQubeMetric[],
       paging: {
-        pageIndex: page || 1,
-        pageSize: pageSize || 100,
+        pageIndex: page ?? 1,
+        pageSize: pageSize ?? 100,
         total: components.length,
       },
       period: (
@@ -1151,7 +924,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const response = await builder.execute();
     return {
       ...response,
-      paging: response.paging || { pageIndex: 1, pageSize: 100, total: 0 },
+      paging: response.paging ?? { pageIndex: 1, pageSize: 100, total: 0 },
     };
   }
 
@@ -1163,7 +936,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     const response = await this.webApiClient.qualityGates.list();
     return {
       qualitygates: response.qualitygates as SonarQubeQualityGate[],
-      default: response.default || '',
+      default: response.default ?? '',
       actions: (response as unknown as { actions?: { create?: boolean } }).actions,
     };
   }
@@ -1228,8 +1001,8 @@ export class SonarQubeClient implements ISonarQubeClient {
 
     // Apply line range filtering if specified
     if (from !== undefined || to !== undefined) {
-      const startLine = from || 1;
-      const endLine = to || sourcesArray.length;
+      const startLine = from ?? 1;
+      const endLine = to ?? sourcesArray.length;
       sourcesArray = sourcesArray.filter(
         (source) => source.line >= startLine && source.line <= endLine
       );
@@ -1240,7 +1013,7 @@ export class SonarQubeClient implements ISonarQubeClient {
       component: {
         key,
         qualifier: 'FIL', // Default for files
-        name: key.split('/').pop() || key,
+        name: key.split('/').pop() ?? key,
         longName: key,
       },
     };
@@ -1294,6 +1067,281 @@ export class SonarQubeClient implements ISonarQubeClient {
     });
 
     return response as unknown as SonarQubeScmBlameResult;
+  }
+
+  /**
+   * Apply component filters to the search builder
+   */
+  private applyComponentFilters(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    builder: any,
+    params: Pick<
+      IssuesParams,
+      | 'projectKey'
+      | 'componentKeys'
+      | 'components'
+      | 'projects'
+      | 'onComponentOnly'
+      | 'branch'
+      | 'pullRequest'
+    >
+  ): void {
+    const {
+      projectKey,
+      componentKeys,
+      components,
+      projects,
+      onComponentOnly,
+      branch,
+      pullRequest,
+    } = params;
+
+    if (projectKey) {
+      builder.withProjects([projectKey]);
+    }
+    if (componentKeys) {
+      builder.withComponents(componentKeys);
+    }
+    if (components) {
+      builder.withComponents(components);
+    }
+    if (projects) {
+      builder.withProjects(projects);
+    }
+    if (onComponentOnly) {
+      builder.onComponentOnly();
+    }
+    if (branch) {
+      builder.onBranch(branch);
+    }
+    if (pullRequest) {
+      builder.onPullRequest(pullRequest);
+    }
+  }
+
+  /**
+   * Apply issue filters to the search builder
+   */
+  private applyIssueFilters(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    builder: any,
+    params: Pick<
+      IssuesParams,
+      | 'issues'
+      | 'severities'
+      | 'severity'
+      | 'statuses'
+      | 'resolutions'
+      | 'resolved'
+      | 'types'
+      | 'cleanCodeAttributeCategories'
+      | 'impactSeverities'
+      | 'impactSoftwareQualities'
+      | 'issueStatuses'
+    >
+  ): void {
+    const {
+      issues,
+      severities,
+      severity,
+      statuses,
+      resolutions,
+      resolved,
+      types,
+      cleanCodeAttributeCategories,
+      impactSeverities,
+      impactSoftwareQualities,
+      issueStatuses,
+    } = params;
+
+    if (issues) {
+      builder.withIssues(issues);
+    }
+    if (severities) {
+      builder.withSeverities(severities);
+    }
+    if (severity) {
+      builder.withSeverities([severity]);
+    }
+    if (statuses) {
+      builder.withStatuses(statuses);
+    }
+    if (resolutions) {
+      builder.withResolutions(resolutions);
+    }
+    if (resolved !== undefined) {
+      if (resolved) {
+        builder.onlyResolved();
+      } else {
+        builder.onlyUnresolved();
+      }
+    }
+    if (types) {
+      builder.withTypes(types);
+    }
+    if (cleanCodeAttributeCategories) {
+      builder.withCleanCodeAttributeCategories(cleanCodeAttributeCategories);
+    }
+    if (impactSeverities) {
+      builder.withImpactSeverities(impactSeverities);
+    }
+    if (impactSoftwareQualities) {
+      builder.withImpactSoftwareQualities(impactSoftwareQualities);
+    }
+    if (issueStatuses) {
+      builder.withIssueStatuses(issueStatuses);
+    }
+  }
+
+  /**
+   * Apply date and assignment filters to the search builder
+   */
+  private applyDateAndAssignmentFilters(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    builder: any,
+    params: Pick<
+      IssuesParams,
+      | 'createdAfter'
+      | 'createdBefore'
+      | 'createdAt'
+      | 'createdInLast'
+      | 'assigned'
+      | 'assignees'
+      | 'author'
+      | 'authors'
+    >
+  ): void {
+    const {
+      createdAfter,
+      createdBefore,
+      createdAt,
+      createdInLast,
+      assigned,
+      assignees,
+      author,
+      authors,
+    } = params;
+
+    if (createdAfter) {
+      builder.createdAfter(createdAfter);
+    }
+    if (createdBefore) {
+      builder.createdBefore(createdBefore);
+    }
+    if (createdAt) {
+      builder.createdAt(createdAt);
+    }
+    if (createdInLast) {
+      builder.createdInLast(createdInLast);
+    }
+    if (assigned !== undefined) {
+      if (assigned) {
+        builder.onlyAssigned();
+      } else {
+        builder.onlyUnassigned();
+      }
+    }
+    if (assignees) {
+      builder.assignedToAny(assignees);
+    }
+    if (author) {
+      builder.byAuthor(author);
+    }
+    if (authors) {
+      builder.byAuthors(authors);
+    }
+  }
+
+  /**
+   * Apply security and metadata filters to the search builder
+   */
+  private applySecurityAndMetadataFilters(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    builder: any,
+    params: Pick<
+      IssuesParams,
+      | 'cwe'
+      | 'owaspTop10'
+      | 'owaspTop10v2021'
+      | 'sansTop25'
+      | 'sonarsourceSecurity'
+      | 'sonarsourceSecurityCategory'
+      | 'rules'
+      | 'tags'
+      | 'languages'
+      | 'facets'
+      | 'facetMode'
+      | 'sinceLeakPeriod'
+      | 'inNewCodePeriod'
+      | 's'
+      | 'asc'
+      | 'additionalFields'
+    >
+  ): void {
+    const {
+      cwe,
+      owaspTop10,
+      owaspTop10v2021,
+      sansTop25,
+      sonarsourceSecurity,
+      sonarsourceSecurityCategory,
+      rules,
+      tags,
+      languages,
+      facets,
+      facetMode,
+      sinceLeakPeriod,
+      inNewCodePeriod,
+      s,
+      asc,
+      additionalFields,
+    } = params;
+
+    if (cwe) {
+      builder.withCwe(cwe);
+    }
+    if (owaspTop10) {
+      builder.withOwaspTop10(owaspTop10);
+    }
+    if (owaspTop10v2021) {
+      builder.withOwaspTop10v2021(owaspTop10v2021);
+    }
+    if (sansTop25) {
+      builder.withSansTop25(sansTop25);
+    }
+    if (sonarsourceSecurity) {
+      builder.withSonarSourceSecurity(sonarsourceSecurity);
+    }
+    if (sonarsourceSecurityCategory) {
+      builder.withSonarSourceSecurityNew(sonarsourceSecurityCategory);
+    }
+    if (rules) {
+      builder.withRules(rules);
+    }
+    if (tags) {
+      builder.withTags(tags);
+    }
+    if (languages) {
+      builder.withLanguages(languages);
+    }
+    if (facets) {
+      builder.withFacets(facets);
+    }
+    if (facetMode) {
+      builder.withFacetMode(facetMode);
+    }
+    if (sinceLeakPeriod) {
+      builder.sinceLeakPeriod();
+    }
+    if (inNewCodePeriod) {
+      builder.inNewCodePeriod();
+    }
+    if (s) {
+      builder.sortBy(s, asc);
+    }
+    if (additionalFields) {
+      builder.withAdditionalFields(additionalFields);
+    }
   }
 }
 
