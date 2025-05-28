@@ -215,16 +215,7 @@ export interface IssuesParams extends PaginationParams {
   // Issue filters
   issues?: string[];
   severities?: ('INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER')[];
-  statuses?: (
-    | 'OPEN'
-    | 'CONFIRMED'
-    | 'REOPENED'
-    | 'RESOLVED'
-    | 'CLOSED'
-    | 'TO_REVIEW'
-    | 'IN_REVIEW'
-    | 'REVIEWED'
-  )[];
+  statuses?: ('OPEN' | 'CONFIRMED' | 'REOPENED' | 'RESOLVED' | 'CLOSED')[];
   resolutions?: ('FALSE-POSITIVE' | 'WONTFIX' | 'FIXED' | 'REMOVED')[];
   resolved?: boolean;
   types?: ('CODE_SMELL' | 'BUG' | 'VULNERABILITY' | 'SECURITY_HOTSPOT')[];

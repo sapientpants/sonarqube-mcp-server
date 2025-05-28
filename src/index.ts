@@ -556,18 +556,7 @@ const severitySchema = z
   .nullable()
   .optional();
 const statusSchema = z
-  .array(
-    z.enum([
-      'OPEN',
-      'CONFIRMED',
-      'REOPENED',
-      'RESOLVED',
-      'CLOSED',
-      'TO_REVIEW',
-      'IN_REVIEW',
-      'REVIEWED',
-    ])
-  )
+  .array(z.enum(['OPEN', 'CONFIRMED', 'REOPENED', 'RESOLVED', 'CLOSED']))
   .nullable()
   .optional();
 const resolutionSchema = z
