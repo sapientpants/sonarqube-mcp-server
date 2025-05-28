@@ -157,6 +157,8 @@ For development or customization:
 | `SONARQUBE_TOKEN` | Authentication token for SonarQube API access | ✅ Yes | - |
 | `SONARQUBE_URL` | URL of your SonarQube instance | ❌ No | `https://sonarcloud.io` |
 | `SONARQUBE_ORGANIZATION` | Organization key (required for SonarCloud) | ❌ No* | - |
+| `LOG_FILE` | Path to write log files (e.g., `/tmp/sonarqube-mcp.log`) | ❌ No | - |
+| `LOG_LEVEL` | Minimum log level (DEBUG, INFO, WARN, ERROR) | ❌ No | `DEBUG` |
 
 *Required when using SonarCloud
 
@@ -169,6 +171,45 @@ For development or customization:
 **For SonarQube Server:**
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
+
+### Logging Configuration
+
+The server supports file-based logging for debugging and monitoring. Since MCP servers use stdout for protocol communication, logs are written to a file instead of stdout/stderr to avoid interference.
+
+**Enable Logging:**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "https://sonarcloud.io",
+        "SONARQUBE_TOKEN": "your-token-here",
+        "SONARQUBE_ORGANIZATION": "your-org",
+        "LOG_FILE": "/tmp/sonarqube-mcp.log",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+**Log Levels:**
+- `DEBUG`: Detailed information for debugging
+- `INFO`: General information about server operation
+- `WARN`: Warning events that might lead to issues
+- `ERROR`: Error events (server continues running)
+
+**Example Log Output:**
+```
+2024-01-15T10:30:45.123Z INFO [index] Starting SonarQube MCP server
+2024-01-15T10:30:45.234Z INFO [index] Environment variables validated successfully
+2024-01-15T10:30:45.345Z INFO [index] SonarQube client created successfully
+2024-01-15T10:30:45.456Z INFO [index] SonarQube MCP server started successfully
+2024-01-15T10:30:50.123Z DEBUG [index] Handling SonarQube projects request
+2024-01-15T10:30:50.567Z INFO [index] Successfully retrieved projects {"count": 5}
+```
 
 ## Available Tools
 
@@ -482,6 +523,10 @@ The project maintains high code quality through:
 #### "Connection refused"
 - **Cause**: Incorrect URL or network issues
 - **Solution**: Verify `SONARQUBE_URL` and network connectivity
+
+#### "No output or errors visible"
+- **Cause**: Errors might be happening but not visible in Claude Desktop
+- **Solution**: Enable logging with `LOG_FILE` and check the log file for detailed error messages
 
 
 ### FAQ

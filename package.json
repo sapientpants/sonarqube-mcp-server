@@ -57,10 +57,10 @@
   "packageManager": "pnpm@10.7.1",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
-    "axios": "^1.9.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "zod": "^3.25.23"
+    "sonarqube-web-api-client": "0.2.2",
+    "zod": "^3.25.30"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",

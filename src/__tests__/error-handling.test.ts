@@ -26,54 +26,7 @@ afterAll(() => {
 let nullToUndefined: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-// Mock the axios module to prevent real network requests
-jest.mock('axios', () => ({
-  get: jest.fn().mockImplementation((url) => {
-    if (url.includes('unauthorized')) {
-      return Promise.reject({
-        response: {
-          status: 401,
-          data: { errors: [{ msg: 'Unauthorized' }] },
-        },
-      });
-    }
-    if (url.includes('notfound')) {
-      return Promise.reject({
-        response: {
-          status: 404,
-          data: { errors: [{ msg: 'Not found' }] },
-        },
-      });
-    }
-    if (url.includes('badrequest')) {
-      return Promise.reject({
-        response: {
-          status: 400,
-          data: { errors: [{ msg: 'Bad request' }] },
-        },
-      });
-    }
-    if (url.includes('servererror')) {
-      return Promise.reject({
-        response: {
-          status: 500,
-          data: { errors: [{ msg: 'Server error' }] },
-        },
-      });
-    }
-    if (url.includes('networkerror')) {
-      return Promise.reject(new Error('Network error'));
-    }
-
-    return Promise.resolve({
-      data: {
-        message: 'Success',
-        components: [],
-        paging: { pageIndex: 1, pageSize: 10, total: 0 },
-      },
-    });
-  }),
-}));
+// No need to mock axios anymore since we're using sonarqube-web-api-client
 
 describe('Error Handling', () => {
   beforeAll(async () => {

@@ -47,7 +47,7 @@ describe('SonarQubeClient', () => {
       nock(baseUrl)
         .get('/api/projects/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.listProjects();
@@ -81,7 +81,7 @@ describe('SonarQubeClient', () => {
       const scope = nock(baseUrl)
         .get('/api/projects/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.listProjects({
@@ -169,7 +169,7 @@ describe('SonarQubeClient', () => {
       nock(baseUrl)
         .get('/api/issues/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({ projectKey: 'project1' });
@@ -234,12 +234,12 @@ describe('SonarQubeClient', () => {
       const scope = nock(baseUrl)
         .get('/api/issues/search')
         .query({
-          componentKeys: 'project1',
+          projects: 'project1',
           severities: 'CRITICAL',
           p: 1,
           ps: 5,
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({
@@ -284,7 +284,7 @@ describe('SonarQubeClient', () => {
         .get('/api/issues/search')
         .query((queryObj) => {
           return (
-            queryObj.componentKeys === 'project1' &&
+            queryObj.projects === 'project1' &&
             queryObj.statuses === 'RESOLVED,CLOSED' &&
             queryObj.types === 'CODE_SMELL' &&
             queryObj.tags === 'code-smell,performance' &&
@@ -292,7 +292,7 @@ describe('SonarQubeClient', () => {
             queryObj.languages === 'java,typescript'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({
@@ -338,13 +338,13 @@ describe('SonarQubeClient', () => {
         .get('/api/issues/search')
         .query((queryObj) => {
           return (
-            queryObj.componentKeys === 'project1' &&
+            queryObj.projects === 'project1' &&
             queryObj.resolved === 'false' &&
             queryObj.sinceLeakPeriod === 'true' &&
             queryObj.inNewCodePeriod === 'true'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getIssues({
@@ -398,7 +398,7 @@ describe('SonarQubeClient', () => {
       nock(baseUrl)
         .get('/api/metrics/search')
         .query(true)
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMetrics();
@@ -437,7 +437,7 @@ describe('SonarQubeClient', () => {
         .query((actualQuery) => {
           return actualQuery.p === '2' && actualQuery.ps === '1';
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMetrics({
@@ -461,7 +461,7 @@ describe('SonarQubeClient', () => {
 
       nock(baseUrl)
         .get('/api/system/health')
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getHealth();
@@ -478,7 +478,7 @@ describe('SonarQubeClient', () => {
 
       nock(baseUrl)
         .get('/api/system/health')
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getHealth();
@@ -498,7 +498,7 @@ describe('SonarQubeClient', () => {
 
       nock(baseUrl)
         .get('/api/system/status')
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getStatus();
@@ -511,10 +511,380 @@ describe('SonarQubeClient', () => {
 
   describe('ping', () => {
     it('should ping SonarQube successfully', async () => {
-      nock(baseUrl).get('/api/system/ping').basicAuth({ user: token, pass: '' }).reply(200, 'pong');
+      nock(baseUrl)
+        .get('/api/system/ping')
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, 'pong');
 
       const result = await client.ping();
       expect(result).toBe('pong');
+    });
+
+    it('should handle projects filter parameter', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return actualQuery.projects === 'proj1,proj2';
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        projects: ['proj1', 'proj2'],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle component filter parameters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      // When both componentKeys and components are provided, only the last one (components) is used
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.projects === 'project1' &&
+            actualQuery.componentKeys === 'comp2' && // components overrides componentKeys
+            actualQuery.onComponentOnly === 'true'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        projectKey: 'project1',
+        componentKeys: ['comp1'],
+        components: ['comp2'],
+        onComponentOnly: true,
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle branch and pull request parameters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return actualQuery.branch === 'feature/test' && actualQuery.pullRequest === '123';
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        branch: 'feature/test',
+        pullRequest: '123',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle issue and type filters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.issues === 'ISSUE-1,ISSUE-2' &&
+            actualQuery.severities === 'BLOCKER,CRITICAL' &&
+            actualQuery.statuses === 'OPEN,CONFIRMED' &&
+            actualQuery.resolutions === 'FALSE-POSITIVE,WONTFIX' &&
+            actualQuery.resolved === 'true' &&
+            actualQuery.types === 'BUG,VULNERABILITY'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        issues: ['ISSUE-1', 'ISSUE-2'],
+        severities: ['BLOCKER', 'CRITICAL'],
+        statuses: ['OPEN', 'CONFIRMED'],
+        resolutions: ['FALSE-POSITIVE', 'WONTFIX'],
+        resolved: true,
+        types: ['BUG', 'VULNERABILITY'],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle rules and tags filters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.rules === 'java:S1234,java:S5678' &&
+            actualQuery.tags === 'security,performance' &&
+            actualQuery.languages === 'java,javascript'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        rules: ['java:S1234', 'java:S5678'],
+        tags: ['security', 'performance'],
+        languages: ['java', 'javascript'],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle date and assignment filter parameters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.createdAfter === '2023-01-01' &&
+            actualQuery.createdBefore === '2023-12-31' &&
+            actualQuery.createdAt === '2023-06-15' &&
+            actualQuery.createdInLast === '7d' &&
+            actualQuery.assigned === 'true' &&
+            actualQuery.assignees === 'user1,user2' &&
+            actualQuery.authors === 'author1,author2'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        createdAfter: '2023-01-01',
+        createdBefore: '2023-12-31',
+        createdAt: '2023-06-15',
+        createdInLast: '7d',
+        assigned: true,
+        assignees: ['user1', 'user2'],
+        author: 'author1',
+        authors: ['author1', 'author2'],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle security standards filter parameters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.cwe === '79,89' &&
+            actualQuery.owaspTop10 === 'a1,a3' &&
+            actualQuery['owaspTop10-2021'] === 'a01,a03' &&
+            actualQuery.sansTop25 === 'insecure-interaction,risky-resource' &&
+            actualQuery.sonarsourceSecurityCategory === 'sql-injection,xss' &&
+            actualQuery.sonarsourceSecurity === 'injection'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        cwe: ['79', '89'],
+        owaspTop10: ['a1', 'a3'],
+        owaspTop10v2021: ['a01', 'a03'],
+        sansTop25: ['insecure-interaction', 'risky-resource'],
+        sonarsourceSecurity: ['sql-injection', 'xss'],
+        sonarsourceSecurityCategory: 'injection',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle Clean Code and impact parameters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.cleanCodeAttributeCategories === 'INTENTIONAL,RESPONSIBLE' &&
+            actualQuery.impactSeverities === 'HIGH,MEDIUM' &&
+            actualQuery.impactSoftwareQualities === 'SECURITY,RELIABILITY' &&
+            actualQuery.issueStatuses === 'ACCEPTED,CONFIRMED'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        cleanCodeAttributeCategories: ['INTENTIONAL', 'RESPONSIBLE'],
+        impactSeverities: ['HIGH', 'MEDIUM'],
+        impactSoftwareQualities: ['SECURITY', 'RELIABILITY'],
+        issueStatuses: ['ACCEPTED', 'CONFIRMED'],
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle facets and additional fields', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        facets: [
+          {
+            property: 'severities',
+            values: [{ val: 'BLOCKER', count: 10 }],
+          },
+        ],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.facets === 'severities,types' &&
+            actualQuery.facetMode === 'effort' &&
+            actualQuery.additionalFields === '_all'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        facets: ['severities', 'types'],
+        facetMode: 'effort',
+        additionalFields: '_all',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle period and sorting parameters', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return actualQuery.inNewCodePeriod === 'true' && actualQuery.sinceLeakPeriod === 'true';
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({
+        inNewCodePeriod: true,
+        sinceLeakPeriod: true,
+        sort: 'FILE_LINE',
+        asc: false,
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle deprecated severity parameter', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return actualQuery.severities === 'MAJOR';
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({ severity: 'MAJOR' });
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle resolved parameter with false value', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return actualQuery.resolved === 'false';
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({ resolved: false });
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle assigned parameter with false value', async () => {
+      const mockResponse = {
+        issues: [],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/issues/search')
+        .query((actualQuery) => {
+          return actualQuery.assigned === 'false';
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.getIssues({ assigned: false });
+      expect(scope.isDone()).toBe(true);
     });
   });
 
@@ -571,7 +941,7 @@ describe('SonarQubeClient', () => {
         .query((queryObj) => {
           return queryObj.component === 'my-project' && queryObj.metricKeys === 'complexity,bugs';
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getComponentMeasures({
@@ -632,7 +1002,7 @@ describe('SonarQubeClient', () => {
             queryObj.branch === 'main'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getComponentMeasures({
@@ -717,16 +1087,43 @@ describe('SonarQubeClient', () => {
         },
       };
 
+      // Mock individual component calls
       nock(baseUrl)
-        .get('/api/measures/components')
-        .query((queryObj) => {
-          return (
-            queryObj.componentKeys === 'project1,project2' &&
-            queryObj.metricKeys === 'bugs,vulnerabilities'
-          );
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'bugs,vulnerabilities',
         })
-        .basicAuth({ user: token, pass: '' })
-        .reply(200, mockResponse);
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
+
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project2',
+          metricKeys: 'bugs,vulnerabilities',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[1],
+          metrics: mockResponse.metrics,
+        });
+
+      // Mock the additional call for metrics from first component
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'bugs,vulnerabilities',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
 
       const result = await client.getComponentsMeasures({
         componentKeys: ['project1', 'project2'],
@@ -784,20 +1181,82 @@ describe('SonarQubeClient', () => {
         },
       };
 
-      const scope = nock(baseUrl)
-        .get('/api/measures/components')
-        .query((queryObj) => {
-          return (
-            queryObj.componentKeys === 'project1,project2,project3' &&
-            queryObj.metricKeys === 'code_smells' &&
-            queryObj.p === '2' &&
-            queryObj.ps === '1' &&
-            queryObj.additionalFields === 'periods' &&
-            queryObj.branch === 'main'
-          );
+      // Mock individual component calls - all three components
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
         })
-        .basicAuth({ user: token, pass: '' })
-        .reply(200, mockResponse);
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: {
+            key: 'project1',
+            name: 'Project 1',
+            qualifier: 'TRK',
+            measures: [{ metric: 'code_smells', value: '10' }],
+          },
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
+
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project2',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: {
+            key: 'project2',
+            name: 'Project 2',
+            qualifier: 'TRK',
+            measures: [{ metric: 'code_smells', value: '20' }],
+          },
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
+
+      const scope = nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project3',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
+
+      // Mock the additional call for metrics from first component
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'code_smells',
+          additionalFields: 'periods',
+          branch: 'main',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: {
+            key: 'project1',
+            name: 'Project 1',
+            qualifier: 'TRK',
+            measures: [{ metric: 'code_smells', value: '10' }],
+          },
+          metrics: mockResponse.metrics,
+          period: mockResponse.period,
+        });
 
       const result = await client.getComponentsMeasures({
         componentKeys: 'project1,project2,project3',
@@ -808,12 +1267,150 @@ describe('SonarQubeClient', () => {
         branch: 'main',
       });
 
-      expect(result).toEqual(mockResponse);
-      expect(scope.isDone()).toBe(true);
+      // Since we paginate after fetching all components, we should have only 1 result
       expect(result.components).toHaveLength(1);
+      expect(result.components[0].key).toBe('project2'); // Page 2, size 1 would show the 2nd component
       expect(result.paging.pageIndex).toBe(2);
       expect(result.paging.pageSize).toBe(1);
+      expect(result.paging.total).toBe(3); // Total of 3 components
       expect(result.period?.mode).toBe('previous_version');
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should handle comma-separated componentKeys string', async () => {
+      const mockResponse = {
+        components: [
+          {
+            key: 'comp1',
+            name: 'Component 1',
+            qualifier: 'FIL',
+            measures: [{ metric: 'coverage', value: '80' }],
+          },
+          {
+            key: 'comp2',
+            name: 'Component 2',
+            qualifier: 'FIL',
+            measures: [{ metric: 'coverage', value: '90' }],
+          },
+        ],
+        metrics: [
+          {
+            key: 'coverage',
+            name: 'Coverage',
+            type: 'PERCENT',
+          },
+        ],
+      };
+
+      // Mock individual component calls
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'comp1',
+          metricKeys: 'coverage',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
+
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'comp2',
+          metricKeys: 'coverage',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[1],
+          metrics: mockResponse.metrics,
+        });
+
+      // Mock for extracting metrics
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'comp1',
+          metricKeys: 'coverage',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
+
+      const result = await client.getComponentsMeasures({
+        componentKeys: 'comp1,comp2',
+        metricKeys: ['coverage'],
+      });
+
+      expect(result.components).toHaveLength(2);
+      expect(result.components[0].key).toBe('comp1');
+      expect(result.components[1].key).toBe('comp2');
+    });
+
+    it('should handle comma-separated metricKeys string', async () => {
+      const mockResponse = {
+        components: [
+          {
+            key: 'project1',
+            name: 'Project 1',
+            qualifier: 'TRK',
+            measures: [
+              { metric: 'coverage', value: '75' },
+              { metric: 'duplicated_lines_density', value: '5' },
+            ],
+          },
+        ],
+        metrics: [
+          {
+            key: 'coverage',
+            name: 'Coverage',
+            type: 'PERCENT',
+          },
+          {
+            key: 'duplicated_lines_density',
+            name: 'Duplicated Lines',
+            type: 'PERCENT',
+          },
+        ],
+      };
+
+      // Mock individual component call
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'coverage,duplicated_lines_density',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
+
+      // Mock for extracting metrics
+      nock(baseUrl)
+        .get('/api/measures/component')
+        .query({
+          component: 'project1',
+          metricKeys: 'coverage,duplicated_lines_density',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, {
+          component: mockResponse.components[0],
+          metrics: mockResponse.metrics,
+        });
+
+      const result = await client.getComponentsMeasures({
+        componentKeys: ['project1'],
+        metricKeys: 'coverage,duplicated_lines_density',
+      });
+
+      expect(result.components).toHaveLength(1);
+      expect(result.components[0].measures).toHaveLength(2);
+      expect(result.metrics).toHaveLength(2);
     });
   });
 
@@ -860,7 +1457,7 @@ describe('SonarQubeClient', () => {
         .query((queryObj) => {
           return queryObj.component === 'my-project' && queryObj.metrics === 'coverage,bugs';
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMeasuresHistory({
@@ -912,7 +1509,7 @@ describe('SonarQubeClient', () => {
             queryObj.branch === 'main'
           );
         })
-        .basicAuth({ user: token, pass: '' })
+        .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
       const result = await client.getMeasuresHistory({

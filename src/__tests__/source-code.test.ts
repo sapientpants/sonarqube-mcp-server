@@ -12,6 +12,16 @@ describe('SonarQube Source Code API', () => {
   const token = 'fake-token';
   let client: SonarQubeClient;
 
+  // Helper function to mock raw source code API response
+  const mockRawSourceResponse = (
+    key: string,
+    sourceCode: string,
+    query?: Record<string, unknown>
+  ) => {
+    const queryMatcher = query ? query : { key };
+    return nock(baseUrl).get('/api/sources/raw').query(queryMatcher).reply(200, sourceCode);
+  };
+
   beforeEach(() => {
     client = createSonarQubeClient(token, baseUrl) as SonarQubeClient;
     nock.disableNetConnect();
@@ -31,44 +41,51 @@ describe('SonarQube Source Code API', () => {
       const mockResponse = {
         component: {
           key: 'my-project:src/main.js',
-          path: 'src/main.js',
           qualifier: 'FIL',
           name: 'main.js',
-          longName: 'src/main.js',
-          language: 'js',
+          longName: 'my-project:src/main.js',
         },
         sources: [
           {
             line: 1,
             code: 'function main() {',
-            scmRevision: 'abc123',
-            scmAuthor: 'developer',
-            scmDate: '2021-01-01T00:00:00Z',
+            issues: undefined,
           },
           {
             line: 2,
             code: '  console.log("Hello, world!");',
-            scmRevision: 'abc123',
-            scmAuthor: 'developer',
-            scmDate: '2021-01-01T00:00:00Z',
+            issues: [
+              {
+                key: 'issue1',
+                rule: 'javascript:S2228',
+                severity: 'MINOR',
+                component: 'my-project:src/main.js',
+                project: 'my-project',
+                line: 2,
+                status: 'OPEN',
+                message: 'Use a logger instead of console.log',
+                effort: '5min',
+                type: 'CODE_SMELL',
+              },
+            ],
           },
           {
             line: 3,
             code: '}',
-            scmRevision: 'abc123',
-            scmAuthor: 'developer',
-            scmDate: '2021-01-01T00:00:00Z',
+            issues: undefined,
           },
         ],
       };
 
-      // Mock the source code API call
-      nock(baseUrl).get('/api/sources/raw').query({ key: params.key }).reply(200, mockResponse);
+      // Mock the source code API call - raw endpoint returns plain text
+      mockRawSourceResponse(params.key, 'function main() {\n  console.log("Hello, world!");\n}');
 
       // Mock the issues API call
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .reply(200, {
           issues: [
             {
@@ -83,6 +100,8 @@ describe('SonarQube Source Code API', () => {
               creationDate: '2021-01-01T00:00:00Z',
               updateDate: '2021-01-01T00:00:00Z',
               status: 'OPEN',
+              effort: '5min',
+              type: 'CODE_SMELL',
             },
           ],
           components: [],
@@ -111,11 +130,9 @@ describe('SonarQube Source Code API', () => {
       const mockResponse = {
         component: {
           key: 'my-project:src/main.js',
-          path: 'src/main.js',
           qualifier: 'FIL',
           name: 'main.js',
-          longName: 'src/main.js',
-          language: 'js',
+          longName: 'my-project:src/main.js',
         },
         sources: [
           {
@@ -125,13 +142,15 @@ describe('SonarQube Source Code API', () => {
         ],
       };
 
-      // Mock the source code API call
-      nock(baseUrl).get('/api/sources/raw').query({ key: params.key }).reply(200, mockResponse);
+      // Mock the source code API call - raw endpoint returns plain text
+      mockRawSourceResponse(params.key, 'function main() {');
 
       // Mock a failed issues API call
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .replyWithError('Issues API error');
 
       const result = await client.getSourceCode(params);
@@ -145,13 +164,19 @@ describe('SonarQube Source Code API', () => {
         key: '',
       };
 
-      const mockResponse = {
+      // Mock the source code API call - raw endpoint returns plain text
+      mockRawSourceResponse('', 'function main() {', true);
+
+      const result = await client.getSourceCode(params);
+
+      // Should return the source without annotations
+      // When key is empty, component fields will be empty
+      expect(result).toEqual({
         component: {
-          key: 'my-project:src/main.js',
-          path: 'src/main.js',
+          key: '',
           qualifier: 'FIL',
-          name: 'main.js',
-          language: 'js',
+          name: '',
+          longName: '',
         },
         sources: [
           {
@@ -159,15 +184,7 @@ describe('SonarQube Source Code API', () => {
             code: 'function main() {',
           },
         ],
-      };
-
-      // Mock the source code API call
-      nock(baseUrl).get('/api/sources/raw').query(true).reply(200, mockResponse);
-
-      const result = await client.getSourceCode(params);
-
-      // Should return the source without annotations
-      expect(result).toEqual(mockResponse);
+      });
     });
 
     it('should return source code with line range', async () => {
@@ -180,29 +197,35 @@ describe('SonarQube Source Code API', () => {
       const mockResponse = {
         component: {
           key: 'my-project:src/main.js',
-          path: 'src/main.js',
           qualifier: 'FIL',
           name: 'main.js',
-          longName: 'src/main.js',
-          language: 'js',
+          longName: 'my-project:src/main.js',
         },
         sources: [
+          {
+            line: 1,
+            code: 'function main() {',
+          },
           {
             line: 2,
             code: '  console.log("Hello, world!");',
           },
+          {
+            line: 3,
+            code: '}',
+          },
         ],
       };
 
-      nock(baseUrl)
-        .get('/api/sources/raw')
-        .query({ key: params.key, from: params.from, to: params.to })
-        .reply(200, mockResponse);
+      // Mock the raw source code API call - returns plain text with multiple lines
+      mockRawSourceResponse(params.key, 'function main() {\n  console.log("Hello, world!");\n}');
 
       // Mock the issues API call (no issues this time)
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .reply(200, {
           issues: [],
           components: [],
@@ -226,10 +249,9 @@ describe('SonarQube Source Code API', () => {
       const mockResponse = {
         component: {
           key: 'my-project:src/main.js',
-          path: 'src/main.js',
           qualifier: 'FIL',
           name: 'main.js',
-          language: 'js',
+          longName: 'my-project:src/main.js',
         },
         sources: [
           {
@@ -239,12 +261,15 @@ describe('SonarQube Source Code API', () => {
         ],
       };
 
-      nock(baseUrl).get('/api/sources/raw').query({ key: params.key }).reply(200, mockResponse);
+      // Mock the raw source code API call - returns plain text
+      mockRawSourceResponse(params.key, 'function main() {');
 
       // Mock the issues API call
       nock(baseUrl)
         .get('/api/issues/search')
-        .query((queryObj) => queryObj.componentKeys === params.key)
+        .query(
+          (queryObj) => queryObj.projects === params.key && queryObj.onComponentOnly === 'true'
+        )
         .reply(200, {
           issues: [],
           components: [],
