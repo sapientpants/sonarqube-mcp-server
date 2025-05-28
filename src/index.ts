@@ -111,8 +111,8 @@ export const createDefaultClient = (): ISonarQubeClient => {
   );
 
   logger.info('SonarQube client created successfully', {
-    url: process.env.SONARQUBE_URL || 'https://sonarcloud.io',
-    organization: process.env.SONARQUBE_ORGANIZATION || 'not specified',
+    url: process.env.SONARQUBE_URL ?? 'https://sonarcloud.io',
+    organization: process.env.SONARQUBE_ORGANIZATION ?? 'not specified',
   });
 
   return client;
@@ -123,9 +123,7 @@ export const createDefaultClient = (): ISonarQubeClient => {
 let defaultClient: ISonarQubeClient | null = null;
 
 const getDefaultClient = (): ISonarQubeClient => {
-  if (!defaultClient) {
-    defaultClient = createDefaultClient();
-  }
+  defaultClient ??= createDefaultClient();
   return defaultClient;
 };
 
@@ -925,8 +923,8 @@ mcpServer.tool(
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
   logger.info('Starting SonarQube MCP server', {
-    logFile: process.env.LOG_FILE || 'not configured',
-    logLevel: process.env.LOG_LEVEL || 'DEBUG',
+    logFile: process.env.LOG_FILE ?? 'not configured',
+    logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
   });
 
   const transport = new StdioServerTransport();

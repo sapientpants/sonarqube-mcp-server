@@ -40,7 +40,7 @@ const LOG_LEVELS_PRIORITY: Record<LogLevel, number> = {
  * @private
  */
 function getLogFilePath(): string | null {
-  return process.env.LOG_FILE || null;
+  return process.env.LOG_FILE ?? null;
 }
 
 let logFileInitialized = false;
@@ -71,6 +71,29 @@ function initializeLogFile(): void {
 }
 
 /**
+ * Formats an error for logging
+ * @param error The error to format
+ * @returns Formatted error string
+ */
+function formatError(error: unknown): string {
+  if (error === undefined) {
+    return '';
+  }
+
+  if (error instanceof Error) {
+    const stack = error.stack ? `\n${error.stack}` : '';
+    return `${error.name}: ${error.message}${stack}`;
+  }
+
+  try {
+    return JSON.stringify(error, null, 2);
+  } catch {
+    // Fallback to string representation if JSON.stringify fails
+    return String(error);
+  }
+}
+
+/**
  * Write a log message to file
  * @param message The formatted log message to write
  * @private
@@ -96,7 +119,7 @@ function writeToLogFile(message: string): void {
  * @private
  */
 function shouldLog(level: LogLevel): boolean {
-  const configuredLevel = (process.env.LOG_LEVEL || 'DEBUG') as LogLevel;
+  const configuredLevel = (process.env.LOG_LEVEL ?? 'DEBUG') as LogLevel;
   return LOG_LEVELS_PRIORITY[level] >= LOG_LEVELS_PRIORITY[configuredLevel];
 }
 
@@ -118,7 +141,7 @@ function formatLogMessage(level: LogLevel, message: string, context?: string): s
  * Logger service for consistent logging throughout the application
  */
 export class Logger {
-  private context?: string;
+  private readonly context?: string;
 
   /**
    * Create a new logger instance, optionally with a context
@@ -185,27 +208,14 @@ export class Logger {
    *        - Other values will be converted to strings
    */
   error(message: string, error?: unknown): void {
-    if (shouldLog(LogLevel.ERROR) && getLogFilePath()) {
-      const formattedMessage = formatLogMessage(LogLevel.ERROR, message, this.context);
-
-      // Format the error for better debugging
-      let errorOutput = '';
-      if (error !== undefined) {
-        if (error instanceof Error) {
-          errorOutput = `${error.name}: ${error.message}${error.stack ? `\n${error.stack}` : ''}`;
-        } else {
-          try {
-            errorOutput = JSON.stringify(error, null, 2);
-          } catch {
-            // Fallback to string representation if JSON.stringify fails
-            errorOutput = String(error);
-          }
-        }
-      }
-
-      const fullMessage = errorOutput ? `${formattedMessage} ${errorOutput}` : formattedMessage;
-      writeToLogFile(fullMessage);
+    if (!shouldLog(LogLevel.ERROR) || !getLogFilePath()) {
+      return;
     }
+
+    const formattedMessage = formatLogMessage(LogLevel.ERROR, message, this.context);
+    const errorOutput = formatError(error);
+    const fullMessage = errorOutput ? `${formattedMessage} ${errorOutput}` : formattedMessage;
+    writeToLogFile(fullMessage);
   }
 }
 
