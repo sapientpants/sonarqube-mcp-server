@@ -479,12 +479,12 @@ let handleSonarQubePing: any;
 let handleSonarQubeComponentMeasures: any;
 let handleSonarQubeComponentsMeasures: any;
 let handleSonarQubeMeasuresHistory: any;
-let handleSonarQubeSearchHotspots: any;
-let handleSonarQubeGetHotspotDetails: any;
+let handleSonarQubeHotspots: any;
+let handleSonarQubeHotspot: any;
 let handleSonarQubeUpdateHotspotStatus: any;
 let qualityGateHandler: any;
-let projectQualityGateStatusHandler: any;
-let getHotspotDetailsHandler: any;
+let qualityGateStatusHandler: any;
+let hotspotHandler: any;
 let updateHotspotStatusHandler: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -507,12 +507,12 @@ describe('MCP Server', () => {
     handleSonarQubeComponentMeasures = module.handleSonarQubeComponentMeasures;
     handleSonarQubeComponentsMeasures = module.handleSonarQubeComponentsMeasures;
     handleSonarQubeMeasuresHistory = module.handleSonarQubeMeasuresHistory;
-    handleSonarQubeSearchHotspots = module.handleSonarQubeSearchHotspots;
-    handleSonarQubeGetHotspotDetails = module.handleSonarQubeGetHotspotDetails;
+    handleSonarQubeHotspots = module.handleSonarQubeHotspots;
+    handleSonarQubeHotspot = module.handleSonarQubeHotspot;
     handleSonarQubeUpdateHotspotStatus = module.handleSonarQubeUpdateHotspotStatus;
     qualityGateHandler = module.qualityGateHandler;
-    projectQualityGateStatusHandler = module.projectQualityGateStatusHandler;
-    getHotspotDetailsHandler = module.getHotspotDetailsHandler;
+    qualityGateStatusHandler = module.qualityGateStatusHandler;
+    hotspotHandler = module.hotspotHandler;
     updateHotspotStatusHandler = module.updateHotspotStatusHandler;
   });
 
@@ -2310,8 +2310,8 @@ describe('MCP Server', () => {
         content: [{ type: 'text', text: '{"hotspots":[]}' }],
       });
 
-      const originalHandler = handleSonarQubeSearchHotspots;
-      handleSonarQubeSearchHotspots = mockSearchHotspots;
+      const originalHandler = handleSonarQubeHotspots;
+      handleSonarQubeHotspots = mockSearchHotspots;
 
       // Mock mapToSonarQubeParams to return expected output
       const originalMapFunction = mapToSonarQubeParams;
@@ -2328,7 +2328,7 @@ describe('MCP Server', () => {
 
       // Create the lambda handler that's in the tool registration
       const searchHotspotsLambda = async (params: Record<string, unknown>) => {
-        return handleSonarQubeSearchHotspots(mapToSonarQubeParams(params));
+        return handleSonarQubeHotspots(mapToSonarQubeParams(params));
       };
 
       // Call the lambda with params that include string booleans
@@ -2365,7 +2365,7 @@ describe('MCP Server', () => {
       });
 
       // Restore the original functions
-      handleSonarQubeSearchHotspots = originalHandler;
+      handleSonarQubeHotspots = originalHandler;
       mapToSonarQubeParams = originalMapFunction;
     });
 
@@ -2405,7 +2405,7 @@ describe('MCP Server', () => {
         });
 
       // Test the lambda with all parameters
-      const result = await projectQualityGateStatusHandler({
+      const result = await qualityGateStatusHandler({
         project_key: 'test-project',
         branch: 'main',
         pull_request: 'pr-123',
@@ -2439,7 +2439,7 @@ describe('MCP Server', () => {
         });
 
       // Test the lambda
-      const result = await getHotspotDetailsHandler({ hotspot_key: 'hotspot-123' });
+      const result = await hotspotHandler({ hotspot_key: 'hotspot-123' });
 
       expect(result).toBeDefined();
       expect(result.content[0].text).toContain('hotspot-123');
@@ -2803,9 +2803,9 @@ describe('MCP Server', () => {
       expect(result.page_size).toBe(100);
     });
 
-    it('should transform search_hotspots tool parameters through Zod schema', () => {
+    it('should transform hotspots tool parameters through Zod schema', () => {
       // Import the actual schema from the tool registration
-      const searchHotspotsSchema = z.object({
+      const hotspotsSchema = z.object({
         project_key: z.string().optional(),
         assigned_to_me: z
           .union([z.boolean(), z.string().transform((val) => val === 'true')])
@@ -2830,7 +2830,7 @@ describe('MCP Server', () => {
       });
 
       // Test with string values that should be transformed
-      const result = searchHotspotsSchema.parse({
+      const result = hotspotsSchema.parse({
         project_key: 'test-project',
         assigned_to_me: 'true',
         since_leak_period: 'false',
@@ -2846,7 +2846,7 @@ describe('MCP Server', () => {
       expect(result.page_size).toBe(50);
 
       // Test with boolean values directly
-      const result2 = searchHotspotsSchema.parse({
+      const result2 = hotspotsSchema.parse({
         project_key: 'test-project',
         assigned_to_me: false,
         since_leak_period: true,
@@ -2900,7 +2900,7 @@ describe('MCP Server', () => {
             },
           });
 
-        const response = await handleSonarQubeSearchHotspots({
+        const response = await handleSonarQubeHotspots({
           projectKey: 'test-project',
           status: 'TO_REVIEW',
           page: 1,
@@ -2952,7 +2952,7 @@ describe('MCP Server', () => {
             canChangeStatus: true,
           });
 
-        const response = await handleSonarQubeGetHotspotDetails('AYg1234567890');
+        const response = await handleSonarQubeHotspot('AYg1234567890');
 
         expect(response).toBeDefined();
         expect(response.content).toBeDefined();
@@ -3256,11 +3256,11 @@ describe('MCP Server', () => {
       await module.measuresHistoryHandler({ component: 'test', metrics: ['coverage'] });
       await module.qualityGatesHandler();
       await module.qualityGateHandler({ id: 'test' });
-      await module.projectQualityGateStatusHandler({ project_key: 'test' });
+      await module.qualityGateStatusHandler({ project_key: 'test' });
       await module.sourceCodeHandler({ key: 'test' });
       await module.scmBlameHandler({ key: 'test' });
-      await module.searchHotspotsHandler({ project_key: 'test' });
-      await module.getHotspotDetailsHandler({ hotspot_key: 'hotspot-1' });
+      await module.hotspotsHandler({ project_key: 'test' });
+      await module.hotspotHandler({ hotspot_key: 'hotspot-1' });
       await module.updateHotspotStatusHandler({ hotspot_key: 'hotspot-1', status: 'REVIEWED' });
     });
   });
@@ -3365,11 +3365,11 @@ describe('MCP Server', () => {
       await index.measuresHistoryMcpHandler({ component: 'test', metrics: ['coverage'] });
       await index.qualityGatesMcpHandler();
       await index.qualityGateMcpHandler({ id: 'test' });
-      await index.projectQualityGateStatusMcpHandler({ project_key: 'test' });
+      await index.qualityGateStatusMcpHandler({ project_key: 'test' });
       await index.sourceCodeMcpHandler({ key: 'test' });
       await index.scmBlameMcpHandler({ key: 'test' });
-      await index.searchHotspotsMcpHandler({ project_key: 'test' });
-      await index.getHotspotDetailsMcpHandler({ hotspot_key: 'test-hotspot' });
+      await index.hotspotsMcpHandler({ project_key: 'test' });
+      await index.hotspotMcpHandler({ hotspot_key: 'test-hotspot' });
       await index.updateHotspotStatusMcpHandler({
         hotspot_key: 'test-hotspot',
         status: 'REVIEWED',

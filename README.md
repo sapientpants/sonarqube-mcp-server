@@ -355,7 +355,7 @@ Get issues from SonarQube projects with advanced filtering, sorting, and branch/
 
 ### Security Hotspots
 
-#### `search_hotspots`
+#### `hotspots`
 Search for security hotspots with specialized filters for security review workflows.
 
 **Parameters:**
@@ -371,7 +371,7 @@ Search for security hotspots with specialized filters for security review workfl
 - `page` (optional): Page number for pagination
 - `page_size` (optional): Number of items per page
 
-#### `get_hotspot_details`
+#### `hotspot`
 Get detailed information about a specific security hotspot including security context.
 
 **Parameters:**
@@ -406,7 +406,7 @@ Get quality gate conditions.
 **Parameters:**
 - `id` (required): Quality gate ID
 
-#### `project_quality_gate_status`
+#### `quality_gate_status`
 Get project quality gate status.
 
 **Parameters:**
