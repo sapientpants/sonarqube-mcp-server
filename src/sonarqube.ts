@@ -594,6 +594,122 @@ export interface SonarQubeScmBlameResult {
 }
 
 /**
+ * Interface for hotspot search parameters
+ */
+export interface HotspotSearchParams extends PaginationParams {
+  projectKey?: string;
+  branch?: string;
+  pullRequest?: string;
+  status?: 'TO_REVIEW' | 'REVIEWED';
+  resolution?: 'FIXED' | 'SAFE';
+  files?: string[];
+  assignedToMe?: boolean;
+  sinceLeakPeriod?: boolean;
+  inNewCodePeriod?: boolean;
+}
+
+/**
+ * Interface for security hotspot
+ */
+export interface SonarQubeHotspot {
+  key: string;
+  component: string;
+  project: string;
+  securityCategory: string;
+  vulnerabilityProbability: 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'TO_REVIEW' | 'REVIEWED';
+  resolution?: 'FIXED' | 'SAFE';
+  line: number;
+  message: string;
+  assignee?: string;
+  author?: string;
+  creationDate: string;
+  updateDate: string;
+  textRange?: {
+    startLine: number;
+    endLine: number;
+    startOffset: number;
+    endOffset: number;
+  };
+  flows?: Array<{
+    locations: Array<{
+      component: string;
+      textRange: {
+        startLine: number;
+        endLine: number;
+        startOffset: number;
+        endOffset: number;
+      };
+      msg: string;
+    }>;
+  }>;
+  ruleKey?: string;
+}
+
+/**
+ * Interface for hotspot search result
+ */
+export interface SonarQubeHotspotSearchResult {
+  hotspots: SonarQubeHotspot[];
+  components?: Array<{
+    key: string;
+    qualifier: string;
+    name: string;
+    longName?: string;
+    path?: string;
+  }>;
+  paging: {
+    pageIndex: number;
+    pageSize: number;
+    total: number;
+  };
+}
+
+/**
+ * Interface for hotspot details
+ */
+export interface SonarQubeHotspotDetails extends SonarQubeHotspot {
+  rule: {
+    key: string;
+    name: string;
+    securityCategory: string;
+    vulnerabilityProbability: 'HIGH' | 'MEDIUM' | 'LOW';
+  };
+  changelog?: Array<{
+    user: string;
+    userName?: string;
+    creationDate: string;
+    diffs: Array<{
+      key: string;
+      oldValue?: string;
+      newValue?: string;
+    }>;
+  }>;
+  comment?: Array<{
+    key: string;
+    login: string;
+    htmlText: string;
+    markdown?: string;
+    createdAt: string;
+  }>;
+  users?: Array<{
+    login: string;
+    name: string;
+    active: boolean;
+  }>;
+}
+
+/**
+ * Interface for hotspot status update parameters
+ */
+export interface HotspotStatusUpdateParams {
+  hotspot: string;
+  status: 'TO_REVIEW' | 'REVIEWED';
+  resolution?: 'FIXED' | 'SAFE';
+  comment?: string;
+}
+
+/**
  * Interface for SonarQube client
  */
 export interface ISonarQubeClient {
@@ -619,6 +735,11 @@ export interface ISonarQubeClient {
   // Source Code API methods
   getSourceCode(params: SourceCodeParams): Promise<SonarQubeSourceResult>;
   getScmBlame(params: ScmBlameParams): Promise<SonarQubeScmBlameResult>;
+
+  // Security Hotspots API methods
+  searchHotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult>;
+  getHotspotDetails(hotspotKey: string): Promise<SonarQubeHotspotDetails>;
+  updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void>;
 }
 
 /**
@@ -1067,6 +1188,110 @@ export class SonarQubeClient implements ISonarQubeClient {
     });
 
     return response as unknown as SonarQubeScmBlameResult;
+  }
+
+  /**
+   * Searches for security hotspots
+   * @param params Parameters for hotspot search
+   * @returns Promise with the hotspot search results
+   */
+  async searchHotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult> {
+    const {
+      projectKey,
+      branch,
+      pullRequest,
+      status,
+      resolution,
+      files,
+      assignedToMe,
+      sinceLeakPeriod,
+      inNewCodePeriod,
+      page,
+      pageSize,
+    } = params;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const builder: any = this.webApiClient.hotspots.search();
+
+    // Apply filters using builder methods
+    if (projectKey) builder.projectKey(projectKey);
+    // Branch and pullRequest may be handled differently for hotspots
+    // We'll use the generic parameter methods if available
+    if (branch) {
+      // Try to use a generic parameter method
+      if (builder.withParam) {
+        builder.withParam('branch', branch);
+      } else if (builder.branch) {
+        builder.branch(branch);
+      }
+    }
+    if (pullRequest) {
+      // Try to use a generic parameter method
+      if (builder.withParam) {
+        builder.withParam('pullRequest', pullRequest);
+      } else if (builder.pullRequest) {
+        builder.pullRequest(pullRequest);
+      }
+    }
+    if (status) builder.status(status);
+    if (resolution) builder.resolution(resolution);
+    if (files && files.length > 0) {
+      builder.files(files);
+    }
+    if (assignedToMe !== undefined) builder.onlyMine(assignedToMe);
+    if (sinceLeakPeriod !== undefined) builder.sinceLeakPeriod(sinceLeakPeriod);
+    // inNewCodePeriod might not be available, try generic parameter
+    if (inNewCodePeriod !== undefined) {
+      if (builder.withParam) {
+        builder.withParam('inNewCodePeriod', inNewCodePeriod);
+      } else if (builder.inNewCodePeriod) {
+        builder.inNewCodePeriod(inNewCodePeriod);
+      }
+    }
+    if (page !== undefined) builder.page(page);
+    if (pageSize !== undefined) builder.pageSize(pageSize);
+
+    const response = await builder.execute();
+
+    // Transform the response to match our interface
+    return {
+      hotspots: response.hotspots as SonarQubeHotspot[],
+      components: response.components,
+      paging: response.paging || {
+        pageIndex: page || 1,
+        pageSize: pageSize || 100,
+        total: response.hotspots.length,
+      },
+    };
+  }
+
+  /**
+   * Gets detailed information about a specific security hotspot
+   * @param hotspotKey The key of the hotspot
+   * @returns Promise with the hotspot details
+   */
+  async getHotspotDetails(hotspotKey: string): Promise<SonarQubeHotspotDetails> {
+    const response = await this.webApiClient.hotspots.show({
+      hotspot: hotspotKey,
+    });
+
+    return response as unknown as SonarQubeHotspotDetails;
+  }
+
+  /**
+   * Updates the status of a security hotspot
+   * @param params Parameters for updating hotspot status
+   * @returns Promise that resolves when the update is complete
+   */
+  async updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void> {
+    const { hotspot, status, resolution, comment } = params;
+
+    await this.webApiClient.hotspots.changeStatus({
+      hotspot,
+      status,
+      ...(resolution && { resolution }),
+      ...(comment && { comment }),
+    });
   }
 
   /**

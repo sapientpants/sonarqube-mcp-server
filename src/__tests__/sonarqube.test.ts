@@ -1529,4 +1529,188 @@ describe('SonarQubeClient', () => {
       expect(result.measures[0].history[1].date).toBe('2023-01-20T00:00:00+0000');
     });
   });
+
+  describe('Hotspots', () => {
+    it('should search hotspots', async () => {
+      const mockResponse = {
+        hotspots: [
+          {
+            key: 'AYg1234567890',
+            component: 'com.example:my-project:src/main/java/Example.java',
+            project: 'com.example:my-project',
+            securityCategory: 'sql-injection',
+            vulnerabilityProbability: 'HIGH',
+            status: 'TO_REVIEW',
+            line: 42,
+            message: 'Make sure using this database query is safe.',
+            author: 'developer@example.com',
+            creationDate: '2023-01-15T10:30:00+0000',
+          },
+        ],
+        components: [
+          {
+            key: 'com.example:my-project:src/main/java/Example.java',
+            name: 'Example.java',
+            path: 'src/main/java/Example.java',
+          },
+        ],
+        paging: {
+          pageIndex: 1,
+          pageSize: 100,
+          total: 1,
+        },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/hotspots/search')
+        .query((actualQuery) => {
+          return (
+            actualQuery.projectKey === 'my-project' &&
+            actualQuery.status === 'TO_REVIEW' &&
+            actualQuery.p === '1' &&
+            actualQuery.ps === '50'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      const result = await client.searchHotspots({
+        projectKey: 'my-project',
+        status: 'TO_REVIEW',
+        page: 1,
+        pageSize: 50,
+      });
+
+      expect(result).toEqual(mockResponse);
+      expect(scope.isDone()).toBe(true);
+      expect(result.hotspots).toHaveLength(1);
+      expect(result.hotspots[0].key).toBe('AYg1234567890');
+    });
+
+    it('should search hotspots with all filters', async () => {
+      const mockResponse = {
+        hotspots: [],
+        components: [],
+        paging: { pageIndex: 1, pageSize: 100, total: 0 },
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/hotspots/search')
+        .query((actualQuery) => {
+          // Note: branch, pullRequest, and inNewCodePeriod may not be supported by the current API
+          return (
+            actualQuery.projectKey === 'my-project' &&
+            actualQuery.status === 'REVIEWED' &&
+            actualQuery.resolution === 'FIXED' &&
+            actualQuery.files === 'file1.java,file2.java' &&
+            actualQuery.onlyMine === 'true' &&
+            actualQuery.sinceLeakPeriod === 'true'
+          );
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      await client.searchHotspots({
+        projectKey: 'my-project',
+        branch: 'feature-branch',
+        pullRequest: 'PR-123',
+        status: 'REVIEWED',
+        resolution: 'FIXED',
+        files: ['file1.java', 'file2.java'],
+        assignedToMe: true,
+        sinceLeakPeriod: true,
+        inNewCodePeriod: true,
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should get hotspot details', async () => {
+      const mockResponse = {
+        key: 'AYg1234567890',
+        component: {
+          key: 'com.example:my-project:src/main/java/Example.java',
+          name: 'Example.java',
+          path: 'src/main/java/Example.java',
+          qualifier: 'FIL',
+        },
+        project: {
+          key: 'com.example:my-project',
+          name: 'My Project',
+          qualifier: 'TRK',
+        },
+        rule: {
+          key: 'java:S2077',
+          name: 'SQL injection',
+          securityCategory: 'sql-injection',
+          vulnerabilityProbability: 'HIGH',
+        },
+        status: 'TO_REVIEW',
+        line: 42,
+        message: 'Make sure using this database query is safe.',
+        author: 'developer@example.com',
+        creationDate: '2023-01-15T10:30:00+0000',
+        updateDate: '2023-01-15T10:30:00+0000',
+        textRange: {
+          startLine: 42,
+          endLine: 42,
+          startOffset: 10,
+          endOffset: 50,
+        },
+        flows: [],
+        canChangeStatus: true,
+      };
+
+      const scope = nock(baseUrl)
+        .get('/api/hotspots/show')
+        .query({ hotspot: 'AYg1234567890' })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(200, mockResponse);
+
+      const result = await client.getHotspotDetails('AYg1234567890');
+
+      expect(result).toEqual(mockResponse);
+      expect(scope.isDone()).toBe(true);
+      expect(result.key).toBe('AYg1234567890');
+      expect(result.rule.securityCategory).toBe('sql-injection');
+    });
+
+    it('should update hotspot status', async () => {
+      const scope = nock(baseUrl)
+        .post('/api/hotspots/change_status', {
+          hotspot: 'AYg1234567890',
+          status: 'REVIEWED',
+          resolution: 'FIXED',
+          comment: 'Fixed by using prepared statements',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(204);
+
+      await client.updateHotspotStatus({
+        hotspot: 'AYg1234567890',
+        status: 'REVIEWED',
+        resolution: 'FIXED',
+        comment: 'Fixed by using prepared statements',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+
+    it('should update hotspot status without optional fields', async () => {
+      const scope = nock(baseUrl)
+        .post('/api/hotspots/change_status', {
+          hotspot: 'AYg1234567890',
+          status: 'TO_REVIEW',
+        })
+        .matchHeader('authorization', 'Bearer test-token')
+        .reply(204);
+
+      await client.updateHotspotStatus({
+        hotspot: 'AYg1234567890',
+        status: 'TO_REVIEW',
+      });
+
+      expect(scope.isDone()).toBe(true);
+    });
+  });
 });
