@@ -4,6 +4,11 @@ import { createLogger } from './utils/logger.js';
 const logger = createLogger('sonarqube');
 
 /**
+ * Type alias for severity levels
+ */
+export type SeverityLevel = 'HIGH' | 'MEDIUM' | 'LOW';
+
+/**
  * Default SonarQube URL
  */
 const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
@@ -222,7 +227,7 @@ export interface IssuesParams extends PaginationParams {
 
   // Clean Code taxonomy
   cleanCodeAttributeCategories?: ('ADAPTABLE' | 'CONSISTENT' | 'INTENTIONAL' | 'RESPONSIBLE')[];
-  impactSeverities?: ('HIGH' | 'MEDIUM' | 'LOW')[];
+  impactSeverities?: SeverityLevel[];
   impactSoftwareQualities?: ('MAINTAINABILITY' | 'RELIABILITY' | 'SECURITY')[];
   issueStatuses?: ('OPEN' | 'CONFIRMED' | 'RESOLVED' | 'REOPENED' | 'CLOSED')[];
 
@@ -616,7 +621,7 @@ export interface SonarQubeHotspot {
   component: string;
   project: string;
   securityCategory: string;
-  vulnerabilityProbability: 'HIGH' | 'MEDIUM' | 'LOW';
+  vulnerabilityProbability: SeverityLevel;
   status: 'TO_REVIEW' | 'REVIEWED';
   resolution?: 'FIXED' | 'SAFE';
   line: number;
@@ -673,7 +678,7 @@ export interface SonarQubeHotspotDetails extends SonarQubeHotspot {
     key: string;
     name: string;
     securityCategory: string;
-    vulnerabilityProbability: 'HIGH' | 'MEDIUM' | 'LOW';
+    vulnerabilityProbability: SeverityLevel;
   };
   changelog?: Array<{
     user: string;
@@ -947,7 +952,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     } else if (typeof componentKeys === 'string' && componentKeys.includes(',')) {
       componentKeysArray = componentKeys.split(',');
     } else {
-      componentKeysArray = [componentKeys as string];
+      componentKeysArray = [componentKeys];
     }
 
     let metricKeysArray: string[];
@@ -956,7 +961,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     } else if (typeof metricKeys === 'string' && metricKeys.includes(',')) {
       metricKeysArray = metricKeys.split(',');
     } else {
-      metricKeysArray = [metricKeys as string];
+      metricKeysArray = [metricKeys];
     }
 
     const componentsPromises = componentKeysArray.map(async (componentKey: string) => {
@@ -1230,9 +1235,9 @@ export class SonarQubeClient implements ISonarQubeClient {
     return {
       hotspots: response.hotspots as SonarQubeHotspot[],
       components: response.components,
-      paging: response.paging || {
-        pageIndex: page || 1,
-        pageSize: pageSize || 100,
+      paging: response.paging ?? {
+        pageIndex: page ?? 1,
+        pageSize: pageSize ?? 100,
         total: response.hotspots.length,
       },
     };
