@@ -742,8 +742,8 @@ export interface ISonarQubeClient {
   getScmBlame(params: ScmBlameParams): Promise<SonarQubeScmBlameResult>;
 
   // Security Hotspots API methods
-  searchHotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult>;
-  getHotspotDetails(hotspotKey: string): Promise<SonarQubeHotspotDetails>;
+  hotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult>;
+  hotspot(hotspotKey: string): Promise<SonarQubeHotspotDetails>;
   updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void>;
 }
 
@@ -1200,7 +1200,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param params Parameters for hotspot search
    * @returns Promise with the hotspot search results
    */
-  async searchHotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult> {
+  async hotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult> {
     const {
       projectKey,
       // branch, pullRequest, inNewCodePeriod are not currently supported by the API
@@ -1248,7 +1248,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param hotspotKey The key of the hotspot
    * @returns Promise with the hotspot details
    */
-  async getHotspotDetails(hotspotKey: string): Promise<SonarQubeHotspotDetails> {
+  async hotspot(hotspotKey: string): Promise<SonarQubeHotspotDetails> {
     const response = await this.webApiClient.hotspots.show({
       hotspot: hotspotKey,
     });

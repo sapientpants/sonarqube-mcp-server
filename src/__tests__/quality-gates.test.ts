@@ -3,7 +3,7 @@ import { createSonarQubeClient, SonarQubeClient, ProjectQualityGateParams } from
 import {
   handleSonarQubeListQualityGates,
   handleSonarQubeGetQualityGate,
-  handleSonarQubeProjectQualityGateStatus,
+  handleSonarQubeQualityGateStatus,
 } from '../index.js';
 
 describe('SonarQube Quality Gates API', () => {
@@ -225,7 +225,7 @@ describe('SonarQube Quality Gates API', () => {
         .query({ projectKey: params.projectKey })
         .reply(200, mockResponse);
 
-      const response = await handleSonarQubeProjectQualityGateStatus(params, client);
+      const response = await handleSonarQubeQualityGateStatus(params, client);
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(1);
       expect(response.content[0].type).toBe('text');

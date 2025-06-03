@@ -1574,7 +1574,7 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      const result = await client.searchHotspots({
+      const result = await client.hotspots({
         projectKey: 'my-project',
         status: 'TO_REVIEW',
         page: 1,
@@ -1610,7 +1610,7 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      await client.searchHotspots({
+      await client.hotspots({
         projectKey: 'my-project',
         branch: 'feature-branch',
         pullRequest: 'PR-123',
@@ -1667,7 +1667,7 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      const result = await client.getHotspotDetails('AYg1234567890');
+      const result = await client.hotspot('AYg1234567890');
 
       expect(result).toEqual(mockResponse);
       expect(scope.isDone()).toBe(true);

@@ -542,7 +542,7 @@ export async function handleSonarQubeGetQualityGate(
  * @param client Optional SonarQube client instance
  * @returns Promise with the project quality gate status
  */
-export async function handleSonarQubeProjectQualityGateStatus(
+export async function handleSonarQubeQualityGateStatus(
   params: ProjectQualityGateParams,
   client: ISonarQubeClient = getDefaultClient()
 ) {
@@ -608,11 +608,11 @@ export async function handleSonarQubeGetScmBlame(
  * @param client Optional SonarQube client instance
  * @returns Promise with the hotspot search results
  */
-export async function handleSonarQubeSearchHotspots(
+export async function handleSonarQubeHotspots(
   params: HotspotSearchParams,
   client: ISonarQubeClient = getDefaultClient()
 ) {
-  const result = await client.searchHotspots(params);
+  const result = await client.hotspots(params);
 
   return {
     content: [
@@ -630,11 +630,11 @@ export async function handleSonarQubeSearchHotspots(
  * @param client Optional SonarQube client instance
  * @returns Promise with the hotspot details
  */
-export async function handleSonarQubeGetHotspotDetails(
+export async function handleSonarQubeHotspot(
   hotspotKey: string,
   client: ISonarQubeClient = getDefaultClient()
 ) {
-  const result = await client.getHotspotDetails(hotspotKey);
+  const result = await client.hotspot(hotspotKey);
 
   return {
     content: [
@@ -824,10 +824,10 @@ export const qualityGateHandler = async (params: Record<string, unknown>) => {
 };
 
 /**
- * Lambda function for project_quality_gate_status tool
+ * Lambda function for quality_gate_status tool
  */
-export const projectQualityGateStatusHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeProjectQualityGateStatus({
+export const qualityGateStatusHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeQualityGateStatus({
     projectKey: params.project_key as string,
     branch: params.branch as string | undefined,
     pullRequest: params.pull_request as string | undefined,
@@ -863,8 +863,8 @@ export const scmBlameHandler = async (params: Record<string, unknown>) => {
 /**
  * Lambda function for search_hotspots tool
  */
-export const searchHotspotsHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeSearchHotspots({
+export const hotspotsHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeHotspots({
     projectKey: params.project_key as string | undefined,
     branch: params.branch as string | undefined,
     pullRequest: params.pull_request as string | undefined,
@@ -882,8 +882,8 @@ export const searchHotspotsHandler = async (params: Record<string, unknown>) => 
 /**
  * Lambda function for get_hotspot_details tool
  */
-export const getHotspotDetailsHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeGetHotspotDetails(params.hotspot_key as string);
+export const hotspotHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeHotspot(params.hotspot_key as string);
 };
 
 /**
@@ -915,14 +915,12 @@ export const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
 export const qualityGatesMcpHandler = () => qualityGatesHandler();
 export const qualityGateMcpHandler = (params: Record<string, unknown>) =>
   qualityGateHandler(params);
-export const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
-  projectQualityGateStatusHandler(params);
+export const qualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
+  qualityGateStatusHandler(params);
 export const sourceCodeMcpHandler = (params: Record<string, unknown>) => sourceCodeHandler(params);
 export const scmBlameMcpHandler = (params: Record<string, unknown>) => scmBlameHandler(params);
-export const searchHotspotsMcpHandler = (params: Record<string, unknown>) =>
-  searchHotspotsHandler(params);
-export const getHotspotDetailsMcpHandler = (params: Record<string, unknown>) =>
-  getHotspotDetailsHandler(params);
+export const hotspotsMcpHandler = (params: Record<string, unknown>) => hotspotsHandler(params);
+export const hotspotMcpHandler = (params: Record<string, unknown>) => hotspotHandler(params);
 export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =>
   updateHotspotStatusHandler(params);
 
@@ -1121,14 +1119,14 @@ mcpServer.tool(
 );
 
 mcpServer.tool(
-  'project_quality_gate_status',
+  'quality_gate_status',
   'Get project quality gate status',
   {
     project_key: z.string(),
     branch: z.string().optional(),
     pull_request: z.string().optional(),
   },
-  projectQualityGateStatusMcpHandler
+  qualityGateStatusMcpHandler
 );
 
 // Register Source Code API tools
@@ -1160,7 +1158,7 @@ mcpServer.tool(
 
 // Register Security Hotspot tools
 mcpServer.tool(
-  'search_hotspots',
+  'hotspots',
   'Search for security hotspots with filtering options',
   {
     project_key: z.string().optional(),
@@ -1184,16 +1182,16 @@ mcpServer.tool(
     page: z.string().optional().transform(stringToNumberTransform),
     page_size: z.string().optional().transform(stringToNumberTransform),
   },
-  searchHotspotsMcpHandler
+  hotspotsMcpHandler
 );
 
 mcpServer.tool(
-  'get_hotspot_details',
+  'hotspot',
   'Get detailed information about a specific security hotspot',
   {
     hotspot_key: z.string(),
   },
-  getHotspotDetailsMcpHandler
+  hotspotMcpHandler
 );
 
 mcpServer.tool(
