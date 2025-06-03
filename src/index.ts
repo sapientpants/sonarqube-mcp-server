@@ -13,6 +13,8 @@ import {
   ProjectQualityGateParams,
   SourceCodeParams,
   ScmBlameParams,
+  HotspotSearchParams,
+  HotspotStatusUpdateParams,
   createSonarQubeClient,
 } from './sonarqube.js';
 import { z } from 'zod';
@@ -188,31 +190,83 @@ export async function handleSonarQubeProjects(
  */
 export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesParams {
   return {
-    projectKey: params.project_key as string,
-    severity: nullToUndefined(params.severity) as IssuesParams['severity'],
-    page: nullToUndefined(params.page) as number | undefined,
-    pageSize: nullToUndefined(params.page_size) as number | undefined,
+    // Component filters (support both single project_key and multiple projects)
+    projectKey: nullToUndefined(params.project_key) as string | undefined,
+    projects: nullToUndefined(params.projects) as string[] | undefined,
+    componentKeys: nullToUndefined(params.component_keys) as string[] | undefined,
+    components: nullToUndefined(params.components) as string[] | undefined,
+    onComponentOnly: nullToUndefined(params.on_component_only) as boolean | undefined,
+
+    // Branch and PR support
+    branch: nullToUndefined(params.branch) as string | undefined,
+    pullRequest: nullToUndefined(params.pull_request) as string | undefined,
+
+    // Issue filters
+    issues: nullToUndefined(params.issues) as string[] | undefined,
+    severity: nullToUndefined(params.severity) as IssuesParams['severity'], // Deprecated
+    severities: nullToUndefined(params.severities) as IssuesParams['severities'],
     statuses: nullToUndefined(params.statuses) as IssuesParams['statuses'],
     resolutions: nullToUndefined(params.resolutions) as IssuesParams['resolutions'],
     resolved: nullToUndefined(params.resolved) as boolean | undefined,
     types: nullToUndefined(params.types) as IssuesParams['types'],
+
+    // Clean Code taxonomy
+    cleanCodeAttributeCategories: nullToUndefined(
+      params.clean_code_attribute_categories
+    ) as IssuesParams['cleanCodeAttributeCategories'],
+    impactSeverities: nullToUndefined(params.impact_severities) as IssuesParams['impactSeverities'],
+    impactSoftwareQualities: nullToUndefined(
+      params.impact_software_qualities
+    ) as IssuesParams['impactSoftwareQualities'],
+    issueStatuses: nullToUndefined(params.issue_statuses) as IssuesParams['issueStatuses'],
+
+    // Rules and tags
     rules: nullToUndefined(params.rules) as string[] | undefined,
     tags: nullToUndefined(params.tags) as string[] | undefined,
+
+    // Date filters
     createdAfter: nullToUndefined(params.created_after) as string | undefined,
     createdBefore: nullToUndefined(params.created_before) as string | undefined,
     createdAt: nullToUndefined(params.created_at) as string | undefined,
     createdInLast: nullToUndefined(params.created_in_last) as string | undefined,
+
+    // Assignment
+    assigned: nullToUndefined(params.assigned) as boolean | undefined,
     assignees: nullToUndefined(params.assignees) as string[] | undefined,
+    author: nullToUndefined(params.author) as string | undefined,
     authors: nullToUndefined(params.authors) as string[] | undefined,
+
+    // Security standards
     cwe: nullToUndefined(params.cwe) as string[] | undefined,
-    languages: nullToUndefined(params.languages) as string[] | undefined,
     owaspTop10: nullToUndefined(params.owasp_top10) as string[] | undefined,
+    owaspTop10v2021: nullToUndefined(params.owasp_top10_v2021) as string[] | undefined,
     sansTop25: nullToUndefined(params.sans_top25) as string[] | undefined,
     sonarsourceSecurity: nullToUndefined(params.sonarsource_security) as string[] | undefined,
-    onComponentOnly: nullToUndefined(params.on_component_only) as boolean | undefined,
+    sonarsourceSecurityCategory: nullToUndefined(params.sonarsource_security_category) as
+      | string[]
+      | undefined,
+
+    // Languages
+    languages: nullToUndefined(params.languages) as string[] | undefined,
+
+    // Facets
     facets: nullToUndefined(params.facets) as string[] | undefined,
+    facetMode: nullToUndefined(params.facet_mode) as IssuesParams['facetMode'],
+
+    // New code
     sinceLeakPeriod: nullToUndefined(params.since_leak_period) as boolean | undefined,
     inNewCodePeriod: nullToUndefined(params.in_new_code_period) as boolean | undefined,
+
+    // Sorting
+    s: nullToUndefined(params.s) as string | undefined,
+    asc: nullToUndefined(params.asc) as boolean | undefined,
+
+    // Response optimization
+    additionalFields: nullToUndefined(params.additional_fields) as string[] | undefined,
+
+    // Pagination
+    page: nullToUndefined(params.page) as number | undefined,
+    pageSize: nullToUndefined(params.page_size) as number | undefined,
   };
 }
 
@@ -548,9 +602,79 @@ export async function handleSonarQubeGetScmBlame(
   };
 }
 
+/**
+ * Handler for searching security hotspots
+ * @param params Parameters for the hotspot search
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the hotspot search results
+ */
+export async function handleSonarQubeSearchHotspots(
+  params: HotspotSearchParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  const result = await client.searchHotspots(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for getting hotspot details
+ * @param hotspotKey The key of the hotspot
+ * @param client Optional SonarQube client instance
+ * @returns Promise with the hotspot details
+ */
+export async function handleSonarQubeGetHotspotDetails(
+  hotspotKey: string,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  const result = await client.getHotspotDetails(hotspotKey);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify(result),
+      },
+    ],
+  };
+}
+
+/**
+ * Handler for updating hotspot status
+ * @param params Parameters for updating hotspot status
+ * @param client Optional SonarQube client instance
+ * @returns Promise that resolves when the update is complete
+ */
+export async function handleSonarQubeUpdateHotspotStatus(
+  params: HotspotStatusUpdateParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  await client.updateHotspotStatus(params);
+
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: 'Hotspot status updated successfully',
+      },
+    ],
+  };
+}
+
 // Define SonarQube severity schema for validation
 const severitySchema = z
   .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
+  .nullable()
+  .optional();
+const severitiesSchema = z
+  .array(z.enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER']))
   .nullable()
   .optional();
 const statusSchema = z
@@ -565,6 +689,24 @@ const typeSchema = z
   .array(z.enum(['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT']))
   .nullable()
   .optional();
+
+// Clean Code taxonomy schemas
+const cleanCodeAttributeCategoriesSchema = z
+  .array(z.enum(['ADAPTABLE', 'CONSISTENT', 'INTENTIONAL', 'RESPONSIBLE']))
+  .nullable()
+  .optional();
+const impactSeveritiesSchema = z
+  .array(z.enum(['HIGH', 'MEDIUM', 'LOW']))
+  .nullable()
+  .optional();
+const impactSoftwareQualitiesSchema = z
+  .array(z.enum(['MAINTAINABILITY', 'RELIABILITY', 'SECURITY']))
+  .nullable()
+  .optional();
+
+// Hotspot schemas
+const hotspotStatusSchema = z.enum(['TO_REVIEW', 'REVIEWED']).nullable().optional();
+const hotspotResolutionSchema = z.enum(['FIXED', 'SAFE']).nullable().optional();
 
 // Lambda functions for the MCP tools
 /**
@@ -718,26 +860,71 @@ export const scmBlameHandler = async (params: Record<string, unknown>) => {
   });
 };
 
+/**
+ * Lambda function for search_hotspots tool
+ */
+export const searchHotspotsHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeSearchHotspots({
+    projectKey: params.project_key as string | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pull_request as string | undefined,
+    status: params.status as HotspotSearchParams['status'],
+    resolution: params.resolution as HotspotSearchParams['resolution'],
+    files: nullToUndefined(params.files) as string[] | undefined,
+    assignedToMe: nullToUndefined(params.assigned_to_me) as boolean | undefined,
+    sinceLeakPeriod: nullToUndefined(params.since_leak_period) as boolean | undefined,
+    inNewCodePeriod: nullToUndefined(params.in_new_code_period) as boolean | undefined,
+    page: nullToUndefined(params.page) as number | undefined,
+    pageSize: nullToUndefined(params.page_size) as number | undefined,
+  });
+};
+
+/**
+ * Lambda function for get_hotspot_details tool
+ */
+export const getHotspotDetailsHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeGetHotspotDetails(params.hotspot_key as string);
+};
+
+/**
+ * Lambda function for update_hotspot_status tool
+ */
+export const updateHotspotStatusHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeUpdateHotspotStatus({
+    hotspot: params.hotspot_key as string,
+    status: params.status as HotspotStatusUpdateParams['status'],
+    resolution: params.resolution as HotspotStatusUpdateParams['resolution'],
+    comment: params.comment as string | undefined,
+  });
+};
+
 // Wrapper functions for MCP registration that don't expose the client parameter
-const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
-const metricsMcpHandler = (params: Record<string, unknown>) =>
+export const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
+export const metricsMcpHandler = (params: Record<string, unknown>) =>
   metricsHandler(params as { page: number | null; page_size: number | null });
-const issuesMcpHandler = (params: Record<string, unknown>) => issuesHandler(params);
-const healthMcpHandler = () => healthHandler();
-const statusMcpHandler = () => statusHandler();
-const pingMcpHandler = () => pingHandler();
-const componentMeasuresMcpHandler = (params: Record<string, unknown>) =>
+export const issuesMcpHandler = (params: Record<string, unknown>) => issuesHandler(params);
+export const healthMcpHandler = () => healthHandler();
+export const statusMcpHandler = () => statusHandler();
+export const pingMcpHandler = () => pingHandler();
+export const componentMeasuresMcpHandler = (params: Record<string, unknown>) =>
   componentMeasuresHandler(params);
-const componentsMeasuresMcpHandler = (params: Record<string, unknown>) =>
+export const componentsMeasuresMcpHandler = (params: Record<string, unknown>) =>
   componentsMeasuresHandler(params);
-const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
+export const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
   measuresHistoryHandler(params);
-const qualityGatesMcpHandler = () => qualityGatesHandler();
-const qualityGateMcpHandler = (params: Record<string, unknown>) => qualityGateHandler(params);
-const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
+export const qualityGatesMcpHandler = () => qualityGatesHandler();
+export const qualityGateMcpHandler = (params: Record<string, unknown>) =>
+  qualityGateHandler(params);
+export const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
   projectQualityGateStatusHandler(params);
-const sourceCodeMcpHandler = (params: Record<string, unknown>) => sourceCodeHandler(params);
-const scmBlameMcpHandler = (params: Record<string, unknown>) => scmBlameHandler(params);
+export const sourceCodeMcpHandler = (params: Record<string, unknown>) => sourceCodeHandler(params);
+export const scmBlameMcpHandler = (params: Record<string, unknown>) => scmBlameHandler(params);
+export const searchHotspotsMcpHandler = (params: Record<string, unknown>) =>
+  searchHotspotsHandler(params);
+export const getHotspotDetailsMcpHandler = (params: Record<string, unknown>) =>
+  getHotspotDetailsHandler(params);
+export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =>
+  updateHotspotStatusHandler(params);
 
 // Register SonarQube tools
 mcpServer.tool(
@@ -762,12 +949,26 @@ mcpServer.tool(
 
 mcpServer.tool(
   'issues',
-  'Get issues for a SonarQube project',
+  'Get issues for a SonarQube project with advanced filtering, sorting, and branch/PR support',
   {
-    project_key: z.string(),
-    severity: severitySchema,
-    page: z.string().optional().transform(stringToNumberTransform),
-    page_size: z.string().optional().transform(stringToNumberTransform),
+    // Component filters (backward compatible)
+    project_key: z.string().optional(), // Made optional to support projects array
+    projects: z.array(z.string()).nullable().optional(),
+    component_keys: z.array(z.string()).nullable().optional(),
+    components: z.array(z.string()).nullable().optional(),
+    on_component_only: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
+
+    // Branch and PR support
+    branch: z.string().nullable().optional(),
+    pull_request: z.string().nullable().optional(),
+
+    // Issue filters
+    issues: z.array(z.string()).nullable().optional(),
+    severity: severitySchema, // Deprecated single value
+    severities: severitiesSchema, // New array support
     statuses: statusSchema,
     resolutions: resolutionSchema,
     resolved: z
@@ -775,24 +976,48 @@ mcpServer.tool(
       .nullable()
       .optional(),
     types: typeSchema,
+
+    // Clean Code taxonomy (SonarQube 10.x+)
+    clean_code_attribute_categories: cleanCodeAttributeCategoriesSchema,
+    impact_severities: impactSeveritiesSchema,
+    impact_software_qualities: impactSoftwareQualitiesSchema,
+    issue_statuses: statusSchema, // New issue status values
+
+    // Rules and tags
     rules: z.array(z.string()).nullable().optional(),
     tags: z.array(z.string()).nullable().optional(),
+
+    // Date filters
     created_after: z.string().nullable().optional(),
     created_before: z.string().nullable().optional(),
     created_at: z.string().nullable().optional(),
     created_in_last: z.string().nullable().optional(),
-    assignees: z.array(z.string()).nullable().optional(),
-    authors: z.array(z.string()).nullable().optional(),
-    cwe: z.array(z.string()).nullable().optional(),
-    languages: z.array(z.string()).nullable().optional(),
-    owasp_top10: z.array(z.string()).nullable().optional(),
-    sans_top25: z.array(z.string()).nullable().optional(),
-    sonarsource_security: z.array(z.string()).nullable().optional(),
-    on_component_only: z
+
+    // Assignment
+    assigned: z
       .union([z.boolean(), z.string().transform((val) => val === 'true')])
       .nullable()
       .optional(),
+    assignees: z.array(z.string()).nullable().optional(),
+    author: z.string().nullable().optional(), // Single author
+    authors: z.array(z.string()).nullable().optional(), // Multiple authors
+
+    // Security standards
+    cwe: z.array(z.string()).nullable().optional(),
+    owasp_top10: z.array(z.string()).nullable().optional(),
+    owasp_top10_v2021: z.array(z.string()).nullable().optional(), // New 2021 version
+    sans_top25: z.array(z.string()).nullable().optional(),
+    sonarsource_security: z.array(z.string()).nullable().optional(),
+    sonarsource_security_category: z.array(z.string()).nullable().optional(),
+
+    // Languages
+    languages: z.array(z.string()).nullable().optional(),
+
+    // Facets
     facets: z.array(z.string()).nullable().optional(),
+    facet_mode: z.enum(['effort', 'count']).nullable().optional(),
+
+    // New code
     since_leak_period: z
       .union([z.boolean(), z.string().transform((val) => val === 'true')])
       .nullable()
@@ -801,6 +1026,20 @@ mcpServer.tool(
       .union([z.boolean(), z.string().transform((val) => val === 'true')])
       .nullable()
       .optional(),
+
+    // Sorting
+    s: z.string().nullable().optional(), // Sort field
+    asc: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(), // Sort direction
+
+    // Response optimization
+    additional_fields: z.array(z.string()).nullable().optional(),
+
+    // Pagination
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
   },
   issuesMcpHandler
 );
@@ -917,6 +1156,56 @@ mcpServer.tool(
     pull_request: z.string().optional(),
   },
   scmBlameMcpHandler
+);
+
+// Register Security Hotspot tools
+mcpServer.tool(
+  'search_hotspots',
+  'Search for security hotspots with filtering options',
+  {
+    project_key: z.string().optional(),
+    branch: z.string().nullable().optional(),
+    pull_request: z.string().nullable().optional(),
+    status: hotspotStatusSchema,
+    resolution: hotspotResolutionSchema,
+    files: z.array(z.string()).nullable().optional(),
+    assigned_to_me: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
+    since_leak_period: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
+    in_new_code_period: z
+      .union([z.boolean(), z.string().transform((val) => val === 'true')])
+      .nullable()
+      .optional(),
+    page: z.string().optional().transform(stringToNumberTransform),
+    page_size: z.string().optional().transform(stringToNumberTransform),
+  },
+  searchHotspotsMcpHandler
+);
+
+mcpServer.tool(
+  'get_hotspot_details',
+  'Get detailed information about a specific security hotspot',
+  {
+    hotspot_key: z.string(),
+  },
+  getHotspotDetailsMcpHandler
+);
+
+mcpServer.tool(
+  'update_hotspot_status',
+  'Update the status of a security hotspot (requires appropriate permissions)',
+  {
+    hotspot_key: z.string(),
+    status: z.enum(['TO_REVIEW', 'REVIEWED']),
+    resolution: z.enum(['FIXED', 'SAFE']).nullable().optional(),
+    comment: z.string().nullable().optional(),
+  },
+  updateHotspotStatusMcpHandler
 );
 
 // Only start the server if not in test mode

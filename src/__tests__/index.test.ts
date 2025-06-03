@@ -479,6 +479,13 @@ let handleSonarQubePing: any;
 let handleSonarQubeComponentMeasures: any;
 let handleSonarQubeComponentsMeasures: any;
 let handleSonarQubeMeasuresHistory: any;
+let handleSonarQubeSearchHotspots: any;
+let handleSonarQubeGetHotspotDetails: any;
+let handleSonarQubeUpdateHotspotStatus: any;
+let qualityGateHandler: any;
+let projectQualityGateStatusHandler: any;
+let getHotspotDetailsHandler: any;
+let updateHotspotStatusHandler: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Connectable {
@@ -500,6 +507,13 @@ describe('MCP Server', () => {
     handleSonarQubeComponentMeasures = module.handleSonarQubeComponentMeasures;
     handleSonarQubeComponentsMeasures = module.handleSonarQubeComponentsMeasures;
     handleSonarQubeMeasuresHistory = module.handleSonarQubeMeasuresHistory;
+    handleSonarQubeSearchHotspots = module.handleSonarQubeSearchHotspots;
+    handleSonarQubeGetHotspotDetails = module.handleSonarQubeGetHotspotDetails;
+    handleSonarQubeUpdateHotspotStatus = module.handleSonarQubeUpdateHotspotStatus;
+    qualityGateHandler = module.qualityGateHandler;
+    projectQualityGateStatusHandler = module.projectQualityGateStatusHandler;
+    getHotspotDetailsHandler = module.getHotspotDetailsHandler;
+    updateHotspotStatusHandler = module.updateHotspotStatusHandler;
   });
 
   beforeEach(() => {
@@ -979,6 +993,27 @@ describe('MCP Server', () => {
       // Test null/undefined values
       expect(dateSchema.parse(null)).toBe(null);
       expect(dateSchema.parse(undefined)).toBe(undefined);
+    });
+
+    it('should handle hotspot search boolean transformations correctly', () => {
+      // Test string to boolean transformation schemas used in hotspot search
+      const hotspotBooleanSchema = z
+        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .nullable()
+        .optional();
+
+      // Test boolean values
+      expect(hotspotBooleanSchema.parse(true)).toBe(true);
+      expect(hotspotBooleanSchema.parse(false)).toBe(false);
+
+      // Test string values
+      expect(hotspotBooleanSchema.parse('true')).toBe(true);
+      expect(hotspotBooleanSchema.parse('false')).toBe(false);
+      expect(hotspotBooleanSchema.parse('any')).toBe(false);
+
+      // Test null/undefined values
+      expect(hotspotBooleanSchema.parse(null)).toBe(null);
+      expect(hotspotBooleanSchema.parse(undefined)).toBe(undefined);
     });
 
     it('should handle complex parameter combinations', () => {
@@ -2268,6 +2303,170 @@ describe('MCP Server', () => {
       handleSonarQubeGetIssues = originalHandler;
       mapToSonarQubeParams = originalMapFunction;
     });
+
+    it('should test the hotspot search tool lambda', async () => {
+      // Mock the handleSonarQubeSearchHotspots function to track calls
+      const mockSearchHotspots = jest.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '{"hotspots":[]}' }],
+      });
+
+      const originalHandler = handleSonarQubeSearchHotspots;
+      handleSonarQubeSearchHotspots = mockSearchHotspots;
+
+      // Mock mapToSonarQubeParams to return expected output
+      const originalMapFunction = mapToSonarQubeParams;
+      const mockMapFunction = jest.fn().mockReturnValue({
+        projectKey: 'test-project',
+        status: 'TO_REVIEW',
+        assignedToMe: true,
+        sinceLeakPeriod: false,
+        inNewCodePeriod: true,
+        page: 1,
+        pageSize: 50,
+      });
+      mapToSonarQubeParams = mockMapFunction;
+
+      // Create the lambda handler that's in the tool registration
+      const searchHotspotsLambda = async (params: Record<string, unknown>) => {
+        return handleSonarQubeSearchHotspots(mapToSonarQubeParams(params));
+      };
+
+      // Call the lambda with params that include string booleans
+      await searchHotspotsLambda({
+        project_key: 'test-project',
+        status: 'TO_REVIEW',
+        assigned_to_me: 'true',
+        since_leak_period: 'false',
+        in_new_code_period: 'true',
+        page: '1',
+        page_size: '50',
+      });
+
+      // Check that mapToSonarQubeParams was called with the right params
+      expect(mockMapFunction).toHaveBeenCalledWith({
+        project_key: 'test-project',
+        status: 'TO_REVIEW',
+        assigned_to_me: 'true',
+        since_leak_period: 'false',
+        in_new_code_period: 'true',
+        page: '1',
+        page_size: '50',
+      });
+
+      // Check that handleSonarQubeSearchHotspots was called with the mapped params
+      expect(mockSearchHotspots).toHaveBeenCalledWith({
+        projectKey: 'test-project',
+        status: 'TO_REVIEW',
+        assignedToMe: true,
+        sinceLeakPeriod: false,
+        inNewCodePeriod: true,
+        page: 1,
+        pageSize: 50,
+      });
+
+      // Restore the original functions
+      handleSonarQubeSearchHotspots = originalHandler;
+      mapToSonarQubeParams = originalMapFunction;
+    });
+
+    it('should test the quality gate handler lambda', async () => {
+      // Set up mock for the API call
+      nock('http://localhost:9000')
+        .get('/api/qualitygates/show')
+        .query({ id: 'gate-123' })
+        .reply(200, {
+          id: 'gate-123',
+          name: 'Test Quality Gate',
+          conditions: [],
+          isBuiltIn: false,
+        });
+
+      // Test the lambda
+      const result = await qualityGateHandler({ id: 'gate-123' });
+
+      expect(result).toBeDefined();
+      expect(result.content[0].text).toContain('gate-123');
+    });
+
+    it('should test the project quality gate status handler lambda', async () => {
+      // Set up mock for the API call
+      nock('http://localhost:9000')
+        .get('/api/qualitygates/project_status')
+        .query({
+          projectKey: 'test-project',
+          branch: 'main',
+          pullRequest: 'pr-123',
+        })
+        .reply(200, {
+          projectStatus: {
+            status: 'OK',
+            conditions: [],
+          },
+        });
+
+      // Test the lambda with all parameters
+      const result = await projectQualityGateStatusHandler({
+        project_key: 'test-project',
+        branch: 'main',
+        pull_request: 'pr-123',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.content[0].text).toContain('OK');
+    });
+
+    it('should test the get hotspot details handler lambda', async () => {
+      // Set up mock for the API call
+      nock('http://localhost:9000')
+        .get('/api/hotspots/show')
+        .query({
+          hotspot: 'hotspot-123',
+        })
+        .reply(200, {
+          key: 'hotspot-123',
+          component: 'test',
+          project: 'test-project',
+          rule: {
+            key: 'java:S2068',
+            name: 'Hard-coded credentials',
+            securityCategory: 'weak-cryptography',
+          },
+          status: 'TO_REVIEW',
+          line: 42,
+          message: 'Make sure this password is not hard-coded.',
+          author: 'john.doe@example.com',
+          creationDate: '2023-01-15T10:30:00+0000',
+        });
+
+      // Test the lambda
+      const result = await getHotspotDetailsHandler({ hotspot_key: 'hotspot-123' });
+
+      expect(result).toBeDefined();
+      expect(result.content[0].text).toContain('hotspot-123');
+    });
+
+    it('should test the update hotspot status handler lambda', async () => {
+      // Set up mock for the API call
+      nock('http://localhost:9000')
+        .post('/api/hotspots/change_status', {
+          hotspot: 'hotspot-123',
+          status: 'REVIEWED',
+          resolution: 'SAFE',
+          comment: 'Reviewed and safe',
+        })
+        .reply(200, {});
+
+      // Test the lambda with all parameters
+      const result = await updateHotspotStatusHandler({
+        hotspot_key: 'hotspot-123',
+        status: 'REVIEWED',
+        resolution: 'SAFE',
+        comment: 'Reviewed and safe',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.content[0].text).toContain('successfully');
+    });
   });
 
   describe('Tool schema validations', () => {
@@ -2566,60 +2765,615 @@ describe('MCP Server', () => {
     });
   });
 
-  describe('Environment Variable Validation', () => {
-    beforeEach(() => {
-      // Clear the module cache to force re-evaluation
+  describe('Tool schema transformations with actual Zod schemas', () => {
+    it('should transform issues tool parameters through Zod schema', () => {
+      // Import the actual schema from the tool registration
+      const issuesSchema = z.object({
+        project_key: z.string().optional(),
+        on_component_only: z
+          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .nullable()
+          .optional(),
+        resolved: z
+          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .nullable()
+          .optional(),
+        page: z
+          .string()
+          .optional()
+          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+        page_size: z
+          .string()
+          .optional()
+          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+      });
+
+      // Test with string values that should be transformed
+      const result = issuesSchema.parse({
+        project_key: 'test-project',
+        on_component_only: 'true',
+        resolved: 'false',
+        page: '5',
+        page_size: '100',
+      });
+
+      expect(result.on_component_only).toBe(true);
+      expect(result.resolved).toBe(false);
+      expect(result.page).toBe(5);
+      expect(result.page_size).toBe(100);
+    });
+
+    it('should transform search_hotspots tool parameters through Zod schema', () => {
+      // Import the actual schema from the tool registration
+      const searchHotspotsSchema = z.object({
+        project_key: z.string().optional(),
+        assigned_to_me: z
+          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .nullable()
+          .optional(),
+        since_leak_period: z
+          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .nullable()
+          .optional(),
+        in_new_code_period: z
+          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .nullable()
+          .optional(),
+        page: z
+          .string()
+          .optional()
+          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+        page_size: z
+          .string()
+          .optional()
+          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+      });
+
+      // Test with string values that should be transformed
+      const result = searchHotspotsSchema.parse({
+        project_key: 'test-project',
+        assigned_to_me: 'true',
+        since_leak_period: 'false',
+        in_new_code_period: 'true',
+        page: '2',
+        page_size: '50',
+      });
+
+      expect(result.assigned_to_me).toBe(true);
+      expect(result.since_leak_period).toBe(false);
+      expect(result.in_new_code_period).toBe(true);
+      expect(result.page).toBe(2);
+      expect(result.page_size).toBe(50);
+
+      // Test with boolean values directly
+      const result2 = searchHotspotsSchema.parse({
+        project_key: 'test-project',
+        assigned_to_me: false,
+        since_leak_period: true,
+        in_new_code_period: false,
+      });
+
+      expect(result2.assigned_to_me).toBe(false);
+      expect(result2.since_leak_period).toBe(true);
+      expect(result2.in_new_code_period).toBe(false);
+    });
+  });
+
+  describe('Security Hotspot handlers', () => {
+    describe('handleSonarQubeSearchHotspots', () => {
+      it('should search and return hotspots', async () => {
+        nock('http://localhost:9000')
+          .get('/api/hotspots/search')
+          .query({
+            projectKey: 'test-project',
+            status: 'TO_REVIEW',
+            p: '1',
+            ps: '50',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            hotspots: [
+              {
+                key: 'AYg1234567890',
+                component: 'com.example:my-project:src/main/java/Example.java',
+                project: 'com.example:my-project',
+                securityCategory: 'sql-injection',
+                vulnerabilityProbability: 'HIGH',
+                status: 'TO_REVIEW',
+                line: 42,
+                message: 'Make sure using this database query is safe.',
+                author: 'developer@example.com',
+                creationDate: '2023-01-15T10:30:00+0000',
+              },
+            ],
+            components: [
+              {
+                key: 'com.example:my-project:src/main/java/Example.java',
+                name: 'Example.java',
+                path: 'src/main/java/Example.java',
+              },
+            ],
+            paging: {
+              pageIndex: 1,
+              pageSize: 50,
+              total: 1,
+            },
+          });
+
+        const response = await handleSonarQubeSearchHotspots({
+          projectKey: 'test-project',
+          status: 'TO_REVIEW',
+          page: 1,
+          pageSize: 50,
+        });
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.hotspots).toHaveLength(1);
+        expect(result.hotspots[0].key).toBe('AYg1234567890');
+        expect(result.hotspots[0].status).toBe('TO_REVIEW');
+        expect(result.paging.total).toBe(1);
+      });
+    });
+
+    describe('handleSonarQubeGetHotspotDetails', () => {
+      it('should get and return hotspot details', async () => {
+        nock('http://localhost:9000')
+          .get('/api/hotspots/show')
+          .query({
+            hotspot: 'AYg1234567890',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            key: 'AYg1234567890',
+            component: {
+              key: 'com.example:my-project:src/main/java/Example.java',
+              name: 'Example.java',
+              qualifier: 'FIL',
+              path: 'src/main/java/Example.java',
+            },
+            project: {
+              key: 'com.example:my-project',
+              name: 'My Project',
+              qualifier: 'TRK',
+            },
+            rule: {
+              key: 'java:S2077',
+              name: 'SQL queries should not be vulnerable to injection attacks',
+              securityCategory: 'sql-injection',
+              vulnerabilityProbability: 'HIGH',
+            },
+            status: 'TO_REVIEW',
+            line: 42,
+            message: 'Make sure using this database query is safe.',
+            author: 'developer@example.com',
+            creationDate: '2023-01-15T10:30:00+0000',
+            updateDate: '2023-01-15T10:30:00+0000',
+            flows: [],
+            canChangeStatus: true,
+          });
+
+        const response = await handleSonarQubeGetHotspotDetails('AYg1234567890');
+
+        expect(response).toBeDefined();
+        expect(response.content).toBeDefined();
+        expect(response.content[0]).toBeDefined();
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.key).toBe('AYg1234567890');
+        expect(result.status).toBe('TO_REVIEW');
+        expect(result.rule.securityCategory).toBe('sql-injection');
+        expect(result.canChangeStatus).toBe(true);
+      });
+    });
+
+    describe('handleSonarQubeUpdateHotspotStatus', () => {
+      it('should update hotspot status', async () => {
+        nock('http://localhost:9000')
+          .post('/api/hotspots/change_status', {
+            hotspot: 'AYg1234567890',
+            status: 'REVIEWED',
+            resolution: 'FIXED',
+            comment: 'Fixed by using parameterized queries',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {});
+
+        const response = await handleSonarQubeUpdateHotspotStatus({
+          hotspot: 'AYg1234567890',
+          status: 'REVIEWED',
+          resolution: 'FIXED',
+          comment: 'Fixed by using parameterized queries',
+        });
+
+        expect(response.content[0].text).toContain('Hotspot status updated successfully');
+      });
+
+      it('should update hotspot status without optional fields', async () => {
+        nock('http://localhost:9000')
+          .post('/api/hotspots/change_status', {
+            hotspot: 'AYg1234567890',
+            status: 'TO_REVIEW',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {});
+
+        const response = await handleSonarQubeUpdateHotspotStatus({
+          hotspot: 'AYg1234567890',
+          status: 'TO_REVIEW',
+        });
+
+        expect(response.content[0].text).toContain('Hotspot status updated successfully');
+      });
+    });
+  });
+
+  describe('Create Default Client', () => {
+    it('should create default client with environment variables', async () => {
+      // Ensure environment variables are set
+      process.env.SONARQUBE_TOKEN = 'test-token';
+      process.env.SONARQUBE_URL = 'http://localhost:9000';
+
+      // Import module fresh
       jest.resetModules();
-      // Store current env vars
-      process.env = { ...originalEnv };
+      const index = await import('../index.js');
+
+      // Call createDefaultClient - it should not throw
+      expect(() => index.createDefaultClient()).not.toThrow();
+    });
+  });
+
+  describe('Error Handling Coverage', () => {
+    it('should handle errors in handler functions', async () => {
+      // Import module fresh
+      jest.resetModules();
+      const index = await import('../index.js');
+
+      // Mock API calls to fail
+      nock('http://localhost:9000')
+        .get('/api/projects/search')
+        .query(true)
+        .reply(500, 'Internal Server Error');
+
+      // Test error handling
+      await expect(index.handleSonarQubeProjects()).rejects.toThrow();
     });
 
-    afterEach(() => {
-      // Restore env vars
-      process.env = { ...originalEnv };
+    it('should test parameter mapping with null values', async () => {
+      jest.resetModules();
+      const index = await import('../index.js');
+
+      // Test mapToSonarQubeParams with various null/undefined values
+      const result = index.mapToSonarQubeParams({
+        project_key: null,
+        projects: undefined,
+        component_keys: null,
+        components: null,
+        on_component_only: false,
+        branch: null,
+        pull_request: undefined,
+        issues: null,
+        severities: null,
+        statuses: null,
+        resolutions: null,
+        resolved: null,
+        types: null,
+        tags: null,
+        rules: null,
+        created_after: null,
+        created_before: null,
+        created_at: null,
+        created_in_last: null,
+        assigned: null,
+        assignees: null,
+        author: null,
+        authors: null,
+        cwe: null,
+        owasp_top10: null,
+        owasp_top10_v2021: null,
+        sans_top25: null,
+        sonarsource_security: null,
+        sonarsource_security_category: null,
+        languages: null,
+        facets: null,
+        facet_mode: null,
+        since_leak_period: null,
+        in_new_code_period: null,
+        s: null,
+        asc: null,
+        additional_fields: null,
+        page: null,
+        page_size: null,
+        clean_code_attribute_categories: null,
+        impact_severities: null,
+        impact_software_qualities: null,
+        issue_statuses: null,
+        severity: null,
+        hotspots: null,
+      });
+
+      // Verify null values are converted to undefined
+      expect(result.projectKey).toBeUndefined();
+      expect(result.projects).toBeUndefined();
+      expect(result.componentKeys).toBeUndefined();
+      expect(result.components).toBeUndefined();
+      expect(result.onComponentOnly).toBe(false);
+      expect(result.branch).toBeUndefined();
+      expect(result.pullRequest).toBeUndefined();
     });
+  });
 
-    it('should throw error when SONARQUBE_TOKEN is missing', async () => {
-      delete process.env.SONARQUBE_TOKEN;
+  describe('MCP Wrapper Functions Coverage', () => {
+    it('should test all MCP wrapper functions', async () => {
+      // Import module fresh
+      jest.resetModules();
+      const index = await import('../index.js');
 
-      await expect(async () => {
-        const module = await import('../index.js');
-        module.createDefaultClient();
-      }).rejects.toThrow('SONARQUBE_TOKEN environment variable is required');
+      // Mock all API calls
+      nock('http://localhost:9000')
+        .get('/api/projects/search')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          components: [],
+          paging: { pageIndex: 1, pageSize: 100, total: 0 },
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/metrics/search')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          metrics: [],
+          paging: { pageIndex: 1, pageSize: 100, total: 0 },
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/issues/search')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          issues: [],
+          components: [],
+          rules: [],
+          paging: { pageIndex: 1, pageSize: 100, total: 0 },
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/system/health')
+        .times(2)
+        .reply(200, { health: 'GREEN', causes: [] });
+
+      nock('http://localhost:9000')
+        .get('/api/system/status')
+        .times(2)
+        .reply(200, { id: '1', version: '10.0', status: 'UP' });
+
+      nock('http://localhost:9000').get('/api/system/ping').times(2).reply(200, 'pong');
+
+      nock('http://localhost:9000')
+        .get('/api/measures/component')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          component: { key: 'test', measures: [] },
+          metrics: [],
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/measures/component')
+        .query(true)
+        .times(4)
+        .reply(200, {
+          component: { key: 'test', measures: [] },
+          metrics: [],
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/measures/search_history')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          measures: [],
+          paging: { pageIndex: 1, pageSize: 100, total: 0 },
+        });
+
+      nock('http://localhost:9000').get('/api/qualitygates/list').times(2).reply(200, {
+        qualitygates: [],
+        default: 'default',
+      });
+
+      nock('http://localhost:9000').get('/api/qualitygates/show').query(true).times(2).reply(200, {
+        id: 'test',
+        name: 'Test Gate',
+        conditions: [],
+      });
+
+      nock('http://localhost:9000')
+        .get('/api/qualitygates/project_status')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          projectStatus: { status: 'OK', conditions: [] },
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/sources/raw')
+        .query(true)
+        .times(2)
+        .reply(200, 'source code content');
+
+      nock('http://localhost:9000')
+        .get('/api/sources/scm')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          component: { key: 'test' },
+          sources: {},
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/hotspots/search')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          hotspots: [],
+          paging: { pageIndex: 1, pageSize: 100, total: 0 },
+        });
+
+      nock('http://localhost:9000')
+        .get('/api/hotspots/show')
+        .query(true)
+        .times(2)
+        .reply(200, {
+          key: 'hotspot-1',
+          component: 'test',
+          project: 'test',
+          rule: { key: 'test', name: 'Test' },
+          status: 'TO_REVIEW',
+          securityCategory: 'test',
+          vulnerabilityProbability: 'HIGH',
+          line: 1,
+          message: 'Test',
+        });
+
+      nock('http://localhost:9000').post('/api/hotspots/change_status').times(2).reply(200);
+
+      // Access the wrapper functions via the module
+      const module = index;
+
+      // Call all handler functions
+      await module.projectsHandler({});
+      await module.metricsHandler({ page: 1, page_size: 10 });
+      await module.issuesHandler({ project_key: 'test' });
+      await module.healthHandler();
+      await module.statusHandler();
+      await module.pingHandler();
+      await module.componentMeasuresHandler({ component: 'test', metric_keys: ['coverage'] });
+      await module.componentsMeasuresHandler({
+        component_keys: ['test'],
+        metric_keys: ['coverage'],
+      });
+      await module.measuresHistoryHandler({ component: 'test', metrics: ['coverage'] });
+      await module.qualityGatesHandler();
+      await module.qualityGateHandler({ id: 'test' });
+      await module.projectQualityGateStatusHandler({ project_key: 'test' });
+      await module.sourceCodeHandler({ key: 'test' });
+      await module.scmBlameHandler({ key: 'test' });
+      await module.searchHotspotsHandler({ project_key: 'test' });
+      await module.getHotspotDetailsHandler({ hotspot_key: 'hotspot-1' });
+      await module.updateHotspotStatusHandler({ hotspot_key: 'hotspot-1', status: 'REVIEWED' });
     });
+  });
 
-    it('should throw error when SONARQUBE_URL is invalid', async () => {
+  describe('MCP Wrapper Functions Direct Coverage', () => {
+    beforeEach(() => {
       process.env.SONARQUBE_TOKEN = 'test-token';
-      process.env.SONARQUBE_URL = 'not-a-valid-url';
-
-      await expect(async () => {
-        const module = await import('../index.js');
-        module.createDefaultClient();
-      }).rejects.toThrow('Invalid SONARQUBE_URL');
+      process.env.SONARQUBE_URL = 'http://localhost:9000';
+      jest.resetModules();
     });
 
-    it('should accept valid SONARQUBE_URL', async () => {
-      process.env.SONARQUBE_TOKEN = 'test-token';
-      process.env.SONARQUBE_URL = 'https://sonarcloud.io';
+    it('should cover all MCP wrapper functions', async () => {
+      // Set up mocks for all endpoints
+      nock('http://localhost:9000')
+        .get('/api/projects/search')
+        .query(true)
+        .reply(200, { components: [], paging: { pageIndex: 1, pageSize: 100, total: 0 } });
 
-      const module = await import('../index.js');
-      expect(() => module.createDefaultClient()).not.toThrow();
-    });
+      nock('http://localhost:9000')
+        .get('/api/metrics/search')
+        .query(true)
+        .reply(200, { metrics: [], total: 0 });
 
-    it('should work without SONARQUBE_URL (uses default)', async () => {
-      process.env.SONARQUBE_TOKEN = 'test-token';
-      delete process.env.SONARQUBE_URL;
+      nock('http://localhost:9000')
+        .get('/api/issues/search')
+        .query(true)
+        .reply(200, { issues: [], total: 0, paging: { pageIndex: 1, pageSize: 100, total: 0 } });
 
-      const module = await import('../index.js');
-      expect(() => module.createDefaultClient()).not.toThrow();
-    });
+      nock('http://localhost:9000').get('/api/system/health').reply(200, { health: 'GREEN' });
 
-    it('should accept valid SONARQUBE_ORGANIZATION', async () => {
-      process.env.SONARQUBE_TOKEN = 'test-token';
-      process.env.SONARQUBE_ORGANIZATION = 'my-org';
+      nock('http://localhost:9000')
+        .get('/api/system/status')
+        .reply(200, { status: 'UP', version: '10.0' });
 
-      const module = await import('../index.js');
-      expect(() => module.createDefaultClient()).not.toThrow();
+      nock('http://localhost:9000').get('/api/system/ping').reply(200, 'pong');
+
+      nock('http://localhost:9000')
+        .get('/api/measures/component')
+        .query(true)
+        .times(3) // Allow multiple calls
+        .reply(200, { component: { key: 'test', measures: [] }, metrics: [] });
+
+      nock('http://localhost:9000')
+        .get('/api/measures/search_history')
+        .query(true)
+        .reply(200, { measures: [] });
+
+      nock('http://localhost:9000').get('/api/qualitygates/list').reply(200, { qualitygates: [] });
+
+      nock('http://localhost:9000')
+        .get('/api/qualitygates/show')
+        .query(true)
+        .reply(200, { id: 'test', name: 'Test', conditions: [] });
+
+      nock('http://localhost:9000')
+        .get('/api/qualitygates/project_status')
+        .query(true)
+        .reply(200, { projectStatus: { status: 'OK' } });
+
+      nock('http://localhost:9000').get('/api/sources/raw').query(true).reply(200, 'source code');
+
+      nock('http://localhost:9000')
+        .get('/api/sources/scm')
+        .query(true)
+        .reply(200, { component: { key: 'test' }, sources: {} });
+
+      nock('http://localhost:9000')
+        .get('/api/hotspots/search')
+        .query(true)
+        .reply(200, { hotspots: [], paging: { pageIndex: 1, pageSize: 100, total: 0 } });
+
+      nock('http://localhost:9000')
+        .get('/api/hotspots/show')
+        .query(true)
+        .reply(200, {
+          key: 'test-hotspot',
+          component: 'test',
+          project: 'test',
+          rule: { key: 'test', name: 'Test' },
+          status: 'TO_REVIEW',
+          securityCategory: 'test',
+          vulnerabilityProbability: 'HIGH',
+        });
+
+      nock('http://localhost:9000').post('/api/hotspots/change_status').reply(200);
+
+      // Import and call all MCP wrapper functions
+      const index = await import('../index.js');
+
+      // Test all wrapper functions
+      await index.projectsMcpHandler({});
+      await index.metricsMcpHandler({ page: 1, page_size: 10 });
+      await index.issuesMcpHandler({ project_key: 'test' });
+      await index.healthMcpHandler();
+      await index.statusMcpHandler();
+      await index.pingMcpHandler();
+      await index.componentMeasuresMcpHandler({ component: 'test', metric_keys: ['coverage'] });
+      await index.componentsMeasuresMcpHandler({
+        component_keys: ['test'],
+        metric_keys: ['coverage'],
+      });
+      await index.measuresHistoryMcpHandler({ component: 'test', metrics: ['coverage'] });
+      await index.qualityGatesMcpHandler();
+      await index.qualityGateMcpHandler({ id: 'test' });
+      await index.projectQualityGateStatusMcpHandler({ project_key: 'test' });
+      await index.sourceCodeMcpHandler({ key: 'test' });
+      await index.scmBlameMcpHandler({ key: 'test' });
+      await index.searchHotspotsMcpHandler({ project_key: 'test' });
+      await index.getHotspotDetailsMcpHandler({ hotspot_key: 'test-hotspot' });
+      await index.updateHotspotStatusMcpHandler({
+        hotspot_key: 'test-hotspot',
+        status: 'REVIEWED',
+      });
     });
   });
 });

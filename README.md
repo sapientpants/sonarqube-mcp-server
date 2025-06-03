@@ -12,12 +12,29 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
+## What's New in v1.3.0
+
+### Enhanced Issues Tool
+- **Branch/PR Analysis**: Analyze issues in feature branches and pull requests
+- **Multi-Project Support**: Query issues across multiple projects simultaneously
+- **Advanced Sorting**: Sort results by severity, creation date, update date, and more
+- **Clean Code Taxonomy**: Filter by clean code attributes and software quality impacts (SonarQube 10.x+)
+- **Enhanced Filtering**: New filters for assigned issues, specific authors, and OWASP Top 10 2021
+
+### Security Hotspot Tools
+- **Search Hotspots**: Find security hotspots with specialized filters for review workflows
+- **Hotspot Details**: Get comprehensive security context and vulnerability information
+- **Update Status**: Change hotspot status and resolution with proper permissions
+
 ## Overview
 
 The SonarQube MCP Server enables AI assistants to interact with SonarQube's code quality analysis capabilities through the Model Context Protocol. This integration allows AI assistants to:
 
 - 📊 **Retrieve code metrics and analysis results** - Access detailed quality metrics for your projects
 - 🐛 **Access and filter issues** - Search and filter code issues by severity, type, status, and more
+- 🔒 **Review security hotspots** - Find and manage security vulnerabilities with dedicated workflows
+- 🌿 **Analyze branches and PRs** - Review code quality in feature branches and pull requests
+- 📦 **Multi-project analysis** - Query issues and metrics across multiple projects simultaneously
 - ✅ **Check quality gates** - Monitor whether projects meet quality standards
 - 📈 **Analyze project quality over time** - Track metrics history and trends
 - 🔍 **View source code with issues** - See problematic code with highlighted issues
@@ -268,22 +285,113 @@ Get measures history for a component.
 ### Issue Management
 
 #### `issues`
-Get issues from a SonarQube project with extensive filtering options.
+Get issues from SonarQube projects with advanced filtering, sorting, and branch/PR support.
 
-**Parameters:**
-- `project_key` (required): The unique identifier for the project
-- `severity` (optional): Filter by severity (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
-- `statuses` (optional): Filter by status array
-- `resolutions` (optional): Filter by resolution array
-- `types` (optional): Filter by type array
+**Component Filters:**
+- `project_key` (optional): Single project key (backward compatible)
+- `projects` (optional): Array of project keys for multi-project analysis
+- `component_keys` (optional): Array of component keys
+- `components` (optional): Array of components
+- `on_component_only` (optional): Boolean to limit to specific component
+
+**Branch/PR Support:**
+- `branch` (optional): Branch name for branch analysis
+- `pull_request` (optional): Pull request ID for PR analysis
+
+**Issue Filters:**
+- `issues` (optional): Array of specific issue keys to retrieve
+- `severity` (optional): Single severity (deprecated, use severities)
+- `severities` (optional): Array of severities (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
+- `statuses` (optional): Array of statuses (OPEN, CONFIRMED, REOPENED, RESOLVED, CLOSED)
+- `resolutions` (optional): Array of resolutions (FALSE-POSITIVE, WONTFIX, FIXED, REMOVED)
+- `resolved` (optional): Boolean filter for resolved/unresolved
+- `types` (optional): Array of types (CODE_SMELL, BUG, VULNERABILITY, SECURITY_HOTSPOT)
+
+**Clean Code Taxonomy (SonarQube 10.x+):**
+- `clean_code_attribute_categories` (optional): Array (ADAPTABLE, CONSISTENT, INTENTIONAL, RESPONSIBLE)
+- `impact_severities` (optional): Array (HIGH, MEDIUM, LOW)
+- `impact_software_qualities` (optional): Array (MAINTAINABILITY, RELIABILITY, SECURITY)
+- `issue_statuses` (optional): Array of new issue status values
+
+**Rules and Tags:**
 - `rules` (optional): Array of rule keys
 - `tags` (optional): Array of tags
+
+**Date Filters:**
 - `created_after` (optional): Issues created after date (YYYY-MM-DD)
 - `created_before` (optional): Issues created before date (YYYY-MM-DD)
+- `created_at` (optional): Issues created on date (YYYY-MM-DD)
+- `created_in_last` (optional): Issues created in last period (e.g., "30d", "1m")
+
+**Assignment:**
+- `assigned` (optional): Boolean filter for assigned/unassigned
 - `assignees` (optional): Array of assignee logins
+- `author` (optional): Single author login
 - `authors` (optional): Array of author logins
-- `languages` (optional): Array of languages
-- And many more filtering options...
+
+**Security Standards:**
+- `cwe` (optional): Array of CWE identifiers
+- `owasp_top10` (optional): Array of OWASP Top 10 categories
+- `owasp_top10_v2021` (optional): Array of OWASP Top 10 2021 categories
+- `sans_top25` (optional): Array of SANS Top 25 categories
+- `sonarsource_security` (optional): Array of SonarSource security categories
+- `sonarsource_security_category` (optional): Additional security categories
+
+**Other Filters:**
+- `languages` (optional): Array of programming languages
+- `facets` (optional): Array of facets to aggregate
+- `facet_mode` (optional): Facet aggregation mode ('effort' or 'count')
+- `since_leak_period` (optional): Boolean for leak period filter (deprecated)
+- `in_new_code_period` (optional): Boolean for new code period filter
+
+**Sorting:**
+- `s` (optional): Sort field (e.g., 'SEVERITY', 'CREATION_DATE', 'UPDATE_DATE')
+- `asc` (optional): Boolean for ascending sort direction (default: false)
+
+**Response Control:**
+- `additional_fields` (optional): Array of additional fields to include
+- `page` (optional): Page number for pagination
+- `page_size` (optional): Number of items per page
+
+### Security Hotspots
+
+#### `search_hotspots`
+Search for security hotspots with specialized filters for security review workflows.
+
+**Parameters:**
+- `project_key` (optional): Project key to filter hotspots
+- `branch` (optional): Branch name for branch analysis
+- `pull_request` (optional): Pull request ID for PR analysis
+- `status` (optional): Hotspot status (TO_REVIEW, REVIEWED)
+- `resolution` (optional): Hotspot resolution (FIXED, SAFE)
+- `files` (optional): Array of file paths to filter
+- `assigned_to_me` (optional): Boolean to show only assigned hotspots
+- `since_leak_period` (optional): Boolean for leak period filter
+- `in_new_code_period` (optional): Boolean for new code period filter
+- `page` (optional): Page number for pagination
+- `page_size` (optional): Number of items per page
+
+#### `get_hotspot_details`
+Get detailed information about a specific security hotspot including security context.
+
+**Parameters:**
+- `hotspot_key` (required): The unique key of the hotspot
+
+**Returns:**
+- Detailed hotspot information including:
+  - Security category and vulnerability probability
+  - Rule information and security context
+  - Changelog and comments
+  - Code flows and locations
+
+#### `update_hotspot_status`
+Update the status of a security hotspot (requires appropriate permissions).
+
+**Parameters:**
+- `hotspot_key` (required): The unique key of the hotspot
+- `status` (required): New status (TO_REVIEW, REVIEWED)
+- `resolution` (optional): Resolution when status is REVIEWED (FIXED, SAFE)
+- `comment` (optional): Comment explaining the status change
 
 ### Quality Gates
 
@@ -356,6 +464,11 @@ Ping the SonarQube instance to check if it is up.
 "Find security vulnerabilities in the main branch"
 "List all code smells created in the last week"
 "Show unresolved issues assigned to john.doe"
+"Analyze issues in the feature/new-login branch"
+"Compare issues between main and develop branches"
+"Find issues across multiple projects: proj1, proj2, proj3"
+"Show me issues sorted by severity in descending order"
+"Find all issues with clean code impact on reliability"
 ```
 
 ### Quality Monitoring
@@ -364,6 +477,17 @@ Ping the SonarQube instance to check if it is up.
 "Show me the code coverage history for the last month"
 "What are the quality gate conditions?"
 "Compare metrics between develop and main branches"
+```
+
+### Security Hotspot Review
+```
+"Find all security hotspots that need review in project xyz"
+"Show me hotspots in the authentication module"
+"Get details for hotspot HSP-12345"
+"List all hotspots assigned to me"
+"Mark hotspot HSP-12345 as safe with explanation"
+"Find hotspots in the new code period"
+"Show security hotspots in pull request #42"
 ```
 
 ### Source Code Analysis
