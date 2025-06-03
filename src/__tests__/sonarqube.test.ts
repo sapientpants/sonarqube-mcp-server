@@ -1597,7 +1597,7 @@ describe('SonarQubeClient', () => {
       const scope = nock(baseUrl)
         .get('/api/hotspots/search')
         .query((actualQuery) => {
-          // Note: branch, pullRequest, and inNewCodePeriod may not be supported by the current API
+          // Note: The API's support for branch, pullRequest, and inNewCodePeriod has not been confirmed. Ensure these filters are supported before relying on them.
           return (
             actualQuery.projectKey === 'my-project' &&
             actualQuery.status === 'REVIEWED' &&

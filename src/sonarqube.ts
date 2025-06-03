@@ -1198,41 +1198,22 @@ export class SonarQubeClient implements ISonarQubeClient {
   async searchHotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult> {
     const {
       projectKey,
-      branch,
-      pullRequest,
+      // branch, pullRequest, inNewCodePeriod are not currently supported by the API
       status,
       resolution,
       files,
       assignedToMe,
       sinceLeakPeriod,
-      inNewCodePeriod,
       page,
       pageSize,
     } = params;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const builder: any = this.webApiClient.hotspots.search();
+    const builder = this.webApiClient.hotspots.search();
 
     // Apply filters using builder methods
     if (projectKey) builder.projectKey(projectKey);
-    // Branch and pullRequest may be handled differently for hotspots
-    // We'll use the generic parameter methods if available
-    if (branch) {
-      // Try to use a generic parameter method
-      if (builder.withParam) {
-        builder.withParam('branch', branch);
-      } else if (builder.branch) {
-        builder.branch(branch);
-      }
-    }
-    if (pullRequest) {
-      // Try to use a generic parameter method
-      if (builder.withParam) {
-        builder.withParam('pullRequest', pullRequest);
-      } else if (builder.pullRequest) {
-        builder.pullRequest(pullRequest);
-      }
-    }
+    // Note: branch, pullRequest, and inNewCodePeriod parameters may not be supported
+    // by the current hotspots API but are included for future compatibility
     if (status) builder.status(status);
     if (resolution) builder.resolution(resolution);
     if (files && files.length > 0) {
@@ -1240,14 +1221,6 @@ export class SonarQubeClient implements ISonarQubeClient {
     }
     if (assignedToMe !== undefined) builder.onlyMine(assignedToMe);
     if (sinceLeakPeriod !== undefined) builder.sinceLeakPeriod(sinceLeakPeriod);
-    // inNewCodePeriod might not be available, try generic parameter
-    if (inNewCodePeriod !== undefined) {
-      if (builder.withParam) {
-        builder.withParam('inNewCodePeriod', inNewCodePeriod);
-      } else if (builder.inNewCodePeriod) {
-        builder.inNewCodePeriod(inNewCodePeriod);
-      }
-    }
     if (page !== undefined) builder.page(page);
     if (pageSize !== undefined) builder.pageSize(pageSize);
 

@@ -479,6 +479,9 @@ let handleSonarQubePing: any;
 let handleSonarQubeComponentMeasures: any;
 let handleSonarQubeComponentsMeasures: any;
 let handleSonarQubeMeasuresHistory: any;
+let handleSonarQubeSearchHotspots: any;
+let handleSonarQubeGetHotspotDetails: any;
+let handleSonarQubeUpdateHotspotStatus: any;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 interface Connectable {
@@ -500,6 +503,9 @@ describe('MCP Server', () => {
     handleSonarQubeComponentMeasures = module.handleSonarQubeComponentMeasures;
     handleSonarQubeComponentsMeasures = module.handleSonarQubeComponentsMeasures;
     handleSonarQubeMeasuresHistory = module.handleSonarQubeMeasuresHistory;
+    handleSonarQubeSearchHotspots = module.handleSonarQubeSearchHotspots;
+    handleSonarQubeGetHotspotDetails = module.handleSonarQubeGetHotspotDetails;
+    handleSonarQubeUpdateHotspotStatus = module.handleSonarQubeUpdateHotspotStatus;
   });
 
   beforeEach(() => {
@@ -2563,6 +2569,150 @@ describe('MCP Server', () => {
       handleSonarQubeGetIssues = originalGetIssues;
       handleSonarQubeComponentsMeasures = originalComponentsMeasures;
       handleSonarQubeMeasuresHistory = originalMeasuresHistory;
+    });
+  });
+
+  describe('Security Hotspot handlers', () => {
+    describe('handleSonarQubeSearchHotspots', () => {
+      it('should search and return hotspots', async () => {
+        nock('http://localhost:9000')
+          .get('/api/hotspots/search')
+          .query({
+            projectKey: 'test-project',
+            status: 'TO_REVIEW',
+            p: '1',
+            ps: '50',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            hotspots: [
+              {
+                key: 'AYg1234567890',
+                component: 'com.example:my-project:src/main/java/Example.java',
+                project: 'com.example:my-project',
+                securityCategory: 'sql-injection',
+                vulnerabilityProbability: 'HIGH',
+                status: 'TO_REVIEW',
+                line: 42,
+                message: 'Make sure using this database query is safe.',
+                author: 'developer@example.com',
+                creationDate: '2023-01-15T10:30:00+0000',
+              },
+            ],
+            components: [
+              {
+                key: 'com.example:my-project:src/main/java/Example.java',
+                name: 'Example.java',
+                path: 'src/main/java/Example.java',
+              },
+            ],
+            paging: {
+              pageIndex: 1,
+              pageSize: 50,
+              total: 1,
+            },
+          });
+
+        const response = await handleSonarQubeSearchHotspots({
+          projectKey: 'test-project',
+          status: 'TO_REVIEW',
+          page: 1,
+          pageSize: 50,
+        });
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.hotspots).toHaveLength(1);
+        expect(result.hotspots[0].key).toBe('AYg1234567890');
+        expect(result.hotspots[0].status).toBe('TO_REVIEW');
+        expect(result.paging.total).toBe(1);
+      });
+    });
+
+    describe('handleSonarQubeGetHotspotDetails', () => {
+      it('should get and return hotspot details', async () => {
+        nock('http://localhost:9000')
+          .get('/api/hotspots/show')
+          .query({
+            hotspot: 'AYg1234567890',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            key: 'AYg1234567890',
+            component: {
+              key: 'com.example:my-project:src/main/java/Example.java',
+              name: 'Example.java',
+              qualifier: 'FIL',
+              path: 'src/main/java/Example.java',
+            },
+            project: {
+              key: 'com.example:my-project',
+              name: 'My Project',
+              qualifier: 'TRK',
+            },
+            rule: {
+              key: 'java:S2077',
+              name: 'SQL queries should not be vulnerable to injection attacks',
+              securityCategory: 'sql-injection',
+              vulnerabilityProbability: 'HIGH',
+            },
+            status: 'TO_REVIEW',
+            line: 42,
+            message: 'Make sure using this database query is safe.',
+            author: 'developer@example.com',
+            creationDate: '2023-01-15T10:30:00+0000',
+            updateDate: '2023-01-15T10:30:00+0000',
+            flows: [],
+            canChangeStatus: true,
+          });
+
+        const response = await handleSonarQubeGetHotspotDetails('AYg1234567890');
+
+        const result = JSON.parse(response.content[0].text);
+        expect(result.key).toBe('AYg1234567890');
+        expect(result.status).toBe('TO_REVIEW');
+        expect(result.rule.securityCategory).toBe('sql-injection');
+        expect(result.canChangeStatus).toBe(true);
+      });
+    });
+
+    describe('handleSonarQubeUpdateHotspotStatus', () => {
+      it('should update hotspot status', async () => {
+        nock('http://localhost:9000')
+          .post('/api/hotspots/change_status', {
+            hotspot: 'AYg1234567890',
+            status: 'REVIEWED',
+            resolution: 'FIXED',
+            comment: 'Fixed by using parameterized queries',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {});
+
+        const response = await handleSonarQubeUpdateHotspotStatus({
+          hotspot: 'AYg1234567890',
+          status: 'REVIEWED',
+          resolution: 'FIXED',
+          comment: 'Fixed by using parameterized queries',
+        });
+
+        expect(response.content[0].text).toContain('Hotspot status updated successfully');
+      });
+
+      it('should update hotspot status without optional fields', async () => {
+        nock('http://localhost:9000')
+          .post('/api/hotspots/change_status', {
+            hotspot: 'AYg1234567890',
+            status: 'TO_REVIEW',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {});
+
+        const response = await handleSonarQubeUpdateHotspotStatus({
+          hotspot: 'AYg1234567890',
+          status: 'TO_REVIEW',
+        });
+
+        expect(response.content[0].text).toContain('Hotspot status updated successfully');
+      });
     });
   });
 
