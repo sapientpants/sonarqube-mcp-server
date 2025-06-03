@@ -899,29 +899,31 @@ export const updateHotspotStatusHandler = async (params: Record<string, unknown>
 };
 
 // Wrapper functions for MCP registration that don't expose the client parameter
-const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
-const metricsMcpHandler = (params: Record<string, unknown>) =>
+export const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
+export const metricsMcpHandler = (params: Record<string, unknown>) =>
   metricsHandler(params as { page: number | null; page_size: number | null });
-const issuesMcpHandler = (params: Record<string, unknown>) => issuesHandler(params);
-const healthMcpHandler = () => healthHandler();
-const statusMcpHandler = () => statusHandler();
-const pingMcpHandler = () => pingHandler();
-const componentMeasuresMcpHandler = (params: Record<string, unknown>) =>
+export const issuesMcpHandler = (params: Record<string, unknown>) => issuesHandler(params);
+export const healthMcpHandler = () => healthHandler();
+export const statusMcpHandler = () => statusHandler();
+export const pingMcpHandler = () => pingHandler();
+export const componentMeasuresMcpHandler = (params: Record<string, unknown>) =>
   componentMeasuresHandler(params);
-const componentsMeasuresMcpHandler = (params: Record<string, unknown>) =>
+export const componentsMeasuresMcpHandler = (params: Record<string, unknown>) =>
   componentsMeasuresHandler(params);
-const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
+export const measuresHistoryMcpHandler = (params: Record<string, unknown>) =>
   measuresHistoryHandler(params);
-const qualityGatesMcpHandler = () => qualityGatesHandler();
-const qualityGateMcpHandler = (params: Record<string, unknown>) => qualityGateHandler(params);
-const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
+export const qualityGatesMcpHandler = () => qualityGatesHandler();
+export const qualityGateMcpHandler = (params: Record<string, unknown>) =>
+  qualityGateHandler(params);
+export const projectQualityGateStatusMcpHandler = (params: Record<string, unknown>) =>
   projectQualityGateStatusHandler(params);
-const sourceCodeMcpHandler = (params: Record<string, unknown>) => sourceCodeHandler(params);
-const scmBlameMcpHandler = (params: Record<string, unknown>) => scmBlameHandler(params);
-const searchHotspotsMcpHandler = (params: Record<string, unknown>) => searchHotspotsHandler(params);
-const getHotspotDetailsMcpHandler = (params: Record<string, unknown>) =>
+export const sourceCodeMcpHandler = (params: Record<string, unknown>) => sourceCodeHandler(params);
+export const scmBlameMcpHandler = (params: Record<string, unknown>) => scmBlameHandler(params);
+export const searchHotspotsMcpHandler = (params: Record<string, unknown>) =>
+  searchHotspotsHandler(params);
+export const getHotspotDetailsMcpHandler = (params: Record<string, unknown>) =>
   getHotspotDetailsHandler(params);
-const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =>
+export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =>
   updateHotspotStatusHandler(params);
 
 // Register SonarQube tools
