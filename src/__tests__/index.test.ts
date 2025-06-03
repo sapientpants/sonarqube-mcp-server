@@ -987,6 +987,27 @@ describe('MCP Server', () => {
       expect(dateSchema.parse(undefined)).toBe(undefined);
     });
 
+    it('should handle hotspot search boolean transformations correctly', () => {
+      // Test string to boolean transformation schemas used in hotspot search
+      const hotspotBooleanSchema = z
+        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .nullable()
+        .optional();
+
+      // Test boolean values
+      expect(hotspotBooleanSchema.parse(true)).toBe(true);
+      expect(hotspotBooleanSchema.parse(false)).toBe(false);
+
+      // Test string values
+      expect(hotspotBooleanSchema.parse('true')).toBe(true);
+      expect(hotspotBooleanSchema.parse('false')).toBe(false);
+      expect(hotspotBooleanSchema.parse('any')).toBe(false);
+
+      // Test null/undefined values
+      expect(hotspotBooleanSchema.parse(null)).toBe(null);
+      expect(hotspotBooleanSchema.parse(undefined)).toBe(undefined);
+    });
+
     it('should handle complex parameter combinations', () => {
       // Mock SonarQube API response
       nock('http://localhost:9000')
@@ -2274,6 +2295,71 @@ describe('MCP Server', () => {
       handleSonarQubeGetIssues = originalHandler;
       mapToSonarQubeParams = originalMapFunction;
     });
+
+    it('should test the hotspot search tool lambda', async () => {
+      // Mock the handleSonarQubeSearchHotspots function to track calls
+      const mockSearchHotspots = jest.fn().mockResolvedValue({
+        content: [{ type: 'text', text: '{"hotspots":[]}' }],
+      });
+
+      const originalHandler = handleSonarQubeSearchHotspots;
+      handleSonarQubeSearchHotspots = mockSearchHotspots;
+
+      // Mock mapToSonarQubeParams to return expected output
+      const originalMapFunction = mapToSonarQubeParams;
+      const mockMapFunction = jest.fn().mockReturnValue({
+        projectKey: 'test-project',
+        status: 'TO_REVIEW',
+        assignedToMe: true,
+        sinceLeakPeriod: false,
+        inNewCodePeriod: true,
+        page: 1,
+        pageSize: 50,
+      });
+      mapToSonarQubeParams = mockMapFunction;
+
+      // Create the lambda handler that's in the tool registration
+      const searchHotspotsLambda = async (params: Record<string, unknown>) => {
+        return handleSonarQubeSearchHotspots(mapToSonarQubeParams(params));
+      };
+
+      // Call the lambda with params that include string booleans
+      await searchHotspotsLambda({
+        project_key: 'test-project',
+        status: 'TO_REVIEW',
+        assigned_to_me: 'true',
+        since_leak_period: 'false',
+        in_new_code_period: 'true',
+        page: '1',
+        page_size: '50',
+      });
+
+      // Check that mapToSonarQubeParams was called with the right params
+      expect(mockMapFunction).toHaveBeenCalledWith({
+        project_key: 'test-project',
+        status: 'TO_REVIEW',
+        assigned_to_me: 'true',
+        since_leak_period: 'false',
+        in_new_code_period: 'true',
+        page: '1',
+        page_size: '50',
+      });
+
+      // Check that handleSonarQubeSearchHotspots was called with the mapped params
+      expect(mockSearchHotspots).toHaveBeenCalledWith({
+        projectKey: 'test-project',
+        status: 'TO_REVIEW',
+        assignedToMe: true,
+        sinceLeakPeriod: false,
+        inNewCodePeriod: true,
+        page: 1,
+        pageSize: 50,
+      });
+
+      // Restore the original functions
+      handleSonarQubeSearchHotspots = originalHandler;
+      mapToSonarQubeParams = originalMapFunction;
+    });
   });
 
   describe('Tool schema validations', () => {
@@ -2770,6 +2856,114 @@ describe('MCP Server', () => {
 
       const module = await import('../index.js');
       expect(() => module.createDefaultClient()).not.toThrow();
+    });
+  });
+
+  describe('handleSonarQubeSearchHotspots', () => {
+    it('should search hotspots', async () => {
+      const mockResult = {
+        hotspots: [
+          {
+            key: 'hotspot-1',
+            component: 'test-component',
+            project: 'test-project',
+            securityCategory: 'sql-injection',
+            vulnerabilityProbability: 'HIGH',
+            status: 'TO_REVIEW',
+            message: 'Potential SQL injection',
+            author: 'developer@example.com',
+          },
+        ],
+        components: [],
+        paging: { pageIndex: 1, pageSize: 100, total: 1 },
+      };
+
+      nock('http://localhost:9000')
+        .get('/api/hotspots/search')
+        .query({
+          projectKey: 'test-project',
+          status: 'TO_REVIEW',
+          onlyMine: true,
+          sinceLeakPeriod: false,
+          p: 1,
+          ps: 50,
+        })
+        .reply(200, mockResult);
+
+      const response = await handleSonarQubeSearchHotspots({
+        projectKey: 'test-project',
+        status: 'TO_REVIEW',
+        assignedToMe: true,
+        sinceLeakPeriod: false,
+        inNewCodePeriod: true,
+        page: 1,
+        pageSize: 50,
+      });
+
+      expect(response.content[0].text).toContain('hotspot-1');
+      expect(response.content[0].text).toContain('sql-injection');
+    });
+  });
+
+  describe('handleSonarQubeGetHotspotDetails', () => {
+    it('should get hotspot details', async () => {
+      const mockResult = {
+        key: 'hotspot-1',
+        component: {
+          key: 'test-component',
+          name: 'TestComponent.java',
+          path: 'src/main/java/TestComponent.java',
+        },
+        project: {
+          key: 'test-project',
+          name: 'Test Project',
+        },
+        rule: {
+          key: 'java:S2077',
+          name: 'SQL queries should not be vulnerable to injection',
+          securityCategory: 'sql-injection',
+          vulnerabilityProbability: 'HIGH',
+        },
+        status: 'TO_REVIEW',
+        line: 42,
+        message: 'Make sure using this SQL query is safe.',
+        author: 'developer@example.com',
+        creationDate: '2023-01-15T10:30:00+0000',
+        flows: [],
+      };
+
+      nock('http://localhost:9000')
+        .get('/api/hotspots/show')
+        .query({
+          hotspot: 'hotspot-1',
+        })
+        .reply(200, mockResult);
+
+      const response = await handleSonarQubeGetHotspotDetails('hotspot-1');
+      expect(response.content[0].text).toContain('hotspot-1');
+      expect(response.content[0].text).toContain('java:S2077');
+    });
+  });
+
+  describe('handleSonarQubeUpdateHotspotStatus', () => {
+    it('should update hotspot status', async () => {
+      nock('http://localhost:9000')
+        .post('/api/hotspots/change_status', {
+          hotspot: 'hotspot-1',
+          status: 'REVIEWED',
+          resolution: 'SAFE',
+          comment: 'This is safe after review',
+        })
+        .reply(200);
+
+      const response = await handleSonarQubeUpdateHotspotStatus({
+        hotspot: 'hotspot-1',
+        status: 'REVIEWED',
+        resolution: 'SAFE',
+        comment: 'This is safe after review',
+      });
+
+      expect(response.content[0].text).toBe('Hotspot status updated successfully');
     });
   });
 });
