@@ -1640,8 +1640,8 @@ export function createSonarQubeClientWithPasscode(
  * @returns A new SonarQube client instance
  */
 export function createSonarQubeClientFromEnv(): ISonarQubeClient {
-  const baseUrl = process.env.SONARQUBE_URL || DEFAULT_SONARQUBE_URL;
-  const organization = process.env.SONARQUBE_ORGANIZATION || null;
+  const baseUrl = process.env.SONARQUBE_URL ?? DEFAULT_SONARQUBE_URL;
+  const organization = process.env.SONARQUBE_ORGANIZATION ?? null;
 
   // Priority 1: Token auth (backward compatibility)
   if (process.env.SONARQUBE_TOKEN) {
