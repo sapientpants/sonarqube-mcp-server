@@ -761,7 +761,11 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param organization Organization name
    */
   constructor(token: string, baseUrl = DEFAULT_SONARQUBE_URL, organization?: string | null) {
-    this.webApiClient = new WebApiClient(baseUrl, token, organization ?? undefined);
+    this.webApiClient = WebApiClient.withToken(
+      baseUrl,
+      token,
+      organization ? { organization } : undefined
+    );
     this.organization = organization ?? null;
   }
 
