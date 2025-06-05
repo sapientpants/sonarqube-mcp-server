@@ -82,6 +82,41 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 }
 ```
 
+**Alternative authentication methods:**
+
+Using Basic Authentication:
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "https://your-sonarqube.com",
+        "SONARQUBE_USERNAME": "your-username",
+        "SONARQUBE_PASSWORD": "your-password"
+      }
+    }
+  }
+}
+```
+
+Using System Passcode:
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "https://your-sonarqube.com",
+        "SONARQUBE_PASSCODE": "your-system-passcode"
+      }
+    }
+  }
+}
+```
+
 4. Restart Claude Desktop
 
 ### 3. Start Using
@@ -169,25 +204,60 @@ For development or customization:
 
 ### Environment Variables
 
+#### Authentication (choose one method)
+
 | Variable | Description | Required | Default |
 |----------|-------------|----------|---------|
-| `SONARQUBE_TOKEN` | Authentication token for SonarQube API access | ✅ Yes | - |
+| **Token Authentication** | | | |
+| `SONARQUBE_TOKEN` | Authentication token for SonarQube API access | ✅ Yes* | - |
+| **Basic Authentication** | | | |
+| `SONARQUBE_USERNAME` | Username for HTTP Basic authentication | ✅ Yes* | - |
+| `SONARQUBE_PASSWORD` | Password for HTTP Basic authentication | ✅ Yes* | - |
+| **System Passcode** | | | |
+| `SONARQUBE_PASSCODE` | System passcode for SonarQube authentication | ✅ Yes* | - |
+
+*One authentication method is required. Token authentication takes priority if multiple methods are configured.
+
+#### Connection Settings
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
 | `SONARQUBE_URL` | URL of your SonarQube instance | ❌ No | `https://sonarcloud.io` |
-| `SONARQUBE_ORGANIZATION` | Organization key (required for SonarCloud) | ❌ No* | - |
+| `SONARQUBE_ORGANIZATION` | Organization key (required for SonarCloud) | ❌ No** | - |
 | `LOG_FILE` | Path to write log files (e.g., `/tmp/sonarqube-mcp.log`) | ❌ No | - |
 | `LOG_LEVEL` | Minimum log level (DEBUG, INFO, WARN, ERROR) | ❌ No | `DEBUG` |
 
-*Required when using SonarCloud
+**Required when using SonarCloud
+
+### Authentication Methods
+
+The server supports three authentication methods:
+
+1. **Token Authentication (Recommended)**
+   - Most secure and flexible option
+   - Works with both SonarCloud and SonarQube
+   - Tokens can have limited permissions
+
+2. **Basic Authentication**
+   - Uses username and password
+   - Suitable for self-hosted SonarQube instances
+   - May not work with SonarCloud if 2FA is enabled
+
+3. **System Passcode**
+   - Special authentication for SonarQube system administration
+   - Typically used for automated deployment scenarios
 
 ### SonarCloud vs SonarQube
 
 **For SonarCloud:**
 - Set `SONARQUBE_URL` to `https://sonarcloud.io`
 - `SONARQUBE_ORGANIZATION` is required
+- Token authentication is recommended
 
 **For SonarQube Server:**
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
+- All authentication methods are supported
 
 ### Logging Configuration
 

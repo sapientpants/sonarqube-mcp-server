@@ -770,6 +770,53 @@ export class SonarQubeClient implements ISonarQubeClient {
   }
 
   /**
+   * Creates a SonarQube client with HTTP Basic authentication
+   * @param username Username for basic auth
+   * @param password Password for basic auth
+   * @param baseUrl Base URL of the SonarQube instance
+   * @param organization Organization name
+   * @returns A new SonarQube client instance
+   */
+  static withBasicAuth(
+    username: string,
+    password: string,
+    baseUrl = DEFAULT_SONARQUBE_URL,
+    organization?: string | null
+  ): SonarQubeClient {
+    const client = Object.create(SonarQubeClient.prototype);
+    client.webApiClient = WebApiClient.withBasicAuth(
+      baseUrl,
+      username,
+      password,
+      organization ? { organization } : undefined
+    );
+    client.organization = organization ?? null;
+    return client;
+  }
+
+  /**
+   * Creates a SonarQube client with system passcode authentication
+   * @param passcode System passcode
+   * @param baseUrl Base URL of the SonarQube instance
+   * @param organization Organization name
+   * @returns A new SonarQube client instance
+   */
+  static withPasscode(
+    passcode: string,
+    baseUrl = DEFAULT_SONARQUBE_URL,
+    organization?: string | null
+  ): SonarQubeClient {
+    const client = Object.create(SonarQubeClient.prototype);
+    client.webApiClient = WebApiClient.withPasscode(
+      baseUrl,
+      passcode,
+      organization ? { organization } : undefined
+    );
+    client.organization = organization ?? null;
+    return client;
+  }
+
+  /**
    * Lists all projects in SonarQube
    * @param params Pagination and organization parameters
    * @returns Promise with the list of projects
@@ -1550,6 +1597,78 @@ export class SonarQubeClient implements ISonarQubeClient {
       builder.withAdditionalFields(additionalFields);
     }
   }
+}
+
+/**
+ * Creates a SonarQube client with HTTP Basic authentication
+ * @param username Username for basic auth
+ * @param password Password for basic auth
+ * @param baseUrl Base URL of the SonarQube instance
+ * @param organization Organization name
+ * @returns A new SonarQube client instance
+ */
+export function createSonarQubeClientWithBasicAuth(
+  username: string,
+  password: string,
+  baseUrl?: string,
+  organization?: string | null
+): ISonarQubeClient {
+  return SonarQubeClient.withBasicAuth(username, password, baseUrl, organization);
+}
+
+/**
+ * Creates a SonarQube client with system passcode authentication
+ * @param passcode System passcode
+ * @param baseUrl Base URL of the SonarQube instance
+ * @param organization Organization name
+ * @returns A new SonarQube client instance
+ */
+export function createSonarQubeClientWithPasscode(
+  passcode: string,
+  baseUrl?: string,
+  organization?: string | null
+): ISonarQubeClient {
+  return SonarQubeClient.withPasscode(passcode, baseUrl, organization);
+}
+
+/**
+ * Creates a SonarQube client from environment variables
+ * Supports multiple authentication methods:
+ * - Token auth: SONARQUBE_TOKEN
+ * - Basic auth: SONARQUBE_USERNAME and SONARQUBE_PASSWORD
+ * - Passcode auth: SONARQUBE_PASSCODE
+ * @returns A new SonarQube client instance
+ */
+export function createSonarQubeClientFromEnv(): ISonarQubeClient {
+  const baseUrl = process.env.SONARQUBE_URL || DEFAULT_SONARQUBE_URL;
+  const organization = process.env.SONARQUBE_ORGANIZATION || null;
+
+  // Priority 1: Token auth (backward compatibility)
+  if (process.env.SONARQUBE_TOKEN) {
+    logger.debug('Using token authentication');
+    return new SonarQubeClient(process.env.SONARQUBE_TOKEN, baseUrl, organization);
+  }
+
+  // Priority 2: Basic auth
+  if (process.env.SONARQUBE_USERNAME && process.env.SONARQUBE_PASSWORD) {
+    logger.debug('Using basic authentication');
+    return createSonarQubeClientWithBasicAuth(
+      process.env.SONARQUBE_USERNAME,
+      process.env.SONARQUBE_PASSWORD,
+      baseUrl,
+      organization
+    );
+  }
+
+  // Priority 3: Passcode auth
+  if (process.env.SONARQUBE_PASSCODE) {
+    logger.debug('Using passcode authentication');
+    return createSonarQubeClientWithPasscode(process.env.SONARQUBE_PASSCODE, baseUrl, organization);
+  }
+
+  throw new Error(
+    'No SonarQube authentication configured. Set either SONARQUBE_TOKEN, SONARQUBE_USERNAME/PASSWORD, or SONARQUBE_PASSCODE'
+  );
 }
 
 /**
