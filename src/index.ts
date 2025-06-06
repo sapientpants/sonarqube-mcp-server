@@ -15,7 +15,7 @@ import {
   ScmBlameParams,
   HotspotSearchParams,
   HotspotStatusUpdateParams,
-  createSonarQubeClient,
+  createSonarQubeClientFromEnv,
 } from './sonarqube.js';
 import { z } from 'zod';
 import { createLogger } from './utils/logger.js';
@@ -64,15 +64,23 @@ export const mcpServer = new McpServer({
 const validateEnvironmentVariables = () => {
   logger.debug('Validating environment variables');
 
-  if (!process.env.SONARQUBE_TOKEN) {
+  // Check if any authentication method is configured
+  const hasToken = !!process.env.SONARQUBE_TOKEN;
+  const hasBasicAuth = !!process.env.SONARQUBE_USERNAME;
+  const hasPasscode = !!process.env.SONARQUBE_PASSCODE;
+
+  if (!hasToken && !hasBasicAuth && !hasPasscode) {
     const error = new Error(
-      'SONARQUBE_TOKEN environment variable is required. ' +
-        'Please set it to your SonarQube/SonarCloud authentication token.'
+      'No SonarQube authentication configured. Please set one of the following:\n' +
+        '- SONARQUBE_TOKEN for token-based authentication\n' +
+        '- SONARQUBE_USERNAME and SONARQUBE_PASSWORD (optional) for basic authentication\n' +
+        '- SONARQUBE_PASSCODE for system passcode authentication'
     );
-    logger.error('Missing SONARQUBE_TOKEN environment variable', error);
+    logger.error('Missing authentication environment variables', error);
     throw error;
   }
 
+  // Validate URL if provided
   if (process.env.SONARQUBE_URL) {
     try {
       new URL(process.env.SONARQUBE_URL);
@@ -87,6 +95,7 @@ const validateEnvironmentVariables = () => {
     }
   }
 
+  // Validate organization if provided
   if (
     process.env.SONARQUBE_ORGANIZATION &&
     typeof process.env.SONARQUBE_ORGANIZATION !== 'string'
@@ -98,6 +107,15 @@ const validateEnvironmentVariables = () => {
     throw error;
   }
 
+  // Log which authentication method is being used
+  if (hasToken) {
+    logger.info('Using token authentication');
+  } else if (hasBasicAuth) {
+    logger.info('Using basic authentication');
+  } else if (hasPasscode) {
+    logger.info('Using passcode authentication');
+  }
+
   logger.info('Environment variables validated successfully');
 };
 
@@ -106,11 +124,8 @@ export const createDefaultClient = (): ISonarQubeClient => {
   logger.debug('Creating default SonarQube client');
   validateEnvironmentVariables();
 
-  const client = createSonarQubeClient(
-    process.env.SONARQUBE_TOKEN!,
-    process.env.SONARQUBE_URL,
-    process.env.SONARQUBE_ORGANIZATION
-  );
+  // Use the environment-based factory function
+  const client = createSonarQubeClientFromEnv();
 
   logger.info('SonarQube client created successfully', {
     url: process.env.SONARQUBE_URL ?? 'https://sonarcloud.io',
@@ -139,7 +154,7 @@ export const resetDefaultClient = () => {
  * @param params Parameters for listing projects, including pagination and organization
  * @param client Optional SonarQube client instance
  * @returns A response containing the list of projects with their details
- * @throws Error if the SONARQUBE_TOKEN environment variable is not set
+ * @throws Error if no authentication environment variables are set (SONARQUBE_TOKEN, SONARQUBE_USERNAME/PASSWORD, or SONARQUBE_PASSCODE)
  */
 export async function handleSonarQubeProjects(
   params: {
@@ -275,7 +290,7 @@ export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesPar
  * @param params Parameters for fetching issues, including project key, severity, and pagination
  * @param client Optional SonarQube client instance
  * @returns A response containing the list of issues with their details
- * @throws Error if the SONARQUBE_TOKEN environment variable is not set
+ * @throws Error if no authentication environment variables are set (SONARQUBE_TOKEN, SONARQUBE_USERNAME/PASSWORD, or SONARQUBE_PASSCODE)
  */
 export async function handleSonarQubeGetIssues(
   params: IssuesParams,
