@@ -57,7 +57,7 @@ export function stringToNumberTransform(val: string | null | undefined): number 
 // Initialize MCP server
 export const mcpServer = new McpServer({
   name: 'sonarqube-mcp-server',
-  version: '1.3.0',
+  version: '1.3.2',
 });
 
 // Validate environment variables
