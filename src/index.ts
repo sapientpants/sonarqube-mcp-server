@@ -66,14 +66,14 @@ const validateEnvironmentVariables = () => {
 
   // Check if any authentication method is configured
   const hasToken = !!process.env.SONARQUBE_TOKEN;
-  const hasBasicAuth = !!(process.env.SONARQUBE_USERNAME && process.env.SONARQUBE_PASSWORD);
+  const hasBasicAuth = !!process.env.SONARQUBE_USERNAME;
   const hasPasscode = !!process.env.SONARQUBE_PASSCODE;
 
   if (!hasToken && !hasBasicAuth && !hasPasscode) {
     const error = new Error(
       'No SonarQube authentication configured. Please set one of the following:\n' +
         '- SONARQUBE_TOKEN for token-based authentication\n' +
-        '- SONARQUBE_USERNAME and SONARQUBE_PASSWORD for basic authentication\n' +
+        '- SONARQUBE_USERNAME and SONARQUBE_PASSWORD (optional) for basic authentication\n' +
         '- SONARQUBE_PASSCODE for system passcode authentication'
     );
     logger.error('Missing authentication environment variables', error);

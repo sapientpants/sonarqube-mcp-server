@@ -129,12 +129,11 @@ describe('Authentication Methods', () => {
       );
     });
 
-    it('should throw error when only username is provided', () => {
+    it('should create client with basic auth when only username is provided (legacy token auth)', () => {
       process.env.SONARQUBE_USERNAME = 'env-user';
 
-      expect(() => createSonarQubeClientFromEnv()).toThrow(
-        'No SonarQube authentication configured'
-      );
+      const client = createSonarQubeClientFromEnv();
+      expect(client).toBeDefined();
     });
 
     it('should throw error when only password is provided', () => {

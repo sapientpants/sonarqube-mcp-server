@@ -91,10 +91,11 @@ describe('Environment Validation', () => {
       expect(client).toBeDefined();
     });
 
-    it('should throw error when only username is provided', () => {
+    it('should create client when only username is provided (legacy token auth)', () => {
       process.env.SONARQUBE_USERNAME = 'test-user';
 
-      expect(() => createDefaultClient()).toThrow('No SonarQube authentication configured');
+      const client = createDefaultClient();
+      expect(client).toBeDefined();
     });
 
     it('should throw error when only password is provided', () => {

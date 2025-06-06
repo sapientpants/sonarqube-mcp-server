@@ -1650,11 +1650,11 @@ export function createSonarQubeClientFromEnv(): ISonarQubeClient {
   }
 
   // Priority 2: Basic auth
-  if (process.env.SONARQUBE_USERNAME && process.env.SONARQUBE_PASSWORD) {
+  if (process.env.SONARQUBE_USERNAME) {
     logger.debug('Using basic authentication');
     return createSonarQubeClientWithBasicAuth(
       process.env.SONARQUBE_USERNAME,
-      process.env.SONARQUBE_PASSWORD,
+      process.env.SONARQUBE_PASSWORD || '',
       baseUrl,
       organization
     );

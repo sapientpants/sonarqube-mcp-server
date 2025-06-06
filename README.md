@@ -231,21 +231,63 @@ For development or customization:
 
 ### Authentication Methods
 
-The server supports three authentication methods:
+The server supports three authentication methods, with important differences between SonarQube versions:
 
-1. **Token Authentication (Recommended)**
-   - Most secure and flexible option
-   - Works with both SonarCloud and SonarQube
-   - Tokens can have limited permissions
+#### 1. Token Authentication (Recommended)
 
-2. **Basic Authentication**
-   - Uses username and password
-   - Suitable for self-hosted SonarQube instances
-   - May not work with SonarCloud if 2FA is enabled
+**SonarQube 10.0+ (Bearer Token)**
+- Starting with SonarQube 10.0, Bearer token authentication is the recommended approach
+- Most secure and flexible option
+- Tokens can have limited permissions
+- Configuration:
+  ```json
+  {
+    "env": {
+      "SONARQUBE_TOKEN": "your-token-here"
+    }
+  }
+  ```
 
-3. **System Passcode**
-   - Special authentication for SonarQube system administration
-   - Typically used for automated deployment scenarios
+**SonarQube < 10.0 (Token as Username)**
+- For versions before 10.0, tokens must be sent as the username in HTTP Basic authentication
+- No password is required when using a token as username
+- The server automatically handles this based on your SonarQube version
+- Configuration remains the same - just use `SONARQUBE_USERNAME` with the token value:
+  ```json
+  {
+    "env": {
+      "SONARQUBE_USERNAME": "your-token-here"
+    }
+  }
+  ```
+
+#### 2. HTTP Basic Authentication
+- Traditional username and password authentication
+- Suitable for self-hosted SonarQube instances
+- May not work with SonarCloud if 2FA is enabled
+- Configuration:
+  ```json
+  {
+    "env": {
+      "SONARQUBE_USERNAME": "your-username",
+      "SONARQUBE_PASSWORD": "your-password"
+    }
+  }
+  ```
+
+#### 3. System Passcode
+- Special authentication for SonarQube system administration
+- Typically used for automated deployment scenarios
+- Configuration:
+  ```json
+  {
+    "env": {
+      "SONARQUBE_PASSCODE": "your-system-passcode"
+    }
+  }
+  ```
+
+**Note:** Token authentication takes priority if multiple authentication methods are configured. The server will automatically use the appropriate authentication strategy based on your SonarQube version.
 
 ### SonarCloud vs SonarQube
 
