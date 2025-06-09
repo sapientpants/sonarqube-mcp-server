@@ -60,15 +60,15 @@
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "sonarqube-web-api-client": "0.10.1",
-    "zod": "^3.25.49"
+    "zod": "^3.25.56"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
     "@jest/globals": "^29.7.0",
-    "@types/cors": "^2.8.18",
-    "@types/express": "^5.0.2",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.15.29",
+    "@types/node": "^22.15.30",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.33.1",
