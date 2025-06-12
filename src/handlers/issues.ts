@@ -1,4 +1,11 @@
-import type { IssuesParams, ISonarQubeClient, SonarQubeIssue } from '../types/index.js';
+import type {
+  IssuesParams,
+  ISonarQubeClient,
+  SonarQubeIssue,
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+} from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -72,6 +79,170 @@ export async function handleSonarQubeGetIssues(
     };
   } catch (error) {
     logger.error('Failed to retrieve SonarQube issues', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark an issue as false positive
+ * @param params Parameters for marking issue as false positive
+ * @param client Optional SonarQube client instance
+ * @returns A response containing the updated issue details
+ */
+export async function handleMarkIssueFalsePositive(
+  params: MarkIssueFalsePositiveParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling mark issue false positive request', { issueKey: params.issueKey });
+
+  try {
+    const result = await client.markIssueFalsePositive(params);
+    logger.info('Successfully marked issue as false positive', {
+      issueKey: params.issueKey,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Issue ${params.issueKey} marked as false positive`,
+            issue: result.issue,
+            components: result.components,
+            rules: result.rules,
+            users: result.users,
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to mark issue as false positive', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark an issue as won't fix
+ * @param params Parameters for marking issue as won't fix
+ * @param client Optional SonarQube client instance
+ * @returns A response containing the updated issue details
+ */
+export async function handleMarkIssueWontFix(
+  params: MarkIssueWontFixParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug("Handling mark issue won't fix request", { issueKey: params.issueKey });
+
+  try {
+    const result = await client.markIssueWontFix(params);
+    logger.info("Successfully marked issue as won't fix", {
+      issueKey: params.issueKey,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Issue ${params.issueKey} marked as won't fix`,
+            issue: result.issue,
+            components: result.components,
+            rules: result.rules,
+            users: result.users,
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error("Failed to mark issue as won't fix", error);
+    throw error;
+  }
+}
+
+/**
+ * Mark multiple issues as false positive
+ * @param params Parameters for marking issues as false positive
+ * @param client Optional SonarQube client instance
+ * @returns A response containing the updated issues details
+ */
+export async function handleMarkIssuesFalsePositive(
+  params: BulkIssueMarkParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling mark issues false positive request', {
+    issueCount: params.issueKeys.length,
+  });
+
+  try {
+    const results = await client.markIssuesFalsePositive(params);
+    logger.info('Successfully marked issues as false positive', {
+      issueCount: params.issueKeys.length,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `${params.issueKeys.length} issues marked as false positive`,
+            results: results.map((result) => ({
+              issue: result.issue,
+              components: result.components,
+              rules: result.rules,
+              users: result.users,
+            })),
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to mark issues as false positive', error);
+    throw error;
+  }
+}
+
+/**
+ * Mark multiple issues as won't fix
+ * @param params Parameters for marking issues as won't fix
+ * @param client Optional SonarQube client instance
+ * @returns A response containing the updated issues details
+ */
+export async function handleMarkIssuesWontFix(
+  params: BulkIssueMarkParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug("Handling mark issues won't fix request", {
+    issueCount: params.issueKeys.length,
+  });
+
+  try {
+    const results = await client.markIssuesWontFix(params);
+    logger.info("Successfully marked issues as won't fix", {
+      issueCount: params.issueKeys.length,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `${params.issueKeys.length} issues marked as won't fix`,
+            results: results.map((result) => ({
+              issue: result.issue,
+              components: result.components,
+              rules: result.rules,
+              users: result.users,
+            })),
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error("Failed to mark issues as won't fix", error);
     throw error;
   }
 }

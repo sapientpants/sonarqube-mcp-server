@@ -3,6 +3,10 @@ import type {
   SonarQubeIssuesResult,
   SonarQubeIssue,
   SonarQubeRule,
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+  DoTransitionResponse,
 } from '../types/index.js';
 import { BaseDomain } from './base.js';
 
@@ -244,5 +248,91 @@ export class IssuesDomain extends BaseDomain {
     if (params.severity) {
       builder.withSeverities([params.severity]);
     }
+  }
+
+  /**
+   * Mark an issue as false positive
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async markIssueFalsePositive(
+    params: MarkIssueFalsePositiveParams
+  ): Promise<DoTransitionResponse> {
+    const request = {
+      issue: params.issueKey,
+      transition: 'falsepositive' as const,
+    };
+
+    // Add comment if provided (using separate API call if needed)
+    if (params.comment) {
+      // First add the comment, then perform the transition
+      await this.webApiClient.issues.addComment({
+        issue: params.issueKey,
+        text: params.comment,
+      });
+    }
+
+    return this.webApiClient.issues.doTransition(request);
+  }
+
+  /**
+   * Mark an issue as won't fix
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async markIssueWontFix(params: MarkIssueWontFixParams): Promise<DoTransitionResponse> {
+    const request = {
+      issue: params.issueKey,
+      transition: 'wontfix' as const,
+    };
+
+    // Add comment if provided (using separate API call if needed)
+    if (params.comment) {
+      // First add the comment, then perform the transition
+      await this.webApiClient.issues.addComment({
+        issue: params.issueKey,
+        text: params.comment,
+      });
+    }
+
+    return this.webApiClient.issues.doTransition(request);
+  }
+
+  /**
+   * Mark multiple issues as false positive
+   * @param params Parameters including issue keys and optional comment
+   * @returns Promise with array of updated issues and related data
+   */
+  async markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
+    const results: DoTransitionResponse[] = [];
+
+    for (const issueKey of params.issueKeys) {
+      const result = await this.markIssueFalsePositive({
+        issueKey,
+        comment: params.comment,
+      });
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  /**
+   * Mark multiple issues as won't fix
+   * @param params Parameters including issue keys and optional comment
+   * @returns Promise with array of updated issues and related data
+   */
+  async markIssuesWontFix(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
+    const results: DoTransitionResponse[] = [];
+
+    for (const issueKey of params.issueKeys) {
+      const result = await this.markIssueWontFix({
+        issueKey,
+        comment: params.comment,
+      });
+      results.push(result);
+    }
+
+    return results;
   }
 }

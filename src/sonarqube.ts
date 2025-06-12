@@ -39,6 +39,10 @@ import type {
   SonarQubeHotspotSearchResult,
   SonarQubeHotspotDetails,
   HotspotStatusUpdateParams,
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+  DoTransitionResponse,
   ISonarQubeClient,
 } from './types/index.js';
 
@@ -428,6 +432,44 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   async updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void> {
     return this.hotspotsDomain.updateHotspotStatus(params);
+  }
+
+  /**
+   * Mark an issue as false positive
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async markIssueFalsePositive(
+    params: MarkIssueFalsePositiveParams
+  ): Promise<DoTransitionResponse> {
+    return this.issuesDomain.markIssueFalsePositive(params);
+  }
+
+  /**
+   * Mark an issue as won't fix
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async markIssueWontFix(params: MarkIssueWontFixParams): Promise<DoTransitionResponse> {
+    return this.issuesDomain.markIssueWontFix(params);
+  }
+
+  /**
+   * Mark multiple issues as false positive
+   * @param params Parameters including issue keys and optional comment
+   * @returns Promise with array of updated issues and related data
+   */
+  async markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
+    return this.issuesDomain.markIssuesFalsePositive(params);
+  }
+
+  /**
+   * Mark multiple issues as won't fix
+   * @param params Parameters including issue keys and optional comment
+   * @returns Promise with array of updated issues and related data
+   */
+  async markIssuesWontFix(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
+    return this.issuesDomain.markIssuesWontFix(params);
   }
 }
 
