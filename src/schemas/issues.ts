@@ -81,6 +81,47 @@ export const assignIssueToolSchema = {
 };
 
 /**
+ * Schema for confirm issue tool
+ */
+export const confirmIssueToolSchema = {
+  issue_key: z.string().describe('The key of the issue to confirm'),
+  comment: z
+    .string()
+    .optional()
+    .describe('Optional comment explaining why this issue is confirmed'),
+};
+
+/**
+ * Schema for unconfirm issue tool
+ */
+export const unconfirmIssueToolSchema = {
+  issue_key: z.string().describe('The key of the issue to unconfirm'),
+  comment: z
+    .string()
+    .optional()
+    .describe('Optional comment explaining why this issue needs further investigation'),
+};
+
+/**
+ * Schema for resolve issue tool
+ */
+export const resolveIssueToolSchema = {
+  issue_key: z.string().describe('The key of the issue to resolve'),
+  comment: z.string().optional().describe('Optional comment explaining how the issue was resolved'),
+};
+
+/**
+ * Schema for reopen issue tool
+ */
+export const reopenIssueToolSchema = {
+  issue_key: z.string().describe('The key of the issue to reopen'),
+  comment: z
+    .string()
+    .optional()
+    .describe('Optional comment explaining why the issue is being reopened'),
+};
+
+/**
  * Schema for issues tool
  */
 export const issuesToolSchema = {

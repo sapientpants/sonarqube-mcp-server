@@ -7,6 +7,10 @@ import {
   markIssuesWontFixToolSchema,
   addCommentToIssueToolSchema,
   assignIssueToolSchema,
+  confirmIssueToolSchema,
+  unconfirmIssueToolSchema,
+  resolveIssueToolSchema,
+  reopenIssueToolSchema,
 } from '../../schemas/issues.js';
 
 describe('issuesToolSchema', () => {
@@ -473,5 +477,117 @@ describe('assignIssueToolSchema', () => {
     const result = z.object(assignIssueToolSchema).parse(input);
     expect(result.issueKey).toBe('ISSUE-789');
     expect(result.assignee).toBe('');
+  });
+});
+
+describe('confirmIssueToolSchema', () => {
+  it('should validate minimal parameters', () => {
+    const input = {
+      issue_key: 'ISSUE-123',
+    };
+    const result = z.object(confirmIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-123');
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_key: 'ISSUE-123',
+      comment: 'Confirmed after code review',
+    };
+    const result = z.object(confirmIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-123');
+    expect(result.comment).toBe('Confirmed after code review');
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      comment: 'Confirmed',
+    };
+    expect(() => z.object(confirmIssueToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('unconfirmIssueToolSchema', () => {
+  it('should validate minimal parameters', () => {
+    const input = {
+      issue_key: 'ISSUE-456',
+    };
+    const result = z.object(unconfirmIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-456');
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_key: 'ISSUE-456',
+      comment: 'Needs further investigation',
+    };
+    const result = z.object(unconfirmIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-456');
+    expect(result.comment).toBe('Needs further investigation');
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      comment: 'Unconfirmed',
+    };
+    expect(() => z.object(unconfirmIssueToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('resolveIssueToolSchema', () => {
+  it('should validate minimal parameters', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+    };
+    const result = z.object(resolveIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-789');
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+      comment: 'Fixed in commit abc123',
+    };
+    const result = z.object(resolveIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-789');
+    expect(result.comment).toBe('Fixed in commit abc123');
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      comment: 'Resolved',
+    };
+    expect(() => z.object(resolveIssueToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('reopenIssueToolSchema', () => {
+  it('should validate minimal parameters', () => {
+    const input = {
+      issue_key: 'ISSUE-101',
+    };
+    const result = z.object(reopenIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-101');
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_key: 'ISSUE-101',
+      comment: 'Issue still occurs in production',
+    };
+    const result = z.object(reopenIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-101');
+    expect(result.comment).toBe('Issue still occurs in production');
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      comment: 'Reopened',
+    };
+    expect(() => z.object(reopenIssueToolSchema).parse(input)).toThrow();
   });
 });

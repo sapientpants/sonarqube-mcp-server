@@ -10,6 +10,10 @@ import type {
   BulkIssueMarkParams,
   AddCommentToIssueParams,
   AssignIssueParams,
+  ConfirmIssueParams,
+  UnconfirmIssueParams,
+  ResolveIssueParams,
+  ReopenIssueParams,
   SonarQubeIssueComment,
   DoTransitionResponse,
 } from './issues.js';
@@ -71,6 +75,10 @@ export type {
   BulkIssueMarkParams,
   AddCommentToIssueParams,
   AssignIssueParams,
+  ConfirmIssueParams,
+  UnconfirmIssueParams,
+  ResolveIssueParams,
+  ReopenIssueParams,
   DoTransitionRequest,
   DoTransitionResponse,
 } from './issues.js';
@@ -163,4 +171,10 @@ export interface ISonarQubeClient {
 
   // Issue assignment methods
   assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue>;
+
+  // Issue transition methods
+  confirmIssue(params: ConfirmIssueParams): Promise<DoTransitionResponse>;
+  unconfirmIssue(params: UnconfirmIssueParams): Promise<DoTransitionResponse>;
+  resolveIssue(params: ResolveIssueParams): Promise<DoTransitionResponse>;
+  reopenIssue(params: ReopenIssueParams): Promise<DoTransitionResponse>;
 }

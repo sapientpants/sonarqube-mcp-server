@@ -2117,5 +2117,144 @@ describe('SonarQubeClient', () => {
         expect(result.assignee).toBeNull();
       });
     });
+
+    describe('confirmIssue', () => {
+      it('should confirm an issue', async () => {
+        const mockResponse = {
+          issue: { key: 'ISSUE-123', status: 'CONFIRMED' },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'confirm',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.confirmIssue({
+          issueKey: 'ISSUE-123',
+        });
+
+        expect(scope.isDone()).toBe(true);
+        expect(result.issue.status).toBe('CONFIRMED');
+      });
+
+      it('should confirm an issue with comment', async () => {
+        const mockResponse = {
+          issue: { key: 'ISSUE-123', status: 'CONFIRMED' },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const commentScope = nock(baseUrl)
+          .post('/api/issues/add_comment', {
+            issue: 'ISSUE-123',
+            text: 'Confirmed after review',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200);
+
+        const transitionScope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'confirm',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.confirmIssue({
+          issueKey: 'ISSUE-123',
+          comment: 'Confirmed after review',
+        });
+
+        expect(commentScope.isDone()).toBe(true);
+        expect(transitionScope.isDone()).toBe(true);
+        expect(result.issue.status).toBe('CONFIRMED');
+      });
+    });
+
+    describe('unconfirmIssue', () => {
+      it('should unconfirm an issue', async () => {
+        const mockResponse = {
+          issue: { key: 'ISSUE-123', status: 'REOPENED' },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'unconfirm',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.unconfirmIssue({
+          issueKey: 'ISSUE-123',
+        });
+
+        expect(scope.isDone()).toBe(true);
+        expect(result.issue.status).toBe('REOPENED');
+      });
+    });
+
+    describe('resolveIssue', () => {
+      it('should resolve an issue', async () => {
+        const mockResponse = {
+          issue: { key: 'ISSUE-123', status: 'RESOLVED', resolution: 'FIXED' },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'resolve',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.resolveIssue({
+          issueKey: 'ISSUE-123',
+        });
+
+        expect(scope.isDone()).toBe(true);
+        expect(result.issue.status).toBe('RESOLVED');
+        expect(result.issue.resolution).toBe('FIXED');
+      });
+    });
+
+    describe('reopenIssue', () => {
+      it('should reopen an issue', async () => {
+        const mockResponse = {
+          issue: { key: 'ISSUE-123', status: 'REOPENED' },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'reopen',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.reopenIssue({
+          issueKey: 'ISSUE-123',
+        });
+
+        expect(scope.isDone()).toBe(true);
+        expect(result.issue.status).toBe('REOPENED');
+      });
+    });
   });
 });

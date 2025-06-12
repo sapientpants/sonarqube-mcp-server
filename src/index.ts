@@ -36,6 +36,10 @@ import {
   handleSonarQubeUpdateHotspotStatus,
   handleAddCommentToIssue,
   handleAssignIssue,
+  handleConfirmIssue,
+  handleUnconfirmIssue,
+  handleResolveIssue,
+  handleReopenIssue,
 } from './handlers/index.js';
 import {
   projectsToolSchema,
@@ -47,6 +51,10 @@ import {
   markIssuesWontFixToolSchema,
   addCommentToIssueToolSchema,
   assignIssueToolSchema,
+  confirmIssueToolSchema,
+  unconfirmIssueToolSchema,
+  resolveIssueToolSchema,
+  reopenIssueToolSchema,
   systemHealthToolSchema,
   systemStatusToolSchema,
   systemPingToolSchema,
@@ -225,6 +233,46 @@ export const assignIssueHandler = async (params: Record<string, unknown>) => {
 };
 
 /**
+ * Lambda function for confirm issue tool
+ */
+export const confirmIssueHandler = async (params: Record<string, unknown>) => {
+  return handleConfirmIssue({
+    issueKey: params.issue_key as string,
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for unconfirm issue tool
+ */
+export const unconfirmIssueHandler = async (params: Record<string, unknown>) => {
+  return handleUnconfirmIssue({
+    issueKey: params.issue_key as string,
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for resolve issue tool
+ */
+export const resolveIssueHandler = async (params: Record<string, unknown>) => {
+  return handleResolveIssue({
+    issueKey: params.issue_key as string,
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for reopen issue tool
+ */
+export const reopenIssueHandler = async (params: Record<string, unknown>) => {
+  return handleReopenIssue({
+    issueKey: params.issue_key as string,
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
  * Lambda function for system_health tool
  */
 export const healthHandler = handleSonarQubeGetHealth;
@@ -391,6 +439,14 @@ export const addCommentToIssueMcpHandler = (params: Record<string, unknown>) =>
   addCommentToIssueHandler(params);
 export const assignIssueMcpHandler = (params: Record<string, unknown>) =>
   assignIssueHandler(params);
+export const confirmIssueMcpHandler = (params: Record<string, unknown>) =>
+  confirmIssueHandler(params);
+export const unconfirmIssueMcpHandler = (params: Record<string, unknown>) =>
+  unconfirmIssueHandler(params);
+export const resolveIssueMcpHandler = (params: Record<string, unknown>) =>
+  resolveIssueHandler(params);
+export const reopenIssueMcpHandler = (params: Record<string, unknown>) =>
+  reopenIssueHandler(params);
 export const healthMcpHandler = () => healthHandler();
 export const statusMcpHandler = () => statusHandler();
 export const pingMcpHandler = () => pingHandler();
@@ -469,6 +525,34 @@ mcpServer.tool(
   'Assign a SonarQube issue to a user or unassign it',
   assignIssueToolSchema,
   assignIssueMcpHandler
+);
+
+mcpServer.tool(
+  'confirmIssue',
+  'Confirm a SonarQube issue',
+  confirmIssueToolSchema,
+  confirmIssueMcpHandler
+);
+
+mcpServer.tool(
+  'unconfirmIssue',
+  'Unconfirm a SonarQube issue',
+  unconfirmIssueToolSchema,
+  unconfirmIssueMcpHandler
+);
+
+mcpServer.tool(
+  'resolveIssue',
+  'Resolve a SonarQube issue',
+  resolveIssueToolSchema,
+  resolveIssueMcpHandler
+);
+
+mcpServer.tool(
+  'reopenIssue',
+  'Reopen a SonarQube issue',
+  reopenIssueToolSchema,
+  reopenIssueMcpHandler
 );
 
 // Register system API tools

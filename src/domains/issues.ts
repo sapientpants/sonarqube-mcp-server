@@ -9,6 +9,10 @@ import type {
   BulkIssueMarkParams,
   AddCommentToIssueParams,
   AssignIssueParams,
+  ConfirmIssueParams,
+  UnconfirmIssueParams,
+  ResolveIssueParams,
+  ReopenIssueParams,
   DoTransitionResponse,
 } from '../types/index.js';
 import { BaseDomain } from './base.js';
@@ -387,5 +391,89 @@ export class IssuesDomain extends BaseDomain {
     }
 
     return response.issues[0] as SonarQubeIssue;
+  }
+
+  /**
+   * Confirm an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async confirmIssue(params: ConfirmIssueParams): Promise<DoTransitionResponse> {
+    const request = {
+      issue: params.issueKey,
+      transition: 'confirm' as const,
+    };
+
+    if (params.comment) {
+      await this.webApiClient.issues.addComment({
+        issue: params.issueKey,
+        text: params.comment,
+      });
+    }
+
+    return this.webApiClient.issues.doTransition(request);
+  }
+
+  /**
+   * Unconfirm an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async unconfirmIssue(params: UnconfirmIssueParams): Promise<DoTransitionResponse> {
+    const request = {
+      issue: params.issueKey,
+      transition: 'unconfirm' as const,
+    };
+
+    if (params.comment) {
+      await this.webApiClient.issues.addComment({
+        issue: params.issueKey,
+        text: params.comment,
+      });
+    }
+
+    return this.webApiClient.issues.doTransition(request);
+  }
+
+  /**
+   * Resolve an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async resolveIssue(params: ResolveIssueParams): Promise<DoTransitionResponse> {
+    const request = {
+      issue: params.issueKey,
+      transition: 'resolve' as const,
+    };
+
+    if (params.comment) {
+      await this.webApiClient.issues.addComment({
+        issue: params.issueKey,
+        text: params.comment,
+      });
+    }
+
+    return this.webApiClient.issues.doTransition(request);
+  }
+
+  /**
+   * Reopen an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async reopenIssue(params: ReopenIssueParams): Promise<DoTransitionResponse> {
+    const request = {
+      issue: params.issueKey,
+      transition: 'reopen' as const,
+    };
+
+    if (params.comment) {
+      await this.webApiClient.issues.addComment({
+        issue: params.issueKey,
+        text: params.comment,
+      });
+    }
+
+    return this.webApiClient.issues.doTransition(request);
   }
 }

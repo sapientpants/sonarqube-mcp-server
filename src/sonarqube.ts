@@ -44,6 +44,10 @@ import type {
   BulkIssueMarkParams,
   AddCommentToIssueParams,
   AssignIssueParams,
+  ConfirmIssueParams,
+  UnconfirmIssueParams,
+  ResolveIssueParams,
+  ReopenIssueParams,
   DoTransitionResponse,
   ISonarQubeClient,
   SonarQubeIssueComment,
@@ -496,6 +500,42 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   async assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue> {
     return this.issuesDomain.assignIssue(params);
+  }
+
+  /**
+   * Confirms an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async confirmIssue(params: ConfirmIssueParams): Promise<DoTransitionResponse> {
+    return this.issuesDomain.confirmIssue(params);
+  }
+
+  /**
+   * Unconfirms an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async unconfirmIssue(params: UnconfirmIssueParams): Promise<DoTransitionResponse> {
+    return this.issuesDomain.unconfirmIssue(params);
+  }
+
+  /**
+   * Resolves an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async resolveIssue(params: ResolveIssueParams): Promise<DoTransitionResponse> {
+    return this.issuesDomain.resolveIssue(params);
+  }
+
+  /**
+   * Reopens an issue
+   * @param params Parameters including issue key and optional comment
+   * @returns Promise with the updated issue and related data
+   */
+  async reopenIssue(params: ReopenIssueParams): Promise<DoTransitionResponse> {
+    return this.issuesDomain.reopenIssue(params);
   }
 }
 

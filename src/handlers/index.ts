@@ -12,6 +12,10 @@ export {
   handleMarkIssuesWontFix,
   handleAddCommentToIssue,
   handleAssignIssue,
+  handleConfirmIssue,
+  handleUnconfirmIssue,
+  handleResolveIssue,
+  handleReopenIssue,
 } from './issues.js';
 
 export { handleSonarQubeGetMetrics } from './metrics.js';
