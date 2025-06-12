@@ -350,7 +350,10 @@ export class IssuesDomain extends BaseDomain {
     const issue = response.issue as SonarQubeIssue;
     const comments = issue.comments || [];
 
-    // The newly added comment should be the last one
+    // Sort comments by timestamp to ensure chronological order
+    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // The newly added comment should now be the last one
     const newComment = comments[comments.length - 1];
     if (!newComment) {
       throw new Error('Failed to retrieve the newly added comment');
