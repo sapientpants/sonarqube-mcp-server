@@ -56,6 +56,20 @@ export const markIssuesWontFixToolSchema = {
 };
 
 /**
+ * Schema for add comment to issue tool
+ */
+export const addCommentToIssueToolSchema = {
+  issue_key: z
+    .string()
+    .min(1, 'Issue key is required')
+    .describe('The key of the issue to add a comment to'),
+  text: z
+    .string()
+    .min(1, 'Comment text is required')
+    .describe('The comment text to add. Supports markdown formatting for rich text content'),
+};
+
+/**
  * Schema for issues tool
  */
 export const issuesToolSchema = {

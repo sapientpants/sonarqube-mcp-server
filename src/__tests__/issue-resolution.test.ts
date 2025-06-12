@@ -40,6 +40,7 @@ import {
   handleMarkIssueWontFix,
   handleMarkIssuesFalsePositive,
   handleMarkIssuesWontFix,
+  handleAddCommentToIssue,
 } from '../handlers/issues.js';
 
 describe('IssuesDomain - Issue Resolution', () => {
@@ -216,6 +217,118 @@ describe('IssuesDomain - Issue Resolution', () => {
       expect(result).toEqual([mockResponse1, mockResponse2]);
     });
   });
+
+  describe('addCommentToIssue', () => {
+    it('should add a comment to an issue', async () => {
+      const mockIssueWithComment = {
+        key: 'ISSUE-789',
+        comments: [
+          {
+            key: 'comment-123',
+            login: 'test-user',
+            htmlText: '<p>Test comment with <strong>markdown</strong> support</p>',
+            markdown: 'Test comment with **markdown** support',
+            updatable: true,
+            createdAt: '2024-01-01T10:00:00+0000',
+          },
+        ],
+      };
+      mockAddComment.mockResolvedValue({ issue: mockIssueWithComment });
+
+      const result = await domain.addCommentToIssue({
+        issueKey: 'ISSUE-789',
+        text: 'Test comment with **markdown** support',
+      });
+
+      expect(mockAddComment).toHaveBeenCalledWith({
+        issue: 'ISSUE-789',
+        text: 'Test comment with **markdown** support',
+      });
+      expect(result).toEqual({
+        key: 'comment-123',
+        login: 'test-user',
+        htmlText: '<p>Test comment with <strong>markdown</strong> support</p>',
+        markdown: 'Test comment with **markdown** support',
+        updatable: true,
+        createdAt: '2024-01-01T10:00:00+0000',
+      });
+    });
+
+    it('should handle multiple existing comments and return the latest', async () => {
+      const mockIssueWithComments = {
+        key: 'ISSUE-789',
+        comments: [
+          {
+            key: 'comment-old',
+            login: 'old-user',
+            htmlText: '<p>Old comment</p>',
+            markdown: 'Old comment',
+            updatable: false,
+            createdAt: '2024-01-01T09:00:00+0000',
+          },
+          {
+            key: 'comment-new',
+            login: 'test-user',
+            htmlText: '<p>New comment</p>',
+            markdown: 'New comment',
+            updatable: true,
+            createdAt: '2024-01-01T10:00:00+0000',
+          },
+        ],
+      };
+      mockAddComment.mockResolvedValue({ issue: mockIssueWithComments });
+
+      const result = await domain.addCommentToIssue({
+        issueKey: 'ISSUE-789',
+        text: 'New comment',
+      });
+
+      expect(result.key).toBe('comment-new');
+      expect(result.markdown).toBe('New comment');
+    });
+
+    it('should throw error when no comments are returned', async () => {
+      const mockIssueWithoutComments = {
+        key: 'ISSUE-789',
+        comments: [],
+      };
+      mockAddComment.mockResolvedValue({ issue: mockIssueWithoutComments });
+
+      await expect(
+        domain.addCommentToIssue({
+          issueKey: 'ISSUE-789',
+          text: 'Test comment',
+        })
+      ).rejects.toThrow('Failed to retrieve the newly added comment');
+    });
+
+    it('should throw error when comments is undefined', async () => {
+      const mockIssueWithoutComments = {
+        key: 'ISSUE-789',
+        // comments field is missing
+      };
+      mockAddComment.mockResolvedValue({ issue: mockIssueWithoutComments });
+
+      await expect(
+        domain.addCommentToIssue({
+          issueKey: 'ISSUE-789',
+          text: 'Test comment',
+        })
+      ).rejects.toThrow('Failed to retrieve the newly added comment');
+    });
+
+    it('should handle API errors', async () => {
+      const error = new Error('API Error');
+      mockAddComment.mockRejectedValue(error);
+
+      await expect(
+        domain.addCommentToIssue({
+          issueKey: 'ISSUE-789',
+          text: 'Test comment',
+        })
+      ).rejects.toThrow('API Error');
+    });
+  });
 });
 
 describe('Issue Resolution Handlers', () => {
@@ -224,6 +337,7 @@ describe('Issue Resolution Handlers', () => {
     markIssueWontFix: jest.fn(),
     markIssuesFalsePositive: jest.fn(),
     markIssuesWontFix: jest.fn(),
+    addCommentToIssue: jest.fn(),
   };
 
   beforeEach(() => {
@@ -379,6 +493,97 @@ describe('Issue Resolution Handlers', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handleMarkIssuesWontFix({ issueKeys: ['ISSUE-456'] }, mockClient as any)
       ).rejects.toThrow('API Error');
+    });
+  });
+
+  describe('handleAddCommentToIssue', () => {
+    it('should handle adding a comment to an issue', async () => {
+      const mockComment = {
+        key: 'comment-123',
+        login: 'test-user',
+        htmlText: '<p>Test comment with <strong>markdown</strong> support</p>',
+        markdown: 'Test comment with **markdown** support',
+        updatable: true,
+        createdAt: '2024-01-01T10:00:00+0000',
+      };
+      mockClient.addCommentToIssue.mockResolvedValue(mockComment);
+
+      const result = await handleAddCommentToIssue(
+        { issueKey: 'ISSUE-789', text: 'Test comment with **markdown** support' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockClient as any
+      );
+
+      expect(mockClient.addCommentToIssue).toHaveBeenCalledWith({
+        issueKey: 'ISSUE-789',
+        text: 'Test comment with **markdown** support',
+      });
+
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].type).toBe('text');
+      const responseData = JSON.parse(result.content[0].text);
+      expect(responseData.message).toBe('Comment added to issue ISSUE-789');
+      expect(responseData.comment).toEqual({
+        key: 'comment-123',
+        login: 'test-user',
+        htmlText: '<p>Test comment with <strong>markdown</strong> support</p>',
+        markdown: 'Test comment with **markdown** support',
+        updatable: true,
+        createdAt: '2024-01-01T10:00:00+0000',
+      });
+    });
+
+    it('should handle plain text comments', async () => {
+      const mockComment = {
+        key: 'comment-456',
+        login: 'test-user',
+        htmlText: '<p>Plain text comment</p>',
+        markdown: 'Plain text comment',
+        updatable: true,
+        createdAt: '2024-01-01T11:00:00+0000',
+      };
+      mockClient.addCommentToIssue.mockResolvedValue(mockComment);
+
+      const result = await handleAddCommentToIssue(
+        { issueKey: 'ISSUE-100', text: 'Plain text comment' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockClient as any
+      );
+
+      expect(mockClient.addCommentToIssue).toHaveBeenCalledWith({
+        issueKey: 'ISSUE-100',
+        text: 'Plain text comment',
+      });
+
+      const responseData = JSON.parse(result.content[0].text);
+      expect(responseData.message).toBe('Comment added to issue ISSUE-100');
+      expect(responseData.comment.markdown).toBe('Plain text comment');
+    });
+
+    it('should handle errors', async () => {
+      const error = new Error('API Error');
+      mockClient.addCommentToIssue.mockRejectedValue(error);
+
+      await expect(
+        handleAddCommentToIssue(
+          { issueKey: 'ISSUE-789', text: 'Test comment' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          mockClient as any
+        )
+      ).rejects.toThrow('API Error');
+    });
+
+    it('should handle empty text rejection', async () => {
+      const error = new Error('Comment text cannot be empty');
+      mockClient.addCommentToIssue.mockRejectedValue(error);
+
+      await expect(
+        handleAddCommentToIssue(
+          { issueKey: 'ISSUE-789', text: '' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          mockClient as any
+        )
+      ).rejects.toThrow('Comment text cannot be empty');
     });
   });
 });

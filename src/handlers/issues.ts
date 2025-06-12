@@ -5,6 +5,7 @@ import type {
   MarkIssueFalsePositiveParams,
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
+  AddCommentToIssueParams,
 } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
 import { createLogger } from '../utils/logger.js';
@@ -273,6 +274,49 @@ export async function handleMarkIssuesWontFix(
     };
   } catch (error) {
     logger.error("Failed to mark issues as won't fix", error);
+    throw error;
+  }
+}
+
+/**
+ * Add a comment to an issue
+ * @param params Parameters for adding a comment to an issue
+ * @param client Optional SonarQube client instance
+ * @returns A response containing the created comment details
+ */
+export async function handleAddCommentToIssue(
+  params: AddCommentToIssueParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling add comment to issue request', { issueKey: params.issueKey });
+
+  try {
+    const comment = await client.addCommentToIssue(params);
+    logger.info('Successfully added comment to issue', {
+      issueKey: params.issueKey,
+      commentKey: comment.key,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Comment added to issue ${params.issueKey}`,
+            comment: {
+              key: comment.key,
+              login: comment.login,
+              htmlText: comment.htmlText,
+              markdown: comment.markdown,
+              updatable: comment.updatable,
+              createdAt: comment.createdAt,
+            },
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to add comment to issue', error);
     throw error;
   }
 }

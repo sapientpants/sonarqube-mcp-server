@@ -7,6 +7,8 @@ import type {
   MarkIssueFalsePositiveParams,
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
+  AddCommentToIssueParams,
+  SonarQubeIssueComment,
   DoTransitionResponse,
 } from './issues.js';
 import type { SonarQubeMetricsResult } from './metrics.js';
@@ -65,6 +67,7 @@ export type {
   MarkIssueFalsePositiveParams,
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
+  AddCommentToIssueParams,
   DoTransitionRequest,
   DoTransitionResponse,
 } from './issues.js';
@@ -151,4 +154,7 @@ export interface ISonarQubeClient {
   markIssueWontFix(params: MarkIssueWontFixParams): Promise<DoTransitionResponse>;
   markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]>;
   markIssuesWontFix(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]>;
+
+  // Issue comment methods
+  addCommentToIssue(params: AddCommentToIssueParams): Promise<SonarQubeIssueComment>;
 }

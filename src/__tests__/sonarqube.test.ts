@@ -1950,5 +1950,77 @@ describe('SonarQubeClient', () => {
         expect(scope2.isDone()).toBe(true);
       });
     });
+
+    describe('addCommentToIssue', () => {
+      it('should add a comment to an issue', async () => {
+        const mockResponse = {
+          issue: {
+            key: 'ISSUE-789',
+            comments: [
+              {
+                key: 'comment-123',
+                login: 'test-user',
+                htmlText: '<p>Test comment</p>',
+                markdown: 'Test comment',
+                updatable: true,
+                createdAt: '2024-01-01T10:00:00+0000',
+              },
+            ],
+          },
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/add_comment', {
+            issue: 'ISSUE-789',
+            text: 'Test comment',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.addCommentToIssue({
+          issueKey: 'ISSUE-789',
+          text: 'Test comment',
+        });
+
+        expect(scope.isDone()).toBe(true);
+        expect(result.key).toBe('comment-123');
+        expect(result.markdown).toBe('Test comment');
+      });
+
+      it('should add a comment with markdown formatting', async () => {
+        const mockResponse = {
+          issue: {
+            key: 'ISSUE-789',
+            comments: [
+              {
+                key: 'comment-456',
+                login: 'test-user',
+                htmlText: '<p>Test with <strong>markdown</strong></p>',
+                markdown: 'Test with **markdown**',
+                updatable: true,
+                createdAt: '2024-01-01T11:00:00+0000',
+              },
+            ],
+          },
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/add_comment', {
+            issue: 'ISSUE-789',
+            text: 'Test with **markdown**',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.addCommentToIssue({
+          issueKey: 'ISSUE-789',
+          text: 'Test with **markdown**',
+        });
+
+        expect(scope.isDone()).toBe(true);
+        expect(result.markdown).toBe('Test with **markdown**');
+        expect(result.htmlText).toBe('<p>Test with <strong>markdown</strong></p>');
+      });
+    });
   });
 });

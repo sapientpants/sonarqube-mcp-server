@@ -5,6 +5,7 @@ import {
   markIssueWontFixToolSchema,
   markIssuesFalsePositiveToolSchema,
   markIssuesWontFixToolSchema,
+  addCommentToIssueToolSchema,
 } from '../../schemas/issues.js';
 
 describe('issuesToolSchema', () => {
@@ -314,5 +315,114 @@ describe('markIssuesWontFixToolSchema', () => {
       comment: 'Missing issue keys',
     };
     expect(() => z.object(markIssuesWontFixToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('addCommentToIssueToolSchema', () => {
+  it('should validate parameters with issue key and text', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+      text: 'This is a comment with **markdown** support',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-789');
+    expect(result.text).toBe('This is a comment with **markdown** support');
+  });
+
+  it('should validate plain text comment', () => {
+    const input = {
+      issue_key: 'ISSUE-100',
+      text: 'Plain text comment without formatting',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-100');
+    expect(result.text).toBe('Plain text comment without formatting');
+  });
+
+  it('should validate multi-line comment', () => {
+    const input = {
+      issue_key: 'ISSUE-200',
+      text: 'Line 1\nLine 2\n\n- Bullet point\n- Another bullet',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-200');
+    expect(result.text).toBe('Line 1\nLine 2\n\n- Bullet point\n- Another bullet');
+  });
+
+  it('should validate markdown with code blocks', () => {
+    const input = {
+      issue_key: 'ISSUE-300',
+      text: 'Here is some code:\n\n```java\npublic void test() {\n  System.out.println("Hello");\n}\n```',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-300');
+    expect(result.text).toContain('```java');
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      text: 'Comment without issue key',
+    };
+    expect(() => z.object(addCommentToIssueToolSchema).parse(input)).toThrow();
+  });
+
+  it('should reject missing text', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+    };
+    expect(() => z.object(addCommentToIssueToolSchema).parse(input)).toThrow();
+  });
+
+  it('should reject empty text', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+      text: '',
+    };
+    expect(() => z.object(addCommentToIssueToolSchema).parse(input)).toThrow();
+  });
+
+  it('should reject empty issue key', () => {
+    const input = {
+      issue_key: '',
+      text: 'Valid comment',
+    };
+    expect(() => z.object(addCommentToIssueToolSchema).parse(input)).toThrow();
+  });
+
+  it('should accept single character text', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+      text: 'X',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.text).toBe('X');
+  });
+
+  it('should handle very long comments', () => {
+    const longText = 'A'.repeat(10000);
+    const input = {
+      issue_key: 'ISSUE-789',
+      text: longText,
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.text).toBe(longText);
+  });
+
+  it('should handle special characters in comments', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+      text: 'Special chars: <>&"\'`@#$%^&*()[]{}|\\;:,.?/',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.text).toBe('Special chars: <>&"\'`@#$%^&*()[]{}|\\;:,.?/');
+  });
+
+  it('should handle Unicode characters', () => {
+    const input = {
+      issue_key: 'ISSUE-789',
+      text: 'Unicode: 😀 你好 مرحبا こんにちは',
+    };
+    const result = z.object(addCommentToIssueToolSchema).parse(input);
+    expect(result.text).toBe('Unicode: 😀 你好 مرحبا こんにちは');
   });
 });

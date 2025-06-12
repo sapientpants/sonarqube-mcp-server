@@ -257,5 +257,13 @@ export interface BulkIssueMarkParams {
   comment?: string;
 }
 
+/**
+ * Parameters for adding a comment to an issue
+ */
+export interface AddCommentToIssueParams {
+  issueKey: string;
+  text: string;
+}
+
 // Re-export transition types from the web API client
 export type { DoTransitionRequest, DoTransitionResponse };
