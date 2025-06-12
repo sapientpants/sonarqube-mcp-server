@@ -148,6 +148,35 @@ export class SonarQubeClient implements ISonarQubeClient {
   }
 
   /**
+   * Initializes all domain modules for a client instance
+   */
+  private static initializeDomains(client: {
+    webApiClient: WebApiClient;
+    organization: string | null;
+    projectsDomain?: ProjectsDomain;
+    issuesDomain?: IssuesDomain;
+    metricsDomain?: MetricsDomain;
+    measuresDomain?: MeasuresDomain;
+    systemDomain?: SystemDomain;
+    qualityGatesDomain?: QualityGatesDomain;
+    sourceCodeDomain?: SourceCodeDomain;
+    hotspotsDomain?: HotspotsDomain;
+  }): void {
+    client.projectsDomain = new ProjectsDomain(client.webApiClient, client.organization);
+    client.issuesDomain = new IssuesDomain(client.webApiClient, client.organization);
+    client.metricsDomain = new MetricsDomain(client.webApiClient, client.organization);
+    client.measuresDomain = new MeasuresDomain(client.webApiClient, client.organization);
+    client.systemDomain = new SystemDomain(client.webApiClient, client.organization);
+    client.qualityGatesDomain = new QualityGatesDomain(client.webApiClient, client.organization);
+    client.sourceCodeDomain = new SourceCodeDomain(
+      client.webApiClient,
+      client.organization,
+      client.issuesDomain
+    );
+    client.hotspotsDomain = new HotspotsDomain(client.webApiClient, client.organization);
+  }
+
+  /**
    * Creates a SonarQube client with HTTP Basic authentication
    * @param username Username for basic auth
    * @param password Password for basic auth
@@ -169,21 +198,7 @@ export class SonarQubeClient implements ISonarQubeClient {
       organization ? { organization } : undefined
     );
     client.organization = organization ?? null;
-
-    // Initialize domain modules
-    client.projectsDomain = new ProjectsDomain(client.webApiClient, client.organization);
-    client.issuesDomain = new IssuesDomain(client.webApiClient, client.organization);
-    client.metricsDomain = new MetricsDomain(client.webApiClient, client.organization);
-    client.measuresDomain = new MeasuresDomain(client.webApiClient, client.organization);
-    client.systemDomain = new SystemDomain(client.webApiClient, client.organization);
-    client.qualityGatesDomain = new QualityGatesDomain(client.webApiClient, client.organization);
-    client.sourceCodeDomain = new SourceCodeDomain(
-      client.webApiClient,
-      client.organization,
-      client.issuesDomain
-    );
-    client.hotspotsDomain = new HotspotsDomain(client.webApiClient, client.organization);
-
+    SonarQubeClient.initializeDomains(client);
     return client;
   }
 
@@ -206,21 +221,7 @@ export class SonarQubeClient implements ISonarQubeClient {
       organization ? { organization } : undefined
     );
     client.organization = organization ?? null;
-
-    // Initialize domain modules
-    client.projectsDomain = new ProjectsDomain(client.webApiClient, client.organization);
-    client.issuesDomain = new IssuesDomain(client.webApiClient, client.organization);
-    client.metricsDomain = new MetricsDomain(client.webApiClient, client.organization);
-    client.measuresDomain = new MeasuresDomain(client.webApiClient, client.organization);
-    client.systemDomain = new SystemDomain(client.webApiClient, client.organization);
-    client.qualityGatesDomain = new QualityGatesDomain(client.webApiClient, client.organization);
-    client.sourceCodeDomain = new SourceCodeDomain(
-      client.webApiClient,
-      client.organization,
-      client.issuesDomain
-    );
-    client.hotspotsDomain = new HotspotsDomain(client.webApiClient, client.organization);
-
+    SonarQubeClient.initializeDomains(client);
     return client;
   }
 
