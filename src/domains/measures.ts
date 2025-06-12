@@ -8,6 +8,7 @@ import type {
   SonarQubeMeasuresHistoryResult,
 } from '../types/index.js';
 import { BaseDomain } from './base.js';
+import { ensureStringArray } from '../utils/transforms.js';
 
 /**
  * Domain module for measures-related operations
@@ -25,7 +26,7 @@ export class MeasuresDomain extends BaseDomain {
 
     const response = await this.webApiClient.measures.component({
       component,
-      metricKeys: Array.isArray(metricKeys) ? metricKeys : [metricKeys as string],
+      metricKeys: ensureStringArray(metricKeys),
       additionalFields: additionalFields as MeasuresAdditionalField[] | undefined,
       branch,
       pullRequest,
@@ -44,10 +45,8 @@ export class MeasuresDomain extends BaseDomain {
   ): Promise<SonarQubeComponentsMeasuresResult> {
     // The API only supports querying one component at a time for detailed measures
     // We need to make multiple requests and aggregate the results
-    const componentKeys = Array.isArray(params.componentKeys)
-      ? params.componentKeys
-      : params.componentKeys.split(',');
-    const metricKeys = Array.isArray(params.metricKeys) ? params.metricKeys : [params.metricKeys];
+    const componentKeys = ensureStringArray(params.componentKeys);
+    const metricKeys = ensureStringArray(params.metricKeys);
 
     const results = await Promise.all(
       componentKeys.map((componentKey) =>
@@ -98,10 +97,7 @@ export class MeasuresDomain extends BaseDomain {
   async getMeasuresHistory(params: MeasuresHistoryParams): Promise<SonarQubeMeasuresHistoryResult> {
     const { component, metrics, from, to, branch, pullRequest, page, pageSize } = params;
 
-    const builder = this.webApiClient.measures.searchHistory(
-      component,
-      Array.isArray(metrics) ? metrics : [metrics as string]
-    );
+    const builder = this.webApiClient.measures.searchHistory(component, ensureStringArray(metrics));
 
     if (from) {
       builder.from(from);
