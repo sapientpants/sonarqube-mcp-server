@@ -9,7 +9,7 @@ import {
   HotspotStatusUpdateParams,
 } from './sonarqube.js';
 import { createLogger } from './utils/logger.js';
-import { nullToUndefined } from './utils/transforms.js';
+import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
 import { validateEnvironmentVariables, resetDefaultClient } from './utils/client-factory.js';
 import {
@@ -50,6 +50,9 @@ import {
   hotspotToolSchema,
   updateHotspotStatusToolSchema,
 } from './schemas/index.js';
+
+// Type alias for parameters that can be string, array of strings, or undefined
+type StringOrArrayParam = string | string[] | undefined;
 
 const logger = createLogger('index');
 
@@ -166,9 +169,7 @@ export const pingHandler = handleSonarQubePing;
 export const componentMeasuresHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponentMeasures({
     component: params.component as string,
-    metricKeys: Array.isArray(params.metric_keys)
-      ? (params.metric_keys as string[])
-      : [params.metric_keys as string],
+    metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
     additionalFields: params.additional_fields as string[] | undefined,
     branch: params.branch as string | undefined,
     pullRequest: params.pull_request as string | undefined,
@@ -181,12 +182,8 @@ export const componentMeasuresHandler = async (params: Record<string, unknown>) 
  */
 export const componentsMeasuresHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponentsMeasures({
-    componentKeys: Array.isArray(params.component_keys)
-      ? (params.component_keys as string[])
-      : [params.component_keys as string],
-    metricKeys: Array.isArray(params.metric_keys)
-      ? (params.metric_keys as string[])
-      : [params.metric_keys as string],
+    componentKeys: ensureStringArray(params.component_keys as StringOrArrayParam),
+    metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
     additionalFields: params.additional_fields as string[] | undefined,
     branch: params.branch as string | undefined,
     pullRequest: params.pull_request as string | undefined,
@@ -202,9 +199,7 @@ export const componentsMeasuresHandler = async (params: Record<string, unknown>)
 export const measuresHistoryHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeMeasuresHistory({
     component: params.component as string,
-    metrics: Array.isArray(params.metrics)
-      ? (params.metrics as string[])
-      : [params.metrics as string],
+    metrics: ensureStringArray(params.metrics as StringOrArrayParam),
     from: params.from as string | undefined,
     to: params.to as string | undefined,
     branch: params.branch as string | undefined,
