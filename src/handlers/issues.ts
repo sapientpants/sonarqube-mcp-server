@@ -328,7 +328,7 @@ export async function handleAssignIssue(
   params: { issueKey: string; assignee?: string },
   client?: ISonarQubeClient
 ) {
-  const sonarQubeClient = client ?? (await getDefaultClient());
+  const sonarQubeClient = client ?? getDefaultClient();
 
   logger.debug('Handling assign issue request', {
     issueKey: params.issueKey,
@@ -348,9 +348,9 @@ export async function handleAssignIssue(
       resolution?: string | null;
     };
 
-    const assigneeName = issueWithAssignee.assignee || 'unassigned';
+    const assigneeName = issueWithAssignee.assignee ?? 'unassigned';
     const assigneeDisplay = params.assignee
-      ? `Assigned to: ${issueWithAssignee.assigneeName || params.assignee}`
+      ? `Assigned to: ${issueWithAssignee.assigneeName ?? params.assignee}`
       : 'Issue unassigned';
 
     logger.info('Issue assigned successfully', {
@@ -366,14 +366,14 @@ export async function handleAssignIssue(
             message: `${assigneeDisplay} for issue ${params.issueKey}`,
             issue: {
               key: updatedIssue.key,
-              component: updatedIssue.component || 'N/A',
+              component: updatedIssue.component ?? 'N/A',
               message: updatedIssue.message,
-              severity: updatedIssue.severity || 'UNKNOWN',
-              type: updatedIssue.type || 'UNKNOWN',
+              severity: updatedIssue.severity ?? 'UNKNOWN',
+              type: updatedIssue.type ?? 'UNKNOWN',
               status: updatedIssue.status,
-              resolution: issueWithAssignee.resolution || null,
+              resolution: issueWithAssignee.resolution ?? null,
               assignee: issueWithAssignee.assignee,
-              assigneeName: issueWithAssignee.assigneeName || null,
+              assigneeName: issueWithAssignee.assigneeName ?? null,
             },
           }),
         },
