@@ -326,6 +326,20 @@ describe('Issue Transition Handlers', () => {
       expect(content.message).toBe('Issue ISSUE-123 unconfirmed');
       expect(content.issue).toEqual(mockResponse.issue);
     });
+
+    it('should handle unconfirm issue errors', async () => {
+      const mockClient = {
+        unconfirmIssue: jest.fn().mockRejectedValue(new Error('Transition not allowed')),
+      };
+
+      await expect(
+        handleUnconfirmIssue(
+          { issueKey: 'ISSUE-123' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          mockClient as any
+        )
+      ).rejects.toThrow('Transition not allowed');
+    });
   });
 
   describe('handleResolveIssue', () => {
@@ -358,6 +372,20 @@ describe('Issue Transition Handlers', () => {
       expect(content.message).toBe('Issue ISSUE-123 resolved');
       expect(content.issue).toEqual(mockResponse.issue);
     });
+
+    it('should handle resolve issue errors', async () => {
+      const mockClient = {
+        resolveIssue: jest.fn().mockRejectedValue(new Error('Transition not allowed')),
+      };
+
+      await expect(
+        handleResolveIssue(
+          { issueKey: 'ISSUE-123' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          mockClient as any
+        )
+      ).rejects.toThrow('Transition not allowed');
+    });
   });
 
   describe('handleReopenIssue', () => {
@@ -387,6 +415,20 @@ describe('Issue Transition Handlers', () => {
       const content = JSON.parse(result.content[0].text);
       expect(content.message).toBe('Issue ISSUE-123 reopened');
       expect(content.issue).toEqual(mockResponse.issue);
+    });
+
+    it('should handle reopen issue errors', async () => {
+      const mockClient = {
+        reopenIssue: jest.fn().mockRejectedValue(new Error('Transition not allowed')),
+      };
+
+      await expect(
+        handleReopenIssue(
+          { issueKey: 'ISSUE-123' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          mockClient as any
+        )
+      ).rejects.toThrow('Transition not allowed');
     });
   });
 });
