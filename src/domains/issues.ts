@@ -305,7 +305,7 @@ export class IssuesDomain extends BaseDomain {
    */
   async markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
     return Promise.all(
-      params.issueKeys.map(issueKey =>
+      params.issueKeys.map((issueKey) =>
         this.markIssueFalsePositive({
           issueKey,
           comment: params.comment,
