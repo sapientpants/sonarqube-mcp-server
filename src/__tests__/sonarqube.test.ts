@@ -1784,7 +1784,7 @@ describe('SonarQubeClient', () => {
     });
 
     describe('markIssueWontFix', () => {
-      it('should mark issue as won\'t fix successfully', async () => {
+      it("should mark issue as won't fix successfully", async () => {
         const mockResponse = {
           issue: {
             key: 'ISSUE-456',
@@ -1812,7 +1812,7 @@ describe('SonarQubeClient', () => {
         expect(scope.isDone()).toBe(true);
       });
 
-      it('should mark issue as won\'t fix with comment', async () => {
+      it("should mark issue as won't fix with comment", async () => {
         const mockResponse = {
           issue: {
             key: 'ISSUE-456',
@@ -1827,7 +1827,7 @@ describe('SonarQubeClient', () => {
         const commentScope = nock(baseUrl)
           .post('/api/issues/add_comment', {
             issue: 'ISSUE-456',
-            text: 'Won\'t fix due to constraints',
+            text: "Won't fix due to constraints",
           })
           .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {});
@@ -1842,7 +1842,7 @@ describe('SonarQubeClient', () => {
 
         const result = await client.markIssueWontFix({
           issueKey: 'ISSUE-456',
-          comment: 'Won\'t fix due to constraints',
+          comment: "Won't fix due to constraints",
         });
 
         expect(result).toEqual(mockResponse);
@@ -1902,7 +1902,7 @@ describe('SonarQubeClient', () => {
     });
 
     describe('markIssuesWontFix', () => {
-      it('should mark multiple issues as won\'t fix successfully', async () => {
+      it("should mark multiple issues as won't fix successfully", async () => {
         const mockResponse1 = {
           issue: {
             key: 'ISSUE-456',
