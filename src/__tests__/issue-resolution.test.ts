@@ -296,6 +296,16 @@ describe('Issue Resolution Handlers', () => {
       expect(responseData.message).toBe("Issue ISSUE-456 marked as won't fix");
       expect(responseData.issue).toEqual(mockResponse.issue);
     });
+
+    it('should handle errors', async () => {
+      const error = new Error('API Error');
+      mockClient.markIssueWontFix.mockRejectedValue(error);
+
+      await expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handleMarkIssueWontFix({ issueKey: 'ISSUE-456' }, mockClient as any)
+      ).rejects.toThrow('API Error');
+    });
   });
 
   describe('handleMarkIssuesFalsePositive', () => {
@@ -323,6 +333,16 @@ describe('Issue Resolution Handlers', () => {
       expect(responseData.message).toBe('2 issues marked as false positive');
       expect(responseData.results).toHaveLength(2);
     });
+
+    it('should handle errors', async () => {
+      const error = new Error('API Error');
+      mockClient.markIssuesFalsePositive.mockRejectedValue(error);
+
+      await expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handleMarkIssuesFalsePositive({ issueKeys: ['ISSUE-123'] }, mockClient as any)
+      ).rejects.toThrow('API Error');
+    });
   });
 
   describe('handleMarkIssuesWontFix', () => {
@@ -349,6 +369,16 @@ describe('Issue Resolution Handlers', () => {
       const responseData = JSON.parse(result.content[0].text);
       expect(responseData.message).toBe("2 issues marked as won't fix");
       expect(responseData.results).toHaveLength(2);
+    });
+
+    it('should handle errors', async () => {
+      const error = new Error('API Error');
+      mockClient.markIssuesWontFix.mockRejectedValue(error);
+
+      await expect(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        handleMarkIssuesWontFix({ issueKeys: ['ISSUE-456'] }, mockClient as any)
+      ).rejects.toThrow('API Error');
     });
   });
 });
