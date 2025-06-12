@@ -2022,5 +2022,100 @@ describe('SonarQubeClient', () => {
         expect(result.htmlText).toBe('<p>Test with <strong>markdown</strong></p>');
       });
     });
+
+    describe('assignIssue', () => {
+      it('should assign an issue to a user', async () => {
+        const issueKey = 'ISSUE-999';
+        const assignee = 'john.doe';
+
+        // Mock the assign API call
+        const assignScope = nock(baseUrl)
+          .post('/api/issues/assign', {
+            issue: issueKey,
+            assignee: assignee,
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200);
+
+        // Mock the search API call
+        const searchScope = nock(baseUrl)
+          .get('/api/issues/search')
+          .query({
+            issues: issueKey,
+            additionalFields: '_all',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            issues: [
+              {
+                key: issueKey,
+                message: 'Test issue',
+                component: 'src/test.js',
+                assignee: assignee,
+                assigneeName: 'John Doe',
+                severity: 'MAJOR',
+                type: 'BUG',
+                status: 'OPEN',
+              },
+            ],
+            total: 1,
+          });
+
+        const result = await client.assignIssue({
+          issueKey,
+          assignee,
+        });
+
+        expect(assignScope.isDone()).toBe(true);
+        expect(searchScope.isDone()).toBe(true);
+        expect(result.key).toBe(issueKey);
+        expect(result.assignee).toBe(assignee);
+      });
+
+      it('should unassign an issue when assignee is not provided', async () => {
+        const issueKey = 'ISSUE-888';
+
+        // Mock the assign API call
+        const assignScope = nock(baseUrl)
+          .post('/api/issues/assign', {
+            issue: issueKey,
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200);
+
+        // Mock the search API call
+        const searchScope = nock(baseUrl)
+          .get('/api/issues/search')
+          .query({
+            issues: issueKey,
+            additionalFields: '_all',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {
+            issues: [
+              {
+                key: issueKey,
+                message: 'Test issue',
+                component: 'src/test.js',
+                assignee: null,
+                assigneeName: null,
+                severity: 'MINOR',
+                type: 'CODE_SMELL',
+                status: 'OPEN',
+              },
+            ],
+            total: 1,
+          });
+
+        const result = await client.assignIssue({
+          issueKey,
+        });
+
+        expect(assignScope.isDone()).toBe(true);
+        expect(searchScope.isDone()).toBe(true);
+        expect(result.key).toBe(issueKey);
+        expect(result.assignee).toBeNull();
+      });
+    });
   });
 });

@@ -265,5 +265,13 @@ export interface AddCommentToIssueParams {
   text: string;
 }
 
+/**
+ * Parameters for assigning an issue
+ */
+export interface AssignIssueParams {
+  issueKey: string;
+  assignee?: string;
+}
+
 // Re-export transition types from the web API client
 export type { DoTransitionRequest, DoTransitionResponse };

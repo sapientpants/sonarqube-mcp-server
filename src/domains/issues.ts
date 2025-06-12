@@ -8,6 +8,7 @@ import type {
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
   AddCommentToIssueParams,
+  AssignIssueParams,
   DoTransitionResponse,
 } from '../types/index.js';
 import { BaseDomain } from './base.js';
@@ -360,5 +361,31 @@ export class IssuesDomain extends BaseDomain {
     }
 
     return newComment;
+  }
+
+  /**
+   * Assign an issue to a user
+   * @param params Assignment parameters
+   * @returns The updated issue details
+   */
+  async assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue> {
+    // Call the assign API
+    await this.webApiClient.issues.assign({
+      issue: params.issueKey,
+      assignee: params.assignee,
+    });
+
+    // Fetch and return the updated issue using the same search as getIssues
+    const searchBuilder = this.webApiClient.issues.search();
+    searchBuilder.withIssues([params.issueKey]);
+    searchBuilder.withAdditionalFields(['_all']);
+
+    const response = await searchBuilder.execute();
+
+    if (!response.issues || response.issues.length === 0) {
+      throw new Error(`Issue ${params.issueKey} not found after assignment`);
+    }
+
+    return response.issues[0] as SonarQubeIssue;
   }
 }

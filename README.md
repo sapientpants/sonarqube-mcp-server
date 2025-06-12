@@ -607,6 +607,58 @@ Ping the SonarQube instance to check if it is up.
 
 **No parameters required**
 
+### Issue Resolution and Management
+
+#### `markIssueFalsePositive`
+Mark an issue as false positive.
+
+**Parameters:**
+- `issue_key` (required): The key of the issue to mark
+- `comment` (optional): Comment explaining why it's a false positive
+
+#### `markIssueWontFix`
+Mark an issue as won't fix.
+
+**Parameters:**
+- `issue_key` (required): The key of the issue to mark
+- `comment` (optional): Comment explaining why it won't be fixed
+
+#### `markIssuesFalsePositive`
+Mark multiple issues as false positive in bulk.
+
+**Parameters:**
+- `issue_keys` (required): Array of issue keys to mark
+- `comment` (optional): Comment applying to all issues
+
+#### `markIssuesWontFix`
+Mark multiple issues as won't fix in bulk.
+
+**Parameters:**
+- `issue_keys` (required): Array of issue keys to mark
+- `comment` (optional): Comment applying to all issues
+
+#### `addCommentToIssue`
+Add a comment to a SonarQube issue.
+
+**Parameters:**
+- `issue_key` (required): The key of the issue to comment on
+- `text` (required): The comment text (supports markdown formatting)
+
+#### `assignIssue`
+Assign a SonarQube issue to a user or unassign it.
+
+**Parameters:**
+- `issueKey` (required): The key of the issue to assign
+- `assignee` (optional): Username of the assignee. Leave empty to unassign the issue
+
+**Example usage:**
+```json
+{
+  "issueKey": "PROJECT-123",
+  "assignee": "john.doe"
+}
+```
+
 ## Usage Examples
 
 ### Basic Project Analysis
@@ -627,6 +679,15 @@ Ping the SonarQube instance to check if it is up.
 "Find issues across multiple projects: proj1, proj2, proj3"
 "Show me issues sorted by severity in descending order"
 "Find all issues with clean code impact on reliability"
+```
+
+### Issue Management
+```
+"Assign issue PROJECT-123 to john.doe"
+"Unassign issue PROJECT-456"
+"Mark issue ABC-789 as false positive with comment: 'Test code only'"
+"Add comment to issue XYZ-111: 'Fixed in commit abc123'"
+"Bulk mark issues DEF-222, DEF-223 as won't fix"
 ```
 
 ### Quality Monitoring

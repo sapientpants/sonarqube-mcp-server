@@ -43,9 +43,11 @@ import type {
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
   AddCommentToIssueParams,
+  AssignIssueParams,
   DoTransitionResponse,
   ISonarQubeClient,
   SonarQubeIssueComment,
+  SonarQubeIssue,
 } from './types/index.js';
 
 // Re-export all types for backward compatibility
@@ -485,6 +487,15 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   async addCommentToIssue(params: AddCommentToIssueParams): Promise<SonarQubeIssueComment> {
     return this.issuesDomain.addCommentToIssue(params);
+  }
+
+  /**
+   * Assign an issue to a user
+   * @param params Parameters including issue key and assignee
+   * @returns Promise with the updated issue details
+   */
+  async assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue> {
+    return this.issuesDomain.assignIssue(params);
   }
 }
 
