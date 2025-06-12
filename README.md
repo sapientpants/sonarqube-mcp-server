@@ -397,14 +397,14 @@ Get measures history for a component.
 ### Issue Management
 
 #### `issues`
-Get issues from SonarQube projects with advanced filtering, sorting, and branch/PR support.
+Search and filter SonarQube issues by severity, status, assignee, tag, file path, and more. Critical for dashboards, targeted clean-up sprints, security audits, and regression testing. Supports faceted search for aggregations.
 
-**Component Filters:**
+**Component/File Path Filters:**
 - `project_key` (optional): Single project key (backward compatible)
 - `projects` (optional): Array of project keys for multi-project analysis
-- `component_keys` (optional): Array of component keys
-- `components` (optional): Array of components
-- `on_component_only` (optional): Boolean to limit to specific component
+- `component_keys` (optional): Array of component keys (file paths, directories, or modules) - use this to filter issues by specific files or folders
+- `components` (optional): Alias for component_keys
+- `on_component_only` (optional): Boolean to return only issues on specified components, not sub-components
 
 **Branch/PR Support:**
 - `branch` (optional): Branch name for branch analysis
@@ -427,7 +427,7 @@ Get issues from SonarQube projects with advanced filtering, sorting, and branch/
 
 **Rules and Tags:**
 - `rules` (optional): Array of rule keys
-- `tags` (optional): Array of tags
+- `tags` (optional): Array of issue tags - essential for security audits, regression testing, and categorized analysis
 
 **Date Filters:**
 - `created_after` (optional): Issues created after date (YYYY-MM-DD)
@@ -437,7 +437,7 @@ Get issues from SonarQube projects with advanced filtering, sorting, and branch/
 
 **Assignment:**
 - `assigned` (optional): Boolean filter for assigned/unassigned
-- `assignees` (optional): Array of assignee logins
+- `assignees` (optional): Array of assignee logins - critical for targeted clean-up sprints and workload analysis
 - `author` (optional): Single author login
 - `authors` (optional): Array of author logins
 
@@ -464,6 +464,52 @@ Get issues from SonarQube projects with advanced filtering, sorting, and branch/
 - `additional_fields` (optional): Array of additional fields to include
 - `page` (optional): Page number for pagination
 - `page_size` (optional): Number of items per page
+
+**Faceted Search (Dashboard Support):**
+- `facets` (optional): Array of facets to compute for aggregations. Available facets: severities, statuses, resolutions, rules, tags, types, authors, assignees, languages, etc.
+- `facet_mode` (optional): Mode for facet computation: 'count' (number of issues) or 'effort' (remediation effort)
+
+**Example Use Cases:**
+
+1. **Dashboard Query** - Get issue counts by severity and assignee:
+```json
+{
+  "project_key": "my-project",
+  "facets": ["severities", "assignees", "tags"],
+  "facet_mode": "count"
+}
+```
+
+2. **Security Audit** - Find critical security issues in authentication modules:
+```json
+{
+  "project_key": "my-project",
+  "component_keys": ["src/auth/", "src/security/"],
+  "tags": ["security", "vulnerability"],
+  "severities": ["CRITICAL", "BLOCKER"],
+  "statuses": ["OPEN", "REOPENED"]
+}
+```
+
+3. **Sprint Planning** - Get open issues for specific team members:
+```json
+{
+  "project_key": "my-project",
+  "assignees": ["john.doe@example.com", "jane.smith@example.com"],
+  "statuses": ["OPEN", "CONFIRMED"],
+  "facets": ["severities", "types"],
+  "facet_mode": "effort"
+}
+```
+
+4. **File-Specific Analysis** - Issues in a specific file:
+```json
+{
+  "project_key": "my-project",  
+  "component_keys": ["src/main/java/com/example/PaymentService.java"],
+  "on_component_only": true
+}
+```
 
 ### Security Hotspots
 
