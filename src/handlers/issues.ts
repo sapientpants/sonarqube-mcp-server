@@ -336,9 +336,12 @@ export async function handleAssignIssue(
   });
 
   try {
+    // Normalize empty string to undefined for consistent unassignment handling
+    const normalizedAssignee = params.assignee === '' ? undefined : params.assignee;
+
     const updatedIssue = await sonarQubeClient.assignIssue({
       issueKey: params.issueKey,
-      assignee: params.assignee,
+      assignee: normalizedAssignee,
     });
 
     // Cast to access dynamic fields
@@ -349,8 +352,8 @@ export async function handleAssignIssue(
     };
 
     const assigneeName = issueWithAssignee.assignee ?? 'unassigned';
-    const assigneeDisplay = params.assignee
-      ? `Assigned to: ${issueWithAssignee.assigneeName ?? params.assignee}`
+    const assigneeDisplay = normalizedAssignee
+      ? `Assigned to: ${issueWithAssignee.assigneeName ?? normalizedAssignee}`
       : 'Issue unassigned';
 
     logger.info('Issue assigned successfully', {
