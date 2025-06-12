@@ -40,6 +40,6 @@ export function ensureStringArray(value: string | string[] | undefined): string[
   if (value === undefined) return [];
   if (Array.isArray(value)) return value;
   // Check if the string contains commas and split if so
-  if (value.includes(',')) return value.split(',').map(s => s.trim());
+  if (value.includes(',')) return value.split(',').map((s) => s.trim());
   return [value];
 }

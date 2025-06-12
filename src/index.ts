@@ -51,6 +51,9 @@ import {
   updateHotspotStatusToolSchema,
 } from './schemas/index.js';
 
+// Type alias for parameters that can be string, array of strings, or undefined
+type StringOrArrayParam = string | string[] | undefined;
+
 const logger = createLogger('index');
 
 interface Connectable {
@@ -166,7 +169,7 @@ export const pingHandler = handleSonarQubePing;
 export const componentMeasuresHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponentMeasures({
     component: params.component as string,
-    metricKeys: ensureStringArray(params.metric_keys as string | string[] | undefined),
+    metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
     additionalFields: params.additional_fields as string[] | undefined,
     branch: params.branch as string | undefined,
     pullRequest: params.pull_request as string | undefined,
@@ -179,8 +182,8 @@ export const componentMeasuresHandler = async (params: Record<string, unknown>) 
  */
 export const componentsMeasuresHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponentsMeasures({
-    componentKeys: ensureStringArray(params.component_keys as string | string[] | undefined),
-    metricKeys: ensureStringArray(params.metric_keys as string | string[] | undefined),
+    componentKeys: ensureStringArray(params.component_keys as StringOrArrayParam),
+    metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
     additionalFields: params.additional_fields as string[] | undefined,
     branch: params.branch as string | undefined,
     pullRequest: params.pull_request as string | undefined,
@@ -196,7 +199,7 @@ export const componentsMeasuresHandler = async (params: Record<string, unknown>)
 export const measuresHistoryHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeMeasuresHistory({
     component: params.component as string,
-    metrics: ensureStringArray(params.metrics as string | string[] | undefined),
+    metrics: ensureStringArray(params.metrics as StringOrArrayParam),
     from: params.from as string | undefined,
     to: params.to as string | undefined,
     branch: params.branch as string | undefined,
