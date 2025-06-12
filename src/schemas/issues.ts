@@ -60,14 +60,25 @@ export const markIssuesWontFixToolSchema = {
  */
 export const issuesToolSchema = {
   // Component filters (backward compatible)
-  project_key: z.string().optional(), // Made optional to support projects array
-  projects: z.array(z.string()).nullable().optional(),
-  component_keys: z.array(z.string()).nullable().optional(),
-  components: z.array(z.string()).nullable().optional(),
+  project_key: z.string().optional().describe('Single project key for backward compatibility'), // Made optional to support projects array
+  projects: z.array(z.string()).nullable().optional().describe('Filter by project keys'),
+  component_keys: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .describe(
+      'Filter by component keys (file paths, directories, or modules). Use this to filter issues by specific files or folders'
+    ),
+  components: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .describe('Alias for component_keys - filter by file paths, directories, or modules'),
   on_component_only: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .nullable()
-    .optional(),
+    .optional()
+    .describe('Return only issues on the specified components, not on their sub-components'),
 
   // Branch and PR support
   branch: z.string().nullable().optional(),
@@ -92,8 +103,14 @@ export const issuesToolSchema = {
   issue_statuses: statusSchema, // New issue status values
 
   // Rules and tags
-  rules: z.array(z.string()).nullable().optional(),
-  tags: z.array(z.string()).nullable().optional(),
+  rules: z.array(z.string()).nullable().optional().describe('Filter by rule keys'),
+  tags: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .describe(
+      'Filter by issue tags. Essential for security audits, regression testing, and categorized analysis'
+    ),
 
   // Date filters
   created_after: z.string().nullable().optional(),
@@ -105,10 +122,17 @@ export const issuesToolSchema = {
   assigned: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .nullable()
-    .optional(),
-  assignees: z.array(z.string()).nullable().optional(),
-  author: z.string().nullable().optional(), // Single author
-  authors: z.array(z.string()).nullable().optional(), // Multiple authors
+    .optional()
+    .describe('Filter to only assigned (true) or unassigned (false) issues'),
+  assignees: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .describe(
+      'Filter by assignee logins. Critical for targeted clean-up sprints and workload analysis'
+    ),
+  author: z.string().nullable().optional().describe('Filter by single issue author'), // Single author
+  authors: z.array(z.string()).nullable().optional().describe('Filter by multiple issue authors'), // Multiple authors
 
   // Security standards
   cwe: z.array(z.string()).nullable().optional(),
@@ -122,8 +146,20 @@ export const issuesToolSchema = {
   languages: z.array(z.string()).nullable().optional(),
 
   // Facets
-  facets: z.array(z.string()).nullable().optional(),
-  facet_mode: z.enum(['effort', 'count']).nullable().optional(),
+  facets: z
+    .array(z.string())
+    .nullable()
+    .optional()
+    .describe(
+      'Enable faceted search for aggregations. Critical for dashboards. Available facets: severities, statuses, resolutions, rules, tags, types, authors, assignees, languages, etc.'
+    ),
+  facet_mode: z
+    .enum(['effort', 'count'])
+    .nullable()
+    .optional()
+    .describe(
+      'Mode for facet computation: count (number of issues) or effort (remediation effort)'
+    ),
 
   // New code
   since_leak_period: z

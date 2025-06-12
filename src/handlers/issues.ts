@@ -12,11 +12,41 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('handlers/issues');
 
 /**
- * Fetches and returns issues from a specified SonarQube project
- * @param params Parameters for fetching issues, including project key, severity, and pagination
+ * Fetches and returns issues from a specified SonarQube project with advanced filtering capabilities
+ *
+ * This tool supports comprehensive filtering for targeted analysis, dashboards, and audits:
+ * - **Component/File Path Filtering**: Use `component_keys` to filter by specific files or directories
+ * - **Assignee Filtering**: Use `assignees` to filter by assigned users
+ * - **Tag Filtering**: Use `tags` to filter by issue tags
+ * - **Severity Filtering**: Use `severities` to filter by severity levels (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
+ * - **Status Filtering**: Use `statuses` to filter by issue status (OPEN, CONFIRMED, REOPENED, RESOLVED, CLOSED)
+ * - **Date Filtering**: Use `created_after`, `created_before`, `created_in_last` for time-based queries
+ * - **Security Standards**: Filter by OWASP, CWE, SANS Top 25, and SonarSource security categories
+ * - **Faceted Search**: Use `facets` to get aggregated data for dashboards
+ *
+ * @param params Parameters for fetching issues with extensive filtering options
  * @param client Optional SonarQube client instance
- * @returns A response containing the list of issues with their details
+ * @returns A response containing the list of issues with their details, facets, and pagination info
  * @throws Error if no authentication environment variables are set (SONARQUBE_TOKEN, SONARQUBE_USERNAME/PASSWORD, or SONARQUBE_PASSCODE)
+ *
+ * @example
+ * // Filter by file path and severity
+ * await handleSonarQubeGetIssues({
+ *   projectKey: 'my-project',
+ *   componentKeys: ['src/main/java/com/example/Service.java'],
+ *   severities: ['CRITICAL', 'BLOCKER'],
+ *   facets: ['severities', 'types', 'authors']
+ * });
+ *
+ * @example
+ * // Dashboard query with assignee and tag filters
+ * await handleSonarQubeGetIssues({
+ *   projectKey: 'my-project',
+ *   assignees: ['john.doe@example.com'],
+ *   tags: ['security', 'performance'],
+ *   statuses: ['OPEN', 'REOPENED'],
+ *   facets: ['severities', 'tags', 'assignees']
+ * });
  */
 export async function handleSonarQubeGetIssues(
   params: IssuesParams,
