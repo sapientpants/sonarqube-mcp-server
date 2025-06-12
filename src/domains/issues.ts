@@ -304,17 +304,14 @@ export class IssuesDomain extends BaseDomain {
    * @returns Promise with array of updated issues and related data
    */
   async markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
-    const results: DoTransitionResponse[] = [];
-
-    for (const issueKey of params.issueKeys) {
-      const result = await this.markIssueFalsePositive({
-        issueKey,
-        comment: params.comment,
-      });
-      results.push(result);
-    }
-
-    return results;
+    return Promise.all(
+      params.issueKeys.map(issueKey =>
+        this.markIssueFalsePositive({
+          issueKey,
+          comment: params.comment,
+        })
+      )
+    );
   }
 
   /**
