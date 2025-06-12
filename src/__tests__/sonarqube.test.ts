@@ -1713,4 +1713,242 @@ describe('SonarQubeClient', () => {
       expect(scope.isDone()).toBe(true);
     });
   });
+
+  describe('Issue Resolution Methods', () => {
+    describe('markIssueFalsePositive', () => {
+      it('should mark issue as false positive successfully', async () => {
+        const mockResponse = {
+          issue: {
+            key: 'ISSUE-123',
+            status: 'RESOLVED',
+            resolution: 'FALSE-POSITIVE',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'falsepositive',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.markIssueFalsePositive({
+          issueKey: 'ISSUE-123',
+        });
+
+        expect(result).toEqual(mockResponse);
+        expect(scope.isDone()).toBe(true);
+      });
+
+      it('should mark issue as false positive with comment', async () => {
+        const mockResponse = {
+          issue: {
+            key: 'ISSUE-123',
+            status: 'RESOLVED',
+            resolution: 'FALSE-POSITIVE',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const commentScope = nock(baseUrl)
+          .post('/api/issues/add_comment', {
+            issue: 'ISSUE-123',
+            text: 'This is a false positive',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {});
+
+        const transitionScope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'falsepositive',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.markIssueFalsePositive({
+          issueKey: 'ISSUE-123',
+          comment: 'This is a false positive',
+        });
+
+        expect(result).toEqual(mockResponse);
+        expect(commentScope.isDone()).toBe(true);
+        expect(transitionScope.isDone()).toBe(true);
+      });
+    });
+
+    describe('markIssueWontFix', () => {
+      it("should mark issue as won't fix successfully", async () => {
+        const mockResponse = {
+          issue: {
+            key: 'ISSUE-456',
+            status: 'RESOLVED',
+            resolution: 'WONTFIX',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-456',
+            transition: 'wontfix',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.markIssueWontFix({
+          issueKey: 'ISSUE-456',
+        });
+
+        expect(result).toEqual(mockResponse);
+        expect(scope.isDone()).toBe(true);
+      });
+
+      it("should mark issue as won't fix with comment", async () => {
+        const mockResponse = {
+          issue: {
+            key: 'ISSUE-456',
+            status: 'RESOLVED',
+            resolution: 'WONTFIX',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const commentScope = nock(baseUrl)
+          .post('/api/issues/add_comment', {
+            issue: 'ISSUE-456',
+            text: "Won't fix due to constraints",
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, {});
+
+        const transitionScope = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-456',
+            transition: 'wontfix',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse);
+
+        const result = await client.markIssueWontFix({
+          issueKey: 'ISSUE-456',
+          comment: "Won't fix due to constraints",
+        });
+
+        expect(result).toEqual(mockResponse);
+        expect(commentScope.isDone()).toBe(true);
+        expect(transitionScope.isDone()).toBe(true);
+      });
+    });
+
+    describe('markIssuesFalsePositive', () => {
+      it('should mark multiple issues as false positive successfully', async () => {
+        const mockResponse1 = {
+          issue: {
+            key: 'ISSUE-123',
+            status: 'RESOLVED',
+            resolution: 'FALSE-POSITIVE',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const mockResponse2 = {
+          issue: {
+            key: 'ISSUE-124',
+            status: 'RESOLVED',
+            resolution: 'FALSE-POSITIVE',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope1 = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-123',
+            transition: 'falsepositive',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse1);
+
+        const scope2 = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-124',
+            transition: 'falsepositive',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse2);
+
+        const result = await client.markIssuesFalsePositive({
+          issueKeys: ['ISSUE-123', 'ISSUE-124'],
+        });
+
+        expect(result).toEqual([mockResponse1, mockResponse2]);
+        expect(scope1.isDone()).toBe(true);
+        expect(scope2.isDone()).toBe(true);
+      });
+    });
+
+    describe('markIssuesWontFix', () => {
+      it("should mark multiple issues as won't fix successfully", async () => {
+        const mockResponse1 = {
+          issue: {
+            key: 'ISSUE-456',
+            status: 'RESOLVED',
+            resolution: 'WONTFIX',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const mockResponse2 = {
+          issue: {
+            key: 'ISSUE-457',
+            status: 'RESOLVED',
+            resolution: 'WONTFIX',
+          },
+          components: [],
+          rules: [],
+          users: [],
+        };
+
+        const scope1 = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-456',
+            transition: 'wontfix',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse1);
+
+        const scope2 = nock(baseUrl)
+          .post('/api/issues/do_transition', {
+            issue: 'ISSUE-457',
+            transition: 'wontfix',
+          })
+          .matchHeader('authorization', 'Bearer test-token')
+          .reply(200, mockResponse2);
+
+        const result = await client.markIssuesWontFix({
+          issueKeys: ['ISSUE-456', 'ISSUE-457'],
+        });
+
+        expect(result).toEqual([mockResponse1, mockResponse2]);
+        expect(scope1.isDone()).toBe(true);
+        expect(scope2.isDone()).toBe(true);
+      });
+    });
+  });
 });

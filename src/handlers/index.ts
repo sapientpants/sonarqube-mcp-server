@@ -4,7 +4,13 @@
 
 export { handleSonarQubeProjects } from './projects.js';
 
-export { handleSonarQubeGetIssues } from './issues.js';
+export {
+  handleSonarQubeGetIssues,
+  handleMarkIssueFalsePositive,
+  handleMarkIssueWontFix,
+  handleMarkIssuesFalsePositive,
+  handleMarkIssuesWontFix,
+} from './issues.js';
 
 export { handleSonarQubeGetMetrics } from './metrics.js';
 

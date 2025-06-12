@@ -9,7 +9,13 @@ export * from './hotspots.js';
 // Tool schemas
 export { projectsToolSchema } from './projects.js';
 export { metricsToolSchema } from './metrics.js';
-export { issuesToolSchema } from './issues.js';
+export {
+  issuesToolSchema,
+  markIssueFalsePositiveToolSchema,
+  markIssueWontFixToolSchema,
+  markIssuesFalsePositiveToolSchema,
+  markIssuesWontFixToolSchema,
+} from './issues.js';
 export { systemHealthToolSchema, systemStatusToolSchema, systemPingToolSchema } from './system.js';
 export {
   componentMeasuresToolSchema,

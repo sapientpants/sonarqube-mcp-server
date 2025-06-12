@@ -1,7 +1,14 @@
 // Import types for interface definitions
 import type { PaginationParams } from './common.js';
 import type { SonarQubeProjectsResult } from './projects.js';
-import type { IssuesParams, SonarQubeIssuesResult } from './issues.js';
+import type {
+  IssuesParams,
+  SonarQubeIssuesResult,
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+  DoTransitionResponse,
+} from './issues.js';
 import type { SonarQubeMetricsResult } from './metrics.js';
 import type {
   ComponentMeasuresParams,
@@ -55,6 +62,11 @@ export type {
   SonarQubeFacetValue,
   SonarQubeIssuesResult,
   IssuesParams,
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+  DoTransitionRequest,
+  DoTransitionResponse,
 } from './issues.js';
 
 // Metric types
@@ -133,4 +145,10 @@ export interface ISonarQubeClient {
   hotspots(params: HotspotSearchParams): Promise<SonarQubeHotspotSearchResult>;
   hotspot(hotspotKey: string): Promise<SonarQubeHotspotDetails>;
   updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void>;
+
+  // Issue resolution methods
+  markIssueFalsePositive(params: MarkIssueFalsePositiveParams): Promise<DoTransitionResponse>;
+  markIssueWontFix(params: MarkIssueWontFixParams): Promise<DoTransitionResponse>;
+  markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]>;
+  markIssuesWontFix(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]>;
 }

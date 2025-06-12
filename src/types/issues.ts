@@ -1,4 +1,5 @@
 import type { PaginationParams, SeverityLevel } from './common.js';
+import type { DoTransitionRequest, DoTransitionResponse } from 'sonarqube-web-api-client';
 
 /**
  * Interface for SonarQube issue impact
@@ -231,3 +232,30 @@ export interface IssuesParams extends PaginationParams {
   hotspots?: boolean;
   severity?: 'INFO' | 'MINOR' | 'MAJOR' | 'CRITICAL' | 'BLOCKER';
 }
+
+/**
+ * Parameters for marking an issue as false positive
+ */
+export interface MarkIssueFalsePositiveParams {
+  issueKey: string;
+  comment?: string;
+}
+
+/**
+ * Parameters for marking an issue as won't fix
+ */
+export interface MarkIssueWontFixParams {
+  issueKey: string;
+  comment?: string;
+}
+
+/**
+ * Parameters for bulk issue operations
+ */
+export interface BulkIssueMarkParams {
+  issueKeys: string[];
+  comment?: string;
+}
+
+// Re-export transition types from the web API client
+export type { DoTransitionRequest, DoTransitionResponse };

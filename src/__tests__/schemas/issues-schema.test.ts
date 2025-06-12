@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { issuesToolSchema } from '../../schemas/issues.js';
+import {
+  issuesToolSchema,
+  markIssueFalsePositiveToolSchema,
+  markIssueWontFixToolSchema,
+  markIssuesFalsePositiveToolSchema,
+  markIssuesWontFixToolSchema,
+} from '../../schemas/issues.js';
 
 describe('issuesToolSchema', () => {
   it('should validate minimal issues parameters', () => {
@@ -166,5 +172,147 @@ describe('issuesToolSchema', () => {
     expect(result.page).toBe(1);
     expect(result.branch).toBeUndefined();
     expect(result.tags).toBeUndefined();
+  });
+});
+
+describe('markIssueFalsePositiveToolSchema', () => {
+  it('should validate minimal parameters with issue key', () => {
+    const input = {
+      issue_key: 'ISSUE-123',
+    };
+    const result = z.object(markIssueFalsePositiveToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-123');
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_key: 'ISSUE-123',
+      comment: 'This is a false positive because...',
+    };
+    const result = z.object(markIssueFalsePositiveToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-123');
+    expect(result.comment).toBe('This is a false positive because...');
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      comment: 'Missing issue key',
+    };
+    expect(() => z.object(markIssueFalsePositiveToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('markIssueWontFixToolSchema', () => {
+  it('should validate minimal parameters with issue key', () => {
+    const input = {
+      issue_key: 'ISSUE-456',
+    };
+    const result = z.object(markIssueWontFixToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-456');
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_key: 'ISSUE-456',
+      comment: "Won't fix because it's acceptable in this context",
+    };
+    const result = z.object(markIssueWontFixToolSchema).parse(input);
+    expect(result.issue_key).toBe('ISSUE-456');
+    expect(result.comment).toBe("Won't fix because it's acceptable in this context");
+  });
+
+  it('should reject missing issue key', () => {
+    const input = {
+      comment: 'Missing issue key',
+    };
+    expect(() => z.object(markIssueWontFixToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('markIssuesFalsePositiveToolSchema', () => {
+  it('should validate minimal parameters with issue keys array', () => {
+    const input = {
+      issue_keys: ['ISSUE-123', 'ISSUE-124', 'ISSUE-125'],
+    };
+    const result = z.object(markIssuesFalsePositiveToolSchema).parse(input);
+    expect(result.issue_keys).toEqual(['ISSUE-123', 'ISSUE-124', 'ISSUE-125']);
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_keys: ['ISSUE-123', 'ISSUE-124'],
+      comment: 'Bulk marking as false positives',
+    };
+    const result = z.object(markIssuesFalsePositiveToolSchema).parse(input);
+    expect(result.issue_keys).toEqual(['ISSUE-123', 'ISSUE-124']);
+    expect(result.comment).toBe('Bulk marking as false positives');
+  });
+
+  it('should validate single issue in array', () => {
+    const input = {
+      issue_keys: ['ISSUE-123'],
+    };
+    const result = z.object(markIssuesFalsePositiveToolSchema).parse(input);
+    expect(result.issue_keys).toEqual(['ISSUE-123']);
+  });
+
+  it('should reject empty issue keys array', () => {
+    const input = {
+      issue_keys: [],
+    };
+    expect(() => z.object(markIssuesFalsePositiveToolSchema).parse(input)).toThrow();
+  });
+
+  it('should reject missing issue keys', () => {
+    const input = {
+      comment: 'Missing issue keys',
+    };
+    expect(() => z.object(markIssuesFalsePositiveToolSchema).parse(input)).toThrow();
+  });
+});
+
+describe('markIssuesWontFixToolSchema', () => {
+  it('should validate minimal parameters with issue keys array', () => {
+    const input = {
+      issue_keys: ['ISSUE-456', 'ISSUE-457', 'ISSUE-458'],
+    };
+    const result = z.object(markIssuesWontFixToolSchema).parse(input);
+    expect(result.issue_keys).toEqual(['ISSUE-456', 'ISSUE-457', 'ISSUE-458']);
+    expect(result.comment).toBeUndefined();
+  });
+
+  it('should validate parameters with comment', () => {
+    const input = {
+      issue_keys: ['ISSUE-456', 'ISSUE-457'],
+      comment: "Bulk marking as won't fix",
+    };
+    const result = z.object(markIssuesWontFixToolSchema).parse(input);
+    expect(result.issue_keys).toEqual(['ISSUE-456', 'ISSUE-457']);
+    expect(result.comment).toBe("Bulk marking as won't fix");
+  });
+
+  it('should validate single issue in array', () => {
+    const input = {
+      issue_keys: ['ISSUE-456'],
+    };
+    const result = z.object(markIssuesWontFixToolSchema).parse(input);
+    expect(result.issue_keys).toEqual(['ISSUE-456']);
+  });
+
+  it('should reject empty issue keys array', () => {
+    const input = {
+      issue_keys: [],
+    };
+    expect(() => z.object(markIssuesWontFixToolSchema).parse(input)).toThrow();
+  });
+
+  it('should reject missing issue keys', () => {
+    const input = {
+      comment: 'Missing issue keys',
+    };
+    expect(() => z.object(markIssuesWontFixToolSchema).parse(input)).toThrow();
   });
 });

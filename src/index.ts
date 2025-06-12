@@ -15,6 +15,10 @@ import { validateEnvironmentVariables, resetDefaultClient } from './utils/client
 import {
   handleSonarQubeProjects,
   handleSonarQubeGetIssues,
+  handleMarkIssueFalsePositive,
+  handleMarkIssueWontFix,
+  handleMarkIssuesFalsePositive,
+  handleMarkIssuesWontFix,
   handleSonarQubeGetMetrics,
   handleSonarQubeGetHealth,
   handleSonarQubeGetStatus,
@@ -35,6 +39,10 @@ import {
   projectsToolSchema,
   metricsToolSchema,
   issuesToolSchema,
+  markIssueFalsePositiveToolSchema,
+  markIssueWontFixToolSchema,
+  markIssuesFalsePositiveToolSchema,
+  markIssuesWontFixToolSchema,
   systemHealthToolSchema,
   systemStatusToolSchema,
   systemPingToolSchema,
@@ -99,6 +107,10 @@ export { resetDefaultClient };
 export {
   handleSonarQubeProjects,
   handleSonarQubeGetIssues,
+  handleMarkIssueFalsePositive,
+  handleMarkIssueWontFix,
+  handleMarkIssuesFalsePositive,
+  handleMarkIssuesWontFix,
   handleSonarQubeGetMetrics,
   handleSonarQubeGetHealth,
   handleSonarQubeGetStatus,
@@ -146,6 +158,46 @@ export const metricsHandler = async (params: { page: number | null; page_size: n
  */
 export const issuesHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
+};
+
+/**
+ * Lambda function for mark issue false positive tool
+ */
+export const markIssueFalsePositiveHandler = async (params: Record<string, unknown>) => {
+  return handleMarkIssueFalsePositive({
+    issueKey: params.issue_key as string,
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for mark issue won't fix tool
+ */
+export const markIssueWontFixHandler = async (params: Record<string, unknown>) => {
+  return handleMarkIssueWontFix({
+    issueKey: params.issue_key as string,
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for mark issues false positive (bulk) tool
+ */
+export const markIssuesFalsePositiveHandler = async (params: Record<string, unknown>) => {
+  return handleMarkIssuesFalsePositive({
+    issueKeys: params.issue_keys as string[],
+    comment: params.comment as string | undefined,
+  });
+};
+
+/**
+ * Lambda function for mark issues won't fix (bulk) tool
+ */
+export const markIssuesWontFixHandler = async (params: Record<string, unknown>) => {
+  return handleMarkIssuesWontFix({
+    issueKeys: params.issue_keys as string[],
+    comment: params.comment as string | undefined,
+  });
 };
 
 /**
@@ -303,6 +355,14 @@ export const projectsMcpHandler = (params: Record<string, unknown>) => projectsH
 export const metricsMcpHandler = (params: Record<string, unknown>) =>
   metricsHandler(params as { page: number | null; page_size: number | null });
 export const issuesMcpHandler = (params: Record<string, unknown>) => issuesHandler(params);
+export const markIssueFalsePositiveMcpHandler = (params: Record<string, unknown>) =>
+  markIssueFalsePositiveHandler(params);
+export const markIssueWontFixMcpHandler = (params: Record<string, unknown>) =>
+  markIssueWontFixHandler(params);
+export const markIssuesFalsePositiveMcpHandler = (params: Record<string, unknown>) =>
+  markIssuesFalsePositiveHandler(params);
+export const markIssuesWontFixMcpHandler = (params: Record<string, unknown>) =>
+  markIssuesWontFixHandler(params);
 export const healthMcpHandler = () => healthHandler();
 export const statusMcpHandler = () => statusHandler();
 export const pingMcpHandler = () => pingHandler();
@@ -339,6 +399,34 @@ mcpServer.tool(
   'Get issues for a SonarQube project with advanced filtering, sorting, and branch/PR support',
   issuesToolSchema,
   issuesMcpHandler
+);
+
+mcpServer.tool(
+  'markIssueFalsePositive',
+  'Mark an issue as false positive',
+  markIssueFalsePositiveToolSchema,
+  markIssueFalsePositiveMcpHandler
+);
+
+mcpServer.tool(
+  'markIssueWontFix',
+  "Mark an issue as won't fix",
+  markIssueWontFixToolSchema,
+  markIssueWontFixMcpHandler
+);
+
+mcpServer.tool(
+  'markIssuesFalsePositive',
+  'Mark multiple issues as false positive (bulk operation)',
+  markIssuesFalsePositiveToolSchema,
+  markIssuesFalsePositiveMcpHandler
+);
+
+mcpServer.tool(
+  'markIssuesWontFix',
+  "Mark multiple issues as won't fix (bulk operation)",
+  markIssuesWontFixToolSchema,
+  markIssuesWontFixMcpHandler
 );
 
 // Register system API tools

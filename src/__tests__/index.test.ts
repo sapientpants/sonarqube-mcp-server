@@ -3347,6 +3347,19 @@ describe('MCP Server', () => {
 
       nock('http://localhost:9000').post('/api/hotspots/change_status').reply(200);
 
+      // Mock issue resolution endpoints
+      nock('http://localhost:9000').post('/api/issues/add_comment').times(8).reply(200, {});
+
+      nock('http://localhost:9000')
+        .post('/api/issues/do_transition')
+        .times(8) // 4 individual calls + 4 from bulk operations (2 issues each)
+        .reply(200, {
+          issue: { key: 'test-issue', status: 'RESOLVED' },
+          components: [],
+          rules: [],
+          users: [],
+        });
+
       // Import and call all MCP wrapper functions
       const index = await import('../index.js');
 
@@ -3373,6 +3386,24 @@ describe('MCP Server', () => {
       await index.updateHotspotStatusMcpHandler({
         hotspot_key: 'test-hotspot',
         status: 'REVIEWED',
+      });
+
+      // Test new issue resolution MCP handlers
+      await index.markIssueFalsePositiveMcpHandler({
+        issue_key: 'ISSUE-123',
+        comment: 'Test comment',
+      });
+      await index.markIssueWontFixMcpHandler({
+        issue_key: 'ISSUE-456',
+        comment: 'Test comment',
+      });
+      await index.markIssuesFalsePositiveMcpHandler({
+        issue_keys: ['ISSUE-123', 'ISSUE-124'],
+        comment: 'Bulk comment',
+      });
+      await index.markIssuesWontFixMcpHandler({
+        issue_keys: ['ISSUE-456', 'ISSUE-457'],
+        comment: 'Bulk comment',
       });
     });
   });

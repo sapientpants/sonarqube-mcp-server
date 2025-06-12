@@ -12,6 +12,50 @@ import {
 } from './common.js';
 
 /**
+ * Schema for mark issue false positive tool
+ */
+export const markIssueFalsePositiveToolSchema = {
+  issue_key: z.string().describe('The key of the issue to mark as false positive'),
+  comment: z
+    .string()
+    .optional()
+    .describe('Optional comment explaining why this is a false positive'),
+};
+
+/**
+ * Schema for mark issue won\'t fix tool
+ */
+export const markIssueWontFixToolSchema = {
+  issue_key: z.string().describe("The key of the issue to mark as won't fix"),
+  comment: z.string().optional().describe("Optional comment explaining why this won't be fixed"),
+};
+
+/**
+ * Schema for mark issues false positive (bulk) tool
+ */
+export const markIssuesFalsePositiveToolSchema = {
+  issue_keys: z
+    .array(z.string())
+    .min(1, 'At least one issue key is required')
+    .describe('Array of issue keys to mark as false positive'),
+  comment: z
+    .string()
+    .optional()
+    .describe('Optional comment explaining why these are false positives'),
+};
+
+/**
+ * Schema for mark issues won\'t fix (bulk) tool
+ */
+export const markIssuesWontFixToolSchema = {
+  issue_keys: z
+    .array(z.string())
+    .min(1, 'At least one issue key is required')
+    .describe("Array of issue keys to mark as won't fix"),
+  comment: z.string().optional().describe("Optional comment explaining why these won't be fixed"),
+};
+
+/**
  * Schema for issues tool
  */
 export const issuesToolSchema = {
