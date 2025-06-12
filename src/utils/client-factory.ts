@@ -1,4 +1,6 @@
 import { createLogger } from './logger.js';
+import type { ISonarQubeClient } from '../types/index.js';
+import { createSonarQubeClientFromEnv } from '../sonarqube.js';
 
 const logger = createLogger('client-factory');
 
@@ -62,4 +64,27 @@ export const validateEnvironmentVariables = () => {
   }
 
   logger.info('Environment variables validated successfully');
+};
+
+// Create the SonarQube client
+const createDefaultClient = (): ISonarQubeClient => {
+  // Validate environment variables
+  validateEnvironmentVariables();
+
+  // Create and return client
+  return createSonarQubeClientFromEnv();
+};
+
+// Default client instance for backward compatibility
+// Created lazily to allow environment variable validation at runtime
+let defaultClient: ISonarQubeClient | null = null;
+
+export const getDefaultClient = (): ISonarQubeClient => {
+  defaultClient ??= createDefaultClient();
+  return defaultClient;
+};
+
+// Export for testing purposes
+export const resetDefaultClient = () => {
+  defaultClient = null;
 };
