@@ -7,6 +7,7 @@ import {
   ISonarQubeClient,
   IssuesParams,
   SonarQubeProject,
+  SonarQubeIssue,
   ComponentMeasuresParams,
   ComponentsMeasuresParams,
   MeasuresHistoryParams,
@@ -19,6 +20,9 @@ import {
 } from './sonarqube.js';
 import { z } from 'zod';
 import { createLogger } from './utils/logger.js';
+import { nullToUndefined, stringToNumberTransform } from './utils/transforms.js';
+import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
+import { validateEnvironmentVariables } from './utils/client-factory.js';
 
 const logger = createLogger('index');
 
@@ -32,92 +36,15 @@ if (!(StdioServerTransport.prototype as unknown as Connectable).connect) {
   };
 }
 
-/**
- * Helper function to convert null to undefined
- * @param value Any value that might be null
- * @returns The original value or undefined if null
- */
-export function nullToUndefined<T>(value: T | null | undefined): T | undefined {
-  return value === null ? undefined : value;
-}
-
-/**
- * Helper function to transform string to number or null
- * @param val String value to transform
- * @returns Number or null if conversion fails
- */
-export function stringToNumberTransform(val: string | null | undefined): number | null | undefined {
-  if (val === null || val === undefined) {
-    return val;
-  }
-  const parsed = parseInt(val, 10);
-  return isNaN(parsed) ? null : parsed;
-}
+// Re-export utilities for backward compatibility
+export { nullToUndefined, stringToNumberTransform } from './utils/transforms.js';
+export { mapToSonarQubeParams } from './utils/parameter-mappers.js';
 
 // Initialize MCP server
 export const mcpServer = new McpServer({
   name: 'sonarqube-mcp-server',
   version: '1.3.2',
 });
-
-// Validate environment variables
-const validateEnvironmentVariables = () => {
-  logger.debug('Validating environment variables');
-
-  // Check if any authentication method is configured
-  const hasToken = !!process.env.SONARQUBE_TOKEN;
-  const hasBasicAuth = !!process.env.SONARQUBE_USERNAME;
-  const hasPasscode = !!process.env.SONARQUBE_PASSCODE;
-
-  if (!hasToken && !hasBasicAuth && !hasPasscode) {
-    const error = new Error(
-      'No SonarQube authentication configured. Please set one of the following:\n' +
-        '- SONARQUBE_TOKEN for token-based authentication\n' +
-        '- SONARQUBE_USERNAME and SONARQUBE_PASSWORD (optional) for basic authentication\n' +
-        '- SONARQUBE_PASSCODE for system passcode authentication'
-    );
-    logger.error('Missing authentication environment variables', error);
-    throw error;
-  }
-
-  // Validate URL if provided
-  if (process.env.SONARQUBE_URL) {
-    try {
-      new URL(process.env.SONARQUBE_URL);
-      logger.debug('Valid SONARQUBE_URL provided', { url: process.env.SONARQUBE_URL });
-    } catch {
-      const error = new Error(
-        `Invalid SONARQUBE_URL: "${process.env.SONARQUBE_URL}". ` +
-          'Please provide a valid URL (e.g., https://sonarcloud.io or https://your-sonarqube-instance.com).'
-      );
-      logger.error('Invalid SONARQUBE_URL', error);
-      throw error;
-    }
-  }
-
-  // Validate organization if provided
-  if (
-    process.env.SONARQUBE_ORGANIZATION &&
-    typeof process.env.SONARQUBE_ORGANIZATION !== 'string'
-  ) {
-    const error = new Error(
-      'Invalid SONARQUBE_ORGANIZATION. Please provide a valid organization key as a string.'
-    );
-    logger.error('Invalid SONARQUBE_ORGANIZATION', error);
-    throw error;
-  }
-
-  // Log which authentication method is being used
-  if (hasToken) {
-    logger.info('Using token authentication');
-  } else if (hasBasicAuth) {
-    logger.info('Using basic authentication');
-  } else if (hasPasscode) {
-    logger.info('Using passcode authentication');
-  }
-
-  logger.info('Environment variables validated successfully');
-};
 
 // Create the SonarQube client
 export const createDefaultClient = (): ISonarQubeClient => {
@@ -199,93 +126,6 @@ export async function handleSonarQubeProjects(
 }
 
 /**
- * Maps MCP tool parameters to SonarQube client parameters
- * @param params Parameters from the MCP tool
- * @returns Parameters for the SonarQube client
- */
-export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesParams {
-  return {
-    // Component filters (support both single project_key and multiple projects)
-    projectKey: nullToUndefined(params.project_key) as string | undefined,
-    projects: nullToUndefined(params.projects) as string[] | undefined,
-    componentKeys: nullToUndefined(params.component_keys) as string[] | undefined,
-    components: nullToUndefined(params.components) as string[] | undefined,
-    onComponentOnly: nullToUndefined(params.on_component_only) as boolean | undefined,
-
-    // Branch and PR support
-    branch: nullToUndefined(params.branch) as string | undefined,
-    pullRequest: nullToUndefined(params.pull_request) as string | undefined,
-
-    // Issue filters
-    issues: nullToUndefined(params.issues) as string[] | undefined,
-    severity: nullToUndefined(params.severity) as IssuesParams['severity'], // Deprecated
-    severities: nullToUndefined(params.severities) as IssuesParams['severities'],
-    statuses: nullToUndefined(params.statuses) as IssuesParams['statuses'],
-    resolutions: nullToUndefined(params.resolutions) as IssuesParams['resolutions'],
-    resolved: nullToUndefined(params.resolved) as boolean | undefined,
-    types: nullToUndefined(params.types) as IssuesParams['types'],
-
-    // Clean Code taxonomy
-    cleanCodeAttributeCategories: nullToUndefined(
-      params.clean_code_attribute_categories
-    ) as IssuesParams['cleanCodeAttributeCategories'],
-    impactSeverities: nullToUndefined(params.impact_severities) as IssuesParams['impactSeverities'],
-    impactSoftwareQualities: nullToUndefined(
-      params.impact_software_qualities
-    ) as IssuesParams['impactSoftwareQualities'],
-    issueStatuses: nullToUndefined(params.issue_statuses) as IssuesParams['issueStatuses'],
-
-    // Rules and tags
-    rules: nullToUndefined(params.rules) as string[] | undefined,
-    tags: nullToUndefined(params.tags) as string[] | undefined,
-
-    // Date filters
-    createdAfter: nullToUndefined(params.created_after) as string | undefined,
-    createdBefore: nullToUndefined(params.created_before) as string | undefined,
-    createdAt: nullToUndefined(params.created_at) as string | undefined,
-    createdInLast: nullToUndefined(params.created_in_last) as string | undefined,
-
-    // Assignment
-    assigned: nullToUndefined(params.assigned) as boolean | undefined,
-    assignees: nullToUndefined(params.assignees) as string[] | undefined,
-    author: nullToUndefined(params.author) as string | undefined,
-    authors: nullToUndefined(params.authors) as string[] | undefined,
-
-    // Security standards
-    cwe: nullToUndefined(params.cwe) as string[] | undefined,
-    owaspTop10: nullToUndefined(params.owasp_top10) as string[] | undefined,
-    owaspTop10v2021: nullToUndefined(params.owasp_top10_v2021) as string[] | undefined,
-    sansTop25: nullToUndefined(params.sans_top25) as string[] | undefined,
-    sonarsourceSecurity: nullToUndefined(params.sonarsource_security) as string[] | undefined,
-    sonarsourceSecurityCategory: nullToUndefined(params.sonarsource_security_category) as
-      | string[]
-      | undefined,
-
-    // Languages
-    languages: nullToUndefined(params.languages) as string[] | undefined,
-
-    // Facets
-    facets: nullToUndefined(params.facets) as string[] | undefined,
-    facetMode: nullToUndefined(params.facet_mode) as IssuesParams['facetMode'],
-
-    // New code
-    sinceLeakPeriod: nullToUndefined(params.since_leak_period) as boolean | undefined,
-    inNewCodePeriod: nullToUndefined(params.in_new_code_period) as boolean | undefined,
-
-    // Sorting
-    s: nullToUndefined(params.s) as string | undefined,
-    asc: nullToUndefined(params.asc) as boolean | undefined,
-
-    // Response optimization
-    additionalFields: nullToUndefined(params.additional_fields) as string[] | undefined,
-
-    // Pagination
-    page: nullToUndefined(params.page) as number | undefined,
-    pageSize: nullToUndefined(params.page_size) as number | undefined,
-  };
-}
-
-/**
  * Fetches and returns issues from a specified SonarQube project
  * @param params Parameters for fetching issues, including project key, severity, and pagination
  * @param client Optional SonarQube client instance
@@ -310,7 +150,7 @@ export async function handleSonarQubeGetIssues(
         {
           type: 'text' as const,
           text: JSON.stringify({
-            issues: result.issues.map((issue) => ({
+            issues: result.issues.map((issue: SonarQubeIssue) => ({
               key: issue.key,
               rule: issue.rule,
               severity: issue.severity,
