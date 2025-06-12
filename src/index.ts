@@ -35,6 +35,7 @@ import {
   handleSonarQubeHotspot,
   handleSonarQubeUpdateHotspotStatus,
   handleAddCommentToIssue,
+  handleAssignIssue,
 } from './handlers/index.js';
 import {
   projectsToolSchema,
@@ -45,6 +46,7 @@ import {
   markIssuesFalsePositiveToolSchema,
   markIssuesWontFixToolSchema,
   addCommentToIssueToolSchema,
+  assignIssueToolSchema,
   systemHealthToolSchema,
   systemStatusToolSchema,
   systemPingToolSchema,
@@ -213,6 +215,16 @@ export const addCommentToIssueHandler = async (params: Record<string, unknown>) 
 };
 
 /**
+ * Lambda function for assign issue tool
+ */
+export const assignIssueHandler = async (params: Record<string, unknown>) => {
+  return handleAssignIssue({
+    issueKey: params.issueKey as string,
+    assignee: params.assignee as string | undefined,
+  });
+};
+
+/**
  * Lambda function for system_health tool
  */
 export const healthHandler = handleSonarQubeGetHealth;
@@ -377,6 +389,8 @@ export const markIssuesWontFixMcpHandler = (params: Record<string, unknown>) =>
   markIssuesWontFixHandler(params);
 export const addCommentToIssueMcpHandler = (params: Record<string, unknown>) =>
   addCommentToIssueHandler(params);
+export const assignIssueMcpHandler = (params: Record<string, unknown>) =>
+  assignIssueHandler(params);
 export const healthMcpHandler = () => healthHandler();
 export const statusMcpHandler = () => statusHandler();
 export const pingMcpHandler = () => pingHandler();
@@ -448,6 +462,13 @@ mcpServer.tool(
   'Add a comment to a SonarQube issue',
   addCommentToIssueToolSchema,
   addCommentToIssueMcpHandler
+);
+
+mcpServer.tool(
+  'assignIssue',
+  'Assign a SonarQube issue to a user or unassign it',
+  assignIssueToolSchema,
+  assignIssueMcpHandler
 );
 
 // Register system API tools

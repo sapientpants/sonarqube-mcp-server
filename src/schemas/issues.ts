@@ -70,6 +70,17 @@ export const addCommentToIssueToolSchema = {
 };
 
 /**
+ * Schema for assign issue tool
+ */
+export const assignIssueToolSchema = {
+  issueKey: z.string().min(1, 'Issue key is required').describe('The key of the issue to assign'),
+  assignee: z
+    .string()
+    .optional()
+    .describe('The username of the assignee. Leave empty to unassign the issue'),
+};
+
+/**
  * Schema for issues tool
  */
 export const issuesToolSchema = {

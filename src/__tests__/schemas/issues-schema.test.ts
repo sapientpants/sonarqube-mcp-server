@@ -6,6 +6,7 @@ import {
   markIssuesFalsePositiveToolSchema,
   markIssuesWontFixToolSchema,
   addCommentToIssueToolSchema,
+  assignIssueToolSchema,
 } from '../../schemas/issues.js';
 
 describe('issuesToolSchema', () => {
@@ -424,5 +425,53 @@ describe('addCommentToIssueToolSchema', () => {
     };
     const result = z.object(addCommentToIssueToolSchema).parse(input);
     expect(result.text).toBe('Unicode: 😀 你好 مرحبا こんにちは');
+  });
+});
+
+describe('assignIssueToolSchema', () => {
+  it('should validate issue assignment with assignee', () => {
+    const input = {
+      issueKey: 'ISSUE-123',
+      assignee: 'john.doe',
+    };
+    const result = z.object(assignIssueToolSchema).parse(input);
+    expect(result.issueKey).toBe('ISSUE-123');
+    expect(result.assignee).toBe('john.doe');
+  });
+
+  it('should validate issue unassignment without assignee', () => {
+    const input = {
+      issueKey: 'ISSUE-456',
+    };
+    const result = z.object(assignIssueToolSchema).parse(input);
+    expect(result.issueKey).toBe('ISSUE-456');
+    expect(result.assignee).toBeUndefined();
+  });
+
+  it('should reject empty issue key', () => {
+    expect(() =>
+      z.object(assignIssueToolSchema).parse({
+        issueKey: '',
+        assignee: 'john.doe',
+      })
+    ).toThrow();
+  });
+
+  it('should reject missing issue key', () => {
+    expect(() =>
+      z.object(assignIssueToolSchema).parse({
+        assignee: 'john.doe',
+      })
+    ).toThrow();
+  });
+
+  it('should allow empty string for assignee to unassign', () => {
+    const input = {
+      issueKey: 'ISSUE-789',
+      assignee: '',
+    };
+    const result = z.object(assignIssueToolSchema).parse(input);
+    expect(result.issueKey).toBe('ISSUE-789');
+    expect(result.assignee).toBe('');
   });
 });

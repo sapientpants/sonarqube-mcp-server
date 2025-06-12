@@ -4,10 +4,12 @@ import type { SonarQubeProjectsResult } from './projects.js';
 import type {
   IssuesParams,
   SonarQubeIssuesResult,
+  SonarQubeIssue,
   MarkIssueFalsePositiveParams,
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
   AddCommentToIssueParams,
+  AssignIssueParams,
   SonarQubeIssueComment,
   DoTransitionResponse,
 } from './issues.js';
@@ -68,6 +70,7 @@ export type {
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
   AddCommentToIssueParams,
+  AssignIssueParams,
   DoTransitionRequest,
   DoTransitionResponse,
 } from './issues.js';
@@ -157,4 +160,7 @@ export interface ISonarQubeClient {
 
   // Issue comment methods
   addCommentToIssue(params: AddCommentToIssueParams): Promise<SonarQubeIssueComment>;
+
+  // Issue assignment methods
+  assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue>;
 }

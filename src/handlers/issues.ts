@@ -320,3 +320,67 @@ export async function handleAddCommentToIssue(
     throw error;
   }
 }
+
+/**
+ * Handler for assigning an issue
+ */
+export async function handleAssignIssue(
+  params: { issueKey: string; assignee?: string },
+  client?: ISonarQubeClient
+) {
+  const sonarQubeClient = client ?? (await getDefaultClient());
+
+  logger.debug('Handling assign issue request', {
+    issueKey: params.issueKey,
+    assignee: params.assignee,
+  });
+
+  try {
+    const updatedIssue = await sonarQubeClient.assignIssue({
+      issueKey: params.issueKey,
+      assignee: params.assignee,
+    });
+
+    // Cast to access dynamic fields
+    const issueWithAssignee = updatedIssue as SonarQubeIssue & {
+      assignee?: string | null;
+      assigneeName?: string | null;
+      resolution?: string | null;
+    };
+
+    const assigneeName = issueWithAssignee.assignee || 'unassigned';
+    const assigneeDisplay = params.assignee
+      ? `Assigned to: ${issueWithAssignee.assigneeName || params.assignee}`
+      : 'Issue unassigned';
+
+    logger.info('Issue assigned successfully', {
+      issueKey: params.issueKey,
+      assignee: assigneeName,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `${assigneeDisplay} for issue ${params.issueKey}`,
+            issue: {
+              key: updatedIssue.key,
+              component: updatedIssue.component || 'N/A',
+              message: updatedIssue.message,
+              severity: updatedIssue.severity || 'UNKNOWN',
+              type: updatedIssue.type || 'UNKNOWN',
+              status: updatedIssue.status,
+              resolution: issueWithAssignee.resolution || null,
+              assignee: issueWithAssignee.assignee,
+              assigneeName: issueWithAssignee.assigneeName || null,
+            },
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to assign issue', error);
+    throw error;
+  }
+}
