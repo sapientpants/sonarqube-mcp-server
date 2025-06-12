@@ -10,6 +10,7 @@ export {
   handleMarkIssueWontFix,
   handleMarkIssuesFalsePositive,
   handleMarkIssuesWontFix,
+  handleAddCommentToIssue,
 } from './issues.js';
 
 export { handleSonarQubeGetMetrics } from './metrics.js';

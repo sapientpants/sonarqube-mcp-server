@@ -3,9 +3,11 @@ import type {
   SonarQubeIssuesResult,
   SonarQubeIssue,
   SonarQubeRule,
+  SonarQubeIssueComment,
   MarkIssueFalsePositiveParams,
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
+  AddCommentToIssueParams,
   DoTransitionResponse,
 } from '../types/index.js';
 import { BaseDomain } from './base.js';
@@ -331,5 +333,32 @@ export class IssuesDomain extends BaseDomain {
     }
 
     return results;
+  }
+
+  /**
+   * Add a comment to an issue
+   * @param params Parameters including issue key and comment text
+   * @returns Promise with the created comment details
+   */
+  async addCommentToIssue(params: AddCommentToIssueParams): Promise<SonarQubeIssueComment> {
+    const response = await this.webApiClient.issues.addComment({
+      issue: params.issueKey,
+      text: params.text,
+    });
+
+    // The API returns the full issue with comments, so we need to extract the latest comment
+    const issue = response.issue as SonarQubeIssue;
+    const comments = issue.comments || [];
+
+    // Sort comments by timestamp to ensure chronological order
+    comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    // The newly added comment should now be the last one
+    const newComment = comments[comments.length - 1];
+    if (!newComment) {
+      throw new Error('Failed to retrieve the newly added comment');
+    }
+
+    return newComment;
   }
 }

@@ -42,8 +42,10 @@ import type {
   MarkIssueFalsePositiveParams,
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
+  AddCommentToIssueParams,
   DoTransitionResponse,
   ISonarQubeClient,
+  SonarQubeIssueComment,
 } from './types/index.js';
 
 // Re-export all types for backward compatibility
@@ -95,6 +97,10 @@ export type {
   SonarQubeHotspotSearchResult,
   SonarQubeHotspotDetails,
   HotspotStatusUpdateParams,
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+  AddCommentToIssueParams,
   ISonarQubeClient,
 } from './types/index.js';
 
@@ -470,6 +476,15 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   async markIssuesWontFix(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
     return this.issuesDomain.markIssuesWontFix(params);
+  }
+
+  /**
+   * Add a comment to an issue
+   * @param params Parameters including issue key and comment text
+   * @returns Promise with the created comment details
+   */
+  async addCommentToIssue(params: AddCommentToIssueParams): Promise<SonarQubeIssueComment> {
+    return this.issuesDomain.addCommentToIssue(params);
   }
 }
 
