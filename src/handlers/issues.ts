@@ -6,6 +6,10 @@ import type {
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
   AddCommentToIssueParams,
+  ConfirmIssueParams,
+  UnconfirmIssueParams,
+  ResolveIssueParams,
+  ReopenIssueParams,
 } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
 import { createLogger } from '../utils/logger.js';
@@ -384,6 +388,150 @@ export async function handleAssignIssue(
     };
   } catch (error) {
     logger.error('Failed to assign issue', error);
+    throw error;
+  }
+}
+
+/**
+ * Handler for confirming an issue
+ */
+export async function handleConfirmIssue(
+  params: ConfirmIssueParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling confirm issue request', { issueKey: params.issueKey });
+
+  try {
+    const result = await client.confirmIssue(params);
+    logger.info('Successfully confirmed issue', {
+      issueKey: params.issueKey,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Issue ${params.issueKey} confirmed`,
+            issue: result.issue,
+            components: result.components,
+            rules: result.rules,
+            users: result.users,
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to confirm issue', error);
+    throw error;
+  }
+}
+
+/**
+ * Handler for unconfirming an issue
+ */
+export async function handleUnconfirmIssue(
+  params: UnconfirmIssueParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling unconfirm issue request', { issueKey: params.issueKey });
+
+  try {
+    const result = await client.unconfirmIssue(params);
+    logger.info('Successfully unconfirmed issue', {
+      issueKey: params.issueKey,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Issue ${params.issueKey} unconfirmed`,
+            issue: result.issue,
+            components: result.components,
+            rules: result.rules,
+            users: result.users,
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to unconfirm issue', error);
+    throw error;
+  }
+}
+
+/**
+ * Handler for resolving an issue
+ */
+export async function handleResolveIssue(
+  params: ResolveIssueParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling resolve issue request', { issueKey: params.issueKey });
+
+  try {
+    const result = await client.resolveIssue(params);
+    logger.info('Successfully resolved issue', {
+      issueKey: params.issueKey,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Issue ${params.issueKey} resolved`,
+            issue: result.issue,
+            components: result.components,
+            rules: result.rules,
+            users: result.users,
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to resolve issue', error);
+    throw error;
+  }
+}
+
+/**
+ * Handler for reopening an issue
+ */
+export async function handleReopenIssue(
+  params: ReopenIssueParams,
+  client: ISonarQubeClient = getDefaultClient()
+) {
+  logger.debug('Handling reopen issue request', { issueKey: params.issueKey });
+
+  try {
+    const result = await client.reopenIssue(params);
+    logger.info('Successfully reopened issue', {
+      issueKey: params.issueKey,
+      comment: params.comment ? 'with comment' : 'without comment',
+    });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify({
+            message: `Issue ${params.issueKey} reopened`,
+            issue: result.issue,
+            components: result.components,
+            rules: result.rules,
+            users: result.users,
+          }),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to reopen issue', error);
     throw error;
   }
 }

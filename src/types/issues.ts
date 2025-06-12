@@ -273,5 +273,37 @@ export interface AssignIssueParams {
   assignee?: string;
 }
 
+/**
+ * Parameters for confirming an issue
+ */
+export interface ConfirmIssueParams {
+  issueKey: string;
+  comment?: string;
+}
+
+/**
+ * Parameters for unconfirming an issue
+ */
+export interface UnconfirmIssueParams {
+  issueKey: string;
+  comment?: string;
+}
+
+/**
+ * Parameters for resolving an issue
+ */
+export interface ResolveIssueParams {
+  issueKey: string;
+  comment?: string;
+}
+
+/**
+ * Parameters for reopening an issue
+ */
+export interface ReopenIssueParams {
+  issueKey: string;
+  comment?: string;
+}
+
 // Re-export transition types from the web API client
 export type { DoTransitionRequest, DoTransitionResponse };

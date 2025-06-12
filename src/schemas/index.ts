@@ -17,6 +17,10 @@ export {
   markIssuesWontFixToolSchema,
   addCommentToIssueToolSchema,
   assignIssueToolSchema,
+  confirmIssueToolSchema,
+  unconfirmIssueToolSchema,
+  resolveIssueToolSchema,
+  reopenIssueToolSchema,
 } from './issues.js';
 export { systemHealthToolSchema, systemStatusToolSchema, systemPingToolSchema } from './system.js';
 export {
