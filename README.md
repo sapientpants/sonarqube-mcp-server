@@ -39,6 +39,7 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 - 📈 **Analyze project quality over time** - Track metrics history and trends
 - 🔍 **View source code with issues** - See problematic code with highlighted issues
 - 🏥 **Monitor system health** - Check SonarQube instance status and availability
+- 🔄 **Enhanced error handling** - Clear error messages with solutions and automatic retry for transient failures
 
 ## Quick Start
 
@@ -1006,6 +1007,118 @@ A: The `issues` tool supports extensive filtering. You can combine multiple para
 
 **Q: Can I analyze pull requests?**
 A: Yes! Many tools support `branch` and `pull_request` parameters for branch and PR analysis.
+
+## Troubleshooting
+
+### Common Error Messages and Solutions
+
+#### Authentication Errors
+
+**Error: "Authentication failed"**
+- **Solution**: Check that your SONARQUBE_TOKEN is valid and not expired. Generate a new token from your SonarQube user profile.
+
+**Error: "Missing authentication configuration"**
+- **Solution**: Set one of the following authentication methods:
+  - `SONARQUBE_TOKEN` for token-based authentication (recommended)
+  - `SONARQUBE_USERNAME` and `SONARQUBE_PASSWORD` for basic authentication
+  - `SONARQUBE_PASSCODE` for system passcode authentication
+
+#### Authorization Errors
+
+**Error: "Access denied"**
+- **Solution**: Ensure your token has the required permissions for the operation. Common required permissions:
+  - "Execute Analysis" for code analysis
+  - "Browse" for reading project data
+  - "Administer Issues" for issue management operations
+
+#### Resource Not Found Errors
+
+**Error: "Resource not found"**
+- **Solution**: Verify that:
+  - The project key/component exists in SonarQube
+  - You have access to the resource
+  - The URL path is correct (no typos in project keys)
+
+#### Network and Connection Errors
+
+**Error: "Connection refused"**
+- **Solution**: Check that:
+  - The SonarQube server is running
+  - The SONARQUBE_URL is correct
+  - There are no firewall rules blocking the connection
+
+**Error: "Network error" or timeout errors**
+- **Solution**: 
+  - Verify your network connection
+  - Check if the SonarQube server is accessible
+  - Ensure the URL doesn't have a trailing slash
+  - For self-hosted instances, verify SSL certificates
+
+#### Rate Limiting
+
+**Error: "Rate limit exceeded"**
+- **Solution**: The server automatically retries rate-limited requests with exponential backoff. If you continue to hit rate limits:
+  - Reduce the frequency of your requests
+  - Implement request batching where possible
+  - Contact your SonarQube administrator to increase rate limits
+
+#### Configuration Errors
+
+**Error: "Invalid SONARQUBE_URL"**
+- **Solution**: Provide a valid URL including the protocol:
+  - ✅ Correct: `https://sonarcloud.io`
+  - ✅ Correct: `https://sonarqube.example.com`
+  - ❌ Wrong: `sonarcloud.io` (missing protocol)
+  - ❌ Wrong: `https://sonarqube.example.com/` (trailing slash)
+
+### Debugging Tips
+
+1. **Enable Debug Logging**:
+   ```bash
+   export LOG_LEVEL=DEBUG
+   ```
+
+2. **Check Environment Variables**:
+   ```bash
+   echo $SONARQUBE_URL
+   echo $SONARQUBE_TOKEN
+   echo $SONARQUBE_ORGANIZATION
+   ```
+
+3. **Test Connection**:
+   Use the `ping` tool to verify connectivity:
+   ```bash
+   # In your MCP client
+   sonarqube.ping
+   ```
+
+4. **Verify Permissions**:
+   Use the `projects` tool to list accessible projects:
+   ```bash
+   # In your MCP client
+   sonarqube.projects
+   ```
+
+### Retry Behavior
+
+The server automatically retries failed requests for transient errors:
+- **Network errors**: Retried up to 3 times
+- **Rate limiting**: Retried with exponential backoff
+- **Server errors (5xx)**: Retried up to 3 times
+
+Retry delays: 1s → 2s → 4s (capped at 10s)
+
+### Getting Help
+
+If you continue to experience issues:
+
+1. Check the [GitHub Issues](https://github.com/sapientpants/sonarqube-mcp-server/issues) for similar problems
+2. Enable debug logging and collect error details
+3. Create a new issue with:
+   - Error messages
+   - Environment details (OS, Node version)
+   - SonarQube version
+   - Steps to reproduce
 
 ## Contributing
 

@@ -1,5 +1,9 @@
 import type { ISonarQubeClient } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
+import { createLogger } from '../utils/logger.js';
+import { withErrorHandling, SonarQubeAPIError, formatErrorForMCP } from '../errors.js';
+
+const logger = createLogger('handlers/system');
 
 /**
  * Handler for getting SonarQube system health status
@@ -7,16 +11,28 @@ import { getDefaultClient } from '../utils/client-factory.js';
  * @returns Promise with the health status result
  */
 export async function handleSonarQubeGetHealth(client: ISonarQubeClient = getDefaultClient()) {
-  const result = await client.getHealth();
+  logger.debug('Handling get health request');
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  try {
+    const result = await withErrorHandling('Get SonarQube health status', () => client.getHealth());
+    logger.info('Successfully retrieved health status', { health: result.health });
+
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result),
+        },
+      ],
+    };
+  } catch (error) {
+    logger.error('Failed to get health status', error);
+    if (error instanceof SonarQubeAPIError) {
+      const { code, message } = formatErrorForMCP(error);
+      throw { code, message };
+    }
+    throw error;
+  }
 }
 
 /**

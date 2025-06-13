@@ -2,6 +2,7 @@ import type { PaginationParams, ISonarQubeClient, SonarQubeProject } from '../ty
 import { getDefaultClient } from '../utils/client-factory.js';
 import { nullToUndefined } from '../utils/transforms.js';
 import { createLogger } from '../utils/logger.js';
+import { withErrorHandling, SonarQubeAPIError, formatErrorForMCP } from '../errors.js';
 
 const logger = createLogger('handlers/projects');
 
@@ -27,7 +28,9 @@ export async function handleSonarQubeProjects(
   };
 
   try {
-    const result = await client.listProjects(projectsParams);
+    const result = await withErrorHandling('List SonarQube projects', () =>
+      client.listProjects(projectsParams)
+    );
     logger.info('Successfully retrieved projects', { count: result.projects.length });
     return {
       content: [
@@ -50,6 +53,10 @@ export async function handleSonarQubeProjects(
     };
   } catch (error) {
     logger.error('Failed to retrieve SonarQube projects', error);
+    if (error instanceof SonarQubeAPIError) {
+      const { code, message } = formatErrorForMCP(error);
+      throw { code, message };
+    }
     throw error;
   }
 }
