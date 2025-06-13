@@ -2,7 +2,8 @@ import type { PaginationParams, ISonarQubeClient, SonarQubeProject } from '../ty
 import { getDefaultClient } from '../utils/client-factory.js';
 import { nullToUndefined } from '../utils/transforms.js';
 import { createLogger } from '../utils/logger.js';
-import { withErrorHandling, SonarQubeAPIError, formatErrorForMCP } from '../errors.js';
+import { withErrorHandling } from '../errors.js';
+import { withMCPErrorHandling } from '../utils/error-handler.js';
 
 const logger = createLogger('handlers/projects');
 
@@ -13,21 +14,21 @@ const logger = createLogger('handlers/projects');
  * @returns A response containing the list of projects with their details
  * @throws Error if no authentication environment variables are set (SONARQUBE_TOKEN, SONARQUBE_USERNAME/PASSWORD, or SONARQUBE_PASSCODE)
  */
-export async function handleSonarQubeProjects(
-  params: {
-    page?: number | null;
-    page_size?: number | null;
-  },
-  client: ISonarQubeClient = getDefaultClient()
-) {
-  logger.debug('Handling SonarQube projects request', params);
+export const handleSonarQubeProjects = withMCPErrorHandling(
+  async (
+    params: {
+      page?: number | null;
+      page_size?: number | null;
+    },
+    client: ISonarQubeClient = getDefaultClient()
+  ) => {
+    logger.debug('Handling SonarQube projects request', params);
 
-  const projectsParams: PaginationParams = {
-    page: nullToUndefined(params.page),
-    pageSize: nullToUndefined(params.page_size),
-  };
+    const projectsParams: PaginationParams = {
+      page: nullToUndefined(params.page),
+      pageSize: nullToUndefined(params.page_size),
+    };
 
-  try {
     const result = await withErrorHandling('List SonarQube projects', () =>
       client.listProjects(projectsParams)
     );
@@ -51,12 +52,5 @@ export async function handleSonarQubeProjects(
         },
       ],
     };
-  } catch (error) {
-    logger.error('Failed to retrieve SonarQube projects', error);
-    if (error instanceof SonarQubeAPIError) {
-      const { code, message } = formatErrorForMCP(error);
-      throw { code, message };
-    }
-    throw error;
   }
-}
+);

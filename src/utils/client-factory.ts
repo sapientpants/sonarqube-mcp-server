@@ -64,22 +64,20 @@ export const validateEnvironmentVariables = () => {
   }
 
   // Validate organization if provided
-  if (
-    process.env.SONARQUBE_ORGANIZATION &&
-    typeof process.env.SONARQUBE_ORGANIZATION !== 'string'
-  ) {
+  if (process.env.SONARQUBE_ORGANIZATION && process.env.SONARQUBE_ORGANIZATION.trim() === '') {
     const error = new SonarQubeAPIError(
-      'Invalid SONARQUBE_ORGANIZATION format',
+      'Empty SONARQUBE_ORGANIZATION',
       SonarQubeErrorType.CONFIGURATION_ERROR,
       {
         operation: 'validateEnvironmentVariables',
-        solution: 'Provide a valid organization key as a string (e.g., "my-org")',
+        solution:
+          'Provide a valid organization key (e.g., "my-org") or remove the environment variable',
         context: {
-          providedType: typeof process.env.SONARQUBE_ORGANIZATION,
+          providedValue: '(empty string)',
         },
       }
     );
-    logger.error('Invalid SONARQUBE_ORGANIZATION', error);
+    logger.error('Empty SONARQUBE_ORGANIZATION', error);
     throw error;
   }
 

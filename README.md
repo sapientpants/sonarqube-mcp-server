@@ -1017,7 +1017,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 **Error: "Authentication failed"**
 - **Solution**: Check that your SONARQUBE_TOKEN is valid and not expired. Generate a new token from your SonarQube user profile.
 
-**Error: "Missing authentication configuration"**
+**Error: "No SonarQube authentication configured"**
 - **Solution**: Set one of the following authentication methods:
   - `SONARQUBE_TOKEN` for token-based authentication (recommended)
   - `SONARQUBE_USERNAME` and `SONARQUBE_PASSWORD` for basic authentication
