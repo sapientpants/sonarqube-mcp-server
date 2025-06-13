@@ -1,6 +1,7 @@
 import { createLogger } from './logger.js';
 import type { ISonarQubeClient } from '../types/index.js';
 import { createSonarQubeClientFromEnv } from '../sonarqube.js';
+import { SonarQubeAPIError, SonarQubeErrorType } from '../errors.js';
 
 const logger = createLogger('client-factory');
 
@@ -17,11 +18,22 @@ export const validateEnvironmentVariables = () => {
   const hasPasscode = !!process.env.SONARQUBE_PASSCODE;
 
   if (!hasToken && !hasBasicAuth && !hasPasscode) {
-    const error = new Error(
-      'No SonarQube authentication configured. Please set one of the following:\n' +
-        '- SONARQUBE_TOKEN for token-based authentication\n' +
-        '- SONARQUBE_USERNAME and SONARQUBE_PASSWORD (optional) for basic authentication\n' +
-        '- SONARQUBE_PASSCODE for system passcode authentication'
+    const error = new SonarQubeAPIError(
+      'No SonarQube authentication configured',
+      SonarQubeErrorType.CONFIGURATION_ERROR,
+      {
+        operation: 'validateEnvironmentVariables',
+        solution:
+          'Set one of the following authentication methods:\n' +
+          '• SONARQUBE_TOKEN for token-based authentication (recommended)\n' +
+          '• SONARQUBE_USERNAME and SONARQUBE_PASSWORD for basic authentication\n' +
+          '• SONARQUBE_PASSCODE for system passcode authentication',
+        context: {
+          hasToken,
+          hasBasicAuth,
+          hasPasscode,
+        },
+      }
     );
     logger.error('Missing authentication environment variables', error);
     throw error;
@@ -33,9 +45,18 @@ export const validateEnvironmentVariables = () => {
       new URL(process.env.SONARQUBE_URL);
       logger.debug('Valid SONARQUBE_URL provided', { url: process.env.SONARQUBE_URL });
     } catch {
-      const error = new Error(
-        `Invalid SONARQUBE_URL: "${process.env.SONARQUBE_URL}". ` +
-          'Please provide a valid URL (e.g., https://sonarcloud.io or https://your-sonarqube-instance.com).'
+      const error = new SonarQubeAPIError(
+        `Invalid SONARQUBE_URL: "${process.env.SONARQUBE_URL}"`,
+        SonarQubeErrorType.CONFIGURATION_ERROR,
+        {
+          operation: 'validateEnvironmentVariables',
+          solution:
+            'Provide a valid URL including protocol (e.g., https://sonarcloud.io or https://your-sonarqube.com)\n' +
+            'Note: URL should not have a trailing slash',
+          context: {
+            providedUrl: process.env.SONARQUBE_URL,
+          },
+        }
       );
       logger.error('Invalid SONARQUBE_URL', error);
       throw error;
@@ -43,14 +64,20 @@ export const validateEnvironmentVariables = () => {
   }
 
   // Validate organization if provided
-  if (
-    process.env.SONARQUBE_ORGANIZATION &&
-    typeof process.env.SONARQUBE_ORGANIZATION !== 'string'
-  ) {
-    const error = new Error(
-      'Invalid SONARQUBE_ORGANIZATION. Please provide a valid organization key as a string.'
+  if (process.env.SONARQUBE_ORGANIZATION && process.env.SONARQUBE_ORGANIZATION.trim() === '') {
+    const error = new SonarQubeAPIError(
+      'Empty SONARQUBE_ORGANIZATION',
+      SonarQubeErrorType.CONFIGURATION_ERROR,
+      {
+        operation: 'validateEnvironmentVariables',
+        solution:
+          'Provide a valid organization key (e.g., "my-org") or remove the environment variable',
+        context: {
+          providedValue: '(empty string)',
+        },
+      }
     );
-    logger.error('Invalid SONARQUBE_ORGANIZATION', error);
+    logger.error('Empty SONARQUBE_ORGANIZATION', error);
     throw error;
   }
 
