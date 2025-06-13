@@ -152,10 +152,13 @@ The simplest way to use the SonarQube MCP Server is through npx:
 }
 ```
 
-### Docker
+### Docker (Recommended for Production)
 
-Run the server using Docker:
+Docker provides the most reliable deployment method by packaging all dependencies and ensuring consistent behavior across different environments.
 
+#### Quick Start with Docker
+
+**For stdio transport (Claude Desktop):**
 ```json
 {
   "mcpServers": {
@@ -168,7 +171,7 @@ Run the server using Docker:
         "-e", "SONARQUBE_URL",
         "-e", "SONARQUBE_TOKEN",
         "-e", "SONARQUBE_ORGANIZATION",
-        "sapientpants/sonarqube-mcp-server"
+        "sapientpants/sonarqube-mcp-server:latest"
       ],
       "env": {
         "SONARQUBE_URL": "https://sonarqube.example.com",
@@ -179,6 +182,124 @@ Run the server using Docker:
   }
 }
 ```
+
+**For SSE transport (Web applications):**
+```bash
+docker run -d \
+  --name sonarqube-mcp \
+  -p 3000:3000 \
+  -e SONARQUBE_URL="https://sonarqube.example.com" \
+  -e SONARQUBE_TOKEN="your-token" \
+  -e SONARQUBE_ORGANIZATION="your-org" \
+  -e TRANSPORT="sse" \
+  sapientpants/sonarqube-mcp-server:latest
+```
+
+#### Docker Hub Images
+
+Official images are available on Docker Hub: [`sapientpants/sonarqube-mcp-server`](https://hub.docker.com/r/sapientpants/sonarqube-mcp-server)
+
+**Available tags:**
+- `latest` - Latest stable release
+- `1.3.2` - Specific version (recommended for production)
+- `1.3` - Latest patch version of 1.3.x
+- `1` - Latest minor version of 1.x.x
+
+**Pull the image:**
+```bash
+docker pull sapientpants/sonarqube-mcp-server:latest
+```
+
+#### Advanced Docker Configuration
+
+**With logging enabled:**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v", "/tmp/sonarqube-logs:/logs",
+        "-e", "SONARQUBE_URL",
+        "-e", "SONARQUBE_TOKEN",
+        "-e", "SONARQUBE_ORGANIZATION",
+        "-e", "LOG_FILE=/logs/sonarqube-mcp.log",
+        "-e", "LOG_LEVEL=INFO",
+        "sapientpants/sonarqube-mcp-server:latest"
+      ],
+      "env": {
+        "SONARQUBE_URL": "https://sonarqube.example.com",
+        "SONARQUBE_TOKEN": "your-sonarqube-token",
+        "SONARQUBE_ORGANIZATION": "your-organization-key"
+      }
+    }
+  }
+}
+```
+
+**Using Docker Compose:**
+```yaml
+version: '3.8'
+services:
+  sonarqube-mcp:
+    image: sapientpants/sonarqube-mcp-server:latest
+    environment:
+      - SONARQUBE_URL=https://sonarqube.example.com
+      - SONARQUBE_TOKEN=${SONARQUBE_TOKEN}
+      - SONARQUBE_ORGANIZATION=${SONARQUBE_ORGANIZATION}
+      - LOG_FILE=/logs/sonarqube-mcp.log
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/logs
+    stdin_open: true
+    tty: true
+```
+
+#### Building Your Own Docker Image
+
+If you need to customize the server, you can build your own image:
+
+```bash
+# Clone the repository
+git clone https://github.com/sapientpants/sonarqube-mcp-server.git
+cd sonarqube-mcp-server
+
+# Build the Docker image
+docker build -t my-sonarqube-mcp-server .
+
+# Run your custom image
+docker run -i --rm \
+  -e SONARQUBE_URL="https://sonarqube.example.com" \
+  -e SONARQUBE_TOKEN="your-token" \
+  my-sonarqube-mcp-server
+```
+
+#### Docker Best Practices
+
+1. **Version Pinning**: Always use specific version tags in production:
+   ```bash
+   sapientpants/sonarqube-mcp-server:1.3.2
+   ```
+
+2. **Resource Limits**: Set appropriate resource limits:
+   ```bash
+   docker run -i --rm \
+     --memory="256m" \
+     --cpus="0.5" \
+     sapientpants/sonarqube-mcp-server:1.3.2
+   ```
+
+3. **Security**: Run as non-root user (default in our image):
+   ```bash
+   docker run -i --rm \
+     --user node \
+     sapientpants/sonarqube-mcp-server:1.3.2
+   ```
+
+4. **Health Checks**: The container includes a health check that verifies the Node.js process is running
 
 ### Local Development
 

@@ -2,84 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build and Test Commands
+## Project Overview
+
+See [README.md](./README.md) for the complete project overview, features, and usage documentation.
+
+## Architecture Decision Records (ADRs)
+
+This project uses adr-tools to document architectural decisions. ADRs are stored in `doc/architecture/decisions/`.
 
 ```bash
-# Install dependencies
-pnpm install
+# Create a new ADR without opening an editor (prevents timeout in Claude Code)
+EDITOR=true adr-new "Title of the decision"
 
-# Build the project
-pnpm build
-
-# Run in development mode with auto-reload
-pnpm dev
-
-# Run tests
-pnpm test
-
-# Run a specific test file
-NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest src/__tests__/file-name.test.ts
-
-# Run tests with coverage
-pnpm test:coverage
-
-# Lint the code
-pnpm lint
-
-# Fix linting issues
-pnpm lint:fix
-
-# Check types without emitting files
-pnpm check-types
-
-# Format code with prettier
-pnpm format
-
-# Check code formatting
-pnpm format:check
-
-# Run all checks (format, lint, types, tests)
-pnpm validate
-
-# Inspect MCP tool schema
-pnpm inspect
+# Then edit the created file manually
 ```
 
-## Git Guidelines
+All architectural decisions are documented in Architecture Decision Records (ADRs) located in `doc/architecture/decisions/`. These ADRs are the single source of truth for understanding the design and architecture of this library.
 
-NEVER use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks.
+Refer to the ADRs for detailed information about design rationale, implementation details, and consequences of each architectural decision.
 
-## Architecture Overview
+## Claude-Specific Tips
 
-This project is a Model Context Protocol (MCP) server for SonarQube, which allows AI assistants to interact with SonarQube instances through the MCP protocol.
-
-### Key Components
-
-1. **API Module (`api.ts`)** - Handles raw HTTP requests to the SonarQube API.
-
-2. **SonarQube Client (`sonarqube.ts`)** - Main client implementation that:
-   - Provides methods for interacting with SonarQube API endpoints
-   - Handles parameter transformation and request formatting
-   - Uses the API module for actual HTTP requests
-
-3. **MCP Server (`index.ts`)** - Main entry point that:
-   - Initializes the MCP server
-   - Registers tools for SonarQube operations (projects, issues, metrics, etc.)
-   - Maps incoming MCP tool requests to SonarQube client methods
-
-### Data Flow
-
-1. MCP clients make requests to the server through registered tools
-2. Tool handlers transform parameters to SonarQube-compatible format
-3. SonarQube client methods are called with transformed parameters
-4. API module executes HTTP requests to SonarQube
-5. Responses are formatted and returned to the client
-
-### Testing Considerations
-
-- Tests use `nock` to mock HTTP responses for SonarQube API endpoints
-- The `axios` library is used for HTTP requests but is mocked in tests
-- Environment variables control SonarQube connection settings:
-  - `SONARQUBE_TOKEN` (required)
-  - `SONARQUBE_URL` (defaults to https://sonarcloud.io)
-  - `SONARQUBE_ORGANIZATION` (optional)
+- Remember to use the ADR creation command with `EDITOR=true` to prevent timeouts in Claude Code
+- Use `jq` to read json files when analyzing test results or configuration
+- Never use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks.
