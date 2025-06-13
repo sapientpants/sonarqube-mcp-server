@@ -23,7 +23,7 @@ Refer to the ADRs for detailed information about design rationale, implementatio
 
 ## Code Quality Conventions
 
-Based on resolved SonarQube issues, follow these conventions to maintain code quality:
+Follow these conventions to maintain code quality:
 
 ### TypeScript Best Practices
 
@@ -111,4 +111,5 @@ Based on resolved SonarQube issues, follow these conventions to maintain code qu
 - Use `jq` to read json files when analyzing test results or configuration
 - Never use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks
 - Always check for existing patterns before implementing new functionality
-- Run `pnpm validate` before finalizing any code changes
+- Run `pnpm format` to format code before committing
+- Run `pnpm run ci` before finalizing any code changes
