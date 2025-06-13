@@ -108,7 +108,6 @@ Follow these conventions to maintain code quality:
 ## Claude-Specific Tips
 
 - Remember to use the ADR creation command with `EDITOR=true` to prevent timeouts in Claude Code
-- Use `jq` to read json files when analyzing test results or configuration
 - Never use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks
 - Always check for existing patterns before implementing new functionality
 - Run `pnpm format` to format code before committing
