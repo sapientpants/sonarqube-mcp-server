@@ -12,19 +12,20 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.3.0
+## What's New in v1.4.0
 
-### Enhanced Issues Tool
-- **Branch/PR Analysis**: Analyze issues in feature branches and pull requests
-- **Multi-Project Support**: Query issues across multiple projects simultaneously
-- **Advanced Sorting**: Sort results by severity, creation date, update date, and more
-- **Clean Code Taxonomy**: Filter by clean code attributes and software quality impacts (SonarQube 10.x+)
-- **Enhanced Filtering**: New filters for assigned issues, specific authors, and OWASP Top 10 2021
+### Issue Management Enhancements
+- **File and Directory Filtering**: Filter issues by specific files (`files`), directories (`directories`), or code scopes (`scopes`)
+- **Bulk Issue Actions**: Mark multiple issues as false positive or won't fix in a single operation
+- **Issue Comments**: Add comments to issues for better collaboration
+- **Issue Assignment**: Assign issues to specific users or unassign them
+- **Issue Transitions**: Confirm, unconfirm, resolve, and reopen issues with optional comments
 
-### Security Hotspot Tools
-- **Search Hotspots**: Find security hotspots with specialized filters for review workflows
-- **Hotspot Details**: Get comprehensive security context and vulnerability information
-- **Update Status**: Change hotspot status and resolution with proper permissions
+### Developer Experience Improvements
+- **Enhanced Validation**: Better error messages and input validation for all tools
+- **Improved Documentation**: Added Architecture Decision Records (ADRs) for design decisions
+- **Code Quality Standards**: New conventions in CLAUDE.md for maintaining code quality
+- **Updated Dependencies**: Upgraded to sonarqube-web-api-client 0.11.0 with deprecation warnings
 
 ## Overview
 
@@ -127,8 +128,10 @@ Ask Claude to analyze your SonarQube projects:
 ```
 "List all my SonarQube projects"
 "Show me critical issues in project xyz"
-"What's the code coverage for my main project?"
-"Check the quality gate status"
+"What's the code coverage for project xyz?"
+"Check the quality gate status for project xyz"
+"Retrieve security hotspots in project xyz and create a plan to address them"
+"Retrieve the issues for pr 123 in project xyz and create a plan to address them"
 ```
 
 ## Installation
