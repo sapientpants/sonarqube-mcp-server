@@ -22,8 +22,8 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
       sonarqube-web-api-client:
-        specifier: 0.10.1
-        version: 0.10.1
+        specifier: 0.11.0
+        version: 0.11.0
       zod:
         specifier: ^3.25.63
         version: 3.25.63
@@ -2221,8 +2221,8 @@ packages:
     resolution: {integrity: sha512-bSiSngZ/jWeX93BqeIAbImyTbEihizcwNjFoRUIY/T1wWQsfsm2Vw1agPKylXvQTU7iASGdHhyqRlqQzfz+Htg==}
     engines: {node: '>=18'}
 
-  sonarqube-web-api-client@0.10.1:
-    resolution: {integrity: sha512-h+ecjMQHVk1TAW5voCcfqMFKmIxNkAMCxlZZK+G2byv8p1o1xMFdF9rN3zan8qm8uxJTxg2vyPg3YLADqN4pBg==}
+  sonarqube-web-api-client@0.11.0:
+    resolution: {integrity: sha512-/75CuyKgZW3dpBuqG/EYE/aF7ROTF5/GxCvoegZ91FNfiTxECsHo75TFqV0SV3e9Yc3/aF04tF/0Z+gMT9WcVA==}
 
   source-map-support@0.5.13:
     resolution: {integrity: sha512-SHSKFHadjVA5oR4PPqhtAVdcBWwRYVd6g6cAXnIbRiIwc2EhPrTuKUBdSLvlEKyIP3GCf89fltvcZiP9MMFA1w==}
@@ -5012,7 +5012,7 @@ snapshots:
       ansi-styles: 6.2.1
       is-fullwidth-code-point: 5.0.0
 
-  sonarqube-web-api-client@0.10.1: {}
+  sonarqube-web-api-client@0.11.0: {}
 
   source-map-support@0.5.13:
     dependencies:
