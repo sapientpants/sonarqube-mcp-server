@@ -480,7 +480,7 @@ mcpServer.tool(
 
 mcpServer.tool(
   'issues',
-  'Search and filter SonarQube issues by severity, status, assignee, tag, file path, and more. Critical for dashboards, targeted clean-up sprints, security audits, and regression testing. Supports faceted search for aggregations.',
+  'Search and filter SonarQube issues by severity, status, assignee, tag, file path, directory, scope, and more. Critical for dashboards, targeted clean-up sprints, security audits, and regression testing. Supports faceted search for aggregations.',
   issuesToolSchema,
   issuesMcpHandler
 );

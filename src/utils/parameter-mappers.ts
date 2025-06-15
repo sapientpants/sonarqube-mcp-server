@@ -14,6 +14,9 @@ export function mapToSonarQubeParams(params: Record<string, unknown>): IssuesPar
     componentKeys: nullToUndefined(params.component_keys) as string[] | undefined,
     components: nullToUndefined(params.components) as string[] | undefined,
     onComponentOnly: nullToUndefined(params.on_component_only) as boolean | undefined,
+    directories: nullToUndefined(params.directories) as string[] | undefined,
+    files: nullToUndefined(params.files) as string[] | undefined,
+    scopes: nullToUndefined(params.scopes) as IssuesParams['scopes'],
 
     // Branch and PR support
     branch: nullToUndefined(params.branch) as string | undefined,

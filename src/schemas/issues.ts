@@ -145,6 +145,13 @@ export const issuesToolSchema = {
     .nullable()
     .optional()
     .describe('Return only issues on the specified components, not on their sub-components'),
+  directories: z.array(z.string()).nullable().optional().describe('Filter by directory paths'),
+  files: z.array(z.string()).nullable().optional().describe('Filter by specific file paths'),
+  scopes: z
+    .array(z.enum(['MAIN', 'TEST', 'OVERALL']))
+    .nullable()
+    .optional()
+    .describe('Filter by issue scopes (MAIN, TEST, OVERALL)'),
 
   // Branch and PR support
   branch: z.string().nullable().optional(),
