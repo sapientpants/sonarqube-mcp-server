@@ -221,10 +221,9 @@ describe('ComponentName', () => {
 
 1. Ensure all tests pass
 2. Update version in package.json
-3. Update CHANGELOG.md
-4. Create a pull request
-5. After merge, create a release tag
-6. Publish to npm
+3. Create a pull request
+4. After merge, create a release tag
+5. GitHub Actions will automatically publish to npm and DockerHub
 
 ## Need Help?
 
