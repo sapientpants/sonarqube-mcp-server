@@ -167,6 +167,9 @@ export interface IssuesParams extends PaginationParams {
   components?: string[];
   projects?: string[];
   onComponentOnly?: boolean;
+  directories?: string[];
+  files?: string[];
+  scopes?: ('MAIN' | 'TEST' | 'OVERALL')[];
 
   // Branch and PR
   branch?: string;

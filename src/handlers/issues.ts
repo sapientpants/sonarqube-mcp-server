@@ -21,6 +21,9 @@ const logger = createLogger('handlers/issues');
  *
  * This tool supports comprehensive filtering for targeted analysis, dashboards, and audits:
  * - **Component/File Path Filtering**: Use `component_keys` to filter by specific files or directories
+ * - **Directory Filtering**: Use `directories` to filter by directory paths (e.g., ['src/main/', 'test/'])
+ * - **File Filtering**: Use `files` to filter by specific file paths (e.g., ['UserService.java', 'config.properties'])
+ * - **Scope Filtering**: Use `scopes` to filter by issue scope (MAIN for production code, TEST for test code, OVERALL for both)
  * - **Assignee Filtering**: Use `assignees` to filter by assigned users
  * - **Tag Filtering**: Use `tags` to filter by issue tags
  * - **Severity Filtering**: Use `severities` to filter by severity levels (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
@@ -41,6 +44,15 @@ const logger = createLogger('handlers/issues');
  *   componentKeys: ['src/main/java/com/example/Service.java'],
  *   severities: ['CRITICAL', 'BLOCKER'],
  *   facets: ['severities', 'types', 'authors']
+ * });
+ *
+ * @example
+ * // Filter by directory and scope
+ * await handleSonarQubeGetIssues({
+ *   projectKey: 'my-project',
+ *   directories: ['src/main/java/com/example/services/'],
+ *   scopes: ['MAIN'],
+ *   facets: ['severities', 'rules']
  * });
  *
  * @example

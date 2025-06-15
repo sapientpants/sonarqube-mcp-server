@@ -82,6 +82,15 @@ export class IssuesDomain extends BaseDomain {
     if (params.onComponentOnly) {
       builder.onComponentOnly();
     }
+    if (params.directories) {
+      builder.withDirectories(params.directories);
+    }
+    if (params.files) {
+      builder.withFiles(params.files);
+    }
+    if (params.scopes) {
+      builder.withScopes(params.scopes);
+    }
 
     // Branch and PR
     if (params.branch) {
