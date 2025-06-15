@@ -127,8 +127,10 @@ Ask Claude to analyze your SonarQube projects:
 ```
 "List all my SonarQube projects"
 "Show me critical issues in project xyz"
-"What's the code coverage for my main project?"
-"Check the quality gate status"
+"What's the code coverage for project xyz?"
+"Check the quality gate status for project xyz"
+"Retrieve security hotspots in project xyz and create a plan to address them"
+"Retrieve the issues for pr 123 in project xyz and create a plan to address them"
 ```
 
 ## Installation
