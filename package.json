@@ -56,14 +56,14 @@
   "license": "MIT",
   "packageManager": "pnpm@10.7.1",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.12.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "sonarqube-web-api-client": "0.11.0",
-    "zod": "^3.25.63"
+    "zod": "^3.25.64"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
+    "@eslint/js": "^9.29.0",
     "@jest/globals": "^30.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
@@ -72,12 +72,12 @@
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
-    "eslint": "^9.28.0",
+    "eslint": "^9.29.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.1",
     "husky": "^9.1.7",
     "jest": "^30.0.0",
-    "lint-staged": "^16.1.0",
+    "lint-staged": "^16.1.2",
     "nock": "^14.0.5",
     "prettier": "^3.5.3",
     "supertest": "^7.1.1",
