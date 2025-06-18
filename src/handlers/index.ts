@@ -45,3 +45,5 @@ export {
   handleSonarQubeHotspot,
   handleSonarQubeUpdateHotspotStatus,
 } from './hotspots.js';
+
+export { handleSonarQubeComponents } from './components.js';

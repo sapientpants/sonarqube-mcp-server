@@ -40,6 +40,7 @@ import {
   handleUnconfirmIssue,
   handleResolveIssue,
   handleReopenIssue,
+  handleSonarQubeComponents,
 } from './handlers/index.js';
 import {
   projectsToolSchema,
@@ -69,6 +70,7 @@ import {
   hotspotsToolSchema,
   hotspotToolSchema,
   updateHotspotStatusToolSchema,
+  componentsToolSchema,
 } from './schemas/index.js';
 
 // Type alias for parameters that can be string, array of strings, or undefined
@@ -422,6 +424,24 @@ export const updateHotspotStatusHandler = async (params: Record<string, unknown>
   });
 };
 
+/**
+ * Lambda function for components tool
+ */
+export const componentsHandler = async (params: Record<string, unknown>) => {
+  return handleSonarQubeComponents({
+    query: params.query as string | undefined,
+    qualifiers: params.qualifiers as string[] | undefined,
+    language: params.language as string | undefined,
+    component: params.component as string | undefined,
+    strategy: params.strategy as 'all' | 'children' | 'leaves' | undefined,
+    asc: params.asc as boolean | undefined,
+    ps: params.ps as number | undefined,
+    p: params.p as number | undefined,
+    branch: params.branch as string | undefined,
+    pullRequest: params.pullRequest as string | undefined,
+  });
+};
+
 // Wrapper functions for MCP registration that don't expose the client parameter
 export const projectsMcpHandler = (params: Record<string, unknown>) => projectsHandler(params);
 export const metricsMcpHandler = (params: Record<string, unknown>) =>
@@ -467,6 +487,7 @@ export const hotspotsMcpHandler = (params: Record<string, unknown>) => hotspotsH
 export const hotspotMcpHandler = (params: Record<string, unknown>) => hotspotHandler(params);
 export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =>
   updateHotspotStatusHandler(params);
+export const componentsMcpHandler = (params: Record<string, unknown>) => componentsHandler(params);
 
 // Register SonarQube tools
 mcpServer.tool('projects', 'List all SonarQube projects', projectsToolSchema, projectsMcpHandler);
@@ -656,6 +677,14 @@ mcpServer.tool(
   'Update the status of a security hotspot (requires appropriate permissions)',
   updateHotspotStatusToolSchema,
   updateHotspotStatusMcpHandler
+);
+
+// Register Components tool
+mcpServer.tool(
+  'components',
+  'Search and navigate SonarQube components (projects, directories, files). Supports text search, filtering by type/language, and tree navigation',
+  componentsToolSchema,
+  componentsMcpHandler
 );
 
 // Only start the server if not in test mode
