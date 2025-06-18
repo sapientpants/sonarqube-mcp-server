@@ -21,6 +21,13 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 - **Issue Assignment**: Assign issues to specific users or unassign them
 - **Issue Transitions**: Confirm, unconfirm, resolve, and reopen issues with optional comments
 
+### Component Navigation (NEW)
+- **Components Tool**: Search and navigate SonarQube components (projects, directories, files)
+- **Text Search**: Find components by name with free text search
+- **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
+- **Tree Navigation**: Navigate component hierarchies with different traversal strategies
+- **Language Filtering**: Find components by programming language
+
 ### Developer Experience Improvements
 - **Enhanced Validation**: Better error messages and input validation for all tools
 - **Improved Documentation**: Added Architecture Decision Records (ADRs) for design decisions
@@ -636,6 +643,81 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
+### Component Navigation
+
+#### `components`
+Search and navigate SonarQube components (projects, directories, files). Supports text search, filtering by type/language, and tree navigation.
+
+**Search Parameters:**
+- `query` (optional): Text search query
+- `qualifiers` (optional): Array of component types (TRK, DIR, FIL, UTS, BRC, APP, VW, SVW, LIB)
+- `language` (optional): Programming language filter
+
+**Tree Navigation Parameters:**
+- `component` (optional): Component key for tree navigation
+- `strategy` (optional): Tree traversal strategy ('all', 'children', 'leaves')
+
+**Common Parameters:**
+- `asc` (optional): Sort ascending/descending
+- `ps` (optional): Page size (default: 100, max: 500)
+- `p` (optional): Page number
+- `branch` (optional): Branch name
+- `pullRequest` (optional): Pull request ID
+
+**Component Qualifiers:**
+- `TRK`: Project
+- `DIR`: Directory
+- `FIL`: File
+- `UTS`: Unit Test
+- `BRC`: Branch
+- `APP`: Application
+- `VW`: View
+- `SVW`: Sub-view
+- `LIB`: Library
+
+**Example Use Cases:**
+
+1. **Find specific files:**
+```json
+{
+  "query": "UserService",
+  "qualifiers": ["FIL"]
+}
+```
+
+2. **List all test files in a project:**
+```json
+{
+  "component": "my-project",
+  "qualifiers": ["UTS"]
+}
+```
+
+3. **Navigate directory structure:**
+```json
+{
+  "component": "my-project:src/main",
+  "strategy": "children",
+  "qualifiers": ["DIR", "FIL"]
+}
+```
+
+4. **Search for components by language:**
+```json
+{
+  "language": "java",
+  "qualifiers": ["FIL"],
+  "query": "Controller"
+}
+```
+
+5. **Get project list:**
+```json
+{
+  "qualifiers": ["TRK"]
+}
+```
+
 ### Security Hotspots
 
 #### `hotspots`
@@ -804,6 +886,18 @@ Assign a SonarQube issue to a user or unassign it.
 "Find issues across multiple projects: proj1, proj2, proj3"
 "Show me issues sorted by severity in descending order"
 "Find all issues with clean code impact on reliability"
+```
+
+### Component Navigation
+```
+"Find all files containing 'UserService' in their name"
+"List all test files in my project"
+"Show me the directory structure of src/main"
+"Find all Java controller files"
+"List all projects in SonarQube"
+"Navigate to the authentication module"
+"Search for TypeScript files in the frontend directory"
+"Show me all directories under src/components"
 ```
 
 ### Issue Management

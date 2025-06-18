@@ -8,3 +8,4 @@ export { SystemDomain } from './system.js';
 export { QualityGatesDomain } from './quality-gates.js';
 export { SourceCodeDomain } from './source-code.js';
 export { HotspotsDomain } from './hotspots.js';
+export { ComponentsDomain } from './components.js';

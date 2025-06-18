@@ -45,6 +45,7 @@ import type {
   SonarQubeHotspotDetails,
   HotspotStatusUpdateParams,
 } from './hotspots.js';
+// Components types are imported and re-exported below
 
 // Re-export all types for backward compatibility and ease of use
 
@@ -129,6 +130,18 @@ export type {
   SonarQubeHotspotDetails,
   HotspotStatusUpdateParams,
 } from './hotspots.js';
+
+// Component types
+export type {
+  ComponentQualifier,
+  ComponentsResult,
+  ComponentsTreeResult,
+  ComponentShowResult,
+  ComponentsParams,
+  ComponentsSearchParams,
+  ComponentsTreeParams,
+  ComponentShowParams,
+} from './components.js';
 
 // Client interface
 export interface ISonarQubeClient {

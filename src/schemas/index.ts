@@ -39,3 +39,4 @@ export {
   hotspotToolSchema,
   updateHotspotStatusToolSchema,
 } from './hotspots-tools.js';
+export { componentsToolSchema } from './components.js';
