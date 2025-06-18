@@ -8,6 +8,7 @@ import {
   HotspotSearchParams,
   HotspotStatusUpdateParams,
 } from './sonarqube.js';
+import type { ComponentQualifier } from './types/components.js';
 import { createLogger } from './utils/logger.js';
 import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
@@ -430,10 +431,11 @@ export const updateHotspotStatusHandler = async (params: Record<string, unknown>
 export const componentsHandler = async (params: Record<string, unknown>) => {
   return handleSonarQubeComponents({
     query: params.query as string | undefined,
-    qualifiers: params.qualifiers as string[] | undefined,
+    qualifiers: params.qualifiers as ComponentQualifier[] | undefined,
     language: params.language as string | undefined,
     component: params.component as string | undefined,
     strategy: params.strategy as 'all' | 'children' | 'leaves' | undefined,
+    key: params.key as string | undefined,
     asc: params.asc as boolean | undefined,
     ps: params.ps as number | undefined,
     p: params.p as number | undefined,

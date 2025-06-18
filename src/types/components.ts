@@ -88,12 +88,15 @@ export interface ComponentShowParams {
 export interface ComponentsParams {
   // Search parameters
   query?: string;
-  qualifiers?: string[];
+  qualifiers?: ComponentQualifier[];
   language?: string;
 
   // Tree navigation parameters
   component?: string;
   strategy?: 'all' | 'children' | 'leaves';
+
+  // Show component parameter
+  key?: string;
 
   // Common parameters
   asc?: boolean;

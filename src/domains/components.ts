@@ -56,7 +56,8 @@ export class ComponentsDomain extends BaseDomain {
         builder.page(page);
       }
       if (pageSize !== undefined) {
-        builder.pageSize(pageSize);
+        // Limit page size to maximum of 500
+        builder.pageSize(Math.min(pageSize, 500));
       }
 
       const response = await builder.execute();
@@ -125,7 +126,8 @@ export class ComponentsDomain extends BaseDomain {
         builder.page(page);
       }
       if (pageSize !== undefined) {
-        builder.pageSize(pageSize);
+        // Limit page size to maximum of 500
+        builder.pageSize(Math.min(pageSize, 500));
       }
       if (branch !== undefined) {
         builder.branch(branch);
@@ -159,8 +161,8 @@ export class ComponentsDomain extends BaseDomain {
   /**
    * Get detailed information about a specific component
    * @param key Component key
-   * @param branch Optional branch name
-   * @param pullRequest Optional pull request ID
+   * @param branch Optional branch name (not currently supported by API)
+   * @param pullRequest Optional pull request ID (not currently supported by API)
    * @returns Promise with component details
    */
   async showComponent(
@@ -171,6 +173,8 @@ export class ComponentsDomain extends BaseDomain {
     this.logger.debug('Showing component', { key, branch, pullRequest });
 
     try {
+      // The API client's show method expects a key parameter
+      // Note: branch and pullRequest are not currently supported by the API client
       const response = await this.webApiClient.components.show(key);
       this.logger.debug('Component details retrieved successfully', { key });
 

@@ -32,6 +32,9 @@ export const componentsToolSchema = {
   component: z.string().optional().describe('Component key for tree navigation'),
   strategy: z.enum(['all', 'children', 'leaves']).optional().describe('Tree traversal strategy'),
 
+  // Show component parameter
+  key: z.string().optional().describe('Component key to show details for'),
+
   // Common parameters
   asc: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])

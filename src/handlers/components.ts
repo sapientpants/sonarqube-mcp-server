@@ -20,8 +20,11 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
     logger.debug('Handling SonarQube components request', params);
 
     // Determine which operation to perform based on parameters
-    const isTreeOperation = params.component !== undefined && params.component !== null;
-    const isSearchOperation = !isTreeOperation && (params.query || params.qualifiers);
+    const isShowOperation = params.key !== undefined && params.key !== null;
+    const isTreeOperation =
+      !isShowOperation && params.component !== undefined && params.component !== null;
+    const isSearchOperation =
+      !isShowOperation && !isTreeOperation && (params.query || params.qualifiers);
 
     const webApiClient = (
       client as unknown as { webApiClient: unknown; organization: string | null }
@@ -36,7 +39,19 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
 
     let result;
 
-    if (isTreeOperation) {
+    if (isShowOperation) {
+      // Show component details
+      result = await withErrorHandling('Show component', () =>
+        domain.showComponent(
+          params.key!,
+          nullToUndefined(params.branch),
+          nullToUndefined(params.pullRequest)
+        )
+      );
+      logger.info('Successfully retrieved component details', {
+        key: params.key,
+      });
+    } else if (isTreeOperation) {
       // Component tree navigation
       const treeParams = {
         component: params.component!,
