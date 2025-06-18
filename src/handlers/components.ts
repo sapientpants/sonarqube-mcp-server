@@ -55,8 +55,8 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       // Component tree navigation
       const treeParams = {
         component: params.component!,
-        strategy: nullToUndefined(params.strategy) as 'all' | 'children' | 'leaves' | undefined,
-        qualifiers: params.qualifiers?.map((q) => q as ComponentQualifier),
+        strategy: nullToUndefined(params.strategy),
+        qualifiers: params.qualifiers,
         asc: nullToUndefined(params.asc),
         page: nullToUndefined(params.p),
         pageSize: nullToUndefined(params.ps),
@@ -75,7 +75,7 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       // Component search
       const searchParams = {
         query: nullToUndefined(params.query),
-        qualifiers: params.qualifiers?.map((q) => q as ComponentQualifier),
+        qualifiers: params.qualifiers,
         language: nullToUndefined(params.language),
         page: nullToUndefined(params.p),
         pageSize: nullToUndefined(params.ps),
