@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals';
+import { resetDefaultClient } from '../utils/client-factory.js';
 
 // Mock environment variables
 process.env.SONARQUBE_TOKEN = 'test-token';
@@ -17,12 +18,14 @@ const originalEnv = process.env;
 describe('Components Handler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetDefaultClient();
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     process.env = originalEnv;
     jest.clearAllMocks();
+    resetDefaultClient();
   });
 
   describe('Integration', () => {
