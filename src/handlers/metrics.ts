@@ -1,5 +1,6 @@
 import type { PaginationParams, ISonarQubeClient } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 /**
  * Handler for getting SonarQube metrics
@@ -23,12 +24,5 @@ export async function handleSonarQubeGetMetrics(
     },
   };
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(response),
-      },
-    ],
-  };
+  return createStructuredResponse(response);
 }

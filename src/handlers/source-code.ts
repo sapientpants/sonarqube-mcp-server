@@ -1,5 +1,6 @@
 import type { SourceCodeParams, ScmBlameParams, ISonarQubeClient } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 /**
  * Handler for getting source code
@@ -13,14 +14,7 @@ export async function handleSonarQubeGetSourceCode(
 ) {
   const result = await client.getSourceCode(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -35,12 +29,5 @@ export async function handleSonarQubeGetScmBlame(
 ) {
   const result = await client.getScmBlame(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }

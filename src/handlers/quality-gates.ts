@@ -1,5 +1,6 @@
 import type { ProjectQualityGateParams, ISonarQubeClient } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 /**
  * Handler for listing quality gates
@@ -11,14 +12,7 @@ export async function handleSonarQubeListQualityGates(
 ) {
   const result = await client.listQualityGates();
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -33,14 +27,7 @@ export async function handleSonarQubeGetQualityGate(
 ) {
   const result = await client.getQualityGate(params.id);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -55,12 +42,5 @@ export async function handleSonarQubeQualityGateStatus(
 ) {
   const result = await client.getProjectQualityGateStatus(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }

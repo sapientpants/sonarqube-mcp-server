@@ -5,6 +5,7 @@ import type {
   ISonarQubeClient,
 } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 /**
  * Handler for getting measures for a specific component
@@ -18,14 +19,7 @@ export async function handleSonarQubeComponentMeasures(
 ) {
   const result = await client.getComponentMeasures(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -40,14 +34,7 @@ export async function handleSonarQubeComponentsMeasures(
 ) {
   const result = await client.getComponentsMeasures(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -62,12 +49,5 @@ export async function handleSonarQubeMeasuresHistory(
 ) {
   const result = await client.getMeasuresHistory(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }

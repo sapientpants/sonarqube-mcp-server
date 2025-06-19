@@ -6,6 +6,7 @@ import { createLogger } from '../utils/logger.js';
 import { withErrorHandling } from '../errors.js';
 import { withMCPErrorHandling } from '../utils/error-handler.js';
 import { ComponentsDomain } from '../domains/components.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 const logger = createLogger('handlers/components');
 
@@ -104,13 +105,6 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     }
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify(result),
-        },
-      ],
-    };
+    return createStructuredResponse(result);
   }
 );
