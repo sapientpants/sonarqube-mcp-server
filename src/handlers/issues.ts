@@ -15,6 +15,7 @@ import type {
 import { getDefaultClient } from '../utils/client-factory.js';
 import { createLogger } from '../utils/logger.js';
 import { ElicitationManager } from '../utils/elicitation.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 const logger = createLogger('handlers/issues');
 
@@ -139,20 +140,13 @@ function mapBulkResults(results: DoTransitionResponse[]) {
  * Creates a standard issue operation response
  */
 function createIssueOperationResponse(message: string, result: DoTransitionResponse) {
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify({
-          message,
-          issue: result.issue,
-          components: result.components,
-          rules: result.rules,
-          users: result.users,
-        }),
-      },
-    ],
-  };
+  return createStructuredResponse({
+    message,
+    issue: result.issue,
+    components: result.components,
+    rules: result.rules,
+    users: result.users,
+  });
 }
 
 /**
@@ -217,52 +211,45 @@ export async function handleSonarQubeGetIssues(
       count: result.issues.length,
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            issues: result.issues.map((issue: SonarQubeIssue) => ({
-              key: issue.key,
-              rule: issue.rule,
-              severity: issue.severity,
-              component: issue.component,
-              project: issue.project,
-              line: issue.line,
-              status: issue.status,
-              issueStatus: issue.issueStatus,
-              message: issue.message,
-              messageFormattings: issue.messageFormattings,
-              effort: issue.effort,
-              debt: issue.debt,
-              author: issue.author,
-              tags: issue.tags,
-              creationDate: issue.creationDate,
-              updateDate: issue.updateDate,
-              type: issue.type,
-              cleanCodeAttribute: issue.cleanCodeAttribute,
-              cleanCodeAttributeCategory: issue.cleanCodeAttributeCategory,
-              prioritizedRule: issue.prioritizedRule,
-              impacts: issue.impacts,
-              textRange: issue.textRange,
-              comments: issue.comments,
-              transitions: issue.transitions,
-              actions: issue.actions,
-              flows: issue.flows,
-              quickFixAvailable: issue.quickFixAvailable,
-              ruleDescriptionContextKey: issue.ruleDescriptionContextKey,
-              codeVariants: issue.codeVariants,
-              hash: issue.hash,
-            })),
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-            facets: result.facets,
-            paging: result.paging,
-          }),
-        },
-      ],
-    };
+    return createStructuredResponse({
+      issues: result.issues.map((issue: SonarQubeIssue) => ({
+        key: issue.key,
+        rule: issue.rule,
+        severity: issue.severity,
+        component: issue.component,
+        project: issue.project,
+        line: issue.line,
+        status: issue.status,
+        issueStatus: issue.issueStatus,
+        message: issue.message,
+        messageFormattings: issue.messageFormattings,
+        effort: issue.effort,
+        debt: issue.debt,
+        author: issue.author,
+        tags: issue.tags,
+        creationDate: issue.creationDate,
+        updateDate: issue.updateDate,
+        type: issue.type,
+        cleanCodeAttribute: issue.cleanCodeAttribute,
+        cleanCodeAttributeCategory: issue.cleanCodeAttributeCategory,
+        prioritizedRule: issue.prioritizedRule,
+        impacts: issue.impacts,
+        textRange: issue.textRange,
+        comments: issue.comments,
+        transitions: issue.transitions,
+        actions: issue.actions,
+        flows: issue.flows,
+        quickFixAvailable: issue.quickFixAvailable,
+        ruleDescriptionContextKey: issue.ruleDescriptionContextKey,
+        codeVariants: issue.codeVariants,
+        hash: issue.hash,
+      })),
+      components: result.components,
+      rules: result.rules,
+      users: result.users,
+      facets: result.facets,
+      paging: result.paging,
+    });
   } catch (error) {
     logger.error('Failed to retrieve SonarQube issues', error);
     throw error;
@@ -366,17 +353,10 @@ export async function handleMarkIssuesFalsePositive(
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `${params.issueKeys.length} issues marked as false positive`,
-            results: mapBulkResults(results),
-          }),
-        },
-      ],
-    };
+    return createStructuredResponse({
+      message: `${params.issueKeys.length} issues marked as false positive`,
+      results: mapBulkResults(results),
+    });
   } catch (error) {
     logger.error('Failed to mark issues as false positive', error);
     throw error;
@@ -411,17 +391,10 @@ export async function handleMarkIssuesWontFix(
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `${params.issueKeys.length} issues marked as won't fix`,
-            results: mapBulkResults(results),
-          }),
-        },
-      ],
-    };
+    return createStructuredResponse({
+      message: `${params.issueKeys.length} issues marked as won't fix`,
+      results: mapBulkResults(results),
+    });
   } catch (error) {
     logger.error("Failed to mark issues as won't fix", error);
     throw error;
@@ -447,24 +420,17 @@ export async function handleAddCommentToIssue(
       commentKey: comment.key,
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Comment added to issue ${params.issueKey}`,
-            comment: {
-              key: comment.key,
-              login: comment.login,
-              htmlText: comment.htmlText,
-              markdown: comment.markdown,
-              updatable: comment.updatable,
-              createdAt: comment.createdAt,
-            },
-          }),
-        },
-      ],
-    };
+    return createStructuredResponse({
+      message: `Comment added to issue ${params.issueKey}`,
+      comment: {
+        key: comment.key,
+        login: comment.login,
+        htmlText: comment.htmlText,
+        markdown: comment.markdown,
+        updatable: comment.updatable,
+        createdAt: comment.createdAt,
+      },
+    });
   } catch (error) {
     logger.error('Failed to add comment to issue', error);
     throw error;
@@ -511,27 +477,20 @@ export async function handleAssignIssue(
       assignee: assigneeName,
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `${assigneeDisplay} for issue ${params.issueKey}`,
-            issue: {
-              key: updatedIssue.key,
-              component: updatedIssue.component ?? 'N/A',
-              message: updatedIssue.message,
-              severity: updatedIssue.severity ?? 'UNKNOWN',
-              type: updatedIssue.type ?? 'UNKNOWN',
-              status: updatedIssue.status,
-              resolution: issueWithAssignee.resolution ?? null,
-              assignee: issueWithAssignee.assignee,
-              assigneeName: issueWithAssignee.assigneeName ?? null,
-            },
-          }),
-        },
-      ],
-    };
+    return createStructuredResponse({
+      message: `${assigneeDisplay} for issue ${params.issueKey}`,
+      issue: {
+        key: updatedIssue.key,
+        component: updatedIssue.component ?? 'N/A',
+        message: updatedIssue.message,
+        severity: updatedIssue.severity ?? 'UNKNOWN',
+        type: updatedIssue.type ?? 'UNKNOWN',
+        status: updatedIssue.status,
+        resolution: issueWithAssignee.resolution ?? null,
+        assignee: issueWithAssignee.assignee,
+        assigneeName: issueWithAssignee.assigneeName ?? null,
+      },
+    });
   } catch (error) {
     logger.error('Failed to assign issue', error);
     throw error;

@@ -4,6 +4,7 @@ import type {
   ISonarQubeClient,
 } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
+import { createStructuredResponse, createTextResponse } from '../utils/structured-response.js';
 
 /**
  * Handler for searching security hotspots
@@ -17,14 +18,7 @@ export async function handleSonarQubeHotspots(
 ) {
   const result = await client.hotspots(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -39,14 +33,7 @@ export async function handleSonarQubeHotspot(
 ) {
   const result = await client.hotspot(hotspotKey);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
+  return createStructuredResponse(result);
 }
 
 /**
@@ -61,12 +48,5 @@ export async function handleSonarQubeUpdateHotspotStatus(
 ) {
   await client.updateHotspotStatus(params);
 
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: 'Hotspot status updated successfully',
-      },
-    ],
-  };
+  return createTextResponse('Hotspot status updated successfully');
 }

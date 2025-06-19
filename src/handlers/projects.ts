@@ -4,6 +4,7 @@ import { nullToUndefined } from '../utils/transforms.js';
 import { createLogger } from '../utils/logger.js';
 import { withErrorHandling } from '../errors.js';
 import { withMCPErrorHandling } from '../utils/error-handler.js';
+import { createStructuredResponse } from '../utils/structured-response.js';
 
 const logger = createLogger('handlers/projects');
 
@@ -53,24 +54,17 @@ export const handleSonarQubeProjects = withMCPErrorHandling(
       throw error;
     }
     logger.info('Successfully retrieved projects', { count: result.projects.length });
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            projects: result.projects.map((project: SonarQubeProject) => ({
-              key: project.key,
-              name: project.name,
-              qualifier: project.qualifier,
-              visibility: project.visibility,
-              lastAnalysisDate: project.lastAnalysisDate,
-              revision: project.revision,
-              managed: project.managed,
-            })),
-            paging: result.paging,
-          }),
-        },
-      ],
-    };
+    return createStructuredResponse({
+      projects: result.projects.map((project: SonarQubeProject) => ({
+        key: project.key,
+        name: project.name,
+        qualifier: project.qualifier,
+        visibility: project.visibility,
+        lastAnalysisDate: project.lastAnalysisDate,
+        revision: project.revision,
+        managed: project.managed,
+      })),
+      paging: result.paging,
+    });
   }
 );

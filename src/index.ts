@@ -164,19 +164,10 @@ export const projectsHandler = handleSonarQubeProjects;
  * Lambda function for metrics tool
  */
 export const metricsHandler = async (params: { page: number | null; page_size: number | null }) => {
-  const result = await handleSonarQubeGetMetrics({
+  return handleSonarQubeGetMetrics({
     page: nullToUndefined(params.page),
     pageSize: nullToUndefined(params.page_size),
   });
-
-  return {
-    content: [
-      {
-        type: 'text' as const,
-        text: JSON.stringify(result),
-      },
-    ],
-  };
 };
 
 /**
