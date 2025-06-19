@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Updated `projects` tool description to clarify admin permission requirement
+- Enhanced error message for `projects` tool to suggest using `components` tool when permission is denied
+
+### Added
+- Documentation section in README explaining permission requirements for different tools
+- Examples in README showing how to list projects for both admin and non-admin users
+
 ## [1.4.1] - 2025-01-16
 
 ### Added
