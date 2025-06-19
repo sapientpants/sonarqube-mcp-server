@@ -485,15 +485,15 @@ Different SonarQube tools require different permission levels:
 - `components` - Search and navigate projects, directories, and files (requires 'Browse' permission on at least one project)
 - All other tools require appropriate permissions based on the resources being accessed
 
-### Listing Projects
+#### Listing Projects
 
 **For Administrators:**
 Use the `projects` tool to get full project metadata including visibility, last analysis date, and revision info.
 
 **For All Users:**
 Use the `components` tool with project qualifier:
-- "List all projects I have access to" → components with qualifiers: ['TRK']
-- "Search for projects containing 'mobile'" → components with query: 'mobile', qualifiers: ['TRK']
+- "List all projects I have access to" → `components` with `qualifiers: ['TRK']`
+- "Search for projects containing 'mobile'" → `components` with `query: 'mobile', qualifiers: ['TRK']`
 
 The `components` tool provides a more accessible alternative for non-admin users to discover projects they have access to.
 
