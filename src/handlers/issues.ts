@@ -13,8 +13,16 @@ import type {
 } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
 import { createLogger } from '../utils/logger.js';
+import { ElicitationManager } from '../utils/elicitation.js';
 
 const logger = createLogger('handlers/issues');
+
+// Elicitation manager instance (will be set by index.ts)
+let elicitationManager: ElicitationManager | null = null;
+
+export function setElicitationManager(manager: ElicitationManager): void {
+  elicitationManager = manager;
+}
 
 /**
  * Fetches and returns issues from a specified SonarQube project with advanced filtering capabilities
@@ -143,6 +151,29 @@ export async function handleMarkIssueFalsePositive(
   logger.debug('Handling mark issue false positive request', { issueKey: params.issueKey });
 
   try {
+    // Collect resolution comment if elicitation is enabled
+    if (elicitationManager?.isEnabled() && !params.comment) {
+      const commentResult = await elicitationManager.collectResolutionComment(
+        params.issueKey,
+        'false positive'
+      );
+      if (commentResult.action === 'accept' && commentResult.content) {
+        params = { ...params, comment: commentResult.content.comment };
+      } else if (commentResult.action === 'reject' || commentResult.action === 'cancel') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                message: 'Operation cancelled by user',
+                issueKey: params.issueKey,
+              }),
+            },
+          ],
+        };
+      }
+    }
+
     const result = await client.markIssueFalsePositive(params);
     logger.info('Successfully marked issue as false positive', {
       issueKey: params.issueKey,
@@ -182,6 +213,29 @@ export async function handleMarkIssueWontFix(
   logger.debug("Handling mark issue won't fix request", { issueKey: params.issueKey });
 
   try {
+    // Collect resolution comment if elicitation is enabled
+    if (elicitationManager?.isEnabled() && !params.comment) {
+      const commentResult = await elicitationManager.collectResolutionComment(
+        params.issueKey,
+        "won't fix"
+      );
+      if (commentResult.action === 'accept' && commentResult.content) {
+        params = { ...params, comment: commentResult.content.comment };
+      } else if (commentResult.action === 'reject' || commentResult.action === 'cancel') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                message: 'Operation cancelled by user',
+                issueKey: params.issueKey,
+              }),
+            },
+          ],
+        };
+      }
+    }
+
     const result = await client.markIssueWontFix(params);
     logger.info("Successfully marked issue as won't fix", {
       issueKey: params.issueKey,
@@ -223,6 +277,34 @@ export async function handleMarkIssuesFalsePositive(
   });
 
   try {
+    // Request confirmation for bulk operations if elicitation is enabled
+    if (elicitationManager?.isEnabled()) {
+      const confirmResult = await elicitationManager.confirmBulkOperation(
+        'mark as false positive',
+        params.issueKeys.length,
+        params.issueKeys
+      );
+
+      if (confirmResult.action === 'reject' || confirmResult.action === 'cancel') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                message: 'Bulk operation cancelled by user',
+                issueCount: params.issueKeys.length,
+              }),
+            },
+          ],
+        };
+      }
+
+      // Add comment from confirmation if provided
+      if (confirmResult.action === 'accept' && confirmResult.content?.comment && !params.comment) {
+        params = { ...params, comment: confirmResult.content.comment as string };
+      }
+    }
+
     const results = await client.markIssuesFalsePositive(params);
     logger.info('Successfully marked issues as false positive', {
       issueCount: params.issueKeys.length,
@@ -266,6 +348,34 @@ export async function handleMarkIssuesWontFix(
   });
 
   try {
+    // Request confirmation for bulk operations if elicitation is enabled
+    if (elicitationManager?.isEnabled()) {
+      const confirmResult = await elicitationManager.confirmBulkOperation(
+        "mark as won't fix",
+        params.issueKeys.length,
+        params.issueKeys
+      );
+
+      if (confirmResult.action === 'reject' || confirmResult.action === 'cancel') {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                message: 'Bulk operation cancelled by user',
+                issueCount: params.issueKeys.length,
+              }),
+            },
+          ],
+        };
+      }
+
+      // Add comment from confirmation if provided
+      if (confirmResult.action === 'accept' && confirmResult.content?.comment && !params.comment) {
+        params = { ...params, comment: confirmResult.content.comment as string };
+      }
+    }
+
     const results = await client.markIssuesWontFix(params);
     logger.info("Successfully marked issues as won't fix", {
       issueCount: params.issueKeys.length,

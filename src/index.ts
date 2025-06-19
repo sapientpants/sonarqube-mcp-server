@@ -2,9 +2,11 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   ISonarQubeClient,
   createSonarQubeClientFromEnv,
+  setSonarQubeElicitationManager,
   HotspotSearchParams,
   HotspotStatusUpdateParams,
 } from './sonarqube.js';
@@ -13,6 +15,7 @@ import { createLogger } from './utils/logger.js';
 import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
 import { validateEnvironmentVariables, resetDefaultClient } from './utils/client-factory.js';
+import { createElicitationManager } from './utils/elicitation.js';
 import {
   handleSonarQubeProjects,
   handleSonarQubeGetIssues,
@@ -42,6 +45,7 @@ import {
   handleResolveIssue,
   handleReopenIssue,
   handleSonarQubeComponents,
+  setElicitationManager,
 } from './handlers/index.js';
 import {
   projectsToolSchema,
@@ -78,6 +82,13 @@ import {
 type StringOrArrayParam = string | string[] | undefined;
 
 const logger = createLogger('index');
+
+// Create elicitation manager instance
+const elicitationManager = createElicitationManager();
+
+// Set elicitation manager on handlers that need it
+setElicitationManager(elicitationManager);
+setSonarQubeElicitationManager(elicitationManager);
 
 interface Connectable {
   connect: () => Promise<void>;
@@ -700,10 +711,16 @@ if (process.env.NODE_ENV !== 'test') {
   logger.info('Starting SonarQube MCP server', {
     logFile: process.env.LOG_FILE ?? 'not configured',
     logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
+    elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
   });
 
   const transport = new StdioServerTransport();
   await (transport as unknown as Connectable).connect();
+
+  // Set the underlying Server instance on the elicitation manager
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  elicitationManager.setServer((mcpServer as any).server as Server);
+
   await mcpServer.connect(transport);
 
   logger.info('SonarQube MCP server started successfully');

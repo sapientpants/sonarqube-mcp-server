@@ -12,7 +12,16 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.5.0
+## What's New in v1.6.0
+
+### Elicitation Support (Experimental)
+- **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
+- **Bulk Operation Safety**: Confirmation prompts before marking multiple issues as false positive or won't fix
+- **Context Collection**: Optional comment collection when resolving issues
+- **Authentication Assistance**: Interactive setup when credentials are missing
+- **Opt-in Feature**: Enable with `SONARQUBE_MCP_ELICITATION=true` environment variable
+
+### Previous Updates (v1.5.0)
 
 ### Component Navigation Enhancement
 - **Components Tool**: Added comprehensive search and navigation for SonarQube components (projects, directories, files)
@@ -424,6 +433,43 @@ The server supports three authentication methods, with important differences bet
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
 - All authentication methods are supported
+
+### Elicitation Configuration (Experimental)
+
+The server supports interactive user input through MCP's elicitation capability. This feature is opt-in and requires compatible MCP clients.
+
+**Environment Variables:**
+- `SONARQUBE_MCP_ELICITATION`: Set to `true` to enable elicitation
+- `SONARQUBE_MCP_BULK_THRESHOLD`: Number of items before confirmation (default: 5)
+- `SONARQUBE_MCP_REQUIRE_COMMENTS`: Set to `true` to require comments for resolutions
+- `SONARQUBE_MCP_INTERACTIVE_SEARCH`: Set to `true` for interactive disambiguation
+
+**Example Configuration:**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "https://sonarcloud.io",
+        "SONARQUBE_TOKEN": "your-token",
+        "SONARQUBE_MCP_ELICITATION": "true",
+        "SONARQUBE_MCP_BULK_THRESHOLD": "10",
+        "SONARQUBE_MCP_REQUIRE_COMMENTS": "true"
+      }
+    }
+  }
+}
+```
+
+**Features When Enabled:**
+1. **Bulk Operation Confirmation**: Prompts for confirmation before marking multiple issues
+2. **Comment Collection**: Collects explanatory comments when marking issues as false positive or won't fix
+3. **Authentication Setup**: Guides through authentication setup when credentials are missing
+4. **Search Disambiguation**: Helps select from multiple matching components or projects
+
+**Note:** This feature requires MCP clients that support elicitation. Not all clients may support this capability.
 
 ### Logging Configuration
 

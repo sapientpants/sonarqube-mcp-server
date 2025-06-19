@@ -56,7 +56,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.7.1",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.3",
+    "@modelcontextprotocol/sdk": "^1.13.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "sonarqube-web-api-client": "0.11.0",
@@ -84,7 +84,8 @@
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "zod-to-json-schema": "^3.24.5"
   },
   "pnpm": {
     "overrides": {

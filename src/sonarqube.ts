@@ -10,6 +10,7 @@ import {
   SourceCodeDomain,
   HotspotsDomain,
 } from './domains/index.js';
+import { ElicitationManager } from './utils/elicitation.js';
 
 // Import types that are used in the implementation
 import type {
@@ -571,6 +572,13 @@ export function createSonarQubeClientWithPasscode(
   return SonarQubeClient.withPasscode(passcode, baseUrl, organization);
 }
 
+// Elicitation manager instance (will be set by index.ts)
+let elicitationManager: ElicitationManager | null = null;
+
+export function setSonarQubeElicitationManager(manager: ElicitationManager): void {
+  elicitationManager = manager;
+}
+
 /**
  * Creates a SonarQube client from environment variables
  * Supports multiple authentication methods:
@@ -609,6 +617,61 @@ export function createSonarQubeClientFromEnv(): ISonarQubeClient {
   throw new Error(
     'No SonarQube authentication configured. Set either SONARQUBE_TOKEN, SONARQUBE_USERNAME/PASSWORD, or SONARQUBE_PASSCODE'
   );
+}
+
+/**
+ * Creates a SonarQube client from environment variables with elicitation support
+ * If no authentication is configured and elicitation is enabled, prompts for credentials
+ * @returns A promise that resolves to a new SonarQube client instance
+ */
+export async function createSonarQubeClientFromEnvWithElicitation(): Promise<ISonarQubeClient> {
+  try {
+    return createSonarQubeClientFromEnv();
+  } catch (error) {
+    // If no auth configured and elicitation is enabled, collect auth details
+    if (elicitationManager?.isEnabled()) {
+      const authResult = await elicitationManager.collectAuthentication();
+
+      if (authResult.action === 'accept' && authResult.content) {
+        const auth = authResult.content;
+        const baseUrl = process.env.SONARQUBE_URL ?? DEFAULT_SONARQUBE_URL;
+        const organization = process.env.SONARQUBE_ORGANIZATION ?? null;
+
+        switch (auth.method) {
+          case 'token':
+            if (auth.token) {
+              // Store in environment for subsequent calls
+              process.env.SONARQUBE_TOKEN = auth.token;
+              return new SonarQubeClient(auth.token, baseUrl, organization);
+            }
+            break;
+          case 'basic':
+            if (auth.username && auth.password) {
+              // Store in environment for subsequent calls
+              process.env.SONARQUBE_USERNAME = auth.username;
+              process.env.SONARQUBE_PASSWORD = auth.password;
+              return createSonarQubeClientWithBasicAuth(
+                auth.username,
+                auth.password,
+                baseUrl,
+                organization
+              );
+            }
+            break;
+          case 'passcode':
+            if (auth.passcode) {
+              // Store in environment for subsequent calls
+              process.env.SONARQUBE_PASSCODE = auth.passcode;
+              return createSonarQubeClientWithPasscode(auth.passcode, baseUrl, organization);
+            }
+            break;
+        }
+      }
+    }
+
+    // Re-throw the original error if elicitation didn't help
+    throw error;
+  }
 }
 
 /**
