@@ -29,9 +29,29 @@ export const handleSonarQubeProjects = withMCPErrorHandling(
       pageSize: nullToUndefined(params.page_size),
     };
 
-    const result = await withErrorHandling('List SonarQube projects', () =>
-      client.listProjects(projectsParams)
-    );
+    let result;
+    try {
+      result = await withErrorHandling('List SonarQube projects', () =>
+        client.listProjects(projectsParams)
+      );
+    } catch (error: unknown) {
+      // Check if this is an authorization error and provide helpful guidance
+      if (
+        error instanceof Error &&
+        (error.message.includes('Insufficient privileges') ||
+          error.message.includes('requires authentication') ||
+          error.message.includes('403') ||
+          error.message.includes('Administer System'))
+      ) {
+        throw new Error(
+          `${error.message}\n\nNote: The 'projects' tool requires admin permissions. ` +
+            `Non-admin users can use the 'components' tool instead:\n` +
+            `- To list all accessible projects: components with qualifiers: ['TRK']\n` +
+            `- To search projects: components with query: 'search-term', qualifiers: ['TRK']`
+        );
+      }
+      throw error;
+    }
     logger.info('Successfully retrieved projects', { count: result.projects.length });
     return {
       content: [

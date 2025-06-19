@@ -492,7 +492,12 @@ export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =
 export const componentsMcpHandler = (params: Record<string, unknown>) => componentsHandler(params);
 
 // Register SonarQube tools
-mcpServer.tool('projects', 'List all SonarQube projects', projectsToolSchema, projectsMcpHandler);
+mcpServer.tool(
+  'projects',
+  'List all SonarQube projects with metadata (requires admin permissions)',
+  projectsToolSchema,
+  projectsMcpHandler
+);
 
 mcpServer.tool(
   'metrics',
