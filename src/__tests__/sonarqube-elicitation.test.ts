@@ -1,7 +1,9 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { createSonarQubeClientFromEnvWithElicitation, setSonarQubeElicitationManager } from '../sonarqube.js';
+import {
+  createSonarQubeClientFromEnvWithElicitation,
+  setSonarQubeElicitationManager,
+} from '../sonarqube.js';
 import { ElicitationManager } from '../utils/elicitation.js';
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 describe('SonarQube Client with Elicitation', () => {
   const originalEnv = process.env;
@@ -10,13 +12,13 @@ describe('SonarQube Client with Elicitation', () => {
   beforeEach(() => {
     jest.resetModules();
     process.env = { ...originalEnv };
-    
+
     // Clear any existing auth
     delete process.env.SONARQUBE_TOKEN;
     delete process.env.SONARQUBE_USERNAME;
     delete process.env.SONARQUBE_PASSWORD;
     delete process.env.SONARQUBE_PASSCODE;
-    
+
     // Create mock elicitation manager
     mockElicitationManager = {
       isEnabled: jest.fn(),
@@ -28,7 +30,7 @@ describe('SonarQube Client with Elicitation', () => {
       collectResolutionComment: jest.fn(),
       disambiguateSelection: jest.fn(),
     } as unknown as jest.Mocked<ElicitationManager>;
-    
+
     // Set the mock manager
     setSonarQubeElicitationManager(mockElicitationManager);
   });
@@ -41,9 +43,9 @@ describe('SonarQube Client with Elicitation', () => {
     it('should create client when environment is already configured', async () => {
       process.env.SONARQUBE_TOKEN = 'test-token';
       process.env.SONARQUBE_URL = 'https://test.sonarqube.com';
-      
+
       const client = await createSonarQubeClientFromEnvWithElicitation();
-      
+
       expect(client).toBeDefined();
       expect(mockElicitationManager.isEnabled).not.toHaveBeenCalled();
       expect(mockElicitationManager.collectAuthentication).not.toHaveBeenCalled();
@@ -58,9 +60,9 @@ describe('SonarQube Client with Elicitation', () => {
           token: 'elicited-token',
         },
       });
-      
+
       const client = await createSonarQubeClientFromEnvWithElicitation();
-      
+
       expect(client).toBeDefined();
       expect(mockElicitationManager.isEnabled).toHaveBeenCalled();
       expect(mockElicitationManager.collectAuthentication).toHaveBeenCalled();
@@ -77,9 +79,9 @@ describe('SonarQube Client with Elicitation', () => {
           password: 'test-pass',
         },
       });
-      
+
       const client = await createSonarQubeClientFromEnvWithElicitation();
-      
+
       expect(client).toBeDefined();
       expect(process.env.SONARQUBE_USERNAME).toBe('test-user');
       expect(process.env.SONARQUBE_PASSWORD).toBe('test-pass');
@@ -94,9 +96,9 @@ describe('SonarQube Client with Elicitation', () => {
           passcode: 'test-passcode',
         },
       });
-      
+
       const client = await createSonarQubeClientFromEnvWithElicitation();
-      
+
       expect(client).toBeDefined();
       expect(process.env.SONARQUBE_PASSCODE).toBe('test-passcode');
     });
@@ -106,7 +108,7 @@ describe('SonarQube Client with Elicitation', () => {
       mockElicitationManager.collectAuthentication.mockResolvedValue({
         action: 'cancel',
       });
-      
+
       await expect(createSonarQubeClientFromEnvWithElicitation()).rejects.toThrow(
         'No SonarQube authentication configured'
       );
@@ -117,7 +119,7 @@ describe('SonarQube Client with Elicitation', () => {
       mockElicitationManager.collectAuthentication.mockResolvedValue({
         action: 'reject',
       });
-      
+
       await expect(createSonarQubeClientFromEnvWithElicitation()).rejects.toThrow(
         'No SonarQube authentication configured'
       );
@@ -125,11 +127,11 @@ describe('SonarQube Client with Elicitation', () => {
 
     it('should throw error when elicitation is disabled and no auth configured', async () => {
       mockElicitationManager.isEnabled.mockReturnValue(false);
-      
+
       await expect(createSonarQubeClientFromEnvWithElicitation()).rejects.toThrow(
         'No SonarQube authentication configured'
       );
-      
+
       expect(mockElicitationManager.collectAuthentication).not.toHaveBeenCalled();
     });
 
@@ -142,7 +144,7 @@ describe('SonarQube Client with Elicitation', () => {
           // token is missing
         },
       });
-      
+
       await expect(createSonarQubeClientFromEnvWithElicitation()).rejects.toThrow(
         'No SonarQube authentication configured'
       );
@@ -158,7 +160,7 @@ describe('SonarQube Client with Elicitation', () => {
           // password is missing
         },
       });
-      
+
       await expect(createSonarQubeClientFromEnvWithElicitation()).rejects.toThrow(
         'No SonarQube authentication configured'
       );
@@ -173,7 +175,7 @@ describe('SonarQube Client with Elicitation', () => {
           // passcode is missing
         },
       });
-      
+
       await expect(createSonarQubeClientFromEnvWithElicitation()).rejects.toThrow(
         'No SonarQube authentication configured'
       );
