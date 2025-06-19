@@ -510,6 +510,52 @@ The server supports file-based logging for debugging and monitoring. Since MCP s
 2024-01-15T10:30:50.567Z INFO [index] Successfully retrieved projects {"count": 5}
 ```
 
+## Security Model and Authentication
+
+### Current Security Model
+
+The SonarQube MCP Server is designed as a **single-user local tool** that runs on your local machine. Authentication credentials are managed through environment variables, which is appropriate for desktop/local usage scenarios.
+
+**Key characteristics:**
+- **Single-user design**: One MCP server instance per user
+- **Local execution**: Runs on the user's machine with their credentials
+- **Direct authentication**: Uses SonarQube's existing authentication mechanisms
+- **No OAuth flow**: As a stdio-based local tool, no OAuth is needed
+
+### Authentication Security Considerations
+
+1. **Token Authentication (Recommended)**
+   - Most secure option for API access
+   - Tokens can be scoped with limited permissions
+   - Can be revoked without changing passwords
+   - Recommended for both SonarCloud and SonarQube
+
+2. **Credential Storage**
+   - Credentials are stored in Claude Desktop's configuration file
+   - Ensure your system's file permissions protect this configuration
+   - Consider using a password manager to generate and store tokens
+
+3. **Permission Scoping**
+   - Create tokens with minimal required permissions
+   - Use read-only tokens when write access isn't needed
+   - Regularly review and rotate tokens
+
+### Future OAuth2 Considerations
+
+While the current implementation is well-suited for local single-user scenarios, the MCP specification positions MCP servers as OAuth 2.1 resource servers for future HTTP-based transport:
+
+**If HTTP transport is added in the future:**
+- The server would need to validate OAuth access tokens
+- Support for RFC8707 resource indicators would be required
+- Multi-client scenarios would need proper token scoping
+- The current environment variable approach would remain for backward compatibility
+
+**Current approach benefits:**
+- Simple setup without complex OAuth flows
+- Direct integration with existing SonarQube auth
+- Appropriate security for local single-user tools
+- No additional authentication infrastructure needed
+
 ## Available Tools
 
 ### Permission Requirements
