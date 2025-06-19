@@ -12,7 +12,20 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.4.0
+## What's New in v1.5.0
+
+### Component Navigation Enhancement
+- **Components Tool**: Added comprehensive search and navigation for SonarQube components (projects, directories, files)
+- **Text Search**: Find components by name with free text search
+- **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
+- **Tree Navigation**: Navigate component hierarchies with different traversal strategies
+- **Language Filtering**: Find components by programming language
+
+### Documentation Updates
+- **Admin Permission Clarification**: Clarified that the `projects` tool requires admin permissions
+- **Alternative for Non-Admins**: Added guidance to use `components` tool with project qualifier for listing accessible projects
+
+## Previous Updates (v1.4.0)
 
 ### Issue Management Enhancements
 - **File and Directory Filtering**: Filter issues by specific files (`files`), directories (`directories`), or code scopes (`scopes`)
@@ -20,13 +33,6 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 - **Issue Comments**: Add comments to issues for better collaboration
 - **Issue Assignment**: Assign issues to specific users or unassign them
 - **Issue Transitions**: Confirm, unconfirm, resolve, and reopen issues with optional comments
-
-### Component Navigation (NEW)
-- **Components Tool**: Search and navigate SonarQube components (projects, directories, files)
-- **Text Search**: Find components by name with free text search
-- **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
-- **Tree Navigation**: Navigate component hierarchies with different traversal strategies
-- **Language Filtering**: Find components by programming language
 
 ### Developer Experience Improvements
 - **Enhanced Validation**: Better error messages and input validation for all tools
