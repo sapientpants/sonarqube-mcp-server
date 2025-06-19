@@ -628,50 +628,94 @@ export async function createSonarQubeClientFromEnvWithElicitation(): Promise<ISo
   try {
     return createSonarQubeClientFromEnv();
   } catch (error) {
-    // If no auth configured and elicitation is enabled, collect auth details
-    if (elicitationManager?.isEnabled()) {
-      const authResult = await elicitationManager.collectAuthentication();
-
-      if (authResult.action === 'accept' && authResult.content) {
-        const auth = authResult.content;
-        const baseUrl = process.env.SONARQUBE_URL ?? DEFAULT_SONARQUBE_URL;
-        const organization = process.env.SONARQUBE_ORGANIZATION ?? null;
-
-        switch (auth.method) {
-          case 'token':
-            if (auth.token) {
-              // Store in environment for subsequent calls
-              process.env.SONARQUBE_TOKEN = auth.token;
-              return new SonarQubeClient(auth.token, baseUrl, organization);
-            }
-            break;
-          case 'basic':
-            if (auth.username && auth.password) {
-              // Store in environment for subsequent calls
-              process.env.SONARQUBE_USERNAME = auth.username;
-              process.env.SONARQUBE_PASSWORD = auth.password;
-              return createSonarQubeClientWithBasicAuth(
-                auth.username,
-                auth.password,
-                baseUrl,
-                organization
-              );
-            }
-            break;
-          case 'passcode':
-            if (auth.passcode) {
-              // Store in environment for subsequent calls
-              process.env.SONARQUBE_PASSCODE = auth.passcode;
-              return createSonarQubeClientWithPasscode(auth.passcode, baseUrl, organization);
-            }
-            break;
-        }
-      }
+    const client = await tryCreateClientWithElicitation();
+    if (client) {
+      return client;
     }
-
     // Re-throw the original error if elicitation didn't help
     throw error;
   }
+}
+
+/**
+ * Helper function to create a client using elicitation
+ */
+async function tryCreateClientWithElicitation(): Promise<ISonarQubeClient | null> {
+  if (!elicitationManager?.isEnabled()) {
+    return null;
+  }
+
+  const authResult = await elicitationManager.collectAuthentication();
+  if (authResult.action !== 'accept' || !authResult.content) {
+    return null;
+  }
+
+  const auth = authResult.content;
+  const baseUrl = process.env.SONARQUBE_URL ?? DEFAULT_SONARQUBE_URL;
+  const organization = process.env.SONARQUBE_ORGANIZATION ?? null;
+
+  return createClientFromAuthMethod(auth, baseUrl, organization);
+}
+
+/**
+ * Helper function to create a client based on authentication method
+ */
+function createClientFromAuthMethod(
+  auth: { method: string; token?: string; username?: string; password?: string; passcode?: string },
+  baseUrl: string,
+  organization: string | null
+): ISonarQubeClient | null {
+  switch (auth.method) {
+    case 'token':
+      return handleTokenAuth(auth.token, baseUrl, organization);
+    case 'basic':
+      return handleBasicAuth(auth.username, auth.password, baseUrl, organization);
+    case 'passcode':
+      return handlePasscodeAuth(auth.passcode, baseUrl, organization);
+    default:
+      return null;
+  }
+}
+
+/**
+ * Helper function to handle token authentication
+ */
+function handleTokenAuth(
+  token: string | undefined,
+  baseUrl: string,
+  organization: string | null
+): ISonarQubeClient | null {
+  if (!token) return null;
+  process.env.SONARQUBE_TOKEN = token;
+  return new SonarQubeClient(token, baseUrl, organization);
+}
+
+/**
+ * Helper function to handle basic authentication
+ */
+function handleBasicAuth(
+  username: string | undefined,
+  password: string | undefined,
+  baseUrl: string,
+  organization: string | null
+): ISonarQubeClient | null {
+  if (!username || !password) return null;
+  process.env.SONARQUBE_USERNAME = username;
+  process.env.SONARQUBE_PASSWORD = password;
+  return createSonarQubeClientWithBasicAuth(username, password, baseUrl, organization);
+}
+
+/**
+ * Helper function to handle passcode authentication
+ */
+function handlePasscodeAuth(
+  passcode: string | undefined,
+  baseUrl: string,
+  organization: string | null
+): ISonarQubeClient | null {
+  if (!passcode) return null;
+  process.env.SONARQUBE_PASSCODE = passcode;
+  return createSonarQubeClientWithPasscode(passcode, baseUrl, organization);
 }
 
 /**

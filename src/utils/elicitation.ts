@@ -86,10 +86,16 @@ export class ElicitationManager {
     const hasMore = items && items.length > 5;
 
     try {
+      let itemsDisplay = '';
+      if (itemsPreview) {
+        itemsDisplay = `: ${itemsPreview}`;
+        if (hasMore) {
+          itemsDisplay += ', ...';
+        }
+      }
+
       const result = await this.server.elicitInput({
-        message: `You are about to ${operation} ${itemCount} items${
-          itemsPreview ? `: ${itemsPreview}${hasMore ? ', ...' : ''}` : ''
-        }. This action cannot be undone.`,
+        message: `You are about to ${operation} ${itemCount} items${itemsDisplay}. This action cannot be undone.`,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         requestedSchema: zodToJsonSchema(confirmationSchema) as any,
       });
@@ -237,9 +243,9 @@ export const createElicitationManager = (
 
   return new ElicitationManager({
     enabled: envEnabled,
-    bulkOperationThreshold: envThreshold || options?.bulkOperationThreshold,
-    requireComments: envRequireComments || options?.requireComments,
-    interactiveSearch: envInteractiveSearch || options?.interactiveSearch,
+    bulkOperationThreshold: envThreshold ?? options?.bulkOperationThreshold,
+    requireComments: envRequireComments ?? options?.requireComments,
+    interactiveSearch: envInteractiveSearch ?? options?.interactiveSearch,
     ...options,
   });
 };
