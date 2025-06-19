@@ -16,6 +16,7 @@ export {
   handleUnconfirmIssue,
   handleResolveIssue,
   handleReopenIssue,
+  setElicitationManager,
 } from './issues.js';
 
 export { handleSonarQubeGetMetrics } from './metrics.js';

@@ -10,11 +10,150 @@ import type {
   UnconfirmIssueParams,
   ResolveIssueParams,
   ReopenIssueParams,
+  DoTransitionResponse,
 } from '../types/index.js';
 import { getDefaultClient } from '../utils/client-factory.js';
 import { createLogger } from '../utils/logger.js';
+import { ElicitationManager } from '../utils/elicitation.js';
 
 const logger = createLogger('handlers/issues');
+
+// Elicitation manager instance (will be set by index.ts)
+let elicitationManager: ElicitationManager | null = null;
+
+export function setElicitationManager(manager: ElicitationManager): void {
+  elicitationManager = manager;
+}
+
+// Common types for elicitation responses
+export interface ElicitationCancelResponse {
+  [key: string]: unknown;
+  content: Array<{
+    type: 'text';
+    text: string;
+  }>;
+}
+
+/**
+ * Handles single issue resolution elicitation
+ */
+async function handleSingleIssueElicitation<T extends { comment?: string }>(
+  params: T & { issueKey: string },
+  resolutionType: string
+): Promise<
+  { params: T; cancelled: false } | { cancelled: true; response: ElicitationCancelResponse }
+> {
+  if (!elicitationManager?.isEnabled() || params.comment) {
+    return { params, cancelled: false };
+  }
+
+  const commentResult = await elicitationManager.collectResolutionComment(
+    params.issueKey,
+    resolutionType
+  );
+
+  if (commentResult.action === 'accept' && commentResult.content) {
+    return { params: { ...params, comment: commentResult.content.comment }, cancelled: false };
+  }
+
+  if (commentResult.action === 'reject' || commentResult.action === 'cancel') {
+    return {
+      cancelled: true,
+      response: {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              message: 'Operation cancelled by user',
+              issueKey: params.issueKey,
+            }),
+          },
+        ],
+      },
+    };
+  }
+
+  return { params, cancelled: false };
+}
+
+/**
+ * Handles bulk issue resolution elicitation
+ */
+async function handleBulkIssueElicitation<T extends { comment?: string; issueKeys: string[] }>(
+  params: T,
+  operationType: string
+): Promise<
+  { params: T; cancelled: false } | { cancelled: true; response: ElicitationCancelResponse }
+> {
+  if (!elicitationManager?.isEnabled()) {
+    return { params, cancelled: false };
+  }
+
+  const confirmResult = await elicitationManager.confirmBulkOperation(
+    operationType,
+    params.issueKeys.length,
+    params.issueKeys
+  );
+
+  if (confirmResult.action === 'reject' || confirmResult.action === 'cancel') {
+    return {
+      cancelled: true,
+      response: {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              message: 'Bulk operation cancelled by user',
+              issueCount: params.issueKeys.length,
+            }),
+          },
+        ],
+      },
+    };
+  }
+
+  // Add comment from confirmation if provided
+  if (confirmResult.action === 'accept' && confirmResult.content?.comment && !params.comment) {
+    return {
+      params: { ...params, comment: confirmResult.content.comment },
+      cancelled: false,
+    };
+  }
+
+  return { params, cancelled: false };
+}
+
+/**
+ * Maps bulk operation results to a consistent format
+ */
+function mapBulkResults(results: DoTransitionResponse[]) {
+  return results.map((result) => ({
+    issue: result.issue,
+    components: result.components,
+    rules: result.rules,
+    users: result.users,
+  }));
+}
+
+/**
+ * Creates a standard issue operation response
+ */
+function createIssueOperationResponse(message: string, result: DoTransitionResponse) {
+  return {
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          message,
+          issue: result.issue,
+          components: result.components,
+          rules: result.rules,
+          users: result.users,
+        }),
+      },
+    ],
+  };
+}
 
 /**
  * Fetches and returns issues from a specified SonarQube project with advanced filtering capabilities
@@ -143,26 +282,23 @@ export async function handleMarkIssueFalsePositive(
   logger.debug('Handling mark issue false positive request', { issueKey: params.issueKey });
 
   try {
+    // Handle elicitation for resolution comment
+    const elicitationResult = await handleSingleIssueElicitation(params, 'false positive');
+    if (elicitationResult.cancelled) {
+      return elicitationResult.response;
+    }
+    params = elicitationResult.params;
+
     const result = await client.markIssueFalsePositive(params);
     logger.info('Successfully marked issue as false positive', {
       issueKey: params.issueKey,
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Issue ${params.issueKey} marked as false positive`,
-            issue: result.issue,
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-          }),
-        },
-      ],
-    };
+    return createIssueOperationResponse(
+      `Issue ${params.issueKey} marked as false positive`,
+      result
+    );
   } catch (error) {
     logger.error('Failed to mark issue as false positive', error);
     throw error;
@@ -182,26 +318,20 @@ export async function handleMarkIssueWontFix(
   logger.debug("Handling mark issue won't fix request", { issueKey: params.issueKey });
 
   try {
+    // Handle elicitation for resolution comment
+    const elicitationResult = await handleSingleIssueElicitation(params, "won't fix");
+    if (elicitationResult.cancelled) {
+      return elicitationResult.response;
+    }
+    params = elicitationResult.params;
+
     const result = await client.markIssueWontFix(params);
     logger.info("Successfully marked issue as won't fix", {
       issueKey: params.issueKey,
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Issue ${params.issueKey} marked as won't fix`,
-            issue: result.issue,
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-          }),
-        },
-      ],
-    };
+    return createIssueOperationResponse(`Issue ${params.issueKey} marked as won't fix`, result);
   } catch (error) {
     logger.error("Failed to mark issue as won't fix", error);
     throw error;
@@ -223,6 +353,13 @@ export async function handleMarkIssuesFalsePositive(
   });
 
   try {
+    // Handle elicitation for bulk operation
+    const elicitationResult = await handleBulkIssueElicitation(params, 'mark as false positive');
+    if (elicitationResult.cancelled) {
+      return elicitationResult.response;
+    }
+    params = elicitationResult.params;
+
     const results = await client.markIssuesFalsePositive(params);
     logger.info('Successfully marked issues as false positive', {
       issueCount: params.issueKeys.length,
@@ -235,12 +372,7 @@ export async function handleMarkIssuesFalsePositive(
           type: 'text' as const,
           text: JSON.stringify({
             message: `${params.issueKeys.length} issues marked as false positive`,
-            results: results.map((result) => ({
-              issue: result.issue,
-              components: result.components,
-              rules: result.rules,
-              users: result.users,
-            })),
+            results: mapBulkResults(results),
           }),
         },
       ],
@@ -266,6 +398,13 @@ export async function handleMarkIssuesWontFix(
   });
 
   try {
+    // Handle elicitation for bulk operation
+    const elicitationResult = await handleBulkIssueElicitation(params, "mark as won't fix");
+    if (elicitationResult.cancelled) {
+      return elicitationResult.response;
+    }
+    params = elicitationResult.params;
+
     const results = await client.markIssuesWontFix(params);
     logger.info("Successfully marked issues as won't fix", {
       issueCount: params.issueKeys.length,
@@ -278,12 +417,7 @@ export async function handleMarkIssuesWontFix(
           type: 'text' as const,
           text: JSON.stringify({
             message: `${params.issueKeys.length} issues marked as won't fix`,
-            results: results.map((result) => ({
-              issue: result.issue,
-              components: result.components,
-              rules: result.rules,
-              users: result.users,
-            })),
+            results: mapBulkResults(results),
           }),
         },
       ],
@@ -420,20 +554,7 @@ export async function handleConfirmIssue(
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Issue ${params.issueKey} confirmed`,
-            issue: result.issue,
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-          }),
-        },
-      ],
-    };
+    return createIssueOperationResponse(`Issue ${params.issueKey} confirmed`, result);
   } catch (error) {
     logger.error('Failed to confirm issue', error);
     throw error;
@@ -456,20 +577,7 @@ export async function handleUnconfirmIssue(
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Issue ${params.issueKey} unconfirmed`,
-            issue: result.issue,
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-          }),
-        },
-      ],
-    };
+    return createIssueOperationResponse(`Issue ${params.issueKey} unconfirmed`, result);
   } catch (error) {
     logger.error('Failed to unconfirm issue', error);
     throw error;
@@ -492,20 +600,7 @@ export async function handleResolveIssue(
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Issue ${params.issueKey} resolved`,
-            issue: result.issue,
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-          }),
-        },
-      ],
-    };
+    return createIssueOperationResponse(`Issue ${params.issueKey} resolved`, result);
   } catch (error) {
     logger.error('Failed to resolve issue', error);
     throw error;
@@ -528,20 +623,7 @@ export async function handleReopenIssue(
       comment: params.comment ? 'with comment' : 'without comment',
     });
 
-    return {
-      content: [
-        {
-          type: 'text' as const,
-          text: JSON.stringify({
-            message: `Issue ${params.issueKey} reopened`,
-            issue: result.issue,
-            components: result.components,
-            rules: result.rules,
-            users: result.users,
-          }),
-        },
-      ],
-    };
+    return createIssueOperationResponse(`Issue ${params.issueKey} reopened`, result);
   } catch (error) {
     logger.error('Failed to reopen issue', error);
     throw error;
