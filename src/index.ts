@@ -16,6 +16,7 @@ import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
 import { validateEnvironmentVariables, resetDefaultClient } from './utils/client-factory.js';
 import { createElicitationManager } from './utils/elicitation.js';
+import { SERVER_VERSION, VERSION_INFO } from './config/versions.js';
 import {
   handleSonarQubeProjects,
   handleSonarQubeGetIssues,
@@ -107,7 +108,7 @@ export { mapToSonarQubeParams } from './utils/parameter-mappers.js';
 // Initialize MCP server
 export const mcpServer = new McpServer({
   name: 'sonarqube-mcp-server',
-  version: '1.3.2',
+  version: SERVER_VERSION,
 });
 
 // Create the SonarQube client
@@ -879,6 +880,7 @@ mcpServer.tool(
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
   logger.info('Starting SonarQube MCP server', {
+    ...VERSION_INFO,
     logFile: process.env.LOG_FILE ?? 'not configured',
     logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
     elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
@@ -893,7 +895,9 @@ if (process.env.NODE_ENV !== 'test') {
 
   await mcpServer.connect(transport);
 
-  logger.info('SonarQube MCP server started successfully');
+  logger.info('SonarQube MCP server started successfully', {
+    mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',
+  });
 }
 
 // nullToUndefined is already exported at line 33

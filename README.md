@@ -50,6 +50,10 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 - 🏥 **Monitor system health** - Check SonarQube instance status and availability
 - 🔄 **Enhanced error handling** - Clear error messages with solutions and automatic retry for transient failures
 
+## Compatibility
+
+For detailed information about MCP protocol version support and SDK compatibility, see [COMPATIBILITY.md](COMPATIBILITY.md).
+
 ## Quick Start
 
 ### Prerequisites
