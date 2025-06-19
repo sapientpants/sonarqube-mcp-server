@@ -7,13 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2025-06-19
+
+### Added
+- New `components` action for searching and navigating SonarQube components
+- Documentation section in README explaining permission requirements for different tools
+- Examples in README showing how to list projects for both admin and non-admin users
+
 ### Changed
 - Updated `projects` tool description to clarify admin permission requirement
 - Enhanced error message for `projects` tool to suggest using `components` tool when permission is denied
-
-### Added
-- Documentation section in README explaining permission requirements for different tools
-- Examples in README showing how to list projects for both admin and non-admin users
 
 ## [1.4.1] - 2025-01-16
 
