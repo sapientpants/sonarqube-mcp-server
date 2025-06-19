@@ -507,6 +507,12 @@ mcpServer.tool(
   'projects',
   'List all SonarQube projects with metadata (requires admin permissions)',
   projectsToolSchema,
+  {
+    title: 'List Projects',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   projectsMcpHandler
 );
 
@@ -514,6 +520,12 @@ mcpServer.tool(
   'metrics',
   'Get available metrics from SonarQube',
   metricsToolSchema,
+  {
+    title: 'Get Metrics',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   metricsMcpHandler
 );
 
@@ -521,6 +533,12 @@ mcpServer.tool(
   'issues',
   'Search and filter SonarQube issues by severity, status, assignee, tag, file path, directory, scope, and more. Critical for dashboards, targeted clean-up sprints, security audits, and regression testing. Supports faceted search for aggregations.',
   issuesToolSchema,
+  {
+    title: 'Search Issues',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   issuesMcpHandler
 );
 
@@ -528,6 +546,13 @@ mcpServer.tool(
   'markIssueFalsePositive',
   'Mark an issue as false positive',
   markIssueFalsePositiveToolSchema,
+  {
+    title: 'Mark Issue False Positive',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   markIssueFalsePositiveMcpHandler
 );
 
@@ -535,6 +560,13 @@ mcpServer.tool(
   'markIssueWontFix',
   "Mark an issue as won't fix",
   markIssueWontFixToolSchema,
+  {
+    title: "Mark Issue Won't Fix",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   markIssueWontFixMcpHandler
 );
 
@@ -542,6 +574,13 @@ mcpServer.tool(
   'markIssuesFalsePositive',
   'Mark multiple issues as false positive (bulk operation)',
   markIssuesFalsePositiveToolSchema,
+  {
+    title: 'Mark Issues False Positive',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   markIssuesFalsePositiveMcpHandler
 );
 
@@ -549,6 +588,13 @@ mcpServer.tool(
   'markIssuesWontFix',
   "Mark multiple issues as won't fix (bulk operation)",
   markIssuesWontFixToolSchema,
+  {
+    title: "Mark Issues Won't Fix",
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   markIssuesWontFixMcpHandler
 );
 
@@ -556,6 +602,13 @@ mcpServer.tool(
   'addCommentToIssue',
   'Add a comment to a SonarQube issue',
   addCommentToIssueToolSchema,
+  {
+    title: 'Add Comment to Issue',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+  },
   addCommentToIssueMcpHandler
 );
 
@@ -563,6 +616,13 @@ mcpServer.tool(
   'assignIssue',
   'Assign a SonarQube issue to a user or unassign it',
   assignIssueToolSchema,
+  {
+    title: 'Assign Issue',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   assignIssueMcpHandler
 );
 
@@ -570,6 +630,13 @@ mcpServer.tool(
   'confirmIssue',
   'Confirm a SonarQube issue',
   confirmIssueToolSchema,
+  {
+    title: 'Confirm Issue',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   confirmIssueMcpHandler
 );
 
@@ -577,6 +644,13 @@ mcpServer.tool(
   'unconfirmIssue',
   'Unconfirm a SonarQube issue',
   unconfirmIssueToolSchema,
+  {
+    title: 'Unconfirm Issue',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+  },
   unconfirmIssueMcpHandler
 );
 
@@ -584,6 +658,13 @@ mcpServer.tool(
   'resolveIssue',
   'Resolve a SonarQube issue',
   resolveIssueToolSchema,
+  {
+    title: 'Resolve Issue',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
   resolveIssueMcpHandler
 );
 
@@ -591,6 +672,13 @@ mcpServer.tool(
   'reopenIssue',
   'Reopen a SonarQube issue',
   reopenIssueToolSchema,
+  {
+    title: 'Reopen Issue',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+  },
   reopenIssueMcpHandler
 );
 
@@ -599,6 +687,12 @@ mcpServer.tool(
   'system_health',
   'Get the health status of the SonarQube instance',
   systemHealthToolSchema,
+  {
+    title: 'Get System Health',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   healthMcpHandler
 );
 
@@ -606,6 +700,12 @@ mcpServer.tool(
   'system_status',
   'Get the status of the SonarQube instance',
   systemStatusToolSchema,
+  {
+    title: 'Get System Status',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   statusMcpHandler
 );
 
@@ -613,6 +713,12 @@ mcpServer.tool(
   'system_ping',
   'Ping the SonarQube instance to check if it is up',
   systemPingToolSchema,
+  {
+    title: 'Ping System',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   pingMcpHandler
 );
 
@@ -621,6 +727,12 @@ mcpServer.tool(
   'measures_component',
   'Get measures for a specific component',
   componentMeasuresToolSchema,
+  {
+    title: 'Get Component Measures',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   componentMeasuresMcpHandler
 );
 
@@ -628,6 +740,12 @@ mcpServer.tool(
   'measures_components',
   'Get measures for multiple components',
   componentsMeasuresToolSchema,
+  {
+    title: 'Get Components Measures',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   componentsMeasuresMcpHandler
 );
 
@@ -635,6 +753,12 @@ mcpServer.tool(
   'measures_history',
   'Get measures history for a component',
   measuresHistoryToolSchema,
+  {
+    title: 'Get Measures History',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   measuresHistoryMcpHandler
 );
 
@@ -643,6 +767,12 @@ mcpServer.tool(
   'quality_gates',
   'List available quality gates',
   qualityGatesToolSchema,
+  {
+    title: 'List Quality Gates',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   qualityGatesMcpHandler
 );
 
@@ -650,6 +780,12 @@ mcpServer.tool(
   'quality_gate',
   'Get quality gate conditions',
   qualityGateToolSchema,
+  {
+    title: 'Get Quality Gate',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   qualityGateMcpHandler
 );
 
@@ -657,6 +793,12 @@ mcpServer.tool(
   'quality_gate_status',
   'Get project quality gate status',
   qualityGateStatusToolSchema,
+  {
+    title: 'Get Quality Gate Status',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   qualityGateStatusMcpHandler
 );
 
@@ -665,6 +807,12 @@ mcpServer.tool(
   'source_code',
   'View source code with issues highlighted',
   sourceCodeToolSchema,
+  {
+    title: 'View Source Code',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   sourceCodeMcpHandler
 );
 
@@ -672,6 +820,12 @@ mcpServer.tool(
   'scm_blame',
   'Get SCM blame information for source code',
   scmBlameToolSchema,
+  {
+    title: 'Get SCM Blame',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   scmBlameMcpHandler
 );
 
@@ -680,6 +834,12 @@ mcpServer.tool(
   'hotspots',
   'Search for security hotspots with filtering options',
   hotspotsToolSchema,
+  {
+    title: 'Search Hotspots',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   hotspotsMcpHandler
 );
 
@@ -687,6 +847,12 @@ mcpServer.tool(
   'hotspot',
   'Get detailed information about a specific security hotspot',
   hotspotToolSchema,
+  {
+    title: 'Get Hotspot Details',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   hotspotMcpHandler
 );
 
@@ -694,6 +860,13 @@ mcpServer.tool(
   'update_hotspot_status',
   'Update the status of a security hotspot (requires appropriate permissions)',
   updateHotspotStatusToolSchema,
+  {
+    title: 'Update Hotspot Status',
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+  },
   updateHotspotStatusMcpHandler
 );
 
@@ -702,6 +875,12 @@ mcpServer.tool(
   'components',
   'Search and navigate SonarQube components (projects, directories, files). Supports text search, filtering by type/language, and tree navigation',
   componentsToolSchema,
+  {
+    title: 'Search Components',
+    readOnlyHint: true,
+    destructiveHint: false,
+    openWorldHint: true,
+  },
   componentsMcpHandler
 );
 
