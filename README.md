@@ -25,20 +25,6 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 - **Admin Permission Clarification**: Clarified that the `projects` tool requires admin permissions
 - **Alternative for Non-Admins**: Added guidance to use `components` tool with project qualifier for listing accessible projects
 
-## Previous Updates (v1.4.0)
-
-### Issue Management Enhancements
-- **File and Directory Filtering**: Filter issues by specific files (`files`), directories (`directories`), or code scopes (`scopes`)
-- **Bulk Issue Actions**: Mark multiple issues as false positive or won't fix in a single operation
-- **Issue Comments**: Add comments to issues for better collaboration
-- **Issue Assignment**: Assign issues to specific users or unassign them
-- **Issue Transitions**: Confirm, unconfirm, resolve, and reopen issues with optional comments
-
-### Developer Experience Improvements
-- **Enhanced Validation**: Better error messages and input validation for all tools
-- **Improved Documentation**: Added Architecture Decision Records (ADRs) for design decisions
-- **Code Quality Standards**: New conventions in CLAUDE.md for maintaining code quality
-- **Updated Dependencies**: Upgraded to sonarqube-web-api-client 0.11.0 with deprecation warnings
 
 ## Overview
 
