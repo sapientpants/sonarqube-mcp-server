@@ -879,6 +879,10 @@ mcpServer.tool(
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
   logger.info('Starting SonarQube MCP server', {
+    serverVersion: '1.3.2',
+    sdkVersion: '1.13.0',
+    supportedProtocolVersions: ['2025-06-18', '2025-03-26', '2024-11-05', '2024-10-07'],
+    latestProtocolVersion: '2025-06-18',
     logFile: process.env.LOG_FILE ?? 'not configured',
     logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
     elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
@@ -893,7 +897,9 @@ if (process.env.NODE_ENV !== 'test') {
 
   await mcpServer.connect(transport);
 
-  logger.info('SonarQube MCP server started successfully');
+  logger.info('SonarQube MCP server started successfully', {
+    mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',
+  });
 }
 
 // nullToUndefined is already exported at line 33

@@ -217,6 +217,70 @@ describe('ComponentName', () => {
 - Include examples for new features
 - Keep documentation clear and concise
 
+## MCP SDK Update Process
+
+When updating the Model Context Protocol SDK (`@modelcontextprotocol/sdk`), follow these steps:
+
+### Before Updating
+
+1. **Check the SDK Release Notes**:
+   - Visit the [MCP SDK releases page](https://github.com/modelcontextprotocol/sdk/releases)
+   - Review the changelog for breaking changes
+   - Note any new protocol versions supported
+
+2. **Assess Impact**:
+   - Check if the new SDK version adds support for new protocol versions
+   - Review any deprecated features or APIs
+   - Evaluate compatibility with existing functionality
+
+### Update Process
+
+1. **Update the Dependency**:
+   ```bash
+   pnpm add @modelcontextprotocol/sdk@latest
+   ```
+
+2. **Update Version References**:
+   - Update SDK version in `src/index.ts` startup logging
+   - Update supported protocol versions in `COMPATIBILITY.md`
+   - Update SDK version in `README.md` if referenced
+
+3. **Test Protocol Compatibility**:
+   ```bash
+   # Run all tests
+   pnpm test
+   
+   # Test with Claude Desktop or other MCP clients
+   # Verify all tools work correctly
+   ```
+
+4. **Update Documentation**:
+   - Update `COMPATIBILITY.md` with new protocol versions
+   - Document any behavior changes
+   - Update examples if APIs have changed
+
+5. **Test with Multiple Clients**:
+   - Test with Claude Desktop
+   - Test with other MCP clients if available
+   - Verify backward compatibility with older protocol versions
+
+### Post-Update Checklist
+
+- [ ] All tests pass (`pnpm test`)
+- [ ] Type checking passes (`pnpm check-types`)
+- [ ] Linting passes (`pnpm lint`)
+- [ ] Documentation is updated
+- [ ] COMPATIBILITY.md reflects new protocol support
+- [ ] Manual testing confirms all tools work
+- [ ] No deprecated SDK features are being used
+
+### Monitoring SDK Updates
+
+To stay informed about SDK updates:
+- Watch the [MCP SDK repository](https://github.com/modelcontextprotocol/sdk)
+- Subscribe to release notifications
+- Review the [MCP specification](https://modelcontextprotocol.io) for protocol changes
+
 ## Release Process
 
 1. Ensure all tests pass
