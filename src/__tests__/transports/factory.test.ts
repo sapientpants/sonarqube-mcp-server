@@ -1,5 +1,6 @@
 import { TransportFactory } from '../../transports/factory.js';
 import { StdioTransport } from '../../transports/stdio.js';
+import { HttpTransport } from '../../transports/http.js';
 
 describe('TransportFactory', () => {
   const originalEnv = process.env;
@@ -19,10 +20,10 @@ describe('TransportFactory', () => {
       expect(transport.getName()).toBe('stdio');
     });
 
-    it('should throw error for HTTP transport (not implemented)', () => {
-      expect(() => TransportFactory.create({ type: 'http' })).toThrow(
-        'HTTP transport is not yet implemented'
-      );
+    it('should create HTTP transport', () => {
+      const transport = TransportFactory.create({ type: 'http' });
+      expect(transport).toBeInstanceOf(HttpTransport);
+      expect(transport.getName()).toBe('http');
     });
 
     it('should throw error for unsupported transport type', () => {
@@ -55,11 +56,11 @@ describe('TransportFactory', () => {
       expect(transport.getName()).toBe('stdio');
     });
 
-    it('should throw error for HTTP transport from environment', () => {
+    it('should create HTTP transport from environment', () => {
       process.env.MCP_TRANSPORT = 'http';
-      expect(() => TransportFactory.createFromEnvironment()).toThrow(
-        'HTTP transport is not yet implemented'
-      );
+      const transport = TransportFactory.createFromEnvironment();
+      expect(transport).toBeInstanceOf(HttpTransport);
+      expect(transport.getName()).toBe('http');
     });
 
     it('should set HTTP options from environment', () => {
@@ -67,13 +68,9 @@ describe('TransportFactory', () => {
       process.env.MCP_HTTP_PORT = '8080';
       process.env.MCP_HTTP_HOST = '0.0.0.0';
 
-      // Even though HTTP transport is not implemented, we can verify the factory
-      // tries to create it with the correct options
-      try {
-        TransportFactory.createFromEnvironment();
-      } catch (error) {
-        expect(error).toEqual(new Error('HTTP transport is not yet implemented'));
-      }
+      const transport = TransportFactory.createFromEnvironment();
+      expect(transport).toBeInstanceOf(HttpTransport);
+      expect(transport.getName()).toBe('http');
     });
   });
 });

@@ -12,7 +12,16 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.6.0
+## What's New in v1.7.0
+
+### HTTP Transport with OAuth 2.0 Metadata
+- **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
+- **OAuth Metadata Endpoints**: Implements RFC9728 (Protected Resource Metadata) and RFC8414 (Authorization Server Metadata)
+- **WWW-Authenticate Headers**: Proper Bearer token authentication with metadata discovery
+- **CORS Support**: Built-in CORS handling for cross-origin requests
+- **Extensible Architecture**: Prepared for future OAuth 2.0 flow implementation
+
+### Previous Updates (v1.6.0)
 
 ### Elicitation Support (Experimental)
 - **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
@@ -365,6 +374,18 @@ For development or customization:
 | `LOG_LEVEL` | Minimum log level (DEBUG, INFO, WARN, ERROR) | ❌ No | `DEBUG` |
 
 **Required when using SonarCloud
+
+#### Transport Settings
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `MCP_TRANSPORT` | Transport type (stdio, http) | ❌ No | `stdio` |
+| **HTTP Transport** | | | |
+| `MCP_HTTP_PORT` | Port for HTTP transport | ❌ No | `3000` |
+| `MCP_HTTP_HOST` | Host for HTTP transport | ❌ No | `localhost` |
+| `MCP_HTTP_PUBLIC_URL` | Public URL for metadata endpoints | ❌ No | `http://localhost:3000` |
+| `MCP_OAUTH_AUTH_SERVERS` | Comma-separated list of OAuth authorization servers | ❌ No | - |
+| `MCP_OAUTH_BUILTIN` | Enable built-in OAuth authorization server metadata | ❌ No | `false` |
 
 ### Authentication Methods
 
