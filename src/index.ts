@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   ISonarQubeClient,
@@ -17,6 +16,7 @@ import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
 import { validateEnvironmentVariables, resetDefaultClient } from './utils/client-factory.js';
 import { createElicitationManager } from './utils/elicitation.js';
 import { SERVER_VERSION, VERSION_INFO } from './config/versions.js';
+import { TransportFactory } from './transports/index.js';
 import {
   handleSonarQubeProjects,
   handleSonarQubeGetIssues,
@@ -90,16 +90,6 @@ const elicitationManager = createElicitationManager();
 // Set elicitation manager on handlers that need it
 setElicitationManager(elicitationManager);
 setSonarQubeElicitationManager(elicitationManager);
-
-interface Connectable {
-  connect: () => Promise<void>;
-}
-if (!(StdioServerTransport.prototype as unknown as Connectable).connect) {
-  (StdioServerTransport.prototype as unknown as Connectable).connect = async function () {
-    // Dummy connect method for compatibility with MCP server
-    return Promise.resolve();
-  };
-}
 
 // Re-export utilities for backward compatibility
 export { nullToUndefined, stringToNumberTransform } from './utils/transforms.js';
@@ -886,14 +876,17 @@ if (process.env.NODE_ENV !== 'test') {
     elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
   });
 
-  const transport = new StdioServerTransport();
-  await (transport as unknown as Connectable).connect();
+  // Create transport using the factory
+  const transport = TransportFactory.createFromEnvironment();
+  logger.info(`Using ${transport.getName()} transport`);
 
   // Set the underlying Server instance on the elicitation manager
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   elicitationManager.setServer((mcpServer as any).server as Server);
 
-  await mcpServer.connect(transport);
+  // Connect the transport to the MCP server
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await transport.connect((mcpServer as any).server as Server);
 
   logger.info('SonarQube MCP server started successfully', {
     mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',
