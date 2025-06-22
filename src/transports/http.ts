@@ -4,8 +4,21 @@ import cors from 'cors';
 import { ITransport } from './base.js';
 import { createLogger } from '../utils/logger.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import {
+  TokenValidator,
+  TokenValidationError,
+  TokenValidationErrorCode,
+  TokenClaims,
+} from '../auth/token-validator.js';
 
 const logger = createLogger('HttpTransport');
+
+/**
+ * Extended Express Request with authenticated user context
+ */
+export interface AuthenticatedRequest extends Request {
+  user?: TokenClaims;
+}
 
 /**
  * OAuth 2.0 Protected Resource Metadata as per RFC9728
@@ -95,6 +108,7 @@ export class HttpTransport implements ITransport {
   private server?: ReturnType<Express['listen']>;
   private mcpTransport?: SSEServerTransport;
   private readonly options: Required<HttpTransportOptions>;
+  private tokenValidator?: TokenValidator;
 
   constructor(options: HttpTransportOptions = {}) {
     this.options = {
@@ -115,6 +129,7 @@ export class HttpTransport implements ITransport {
     this.app = express();
     this.setupMiddleware();
     this.setupMetadataEndpoints();
+    this.setupTokenValidator();
   }
 
   /**
@@ -128,7 +143,9 @@ export class HttpTransport implements ITransport {
     });
 
     // Set up authentication middleware for the MCP endpoint
-    this.app.use('/mcp', this.authMiddleware.bind(this));
+    this.app.use('/mcp', (req, res, next) => {
+      this.authMiddleware(req as AuthenticatedRequest, res, next).catch(next);
+    });
 
     // Set up the MCP endpoint that handles both POST and GET
     // GET requests open SSE streams for server-to-client communication
@@ -265,12 +282,50 @@ export class HttpTransport implements ITransport {
   }
 
   /**
+   * Set up token validator
+   */
+  private setupTokenValidator(): void {
+    if (this.options.authorizationServers.length > 0 || this.options.builtInAuthServer) {
+      // Create JWKS endpoints map
+      const jwksEndpoints = new Map<string, string>();
+
+      // Add external authorization servers
+      this.options.authorizationServers.forEach((server) => {
+        // Assume JWKS endpoint follows OAuth 2.0 metadata convention
+        const jwksUri = server.endsWith('/')
+          ? `${server}.well-known/jwks.json`
+          : `${server}/.well-known/jwks.json`;
+        jwksEndpoints.set(server, jwksUri);
+      });
+
+      // Add built-in auth server if enabled
+      if (this.options.builtInAuthServer) {
+        jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
+      }
+
+      this.tokenValidator = new TokenValidator({
+        audience: this.options.publicUrl,
+        issuers: [
+          ...this.options.authorizationServers,
+          ...(this.options.builtInAuthServer ? [this.options.publicUrl] : []),
+        ],
+        jwksEndpoints,
+        clockTolerance: 5,
+        validateResource: true,
+        expectedResources: [this.options.publicUrl],
+      });
+    }
+  }
+
+  /**
    * Authentication middleware for MCP endpoints.
    * Implements RFC6750 Bearer Token Usage.
    */
-  private authMiddleware(req: Request, res: Response, next: NextFunction): void {
-    // For now, we're just setting up the structure for OAuth
-    // Actual authentication will be implemented in a future story
+  private async authMiddleware(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
@@ -289,10 +344,69 @@ export class HttpTransport implements ITransport {
       return;
     }
 
-    // Token validation will be implemented in a future story
-    // For now, we'll log and pass through
-    logger.debug('Bearer token received (validation not yet implemented)');
-    next();
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // If no token validator is configured, allow access (backward compatibility)
+    if (!this.tokenValidator) {
+      logger.warn('No token validator configured, allowing access without validation');
+      next();
+      return;
+    }
+
+    try {
+      // Validate the token
+      const claims = await this.tokenValidator.validateToken(token);
+
+      // Attach user context to request
+      req.user = claims;
+
+      // Log successful authentication (without the token)
+      logger.debug('Token validated successfully', {
+        sub: claims.sub,
+        iss: claims.iss,
+        scope: claims.scope,
+      });
+
+      next();
+    } catch (error) {
+      if (error instanceof TokenValidationError) {
+        // Build WWW-Authenticate header with error details
+        const wwwAuthParams = [
+          'Bearer',
+          'realm="MCP SonarQube Server"',
+          `error="${error.code}"`,
+          `error_description="${error.message}"`,
+        ];
+
+        if (error.wwwAuthenticateParams) {
+          Object.entries(error.wwwAuthenticateParams).forEach(([key, value]) => {
+            wwwAuthParams.push(`${key}="${value}"`);
+          });
+        }
+
+        res.set('WWW-Authenticate', wwwAuthParams.join(', '));
+
+        // Return appropriate status code
+        const statusCode =
+          error.code === TokenValidationErrorCode.INVALID_TOKEN ||
+          error.code === TokenValidationErrorCode.INVALID_SIGNATURE ||
+          error.code === TokenValidationErrorCode.EXPIRED_TOKEN
+            ? 401
+            : 403;
+
+        res.status(statusCode).json({
+          error: error.code,
+          error_description: error.message,
+        });
+      } else {
+        // Unexpected error
+        logger.error('Unexpected authentication error', error);
+        res.status(500).json({
+          error: 'internal_error',
+          error_description: 'Authentication failed',
+        });
+      }
+    }
   }
 
   /**

@@ -59,6 +59,7 @@
     "@modelcontextprotocol/sdk": "^1.13.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "sonarqube-web-api-client": "0.11.0",
     "zod": "^3.25.64"
   },
@@ -68,6 +69,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.1",
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
