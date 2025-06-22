@@ -20,7 +20,7 @@ export class TransportFactory {
         return new StdioTransport();
 
       case 'http':
-        // @todo Implement HTTP transport in future story
+        // HTTP transport will be implemented in a future story
         throw new Error('HTTP transport is not yet implemented');
 
       default:

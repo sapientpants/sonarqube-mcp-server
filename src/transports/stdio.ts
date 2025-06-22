@@ -5,7 +5,7 @@ import { ITransport } from './base.js';
 /**
  * Extended interface for StdioServerTransport with the connect method.
  * This is a temporary workaround until the MCP SDK types are updated.
- * @todo Remove this interface when MCP SDK includes proper connect method typing
+ * @deprecated Remove this interface when MCP SDK includes proper connect method typing
  */
 interface StdioServerTransportWithConnect extends StdioServerTransport {
   connect: () => Promise<void>;
@@ -16,7 +16,7 @@ interface StdioServerTransportWithConnect extends StdioServerTransport {
  * This transport uses standard input/output streams for communication.
  */
 export class StdioTransport implements ITransport {
-  private transport: StdioServerTransportWithConnect;
+  private readonly transport: StdioServerTransportWithConnect;
 
   constructor() {
     this.transport = new StdioServerTransport() as StdioServerTransportWithConnect;
