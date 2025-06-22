@@ -1,5 +1,6 @@
 import { ITransport, ITransportConfig } from './base.js';
 import { StdioTransport } from './stdio.js';
+import { HttpTransport, HttpTransportOptions } from './http.js';
 
 /**
  * Factory for creating transport instances based on configuration.
@@ -20,8 +21,7 @@ export class TransportFactory {
         return new StdioTransport();
 
       case 'http':
-        // HTTP transport will be implemented in a future story
-        throw new Error('HTTP transport is not yet implemented');
+        return new HttpTransport(config.options as HttpTransportOptions);
 
       default:
         throw new Error(`Unsupported transport type: ${config.type}`);
