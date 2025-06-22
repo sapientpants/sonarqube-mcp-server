@@ -3,19 +3,27 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ITransport } from './base.js';
 
 /**
+ * Extended interface for StdioServerTransport with the connect method.
+ * This is a temporary workaround until the MCP SDK types are updated.
+ * @todo Remove this interface when MCP SDK includes proper connect method typing
+ */
+interface StdioServerTransportWithConnect extends StdioServerTransport {
+  connect: () => Promise<void>;
+}
+
+/**
  * STDIO transport implementation for MCP server.
  * This transport uses standard input/output streams for communication.
  */
 export class StdioTransport implements ITransport {
-  private transport: StdioServerTransport;
+  private transport: StdioServerTransportWithConnect;
 
   constructor() {
-    this.transport = new StdioServerTransport();
+    this.transport = new StdioServerTransport() as StdioServerTransportWithConnect;
 
     // Add the connect method workaround for proper TypeScript compatibility
     // This is a known issue with the current MCP SDK types
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (this.transport as any).connect = () => Promise.resolve();
+    this.transport.connect = () => Promise.resolve();
   }
 
   /**

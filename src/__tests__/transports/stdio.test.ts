@@ -29,9 +29,8 @@ describe('StdioTransport', () => {
   it('should add connect method to underlying transport', () => {
     const transport = new StdioTransport();
     const underlying = transport.getUnderlyingTransport();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((underlying as any).connect).toBeDefined();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(typeof (underlying as any).connect).toBe('function');
+    // The transport should have a connect method added via our workaround
+    expect('connect' in underlying).toBe(true);
+    expect(typeof (underlying as { connect?: unknown }).connect).toBe('function');
   });
 });
