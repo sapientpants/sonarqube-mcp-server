@@ -194,11 +194,14 @@ describe('HttpTransport', () => {
     it('should accept Bearer token (validation not implemented)', async () => {
       // Since validation is not implemented, any Bearer token should pass for POST
       // We expect 503 because no SSE connection is established in tests
-      await request(app)
+      const response = await request(app)
         .post('/mcp')
         .set('Authorization', 'Bearer dummy-token')
         .send({ jsonrpc: '2.0', method: 'test', id: 1 })
         .expect(503);
+
+      expect(response.status).toBe(503);
+      expect(response.body.error).toBe('service_unavailable');
     });
   });
 
@@ -230,21 +233,27 @@ describe('HttpTransport', () => {
 
     it('should accept valid protocol version', async () => {
       // We expect 503 because no SSE connection is established in tests
-      await request(app)
+      const response = await request(app)
         .post('/mcp')
         .set('Authorization', 'Bearer dummy-token')
         .set('MCP-Protocol-Version', '2025-06-18')
         .send({ jsonrpc: '2.0', method: 'test', id: 1 })
         .expect(503);
+
+      expect(response.status).toBe(503);
+      expect(response.body.error).toBe('service_unavailable');
     });
 
     it('should accept requests without protocol version header', async () => {
       // We expect 503 because no SSE connection is established in tests
-      await request(app)
+      const response = await request(app)
         .post('/mcp')
         .set('Authorization', 'Bearer dummy-token')
         .send({ jsonrpc: '2.0', method: 'test', id: 1 })
         .expect(503);
+
+      expect(response.status).toBe(503);
+      expect(response.body.error).toBe('service_unavailable');
     });
   });
 

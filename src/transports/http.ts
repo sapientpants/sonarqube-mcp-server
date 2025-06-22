@@ -91,10 +91,10 @@ export interface HttpTransportOptions {
  * - OAuth 2.0 metadata endpoints as per RFC9728 and RFC8414
  */
 export class HttpTransport implements ITransport {
-  private app: Express;
+  private readonly app: Express;
   private server?: ReturnType<Express['listen']>;
   private mcpTransport?: SSEServerTransport;
-  private options: Required<HttpTransportOptions>;
+  private readonly options: Required<HttpTransportOptions>;
 
   constructor(options: HttpTransportOptions = {}) {
     this.options = {
@@ -150,8 +150,7 @@ export class HttpTransport implements ITransport {
 
     // POST requests send messages to the server
     this.app.post('/mcp', express.json({ limit: '10mb' }), async (req, res) => {
-      // Check for session ID if we're using sessions
-      // TODO: Implement session management in future
+      // Session management will be implemented in a future story
       // const sessionId = req.headers['mcp-session-id'] as string;
       const protocolVersion = req.headers['mcp-protocol-version'] as string;
 
@@ -194,7 +193,7 @@ export class HttpTransport implements ITransport {
         });
       } catch (error) {
         logger.error('Failed to start HTTP server', error);
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
@@ -274,7 +273,7 @@ export class HttpTransport implements ITransport {
     // Actual authentication will be implemented in a future story
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader?.startsWith('Bearer ')) {
       // RFC6750: Include WWW-Authenticate header on 401 responses
       const wwwAuthenticate = [
         'Bearer',
@@ -302,7 +301,7 @@ export class HttpTransport implements ITransport {
   async shutdown(): Promise<void> {
     logger.info('Shutting down HTTP transport');
 
-    if (this.server && this.server.listening) {
+    if (this.server?.listening) {
       await new Promise<void>((resolve, reject) => {
         this.server!.close((err) => {
           if (err) {
