@@ -324,7 +324,7 @@ export class HttpTransport implements ITransport {
             logger.info(`HTTP transport listening on ${this.options.host}:${this.options.port}`);
             resolve();
           });
-          this.server!.on('error', (error) => {
+          this.server.on('error', (error) => {
             logger.error('HTTP server error', error);
             reject(error);
           });
