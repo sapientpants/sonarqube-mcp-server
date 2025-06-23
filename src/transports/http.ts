@@ -285,6 +285,7 @@ export class HttpTransport implements ITransport {
           // LIMITATION: The MCP SDK's SSEServerTransport doesn't currently support passing
           // per-request context (e.g., session-specific SonarQube clients).
           // This would require extending the SDK or implementing a custom transport.
+          // Track this limitation at: https://github.com/modelcontextprotocol/sdk/issues
           await this.mcpTransport.handlePostMessage(req, res, req.body);
         } catch (error) {
           logger.error('Error handling MCP message', error);
