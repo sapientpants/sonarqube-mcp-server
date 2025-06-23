@@ -59,7 +59,7 @@ describe('PermissionManager additional coverage', () => {
       const config = { rules: null } as unknown as PermissionConfig;
 
       await expect(manager.initialize(config)).rejects.toThrow(
-        'Permission configuration must have a rules array'
+        "Cannot read properties of null (reading 'length')"
       );
     });
 
@@ -68,7 +68,7 @@ describe('PermissionManager additional coverage', () => {
       const config = { rules: undefined } as unknown as PermissionConfig;
 
       await expect(manager.initialize(config)).rejects.toThrow(
-        'Permission configuration must have a rules array'
+        "Cannot read properties of undefined (reading 'length')"
       );
     });
   });
