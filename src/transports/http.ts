@@ -15,7 +15,7 @@ import {
   TokenClaims,
 } from '../auth/token-validator.js';
 import { SessionManager } from '../auth/session-manager.js';
-import { ServiceAccountMapper } from '../auth/service-account-mapper.js';
+import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
 
 const logger = createLogger('HttpTransport');
 
@@ -135,6 +135,17 @@ export interface HttpTransportOptions {
     /** Enable HTTPS */
     enabled?: boolean;
   };
+}
+
+/**
+ * Builder interface for constructing mapping rules
+ */
+interface MappingRuleBuilder {
+  priority: number;
+  userPattern?: RegExp;
+  issuerPattern?: RegExp;
+  requiredScopes?: string[];
+  serviceAccountId?: string;
 }
 
 /**
@@ -833,7 +844,8 @@ export class HttpTransport implements ITransport {
       // Test the regex with a sample string to ensure it doesn't hang
       const testString = 'a'.repeat(100);
       const startTime = Date.now();
-      regex.test(testString);
+      // We're only interested in timing, not the result
+      void regex.test(testString);
       const elapsed = Date.now() - startTime;
 
       // If the test takes too long, it might be problematic
@@ -873,70 +885,121 @@ export class HttpTransport implements ITransport {
         continue;
       }
 
-      interface MappingRuleBuilder {
-        priority: number;
-        userPattern?: RegExp;
-        issuerPattern?: RegExp;
-        requiredScopes?: string[];
-        serviceAccountId?: string;
-      }
-
-      const rule: MappingRuleBuilder = { priority: i };
-      const parts = ruleEnv.split(',');
-
-      let hasInvalidPattern = false;
-
-      for (const part of parts) {
-        const splitResult = part.split(':');
-        if (splitResult.length !== 2) {
-          logger.warn('Malformed mapping rule part, skipping', { part });
-          continue;
-        }
-        const [key, value] = splitResult;
-        switch (key) {
-          case 'priority':
-            rule.priority = parseInt(value, 10);
-            break;
-          case 'user':
-            rule.userPattern = this.safeCreateRegExp(value, `MCP_MAPPING_RULE_${i}:user`);
-            if (!rule.userPattern) {
-              logger.warn('Skipping rule due to invalid user pattern', {
-                ruleIndex: i,
-                pattern: value,
-              });
-              hasInvalidPattern = true;
-            }
-            break;
-          case 'issuer':
-            rule.issuerPattern = this.safeCreateRegExp(value, `MCP_MAPPING_RULE_${i}:issuer`);
-            if (!rule.issuerPattern) {
-              logger.warn('Skipping rule due to invalid issuer pattern', {
-                ruleIndex: i,
-                pattern: value,
-              });
-              hasInvalidPattern = true;
-            }
-            break;
-          case 'scopes':
-            rule.requiredScopes = value.split('|');
-            break;
-          case 'sa':
-            rule.serviceAccountId = value;
-            break;
-        }
-      }
-
-      if (rule.serviceAccountId && !hasInvalidPattern) {
-        this.serviceAccountMapper.addMappingRule({
-          priority: rule.priority,
-          userPattern: rule.userPattern,
-          issuerPattern: rule.issuerPattern,
-          requiredScopes: rule.requiredScopes,
-          serviceAccountId: rule.serviceAccountId,
-        });
+      const rule = this.parseMappingRule(ruleEnv, i);
+      if (rule) {
+        this.serviceAccountMapper.addMappingRule(rule);
         logger.info('Loaded mapping rule from environment', { index: i, rule });
       }
     }
+  }
+
+  /**
+   * Parse a single mapping rule from environment variable
+   */
+  private parseMappingRule(ruleEnv: string, ruleIndex: number): MappingRule | undefined {
+    const ruleBuilder = this.createRuleBuilder(ruleIndex);
+    const parts = ruleEnv.split(',');
+    let hasInvalidPattern = false;
+
+    for (const part of parts) {
+      const isValid = this.processRulePart(part, ruleBuilder, ruleIndex);
+      if (!isValid) {
+        hasInvalidPattern = true;
+      }
+    }
+
+    return this.validateAndBuildRule(ruleBuilder, hasInvalidPattern);
+  }
+
+  /**
+   * Create initial rule builder with default priority
+   */
+  private createRuleBuilder(priority: number): MappingRuleBuilder {
+    return { priority };
+  }
+
+  /**
+   * Process a single rule part (key:value pair)
+   */
+  private processRulePart(part: string, rule: MappingRuleBuilder, ruleIndex: number): boolean {
+    const splitResult = part.split(':');
+    if (splitResult.length !== 2) {
+      logger.warn('Malformed mapping rule part, skipping', { part });
+      return true; // Not a pattern validation failure
+    }
+
+    const [key, value] = splitResult;
+    return this.applyRuleValue(key, value, rule, ruleIndex);
+  }
+
+  /**
+   * Apply a key-value pair to the rule builder
+   */
+  private applyRuleValue(
+    key: string,
+    value: string,
+    rule: MappingRuleBuilder,
+    ruleIndex: number
+  ): boolean {
+    switch (key) {
+      case 'priority':
+        rule.priority = parseInt(value, 10);
+        return true;
+      case 'user':
+        return this.setPatternField(rule, 'userPattern', value, ruleIndex, 'user');
+      case 'issuer':
+        return this.setPatternField(rule, 'issuerPattern', value, ruleIndex, 'issuer');
+      case 'scopes':
+        rule.requiredScopes = value.split('|');
+        return true;
+      case 'sa':
+        rule.serviceAccountId = value;
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  /**
+   * Set a regex pattern field on the rule builder
+   */
+  private setPatternField(
+    rule: MappingRuleBuilder,
+    field: 'userPattern' | 'issuerPattern',
+    value: string,
+    ruleIndex: number,
+    patternType: string
+  ): boolean {
+    const pattern = this.safeCreateRegExp(value, `MCP_MAPPING_RULE_${ruleIndex}:${patternType}`);
+    if (!pattern) {
+      logger.warn(`Skipping rule due to invalid ${patternType} pattern`, {
+        ruleIndex,
+        pattern: value,
+      });
+      return false;
+    }
+    rule[field] = pattern;
+    return true;
+  }
+
+  /**
+   * Validate and build the final mapping rule
+   */
+  private validateAndBuildRule(
+    rule: MappingRuleBuilder,
+    hasInvalidPattern: boolean
+  ): MappingRule | undefined {
+    if (!rule.serviceAccountId || hasInvalidPattern) {
+      return undefined;
+    }
+
+    return {
+      priority: rule.priority,
+      userPattern: rule.userPattern,
+      issuerPattern: rule.issuerPattern,
+      requiredScopes: rule.requiredScopes,
+      serviceAccountId: rule.serviceAccountId,
+    };
   }
 
   /**
