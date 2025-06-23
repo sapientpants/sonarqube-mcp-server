@@ -2,6 +2,8 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import https from 'https';
+import fs from 'fs/promises';
 import { ITransport } from './base.js';
 import { createLogger } from '../utils/logger.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -11,6 +13,8 @@ import {
   TokenValidationErrorCode,
   TokenClaims,
 } from '../auth/token-validator.js';
+import { SessionManager } from '../auth/session-manager.js';
+import { ServiceAccountMapper } from '../auth/service-account-mapper.js';
 
 const logger = createLogger('HttpTransport');
 
@@ -19,6 +23,7 @@ const logger = createLogger('HttpTransport');
  */
 export interface AuthenticatedRequest extends Request {
   user?: TokenClaims;
+  sessionId?: string;
 }
 
 /**
@@ -115,6 +120,20 @@ export interface HttpTransportOptions {
     /** Message to send when rate limit is exceeded */
     message?: string;
   };
+
+  /**
+   * HTTPS/TLS configuration
+   */
+  tls?: {
+    /** Path to TLS certificate file */
+    cert?: string;
+    /** Path to TLS key file */
+    key?: string;
+    /** Path to CA certificate file */
+    ca?: string;
+    /** Enable HTTPS */
+    enabled?: boolean;
+  };
 }
 
 /**
@@ -130,19 +149,26 @@ export interface HttpTransportOptions {
  */
 export class HttpTransport implements ITransport {
   private readonly app: Express;
-  private server?: ReturnType<Express['listen']>;
+  private server?: ReturnType<Express['listen']> | https.Server;
   private mcpTransport?: SSEServerTransport;
   private readonly options: Required<HttpTransportOptions>;
   private tokenValidator?: TokenValidator;
+  private sessionManager?: SessionManager;
+  private serviceAccountMapper?: ServiceAccountMapper;
 
   constructor(options: HttpTransportOptions = {}) {
+    const tlsEnabled = options.tls?.enabled ?? process.env.MCP_HTTP_TLS_ENABLED === 'true';
+    const defaultPort = tlsEnabled ? '3443' : '3000';
+    const defaultProtocol = tlsEnabled ? 'https' : 'http';
+
     this.options = {
-      port: options.port ?? parseInt(process.env.MCP_HTTP_PORT ?? '3000', 10),
+      port: options.port ?? parseInt(process.env.MCP_HTTP_PORT ?? defaultPort, 10),
       host: options.host ?? process.env.MCP_HTTP_HOST ?? 'localhost',
       publicUrl:
         options.publicUrl ??
         process.env.MCP_HTTP_PUBLIC_URL ??
-        `http://${options.host ?? 'localhost'}:${options.port ?? 3000}`,
+        process.env.SONARQUBE_MCP_BASE_URL ??
+        `${defaultProtocol}://${options.host ?? 'localhost'}:${options.port ?? defaultPort}`,
       authorizationServers:
         options.authorizationServers ??
         process.env.MCP_OAUTH_AUTH_SERVERS?.split(',').map((s) => s.trim()) ??
@@ -150,12 +176,19 @@ export class HttpTransport implements ITransport {
       builtInAuthServer: options.builtInAuthServer ?? process.env.MCP_OAUTH_BUILTIN === 'true',
       corsOptions: options.corsOptions ?? {},
       rateLimitOptions: options.rateLimitOptions ?? {},
+      tls: {
+        enabled: tlsEnabled,
+        cert: options.tls?.cert ?? process.env.MCP_HTTP_TLS_CERT,
+        key: options.tls?.key ?? process.env.MCP_HTTP_TLS_KEY,
+        ca: options.tls?.ca ?? process.env.MCP_HTTP_TLS_CA,
+      },
     };
 
     this.app = express();
     this.setupMiddleware();
     this.setupMetadataEndpoints();
     this.setupTokenValidator();
+    this.setupSessionManagement();
   }
 
   /**
@@ -210,43 +243,82 @@ export class HttpTransport implements ITransport {
     });
 
     // POST requests send messages to the server
-    this.app.post('/mcp', express.json({ limit: '10mb' }), async (req, res) => {
-      // Session management will be implemented in a future story
-      // const sessionId = req.headers['mcp-session-id'] as string;
-      const protocolVersion = req.headers['mcp-protocol-version'] as string;
+    this.app.post(
+      '/mcp',
+      express.json({ limit: '10mb' }),
+      async (req: AuthenticatedRequest, res) => {
+        const sessionId = req.sessionId || (req.headers['mcp-session-id'] as string);
+        const protocolVersion = req.headers['mcp-protocol-version'] as string;
 
-      // Validate protocol version
-      if (protocolVersion && protocolVersion !== '2025-06-18') {
-        res.status(400).json({
-          error: 'invalid_protocol_version',
-          error_description: `Unsupported protocol version: ${protocolVersion}`,
-        });
-        return;
+        // Validate protocol version
+        if (protocolVersion && protocolVersion !== '2025-06-18') {
+          res.status(400).json({
+            error: 'invalid_protocol_version',
+            error_description: `Unsupported protocol version: ${protocolVersion}`,
+          });
+          return;
+        }
+
+        if (!this.mcpTransport) {
+          res.status(503).json({
+            error: 'service_unavailable',
+            error_description: 'SSE connection not established',
+          });
+          return;
+        }
+
+        // Get session client if available
+        if (sessionId && this.sessionManager) {
+          const session = this.sessionManager.getSession(sessionId);
+          if (session) {
+            // TODO: In the future, we'll need to pass the session client to the MCP handlers
+            // For now, just log that we have a session
+            logger.debug('Using session client for MCP request', {
+              sessionId,
+              userId: session.claims.sub,
+            });
+          }
+        }
+
+        try {
+          // TODO: The MCP SDK's SSEServerTransport doesn't currently support passing
+          // per-request context. For now, we'll document this limitation.
+          // In the future, we may need to extend the SDK or use a different approach.
+          await this.mcpTransport.handlePostMessage(req, res, req.body);
+        } catch (error) {
+          logger.error('Error handling MCP message', error);
+          res.status(500).json({ error: 'internal_error' });
+        }
       }
+    );
 
-      if (!this.mcpTransport) {
-        res.status(503).json({
-          error: 'service_unavailable',
-          error_description: 'SSE connection not established',
-        });
-        return;
-      }
-
+    // Start Express server (HTTP or HTTPS)
+    await new Promise<void>(async (resolve, reject) => {
       try {
-        await this.mcpTransport.handlePostMessage(req, res, req.body);
-      } catch (error) {
-        logger.error('Error handling MCP message', error);
-        res.status(500).json({ error: 'internal_error' });
-      }
-    });
+        if (this.options.tls.enabled && this.options.tls.cert && this.options.tls.key) {
+          // Read TLS certificates
+          const tlsOptions: https.ServerOptions = {
+            cert: await fs.readFile(this.options.tls.cert, 'utf8'),
+            key: await fs.readFile(this.options.tls.key, 'utf8'),
+          };
 
-    // Start Express server
-    await new Promise<void>((resolve, reject) => {
-      try {
-        this.server = this.app.listen(this.options.port, this.options.host, () => {
-          logger.info(`HTTP transport listening on ${this.options.host}:${this.options.port}`);
-          resolve();
-        });
+          if (this.options.tls.ca) {
+            tlsOptions.ca = await fs.readFile(this.options.tls.ca, 'utf8');
+          }
+
+          // Create HTTPS server
+          this.server = https.createServer(tlsOptions, this.app);
+          this.server.listen(this.options.port, this.options.host, () => {
+            logger.info(`HTTPS transport listening on ${this.options.host}:${this.options.port}`);
+            resolve();
+          });
+        } else {
+          // Create HTTP server
+          this.server = this.app.listen(this.options.port, this.options.host, () => {
+            logger.info(`HTTP transport listening on ${this.options.host}:${this.options.port}`);
+            resolve();
+          });
+        }
 
         this.server.on('error', (error) => {
           logger.error('HTTP server error', error);
@@ -279,6 +351,30 @@ export class HttpTransport implements ITransport {
     // Health check endpoint
     this.app.get('/health', (_req: Request, res: Response) => {
       res.json({ status: 'ok' });
+    });
+
+    // Ready check endpoint
+    this.app.get('/ready', (_req: Request, res: Response) => {
+      const ready =
+        !!this.server &&
+        (this.tokenValidator !== undefined || process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true');
+
+      if (ready) {
+        res.json({
+          status: 'ready',
+          features: {
+            authentication: !!this.tokenValidator,
+            sessionManagement: !!this.sessionManager,
+            serviceAccountMapping: !!this.serviceAccountMapper,
+            tls: this.options.tls.enabled,
+          },
+        });
+      } else {
+        res.status(503).json({
+          status: 'not_ready',
+          message: 'Server is initializing',
+        });
+      }
     });
   }
 
@@ -440,15 +536,61 @@ export class HttpTransport implements ITransport {
       // Validate the token
       const claims = await this.tokenValidator.validateToken(token);
 
-      // Attach user context to request
-      req.user = claims;
+      // Check for existing session
+      let sessionId = req.headers['mcp-session-id'] as string;
 
-      // Log successful authentication (without the token)
-      logger.debug('Token validated successfully', {
-        sub: claims.sub,
-        iss: claims.iss,
-        scope: claims.scope,
-      });
+      if (sessionId && this.sessionManager) {
+        // Try to get existing session
+        const session = this.sessionManager.getSession(sessionId);
+        if (session && session.claims.sub === claims.sub) {
+          // Valid existing session
+          req.user = session.claims;
+          req.sessionId = sessionId;
+          logger.debug('Using existing session', { sessionId, userId: claims.sub });
+          next();
+          return;
+        }
+      }
+
+      // Create new session if session management is enabled
+      if (this.sessionManager && this.serviceAccountMapper) {
+        try {
+          // Get SonarQube client for user
+          const { client, serviceAccountId } =
+            await this.serviceAccountMapper.getClientForUser(claims);
+
+          // Create session
+          sessionId = this.sessionManager.createSession(claims, client, serviceAccountId);
+
+          // Set session ID in response header
+          res.setHeader('MCP-Session-ID', sessionId);
+
+          req.user = claims;
+          req.sessionId = sessionId;
+
+          logger.debug('Created new session', {
+            sessionId,
+            userId: claims.sub,
+            serviceAccountId,
+          });
+        } catch (error) {
+          logger.error('Failed to create session', error);
+          res.status(503).json({
+            error: 'service_unavailable',
+            error_description: 'Failed to create user session',
+          });
+          return;
+        }
+      } else {
+        // No session management - just attach claims
+        req.user = claims;
+
+        logger.debug('Token validated successfully (no session management)', {
+          sub: claims.sub,
+          iss: claims.iss,
+          scope: claims.scope,
+        });
+      }
 
       next();
     } catch (error) {
@@ -493,10 +635,100 @@ export class HttpTransport implements ITransport {
   }
 
   /**
+   * Set up session management and service account mapping
+   */
+  private setupSessionManagement(): void {
+    // Only set up if authentication is enabled
+    if (this.tokenValidator) {
+      this.sessionManager = new SessionManager({
+        sessionTimeout: parseInt(process.env.MCP_SESSION_TIMEOUT ?? '3600000', 10), // 1 hour default
+        cleanupInterval: parseInt(process.env.MCP_SESSION_CLEANUP_INTERVAL ?? '300000', 10), // 5 min default
+        maxSessions: parseInt(process.env.MCP_MAX_SESSIONS ?? '1000', 10),
+      });
+
+      this.serviceAccountMapper = new ServiceAccountMapper({
+        defaultUrl: process.env.SONARQUBE_URL,
+        defaultOrganization: process.env.SONARQUBE_ORGANIZATION,
+        defaultServiceAccountId: process.env.MCP_DEFAULT_SERVICE_ACCOUNT ?? 'default',
+      });
+
+      // Load mapping rules from environment
+      this.loadMappingRulesFromEnv();
+
+      logger.info('Session management and service account mapping initialized');
+    }
+  }
+
+  /**
+   * Load service account mapping rules from environment variables
+   */
+  private loadMappingRulesFromEnv(): void {
+    if (!this.serviceAccountMapper) {
+      return;
+    }
+
+    // Load rules in format: MCP_MAPPING_RULE_1=priority:1,user:.*@company.com,sa:company-sa
+    for (let i = 1; i <= 10; i++) {
+      const ruleEnv = process.env[`MCP_MAPPING_RULE_${i}`];
+      if (!ruleEnv) {
+        continue;
+      }
+
+      interface MappingRuleBuilder {
+        priority: number;
+        userPattern?: RegExp;
+        issuerPattern?: RegExp;
+        requiredScopes?: string[];
+        serviceAccountId?: string;
+      }
+
+      const rule: MappingRuleBuilder = { priority: i };
+      const parts = ruleEnv.split(',');
+
+      for (const part of parts) {
+        const [key, value] = part.split(':');
+        switch (key) {
+          case 'priority':
+            rule.priority = parseInt(value, 10);
+            break;
+          case 'user':
+            rule.userPattern = new RegExp(value);
+            break;
+          case 'issuer':
+            rule.issuerPattern = new RegExp(value);
+            break;
+          case 'scopes':
+            rule.requiredScopes = value.split('|');
+            break;
+          case 'sa':
+            rule.serviceAccountId = value;
+            break;
+        }
+      }
+
+      if (rule.serviceAccountId) {
+        this.serviceAccountMapper.addMappingRule({
+          priority: rule.priority,
+          userPattern: rule.userPattern,
+          issuerPattern: rule.issuerPattern,
+          requiredScopes: rule.requiredScopes,
+          serviceAccountId: rule.serviceAccountId,
+        });
+        logger.info('Loaded mapping rule from environment', { index: i, rule });
+      }
+    }
+  }
+
+  /**
    * Gracefully shut down the HTTP transport.
    */
   async shutdown(): Promise<void> {
     logger.info('Shutting down HTTP transport');
+
+    // Shut down session manager
+    if (this.sessionManager) {
+      this.sessionManager.shutdown();
+    }
 
     if (this.server?.listening) {
       await new Promise<void>((resolve, reject) => {

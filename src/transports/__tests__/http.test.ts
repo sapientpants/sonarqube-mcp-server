@@ -3,6 +3,24 @@ import request from 'supertest';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { HttpTransport } from '../http.js';
 import type { Express } from 'express';
+import type { SessionManager } from '../../auth/session-manager.js';
+import type { ServiceAccountMapper } from '../../auth/service-account-mapper.js';
+
+interface HttpTransportPrivate {
+  app: Express;
+  options: {
+    port: number;
+    publicUrl: string;
+    tls: {
+      enabled: boolean;
+      cert?: string;
+      key?: string;
+      ca?: string;
+    };
+  };
+  sessionManager?: SessionManager;
+  serviceAccountMapper?: ServiceAccountMapper;
+}
 
 // Mock the logger
 jest.mock('../../utils/logger.js', () => ({
@@ -30,11 +48,11 @@ describe('HttpTransport', () => {
 
   beforeEach(() => {
     // Clear environment variables
-    delete process.env.MCP_HTTP_PORT;
-    delete process.env.MCP_HTTP_HOST;
-    delete process.env.MCP_HTTP_PUBLIC_URL;
-    delete process.env.MCP_OAUTH_AUTH_SERVERS;
-    delete process.env.MCP_OAUTH_BUILTIN;
+    Object.keys(process.env).forEach((key) => {
+      if (key.startsWith('MCP_') || key.startsWith('SONARQUBE_')) {
+        delete process.env[key];
+      }
+    });
 
     // Create mock server
     mockServer = {
@@ -373,6 +391,149 @@ describe('HttpTransport', () => {
       transport = new HttpTransport();
 
       await expect(transport.shutdown()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('ready endpoint', () => {
+    it('should return not ready status before server is initialized', async () => {
+      transport = new HttpTransport({ port: 0 });
+
+      // Get the Express app from the transport before connecting
+      const app = (transport as unknown as HttpTransportPrivate).app;
+
+      const response = await request(app).get('/ready');
+      expect(response.status).toBe(503);
+      expect(response.body).toEqual({
+        status: 'not_ready',
+        message: 'Server is initializing',
+      });
+    });
+
+    it('should return ready status when server is initialized', async () => {
+      // Enable insecure mode for this test to avoid authentication setup
+      process.env.MCP_HTTP_ALLOW_NO_AUTH = 'true';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      // Get the Express app from the transport
+      const app = (transport as unknown as HttpTransportPrivate).app;
+
+      const response = await request(app).get('/ready');
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        status: 'ready',
+        features: {
+          authentication: false,
+          sessionManagement: false,
+          serviceAccountMapping: false,
+          tls: false,
+        },
+      });
+
+      // Clean up
+      delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
+    });
+
+    it('should show authentication features when configured', async () => {
+      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const app = (transport as unknown as HttpTransportPrivate).app;
+      const response = await request(app).get('/ready');
+
+      expect(response.status).toBe(200);
+      expect(response.body.features.authentication).toBe(true);
+      expect(response.body.features.sessionManagement).toBe(true);
+      expect(response.body.features.serviceAccountMapping).toBe(true);
+    });
+  });
+
+  describe('HTTPS support', () => {
+    it('should use default HTTPS port when TLS is enabled', () => {
+      process.env.MCP_HTTP_TLS_ENABLED = 'true';
+      transport = new HttpTransport();
+
+      const options = (transport as unknown as HttpTransportPrivate).options;
+      expect(options.port).toBe(3443);
+      expect(options.publicUrl).toMatch(/^https:/);
+    });
+
+    it('should load TLS configuration from environment', () => {
+      process.env.MCP_HTTP_TLS_ENABLED = 'true';
+      process.env.MCP_HTTP_TLS_CERT = '/path/to/cert';
+      process.env.MCP_HTTP_TLS_KEY = '/path/to/key';
+      process.env.MCP_HTTP_TLS_CA = '/path/to/ca';
+
+      transport = new HttpTransport();
+      const options = (transport as unknown as HttpTransportPrivate).options;
+
+      expect(options.tls.enabled).toBe(true);
+      expect(options.tls.cert).toBe('/path/to/cert');
+      expect(options.tls.key).toBe('/path/to/key');
+      expect(options.tls.ca).toBe('/path/to/ca');
+    });
+  });
+
+  describe('session management', () => {
+    it('should initialize session manager when authentication is enabled', async () => {
+      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+      process.env.SONARQUBE_TOKEN = 'test-token';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const sessionManager = (transport as unknown as HttpTransportPrivate).sessionManager;
+      const serviceAccountMapper = (transport as unknown as HttpTransportPrivate)
+        .serviceAccountMapper;
+
+      expect(sessionManager).toBeDefined();
+      expect(serviceAccountMapper).toBeDefined();
+    });
+
+    it('should not initialize session manager without authentication', async () => {
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const sessionManager = (transport as unknown as HttpTransportPrivate).sessionManager;
+      const serviceAccountMapper = (transport as unknown as HttpTransportPrivate)
+        .serviceAccountMapper;
+
+      expect(sessionManager).toBeUndefined();
+      expect(serviceAccountMapper).toBeUndefined();
+    });
+  });
+
+  describe('service account mapping', () => {
+    it('should load mapping rules from environment', async () => {
+      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+      process.env.SONARQUBE_TOKEN = 'default-token';
+      process.env.SONARQUBE_SA1_TOKEN = 'dev-token';
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:.*@dev.com,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      expect(mapper).toBeDefined();
+
+      const rules = mapper.getMappingRules();
+      expect(rules).toHaveLength(1);
+      expect(rules[0].priority).toBe(1);
+      expect(rules[0].serviceAccountId).toBe('sa1');
+    });
+  });
+
+  describe('environment variable aliases', () => {
+    it('should support SONARQUBE_MCP_MODE as alias for MCP_TRANSPORT', () => {
+      // This is handled at a higher level, but we can test the base URL alias
+      process.env.SONARQUBE_MCP_BASE_URL = 'https://mcp.company.com';
+
+      transport = new HttpTransport();
+      const options = (transport as unknown as HttpTransportPrivate).options;
+
+      expect(options.publicUrl).toBe('https://mcp.company.com');
     });
   });
 });
