@@ -271,8 +271,9 @@ export class HttpTransport implements ITransport {
         if (sessionId && this.sessionManager) {
           const session = this.sessionManager.getSession(sessionId);
           if (session) {
-            // TODO: In the future, we'll need to pass the session client to the MCP handlers
-            // For now, just log that we have a session
+            // NOTE: Session client cannot be passed to MCP handlers due to MCP SDK limitation.
+            // The SSEServerTransport doesn't support per-request context passing.
+            // This is documented below in the handlePostMessage call.
             logger.debug('Using session client for MCP request', {
               sessionId,
               userId: session.claims.sub,
@@ -281,9 +282,9 @@ export class HttpTransport implements ITransport {
         }
 
         try {
-          // TODO: The MCP SDK's SSEServerTransport doesn't currently support passing
-          // per-request context. For now, we'll document this limitation.
-          // In the future, we may need to extend the SDK or use a different approach.
+          // LIMITATION: The MCP SDK's SSEServerTransport doesn't currently support passing
+          // per-request context (e.g., session-specific SonarQube clients).
+          // This would require extending the SDK or implementing a custom transport.
           await this.mcpTransport.handlePostMessage(req, res, req.body);
         } catch (error) {
           logger.error('Error handling MCP message', error);
