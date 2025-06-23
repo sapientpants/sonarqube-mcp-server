@@ -4,7 +4,6 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import https from 'https';
 import fs from 'fs/promises';
-import _ from 'lodash';
 import { ITransport } from './base.js';
 import { createLogger } from '../utils/logger.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -1016,8 +1015,7 @@ export class HttpTransport implements ITransport {
 
     // Try to compile the regex
     try {
-      const sanitizedPattern = _.escapeRegExp(pattern);
-      const regex = new RegExp(sanitizedPattern);
+      const regex = new RegExp(pattern);
 
       // Test the regex with a sample string to ensure it doesn't hang
       const testString = 'a'.repeat(100);
