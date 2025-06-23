@@ -818,11 +818,13 @@ export class HttpTransport implements ITransport {
   private safeCreateRegExp(pattern: string, context: string): RegExp | undefined {
     // Check for potentially dangerous patterns that could cause ReDoS
     const dangerousPatterns = [
-      /(\w+\+)+\w+/, // Nested quantifiers like (a+)+
-      /(\w+\*)+\w+/, // Nested quantifiers like (a*)*
-      /(\w+\{[\d,]+\})+/, // Nested quantifiers like (a{1,3})+
-      /(\(.*\)\+)+/, // Nested groups with quantifiers
-      /(\[.*\]\+)+/, // Nested character classes with quantifiers
+      /\([^)]*[+*]\)[+*]/, // Nested quantifiers like (a+)+ or (a*)*
+      /\([^)]*\{[^}]+\}\)[+*]/, // Nested quantifiers like (a{1,3})+
+      /\([^)]+\)\{[^}]+\}\{/, // Multiple consecutive quantifiers on groups
+      /\[[^\]]+\][+*]\{/, // Character class followed by multiple quantifiers
+      /(?:[+*]\{[^}]+\}|[+*])\s*[+*]/, // Adjacent quantifiers
+      /\)\+\{[^}]+\}\{/, // Group with + followed by multiple quantifiers like (abc)+{2}{3}
+      /\{[^}]+\}[+*]/, // Quantifier followed by another quantifier like a{2,5}*
     ];
 
     for (const dangerous of dangerousPatterns) {
