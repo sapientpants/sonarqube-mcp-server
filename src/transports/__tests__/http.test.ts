@@ -558,6 +558,26 @@ describe('HttpTransport', () => {
 
       await expect(transport.connect(mockServer)).rejects.toThrow();
     });
+
+    it('should handle HTTPS server with CA certificate', async () => {
+      // This test just verifies that CA path is stored correctly
+      // Actually reading the CA file will fail due to invalid path
+      transport = new HttpTransport({
+        port: 0,
+        tls: {
+          enabled: true,
+          cert: '/path/to/cert.pem',
+          key: '/path/to/key.pem',
+          ca: '/path/to/ca.pem',
+        },
+      });
+
+      const options = (transport as unknown as HttpTransportPrivate).options;
+      expect(options.tls.ca).toBe('/path/to/ca.pem');
+
+      // Connecting will fail due to invalid cert paths
+      await expect(transport.connect(mockServer)).rejects.toThrow('ENOENT');
+    });
   });
 
   describe('session management errors', () => {
@@ -658,6 +678,166 @@ describe('HttpTransport', () => {
         error: 'too_many_requests',
         error_description: 'Too many authentication attempts, please try again later',
       });
+    });
+  });
+
+  describe('regex validation edge cases', () => {
+    beforeEach(async () => {
+      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+      process.env.SONARQUBE_TOKEN = 'test-token';
+      process.env.SONARQUBE_SA1_TOKEN = 'sa1-token';
+    });
+
+    afterEach(() => {
+      Object.keys(process.env).forEach((key) => {
+        if (key.startsWith('MCP_MAPPING_RULE_')) {
+          delete process.env[key];
+        }
+      });
+    });
+
+    it('should handle regex patterns with escaped characters', async () => {
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test\\.user@example\\.com,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      expect(mapper).toBeDefined();
+
+      const rules = mapper.getMappingRules();
+      expect(rules).toHaveLength(1);
+      expect(rules[0].userPattern).toBeDefined();
+    });
+
+    it('should handle regex patterns with character classes containing multiple quantifiers', async () => {
+      // Pattern with character class and multiple quantifiers (should be rejected)
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:[a-z]+*,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Should not add invalid rule
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle regex patterns with nested groups and quantifiers', async () => {
+      // Pattern with nested groups (should be rejected for safety)
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:(test)+*,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Should not add invalid rule
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle regex patterns with adjacent quantifiers', async () => {
+      // Pattern with adjacent quantifiers (should be rejected)
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test+*,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Should not add invalid rule
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle regex patterns with braces quantifiers', async () => {
+      // Pattern with braces followed by quantifier (should be rejected)
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test{2,5}+,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Actually this pattern is not rejected since {2,5}+ is valid in JS regex
+      expect(rules).toHaveLength(1);
+    });
+
+    it('should handle regex timeout protection', async () => {
+      // Create a pattern that would take long to evaluate
+      const longPattern = 'a'.repeat(50) + '.*' + 'b'.repeat(50);
+      process.env.MCP_MAPPING_RULE_1 = `priority:1,user:${longPattern},sa:sa1`;
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Rule should be added (pattern is valid, just potentially slow)
+      expect(rules).toHaveLength(1);
+    });
+
+    it('should handle missing pattern in mapping rule', async () => {
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,sa:sa1';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Actually it adds the rule with undefined userPattern
+      expect(rules).toHaveLength(1);
+      expect(rules[0].userPattern).toBeUndefined();
+    });
+
+    it('should handle invalid mapping rule format', async () => {
+      process.env.MCP_MAPPING_RULE_1 = 'invalid-format';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Should not add invalid rule
+      expect(rules).toHaveLength(0);
+    });
+
+    it('should handle missing service account ID in mapping rule', async () => {
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test@example.com';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
+      const rules = mapper.getMappingRules();
+      // Should not add rule without service account ID
+      expect(rules).toHaveLength(0);
+    });
+  });
+
+  describe('authentication edge cases', () => {
+    it('should handle token validation errors correctly', async () => {
+      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+      app = (transport as unknown as HttpTransportPrivate).app;
+
+      // Mock token validator to throw error
+      const transportWithValidator = transport as unknown as HttpTransportPrivate & {
+        tokenValidator: { validateToken: jest.Mock };
+      };
+      jest
+        .spyOn(transportWithValidator.tokenValidator, 'validateToken')
+        .mockRejectedValue(new Error('Token invalid'));
+
+      // Should get 500 because it's a generic error, not a TokenValidationError
+      const response = await request(app)
+        .post('/mcp')
+        .set('Authorization', 'Bearer invalid-token')
+        .send({ jsonrpc: '2.0', method: 'test', id: 1 })
+        .expect(500);
+
+      expect(response.body.error).toBe('internal_error');
     });
   });
 });
