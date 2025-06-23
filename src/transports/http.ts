@@ -64,6 +64,14 @@ interface OAuthAuthorizationServerMetadata {
 
 /**
  * Configuration options for HTTP transport
+ *
+ * SECURITY NOTE: Authentication is REQUIRED for production use.
+ * Configure either external OAuth servers via `authorizationServers`
+ * or enable the built-in auth server via `builtInAuthServer`.
+ *
+ * To temporarily disable authentication (DEVELOPMENT ONLY):
+ * Set environment variable MCP_HTTP_ALLOW_NO_AUTH=true
+ * This is EXTREMELY DANGEROUS and should NEVER be used in production.
  */
 export interface HttpTransportOptions {
   /**
@@ -115,6 +123,10 @@ export interface HttpTransportOptions {
  * - POST for client-to-server messages
  * - GET with SSE for server-to-client streaming
  * - OAuth 2.0 metadata endpoints as per RFC9728 and RFC8414
+ *
+ * SECURITY: This transport REQUIRES OAuth 2.0 authentication in production.
+ * Authentication can be bypassed ONLY for development by setting MCP_HTTP_ALLOW_NO_AUTH=true.
+ * Never use unauthenticated mode in production as it exposes all MCP endpoints without any access control.
  */
 export class HttpTransport implements ITransport {
   private readonly app: Express;
@@ -378,9 +390,48 @@ export class HttpTransport implements ITransport {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // If no token validator is configured, allow access (backward compatibility)
+    // Security check: Handle missing token validator
     if (!this.tokenValidator) {
-      logger.warn('No token validator configured, allowing access without validation');
+      // SECURITY WARNING: This bypass is ONLY for backward compatibility
+      // DO NOT USE IN PRODUCTION WITHOUT PROPER TOKEN VALIDATION
+
+      // Check if insecure mode is explicitly enabled
+      const allowInsecure = process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true';
+
+      if (!allowInsecure) {
+        // Reject the request if insecure mode is not explicitly enabled
+        logger.error(
+          'SECURITY: No token validator configured and insecure mode not explicitly enabled. ' +
+            'To allow unauthenticated access (NOT RECOMMENDED FOR PRODUCTION), set MCP_HTTP_ALLOW_NO_AUTH=true'
+        );
+
+        const wwwAuthenticate = [
+          'Bearer',
+          'realm="MCP SonarQube Server"',
+          'error="configuration_error"',
+          'error_description="Authentication not properly configured"',
+        ].join(' ');
+
+        res.set('WWW-Authenticate', wwwAuthenticate);
+        res.status(500).json({
+          error: 'configuration_error',
+          error_description:
+            'Authentication is not properly configured. Contact your administrator.',
+        });
+        return;
+      }
+
+      // Log a prominent warning when allowing unauthenticated access
+      logger.warn(
+        '⚠️  SECURITY WARNING: Allowing unauthenticated access to MCP endpoints! ⚠️\n' +
+          '    This is EXTREMELY DANGEROUS and should NEVER be used in production.\n' +
+          '    Configure proper OAuth 2.0 authentication by setting either:\n' +
+          '    - MCP_OAUTH_AUTH_SERVERS: Comma-separated list of OAuth authorization server URLs\n' +
+          '    - MCP_OAUTH_BUILTIN=true: Enable built-in OAuth server (for development only)\n' +
+          '    See https://github.com/sapientpants/sonarqube-mcp-server#authentication for details'
+      );
+
+      // Allow the request to proceed (backward compatibility only)
       next();
       return;
     }

@@ -91,76 +91,26 @@ export class TokenValidator {
    */
   async validateToken(token: string): Promise<TokenClaims> {
     try {
-      // Decode token without verification first to get the header
-      const decoded = jwt.decode(token, { complete: true });
-      if (!decoded || typeof decoded === 'string') {
-        throw new TokenValidationError(
-          TokenValidationErrorCode.INVALID_TOKEN,
-          'Invalid token format'
-        );
-      }
+      // Step 1: Decode and validate token structure
+      const { payload, header } = this.decodeToken(token);
 
-      const payload = decoded.payload as TokenClaims;
-      const header = decoded.header;
+      // Step 2: Validate issuer
+      this.validateIssuer(payload.iss);
 
-      // Validate issuer
-      if (!payload.iss || !this.options.issuers.includes(payload.iss)) {
-        throw new TokenValidationError(
-          TokenValidationErrorCode.INVALID_ISSUER,
-          `Invalid issuer: ${payload.iss}`,
-          { error_description: 'Token issuer not recognized' }
-        );
-      }
-
-      // Get the public key for verification
+      // Step 3: Get public key for verification
       const publicKey = await this.getPublicKey(payload.iss, header.kid);
 
-      // Verify the token with all validations
-      const verifyOptions: jwt.VerifyOptions = {
-        clockTolerance: this.options.clockTolerance ?? 5,
-        complete: false,
-      };
+      // Step 4: Build verification options
+      const verifyOptions = this.buildVerifyOptions();
 
-      // Set audience if provided
-      if (this.options.audience) {
-        // jwt library expects a single string or array with at least one element
-        if (Array.isArray(this.options.audience)) {
-          if (this.options.audience.length === 1) {
-            verifyOptions.audience = this.options.audience[0];
-          } else if (this.options.audience.length > 1) {
-            verifyOptions.audience = this.options.audience as [string, ...string[]];
-          }
-        } else {
-          verifyOptions.audience = this.options.audience;
-        }
-      }
-
-      // Set issuers
-      if (this.options.issuers.length === 1) {
-        verifyOptions.issuer = this.options.issuers[0];
-      } else if (this.options.issuers.length > 1) {
-        verifyOptions.issuer = this.options.issuers as [string, ...string[]];
-      }
-
+      // Step 5: Verify token signature and standard claims
       const verified = jwt.verify(token, publicKey, verifyOptions) as TokenClaims;
 
-      // Additional audience validation (ensure our server is in the audience)
+      // Step 6: Additional validations
       this.validateAudience(verified);
+      this.validateNotBefore(verified);
 
-      // Validate not-before if present
-      if (verified.nbf) {
-        const now = Math.floor(Date.now() / 1000);
-        const clockTolerance = this.options.clockTolerance ?? 5;
-        if (verified.nbf > now + clockTolerance) {
-          throw new TokenValidationError(
-            TokenValidationErrorCode.TOKEN_NOT_ACTIVE,
-            'Token not yet active',
-            { error_description: 'Token nbf claim is in the future' }
-          );
-        }
-      }
-
-      // Validate resource indicators if configured
+      // Step 7: Validate resource indicators if configured
       if (this.options.validateResource && this.options.expectedResources) {
         this.validateResourceIndicators(verified);
       }
@@ -174,60 +124,170 @@ export class TokenValidator {
 
       return verified;
     } catch (error) {
-      if (error instanceof TokenValidationError) {
-        throw error;
-      }
+      throw this.handleValidationError(error);
+    }
+  }
 
-      if (error instanceof jwt.TokenExpiredError) {
-        throw new TokenValidationError(
-          TokenValidationErrorCode.EXPIRED_TOKEN,
-          'Token has expired',
-          { error_description: 'Token exp claim has passed' }
-        );
-      }
+  /**
+   * Decode token and extract payload and header
+   */
+  private decodeToken(token: string): { payload: TokenClaims; header: jwt.JwtHeader } {
+    const decoded = jwt.decode(token, { complete: true });
 
-      if (error instanceof jwt.NotBeforeError) {
-        throw new TokenValidationError(
-          TokenValidationErrorCode.TOKEN_NOT_ACTIVE,
-          'Token not yet active',
-          { error_description: 'Token nbf claim is in the future' }
-        );
-      }
-
-      if (error instanceof jwt.JsonWebTokenError) {
-        // Parse the error message to determine the specific error type
-        const message = error.message.toLowerCase();
-
-        if (message.includes('jwt audience invalid')) {
-          throw new TokenValidationError(
-            TokenValidationErrorCode.INVALID_AUDIENCE,
-            'Token audience does not include this server',
-            { error_description: error.message }
-          );
-        }
-
-        if (message.includes('jwt issuer invalid')) {
-          throw new TokenValidationError(
-            TokenValidationErrorCode.INVALID_ISSUER,
-            'Invalid issuer',
-            { error_description: error.message }
-          );
-        }
-
-        // Default to signature error for other JsonWebTokenError instances
-        throw new TokenValidationError(
-          TokenValidationErrorCode.INVALID_SIGNATURE,
-          'Invalid token signature',
-          { error_description: error.message }
-        );
-      }
-
-      logger.error('Unexpected token validation error', error);
+    if (!decoded || typeof decoded === 'string') {
       throw new TokenValidationError(
         TokenValidationErrorCode.INVALID_TOKEN,
-        'Token validation failed'
+        'Invalid token format'
       );
     }
+
+    return {
+      payload: decoded.payload as TokenClaims,
+      header: decoded.header,
+    };
+  }
+
+  /**
+   * Validate the token issuer
+   */
+  private validateIssuer(issuer: string | undefined): void {
+    if (!issuer || !this.options.issuers.includes(issuer)) {
+      throw new TokenValidationError(
+        TokenValidationErrorCode.INVALID_ISSUER,
+        `Invalid issuer: ${issuer}`,
+        { error_description: 'Token issuer not recognized' }
+      );
+    }
+  }
+
+  /**
+   * Build JWT verification options
+   */
+  private buildVerifyOptions(): jwt.VerifyOptions {
+    const verifyOptions: jwt.VerifyOptions = {
+      clockTolerance: this.options.clockTolerance ?? 5,
+      complete: false,
+    };
+
+    // Configure audience
+    this.configureAudienceOption(verifyOptions);
+
+    // Configure issuers
+    this.configureIssuerOption(verifyOptions);
+
+    return verifyOptions;
+  }
+
+  /**
+   * Configure audience in verify options
+   */
+  private configureAudienceOption(verifyOptions: jwt.VerifyOptions): void {
+    if (!this.options.audience) {
+      return;
+    }
+
+    // jwt library expects a single string or array with at least one element
+    if (Array.isArray(this.options.audience)) {
+      if (this.options.audience.length === 1) {
+        verifyOptions.audience = this.options.audience[0];
+      } else if (this.options.audience.length > 1) {
+        verifyOptions.audience = this.options.audience as [string, ...string[]];
+      }
+    } else {
+      verifyOptions.audience = this.options.audience;
+    }
+  }
+
+  /**
+   * Configure issuer in verify options
+   */
+  private configureIssuerOption(verifyOptions: jwt.VerifyOptions): void {
+    if (this.options.issuers.length === 1) {
+      verifyOptions.issuer = this.options.issuers[0];
+    } else if (this.options.issuers.length > 1) {
+      verifyOptions.issuer = this.options.issuers as [string, ...string[]];
+    }
+  }
+
+  /**
+   * Validate not-before claim
+   */
+  private validateNotBefore(claims: TokenClaims): void {
+    if (!claims.nbf) {
+      return;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const clockTolerance = this.options.clockTolerance ?? 5;
+
+    if (claims.nbf > now + clockTolerance) {
+      throw new TokenValidationError(
+        TokenValidationErrorCode.TOKEN_NOT_ACTIVE,
+        'Token not yet active',
+        { error_description: 'Token nbf claim is in the future' }
+      );
+    }
+  }
+
+  /**
+   * Handle validation errors and convert to TokenValidationError
+   */
+  private handleValidationError(error: unknown): TokenValidationError {
+    if (error instanceof TokenValidationError) {
+      return error;
+    }
+
+    if (error instanceof jwt.TokenExpiredError) {
+      return new TokenValidationError(TokenValidationErrorCode.EXPIRED_TOKEN, 'Token has expired', {
+        error_description: 'Token exp claim has passed',
+      });
+    }
+
+    if (error instanceof jwt.NotBeforeError) {
+      return new TokenValidationError(
+        TokenValidationErrorCode.TOKEN_NOT_ACTIVE,
+        'Token not yet active',
+        { error_description: 'Token nbf claim is in the future' }
+      );
+    }
+
+    if (error instanceof jwt.JsonWebTokenError) {
+      return this.handleJwtError(error);
+    }
+
+    logger.error('Unexpected token validation error', error);
+    return new TokenValidationError(
+      TokenValidationErrorCode.INVALID_TOKEN,
+      'Token validation failed'
+    );
+  }
+
+  /**
+   * Handle specific JWT errors
+   */
+  private handleJwtError(error: jwt.JsonWebTokenError): TokenValidationError {
+    const message = error.message.toLowerCase();
+
+    if (message.includes('jwt audience invalid')) {
+      return new TokenValidationError(
+        TokenValidationErrorCode.INVALID_AUDIENCE,
+        'Token audience does not include this server',
+        { error_description: error.message }
+      );
+    }
+
+    if (message.includes('jwt issuer invalid')) {
+      return new TokenValidationError(TokenValidationErrorCode.INVALID_ISSUER, 'Invalid issuer', {
+        error_description: error.message,
+      });
+    }
+
+    // Default to signature error for other JsonWebTokenError instances
+    return new TokenValidationError(
+      TokenValidationErrorCode.INVALID_SIGNATURE,
+      'Invalid token signature',
+      { error_description: error.message }
+    );
   }
 
   /**
@@ -280,16 +340,21 @@ export class TokenValidator {
   /**
    * Get public key for token verification
    *
-   * TODO: Implement JWKS endpoint fetching with caching
+   * NOTE: JWKS endpoint fetching is not yet implemented. The current implementation
+   * supports two fallback mechanisms for obtaining public keys:
+   *
+   * 1. Static public keys configured programmatically via the `staticPublicKeys` option
+   * 2. Environment variables in the format `JWT_PUBLIC_KEY_<issuer>` where special
+   *    characters in the issuer URL are replaced with underscores
+   *
+   * For detailed information about the token validation implementation and future
+   * enhancements, see docs/oauth-token-validation.md
+   *
+   * When JWKS fetching is implemented in the future, it will:
    * - Fetch JWKS from the configured endpoint
    * - Cache the keys with TTL
    * - Find the matching key by kid (key ID)
    * - Convert JWK to PEM format for verification
-   *
-   * For testing environments, consider using:
-   * - Static public keys configured via environment variables
-   * - Mock JWKS endpoints
-   * - Test-specific key pairs
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async getPublicKey(issuer: string, _kid?: string): Promise<string | Buffer> {
@@ -301,9 +366,9 @@ export class TokenValidator {
       );
     }
 
-    // TODO: Implement JWKS fetching logic here
-    // This is a placeholder implementation that will be replaced
-    // when HTTP client functionality is added to the project
+    // NOTE: JWKS fetching implementation is pending. Currently using fallback mechanisms:
+    // static public keys and environment variables. See docs/oauth-token-validation.md
+    // for details about the current implementation status and testing approaches.
 
     // Check if a static public key is configured for this issuer
     if (this.options.staticPublicKeys?.has(issuer)) {

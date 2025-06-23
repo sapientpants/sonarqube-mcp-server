@@ -12,6 +12,7 @@ The SonarQube MCP Server supports Streamable HTTP transport (as defined in MCP s
 - `MCP_HTTP_PUBLIC_URL`: Public URL of the MCP server (default: http://localhost:3000)
 - `MCP_OAUTH_AUTH_SERVERS`: Comma-separated list of external authorization server URLs
 - `MCP_OAUTH_BUILTIN`: Set to `true` to enable built-in authorization server metadata
+- `MCP_HTTP_ALLOW_NO_AUTH`: **SECURITY WARNING** - Set to `true` to allow unauthenticated access (DEVELOPMENT ONLY - NEVER USE IN PRODUCTION)
 
 ### Example Configuration
 
@@ -81,7 +82,24 @@ MCP-Protocol-Version: 2025-06-18
 
 ## Authentication
 
-The HTTP transport requires Bearer token authentication for the MCP endpoint.
+The HTTP transport **REQUIRES** Bearer token authentication for the MCP endpoint in production environments.
+
+### Security Requirements
+
+⚠️ **IMPORTANT**: Authentication is mandatory for production use. The server will reject requests if no authentication is configured unless explicitly running in insecure development mode.
+
+To configure authentication, you must set either:
+- `MCP_OAUTH_AUTH_SERVERS`: External OAuth 2.0 authorization server URLs, OR
+- `MCP_OAUTH_BUILTIN=true`: Enable the built-in authorization server (for development)
+
+### Development Mode (INSECURE)
+
+For local development ONLY, you can bypass authentication by setting:
+```bash
+export MCP_HTTP_ALLOW_NO_AUTH=true
+```
+
+**WARNING**: This completely disables authentication and exposes all MCP endpoints without any access control. NEVER use this in production or any environment accessible from the internet.
 
 ### WWW-Authenticate Header
 
@@ -135,6 +153,12 @@ Content-Type: application/json
 
 The HTTP transport includes CORS support for cross-origin requests. Custom CORS options can be configured programmatically.
 
-## Future Enhancements
+## Token Validation
 
-Currently, the HTTP transport sets up the OAuth metadata endpoints and authentication structure, but token validation is not yet implemented. This will be added in a future story along with the actual OAuth 2.0 flow implementation.
+The HTTP transport includes full OAuth 2.0 token validation support. When configured with authorization servers, it will:
+- Validate JWT tokens against the configured issuers
+- Verify token signatures using JWKS endpoints
+- Check token expiration and other standard claims
+- Enforce audience and resource validation
+
+For more details on token validation, see [OAuth Token Validation](./oauth-token-validation.md).
