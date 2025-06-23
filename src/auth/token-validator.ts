@@ -385,9 +385,9 @@ export class TokenValidator {
       return staticPublicKey;
     }
 
-    // TODO: Implement JWKS endpoint fetching for production use
-    // Production deployments should use dynamic JWKS fetching once implemented.
-    // Until then, static keys MUST be configured for the system to work.
+    // NOTE: JWKS endpoint fetching is not yet implemented.
+    // Production deployments will benefit from dynamic JWKS fetching in the future.
+    // Currently, static keys MUST be configured for the system to work.
     throw new TokenValidationError(
       TokenValidationErrorCode.INVALID_TOKEN,
       `Public key not configured for issuer: ${issuer}. ` +
