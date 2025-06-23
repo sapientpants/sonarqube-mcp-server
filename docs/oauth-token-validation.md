@@ -37,7 +37,7 @@ const transport = new HttpTransport({
 
 ## JWKS Endpoint Fetching (TODO)
 
-Currently, JWKS endpoint fetching is not implemented. The system supports two fallback mechanisms for testing:
+Currently, JWKS endpoint fetching is not implemented. The system supports two fallback mechanisms that work for both testing and production environments:
 
 ### 1. Static Public Keys (Programmatic)
 
@@ -93,17 +93,32 @@ WWW-Authenticate: Bearer realm="MCP SonarQube Server", error="invalid_token", er
 3. **Rate Limiting**: Built-in rate limiting prevents brute force attacks
 4. **Clock Tolerance**: Configurable tolerance (default 5 seconds) for time-based claims
 
-## Testing
+## Testing vs Production Configuration
 
-For testing environments, use static public keys or environment variables instead of real JWKS endpoints. This allows testing without external dependencies.
-
-Example test setup:
+### Testing Environment
+Use static public keys or environment variables for predictable, offline testing:
 ```typescript
-process.env.JWT_PUBLIC_KEY_test_issuer = testPublicKey;
+// Option 1: Programmatic configuration
 const transport = new HttpTransport({
-  authorizationServers: ['test_issuer']
+  authorizationServers: ['https://auth.example.com']
 });
+const validator = new TokenValidator({
+  staticPublicKeys: new Map([
+    ['https://auth.example.com', testPublicKey]
+  ])
+});
+
+// Option 2: Environment variable
+process.env.JWT_PUBLIC_KEY_https___auth_example_com = testPublicKey;
 ```
+
+### Production Environment (Temporary)
+Until JWKS endpoint fetching is implemented, production deployments must also use static public keys:
+1. Obtain the public key from your authorization server's JWKS endpoint manually
+2. Configure it using one of the fallback mechanisms above
+3. Monitor for key rotation and update the static key when necessary
+
+⚠️ **Important**: This is a temporary limitation. Future versions will support automatic JWKS fetching and key rotation.
 
 ## Future Enhancements
 

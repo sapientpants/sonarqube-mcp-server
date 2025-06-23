@@ -370,22 +370,29 @@ export class TokenValidator {
     // static public keys and environment variables. See docs/oauth-token-validation.md
     // for details about the current implementation status and testing approaches.
 
-    // Check if a static public key is configured for this issuer
+    // FALLBACK 1: Check if a static public key is configured for this issuer
+    // This is the recommended approach for testing environments
     if (this.options.staticPublicKeys?.has(issuer)) {
       logger.debug('Using static public key for issuer', { issuer });
       return this.options.staticPublicKeys.get(issuer)!;
     }
 
-    // For now, check if a static public key is provided via environment
+    // FALLBACK 2: Check if a static public key is provided via environment variable
+    // This allows configuration without code changes, useful for CI/CD pipelines
     const staticPublicKey = process.env[`JWT_PUBLIC_KEY_${issuer.replace(/[^a-zA-Z0-9]/g, '_')}`];
     if (staticPublicKey) {
       logger.debug('Using static public key from environment for issuer', { issuer });
       return staticPublicKey;
     }
 
+    // TODO: Implement JWKS endpoint fetching for production use
+    // Production deployments should use dynamic JWKS fetching once implemented.
+    // Until then, static keys MUST be configured for the system to work.
     throw new TokenValidationError(
       TokenValidationErrorCode.INVALID_TOKEN,
-      'JWKS endpoint fetching not yet implemented. Configure a static public key via staticPublicKeys option or JWT_PUBLIC_KEY_<issuer> environment variable for testing.'
+      `Public key not configured for issuer: ${issuer}. ` +
+        'For testing: Configure via staticPublicKeys option or JWT_PUBLIC_KEY_<issuer> env var. ' +
+        'For production: JWKS endpoint fetching is not yet implemented - use static keys as a temporary workaround.'
     );
   }
 
