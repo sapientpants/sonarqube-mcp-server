@@ -817,25 +817,144 @@ export class HttpTransport implements ITransport {
    */
   private safeCreateRegExp(pattern: string, context: string): RegExp | undefined {
     // Check for potentially dangerous patterns that could cause ReDoS
-    const dangerousPatterns = [
-      /\([^)]*[+*]\)[+*]/, // Nested quantifiers like (a+)+ or (a*)*
-      /\([^)]*\{[^}]+\}\)[+*]/, // Nested quantifiers like (a{1,3})+
-      /\([^)]+\)\{[^}]+\}\{/, // Multiple consecutive quantifiers on groups
-      /\[[^\]]+\][+*]\{/, // Character class followed by multiple quantifiers
-      /(?:[+*]\{[^}]+\}|[+*])\s*[+*]/, // Adjacent quantifiers
-      /\)\+\{[^}]+\}\{/, // Group with + followed by multiple quantifiers like (abc)+{2}{3}
-      /\{[^}]+\}[+*]/, // Quantifier followed by another quantifier like a{2,5}*
-    ];
+    // Using string-based detection to avoid backtracking issues
 
-    for (const dangerous of dangerousPatterns) {
-      if (dangerous.test(pattern)) {
-        logger.warn('Potentially dangerous regex pattern detected', {
-          pattern,
-          context,
-          reason: 'Nested quantifiers can cause ReDoS',
-        });
-        return undefined;
+    // Helper function to check if a pattern contains nested quantifiers
+    const hasNestedQuantifiers = (str: string): boolean => {
+      // Look for patterns like (...)+ or (...)* where ... contains quantifiers
+      let depth = 0;
+      let inGroup = false;
+      let hasQuantifierInGroup = false;
+
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const nextChar = str[i + 1];
+
+        if (char === '\\') {
+          i++; // Skip escaped character
+          continue;
+        }
+
+        if (char === '(') {
+          depth++;
+          if (depth === 1) {
+            inGroup = true;
+            hasQuantifierInGroup = false;
+          }
+        } else if (char === ')') {
+          if (depth === 1 && inGroup && hasQuantifierInGroup) {
+            // Check if this group has a quantifier after it
+            if (nextChar === '+' || nextChar === '*' || nextChar === '?' || nextChar === '{') {
+              return true; // Found nested quantifier
+            }
+          }
+          depth--;
+          if (depth === 0) {
+            inGroup = false;
+          }
+        } else if (inGroup && depth === 1) {
+          // Check for quantifiers inside the group
+          if (char === '+' || char === '*' || char === '?' || char === '{') {
+            hasQuantifierInGroup = true;
+          }
+        }
       }
+
+      return false;
+    };
+
+    // Check for adjacent quantifiers (e.g., a+*, a{2}+)
+    const hasAdjacentQuantifiers = (str: string): boolean => {
+      const quantifiers = ['+', '*', '?'];
+      let lastWasQuantifier = false;
+      let inBraces = false;
+
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+
+        if (char === '\\') {
+          i++; // Skip escaped character
+          lastWasQuantifier = false;
+          continue;
+        }
+
+        if (char === '{') {
+          inBraces = true;
+          if (lastWasQuantifier) return true;
+          continue;
+        }
+
+        if (char === '}') {
+          inBraces = false;
+          lastWasQuantifier = true;
+          continue;
+        }
+
+        if (!inBraces && quantifiers.includes(char)) {
+          if (lastWasQuantifier) return true;
+          lastWasQuantifier = true;
+        } else if (!inBraces && char !== ' ' && char !== '\t') {
+          lastWasQuantifier = false;
+        }
+      }
+
+      return false;
+    };
+
+    // Check for character class with multiple quantifiers (e.g., [a-z]+{2})
+    const hasCharClassMultipleQuantifiers = (str: string): boolean => {
+      let inCharClass = false;
+
+      for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        const nextChar = str[i + 1];
+        const nextNextChar = str[i + 2];
+
+        if (char === '\\') {
+          i++; // Skip escaped character
+          continue;
+        }
+
+        if (char === '[' && !inCharClass) {
+          inCharClass = true;
+        } else if (char === ']' && inCharClass) {
+          inCharClass = false;
+          // Check if followed by multiple quantifiers
+          if ((nextChar === '+' || nextChar === '*') && nextNextChar === '{') {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    };
+
+    // Perform the checks
+    if (hasNestedQuantifiers(pattern)) {
+      logger.warn('Potentially dangerous regex pattern detected', {
+        pattern,
+        context,
+        reason: 'Nested quantifiers can cause ReDoS',
+      });
+      return undefined;
+    }
+
+    if (hasAdjacentQuantifiers(pattern)) {
+      logger.warn('Potentially dangerous regex pattern detected', {
+        pattern,
+        context,
+        reason: 'Adjacent quantifiers can cause ReDoS',
+      });
+      return undefined;
+    }
+
+    if (hasCharClassMultipleQuantifiers(pattern)) {
+      logger.warn('Potentially dangerous regex pattern detected', {
+        pattern,
+        context,
+        reason: 'Character class with multiple quantifiers can cause ReDoS',
+      });
+      return undefined;
     }
 
     // Try to compile the regex
