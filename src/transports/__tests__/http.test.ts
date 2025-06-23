@@ -681,7 +681,7 @@ describe('HttpTransport', () => {
     });
   });
 
-  describe('regex validation edge cases', () => {
+  describe('glob pattern edge cases', () => {
     beforeEach(async () => {
       process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
       process.env.SONARQUBE_TOKEN = 'test-token';
@@ -696,8 +696,8 @@ describe('HttpTransport', () => {
       });
     });
 
-    it('should handle regex patterns with escaped characters', async () => {
-      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test\\.user@example\\.com,sa:sa1';
+    it('should handle glob patterns with escaped characters', async () => {
+      process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test.user@example.com,sa:sa1';
 
       transport = new HttpTransport({ port: 0 });
       await transport.connect(mockServer);
@@ -710,8 +710,8 @@ describe('HttpTransport', () => {
       expect(rules[0].userPattern).toBeDefined();
     });
 
-    it('should handle regex patterns with character classes containing multiple quantifiers', async () => {
-      // Pattern with character class and multiple quantifiers (should be rejected)
+    it('should handle glob patterns that look like regex', async () => {
+      // Pattern that looks like regex but is now a valid glob pattern
       process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:[a-z]+*,sa:sa1';
 
       transport = new HttpTransport({ port: 0 });
@@ -719,12 +719,13 @@ describe('HttpTransport', () => {
 
       const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
       const rules = mapper.getMappingRules();
-      // Should not add invalid rule
-      expect(rules).toHaveLength(0);
+      // Should add rule since it's a valid glob pattern (even if it looks weird)
+      expect(rules).toHaveLength(1);
+      expect(rules[0].userPattern?.getPattern()).toBe('[a-z]+*');
     });
 
-    it('should handle regex patterns with nested groups and quantifiers', async () => {
-      // Pattern with nested groups (should be rejected for safety)
+    it('should handle glob patterns with parentheses', async () => {
+      // Pattern with parentheses - now treated as literal characters in glob
       process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:(test)+*,sa:sa1';
 
       transport = new HttpTransport({ port: 0 });
@@ -732,12 +733,13 @@ describe('HttpTransport', () => {
 
       const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
       const rules = mapper.getMappingRules();
-      // Should not add invalid rule
-      expect(rules).toHaveLength(0);
+      // Should add rule since parentheses are literal in glob patterns
+      expect(rules).toHaveLength(1);
+      expect(rules[0].userPattern?.getPattern()).toBe('(test)+*');
     });
 
-    it('should handle regex patterns with adjacent quantifiers', async () => {
-      // Pattern with adjacent quantifiers (should be rejected)
+    it('should handle glob patterns with plus signs', async () => {
+      // Pattern with plus sign - now treated as literal character in glob
       process.env.MCP_MAPPING_RULE_1 = 'priority:1,user:test+*,sa:sa1';
 
       transport = new HttpTransport({ port: 0 });
@@ -745,8 +747,9 @@ describe('HttpTransport', () => {
 
       const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
       const rules = mapper.getMappingRules();
-      // Should not add invalid rule
-      expect(rules).toHaveLength(0);
+      // Should add rule since + is literal in glob patterns
+      expect(rules).toHaveLength(1);
+      expect(rules[0].userPattern?.getPattern()).toBe('test+*');
     });
 
     it('should handle regex patterns with braces quantifiers', async () => {
@@ -772,8 +775,9 @@ describe('HttpTransport', () => {
 
       const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper;
       const rules = mapper.getMappingRules();
-      // Rule should be added (pattern is valid, just potentially slow)
+      // Rule should be added (pattern is valid glob)
       expect(rules).toHaveLength(1);
+      expect(rules[0].userPattern?.getPattern()).toBe(longPattern);
     });
 
     it('should handle missing pattern in mapping rule', async () => {

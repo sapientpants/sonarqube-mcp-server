@@ -2,6 +2,7 @@ import { createLogger } from '../utils/logger.js';
 import type { TokenClaims } from './token-validator.js';
 import type { ISonarQubeClient } from '../types/index.js';
 import { createSonarQubeClient } from '../sonarqube.js';
+import { PatternMatcher } from '../utils/pattern-matcher.js';
 
 const logger = createLogger('ServiceAccountMapper');
 
@@ -29,10 +30,10 @@ export interface ServiceAccount {
 export interface MappingRule {
   /** Rule priority (lower number = higher priority) */
   priority: number;
-  /** User subject pattern (regex) */
-  userPattern?: RegExp;
-  /** Issuer pattern (regex) */
-  issuerPattern?: RegExp;
+  /** User subject pattern (glob-style: * and ? wildcards) */
+  userPattern?: PatternMatcher;
+  /** Issuer pattern (glob-style: * and ? wildcards) */
+  issuerPattern?: PatternMatcher;
   /** Required scopes */
   requiredScopes?: string[];
   /** Service account ID to use */

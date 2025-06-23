@@ -39,10 +39,10 @@ The SonarQube MCP Server supports Streamable HTTP transport (as defined in MCP s
 
 #### Service Account Mapping Rules
 - `MCP_DEFAULT_SERVICE_ACCOUNT`: Default service account ID (default: 'default')
-- `MCP_MAPPING_RULE_{N}`: Mapping rule N (where N is 1-10) in format: `priority:1,user:.*@company.com,issuer:auth.company.com,scopes:read|write,sa:company-sa`
+- `MCP_MAPPING_RULE_{N}`: Mapping rule N (where N is 1-10) in format: `priority:1,user:*@company.com,issuer:https://*.auth.com,scopes:read|write,sa:company-sa`
   - `priority`: Rule priority (lower = higher priority)
-  - `user`: User subject regex pattern
-  - `issuer`: Issuer regex pattern  
+  - `user`: User subject pattern (glob-style: * matches any characters, ? matches one character)
+  - `issuer`: Issuer pattern (glob-style: * matches any characters, ? matches one character)
   - `scopes`: Required scopes (pipe-separated)
   - `sa`: Service account ID to use
 
@@ -85,8 +85,8 @@ export SONARQUBE_SA2_NAME="QA Team"
 export SONARQUBE_SA2_SCOPES="sonarqube:read"
 
 # Mapping rules
-export MCP_MAPPING_RULE_1="priority:1,user:.*@dev.company.com,sa:sa1"
-export MCP_MAPPING_RULE_2="priority:2,user:.*@qa.company.com,sa:sa2"
+export MCP_MAPPING_RULE_1="priority:1,user:*@dev.company.com,sa:sa1"
+export MCP_MAPPING_RULE_2="priority:2,user:*@qa.company.com,sa:sa2"
 export MCP_DEFAULT_SERVICE_ACCOUNT=default
 ```
 
@@ -297,7 +297,7 @@ The server maps OAuth users to SonarQube service accounts based on configurable 
 
 Map all users from dev.company.com to development service account:
 ```bash
-export MCP_MAPPING_RULE_1="priority:1,user:.*@dev.company.com,sa:sa1"
+export MCP_MAPPING_RULE_1="priority:1,user:*@dev.company.com,sa:sa1"
 ```
 
 Map users from specific issuer with admin scope to admin service account:

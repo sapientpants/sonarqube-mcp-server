@@ -15,6 +15,7 @@ import {
 } from '../auth/token-validator.js';
 import { SessionManager } from '../auth/session-manager.js';
 import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
+import { PatternMatcher } from '../utils/pattern-matcher.js';
 
 const logger = createLogger('HttpTransport');
 
@@ -141,8 +142,8 @@ export interface HttpTransportOptions {
  */
 interface MappingRuleBuilder {
   priority: number;
-  userPattern?: RegExp;
-  issuerPattern?: RegExp;
+  userPattern?: PatternMatcher;
+  issuerPattern?: PatternMatcher;
   requiredScopes?: string[];
   serviceAccountId?: string;
 }
@@ -809,270 +810,6 @@ export class HttpTransport implements ITransport {
   }
 
   /**
-   * Safely create a RegExp from a string pattern with validation
-   * @param pattern The regex pattern string
-   * @param context Context for error messages
-   * @returns RegExp object or undefined if invalid
-   */
-  private safeCreateRegExp(pattern: string, context: string): RegExp | undefined {
-    // Check for potentially dangerous patterns that could cause ReDoS
-    // Using string-based detection to avoid backtracking issues
-
-    // Helper function to check if a pattern contains nested quantifiers
-    const hasNestedQuantifiers = (str: string): boolean => {
-      // Look for patterns like (...)+ or (...)* where ... contains quantifiers
-      const result = checkForNestedQuantifiers(str);
-      return result.found;
-    };
-
-    // Extracted helper to reduce cognitive complexity
-    const checkForNestedQuantifiers = (str: string): { found: boolean } => {
-      let depth = 0;
-      let inGroup = false;
-      let hasQuantifierInGroup = false;
-
-      const chars = [...str];
-      for (const [index, char] of chars.entries()) {
-        const nextChar = chars[index + 1];
-
-        if (char === '\\') {
-          // Skip next character as it's escaped
-          chars[index + 1] = '';
-          continue;
-        }
-
-        const result = processCharacter(char, nextChar, depth, inGroup, hasQuantifierInGroup);
-        if (result.found) {
-          return { found: true };
-        }
-        depth = result.depth;
-        inGroup = result.inGroup;
-        hasQuantifierInGroup = result.hasQuantifierInGroup;
-      }
-
-      return { found: false };
-    };
-
-    // Helper to process each character and update state
-    const processCharacter = (
-      char: string,
-      nextChar: string | undefined,
-      depth: number,
-      inGroup: boolean,
-      hasQuantifierInGroup: boolean
-    ): { found: boolean; depth: number; inGroup: boolean; hasQuantifierInGroup: boolean } => {
-      if (char === '(') {
-        depth++;
-        if (depth === 1) {
-          return { found: false, depth, inGroup: true, hasQuantifierInGroup: false };
-        }
-        return { found: false, depth, inGroup, hasQuantifierInGroup };
-      }
-
-      if (char === ')') {
-        if (shouldCheckForNestedQuantifier(depth, inGroup, hasQuantifierInGroup, nextChar)) {
-          return { found: true, depth, inGroup, hasQuantifierInGroup };
-        }
-        depth--;
-        return { found: false, depth, inGroup: depth > 0, hasQuantifierInGroup };
-      }
-
-      if (inGroup && depth === 1 && isQuantifier(char)) {
-        return { found: false, depth, inGroup, hasQuantifierInGroup: true };
-      }
-
-      return { found: false, depth, inGroup, hasQuantifierInGroup };
-    };
-
-    // Helper to check if we should flag a nested quantifier
-    const shouldCheckForNestedQuantifier = (
-      depth: number,
-      inGroup: boolean,
-      hasQuantifierInGroup: boolean,
-      nextChar: string | undefined
-    ): boolean => {
-      return depth === 1 && inGroup && hasQuantifierInGroup && isQuantifier(nextChar);
-    };
-
-    // Helper to check if a character is a quantifier
-    const isQuantifier = (char: string | undefined): boolean => {
-      return char === '+' || char === '*' || char === '?' || char === '{';
-    };
-
-    // Check for adjacent quantifiers (e.g., a+*, a{2}+)
-    const hasAdjacentQuantifiers = (str: string): boolean => {
-      const state = checkAdjacentQuantifiersInString(str);
-      return state.hasAdjacent;
-    };
-
-    // Extracted helper to reduce cognitive complexity
-    const checkAdjacentQuantifiersInString = (str: string): { hasAdjacent: boolean } => {
-      const quantifiers = ['+', '*', '?'];
-      let lastWasQuantifier = false;
-      let inBraces = false;
-
-      const chars = [...str];
-      for (const [index, char] of chars.entries()) {
-        if (char === '\\') {
-          // Skip next character as it's escaped
-          chars[index + 1] = '';
-          lastWasQuantifier = false;
-          continue;
-        }
-
-        const result = processCharForAdjacentQuantifiers(
-          char,
-          inBraces,
-          lastWasQuantifier,
-          quantifiers
-        );
-
-        if (result.shouldReturn) {
-          return { hasAdjacent: true };
-        }
-
-        inBraces = result.inBraces;
-        lastWasQuantifier = result.lastWasQuantifier;
-      }
-
-      return { hasAdjacent: false };
-    };
-
-    // Helper to process each character for adjacent quantifier check
-    const processCharForAdjacentQuantifiers = (
-      char: string,
-      inBraces: boolean,
-      lastWasQuantifier: boolean,
-      quantifiers: string[]
-    ): { shouldReturn: boolean; inBraces: boolean; lastWasQuantifier: boolean } => {
-      if (char === '{') {
-        return {
-          shouldReturn: lastWasQuantifier,
-          inBraces: true,
-          lastWasQuantifier,
-        };
-      }
-
-      if (char === '}') {
-        return {
-          shouldReturn: false,
-          inBraces: false,
-          lastWasQuantifier: true,
-        };
-      }
-
-      if (!inBraces && quantifiers.includes(char)) {
-        return {
-          shouldReturn: lastWasQuantifier,
-          inBraces,
-          lastWasQuantifier: true,
-        };
-      }
-
-      const isWhitespace = char === ' ' || char === '\t';
-      return {
-        shouldReturn: false,
-        inBraces,
-        lastWasQuantifier: inBraces || isWhitespace ? lastWasQuantifier : false,
-      };
-    };
-
-    // Check for character class with multiple quantifiers (e.g., [a-z]+{2})
-    const hasCharClassMultipleQuantifiers = (str: string): boolean => {
-      let inCharClass = false;
-
-      const chars = [...str];
-      for (const [index, char] of chars.entries()) {
-        const nextChar = chars[index + 1];
-        const nextNextChar = chars[index + 2];
-
-        if (char === '\\') {
-          // Skip next character as it's escaped
-          chars[index + 1] = '';
-          continue;
-        }
-
-        if (char === '[' && !inCharClass) {
-          inCharClass = true;
-        } else if (char === ']' && inCharClass) {
-          inCharClass = false;
-          // Check if followed by multiple quantifiers
-          if ((nextChar === '+' || nextChar === '*') && nextNextChar === '{') {
-            return true;
-          }
-        }
-      }
-
-      return false;
-    };
-
-    // Perform the checks
-    if (hasNestedQuantifiers(pattern)) {
-      logger.warn('Potentially dangerous regex pattern detected', {
-        pattern,
-        context,
-        reason: 'Nested quantifiers can cause ReDoS',
-      });
-      return undefined;
-    }
-
-    if (hasAdjacentQuantifiers(pattern)) {
-      logger.warn('Potentially dangerous regex pattern detected', {
-        pattern,
-        context,
-        reason: 'Adjacent quantifiers can cause ReDoS',
-      });
-      return undefined;
-    }
-
-    if (hasCharClassMultipleQuantifiers(pattern)) {
-      logger.warn('Potentially dangerous regex pattern detected', {
-        pattern,
-        context,
-        reason: 'Character class with multiple quantifiers can cause ReDoS',
-      });
-      return undefined;
-    }
-
-    // Try to compile the regex
-    try {
-      const regex = new RegExp(pattern);
-
-      // Test the regex with a sample string to ensure it doesn't hang
-      const testString = 'a'.repeat(100);
-      const startTime = Date.now();
-      // Execute test to measure performance and validate regex works
-      const testResult = regex.test(testString);
-      const elapsed = Date.now() - startTime;
-
-      // Log if regex didn't match test string (might indicate issue with pattern)
-      if (!testResult) {
-        logger.debug('Regex pattern did not match test string', { pattern, context });
-      }
-
-      // If the test takes too long, it might be problematic
-      if (elapsed > 100) {
-        logger.warn('Regex pattern took too long to execute', {
-          pattern,
-          context,
-          elapsed,
-          reason: 'Pattern may cause performance issues',
-        });
-        return undefined;
-      }
-
-      return regex;
-    } catch (error) {
-      logger.warn('Invalid regex pattern', {
-        pattern,
-        context,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return undefined;
-    }
-  }
-
-  /**
    * Load service account mapping rules from environment variables
    */
   private loadMappingRulesFromEnv(): void {
@@ -1172,7 +909,7 @@ export class HttpTransport implements ITransport {
     ruleIndex: number,
     patternType: string
   ): boolean {
-    const pattern = this.safeCreateRegExp(value, `MCP_MAPPING_RULE_${ruleIndex}:${patternType}`);
+    const pattern = PatternMatcher.create(value, `MCP_MAPPING_RULE_${ruleIndex}:${patternType}`);
     if (!pattern) {
       logger.warn(`Skipping rule due to invalid ${patternType} pattern`, {
         ruleIndex,
