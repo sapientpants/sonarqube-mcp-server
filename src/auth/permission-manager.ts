@@ -2,6 +2,7 @@ import { createLogger } from '../utils/logger.js';
 import { PermissionService } from './permission-service.js';
 import { PermissionConfig, PermissionRule, UserContext } from './types.js';
 import { TokenClaims } from './token-validator.js';
+import { validatePermissionRule, validatePartialPermissionRule } from './validation-utils.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -85,43 +86,14 @@ export class PermissionManager {
    * Validate a permission rule
    */
   private validateRule(rule: PermissionRule, index: number): void {
-    if (!Array.isArray(rule.allowedProjects)) {
-      throw new Error(`Rule ${index}: allowedProjects must be an array`);
-    }
-
-    if (!Array.isArray(rule.allowedTools)) {
-      throw new Error(`Rule ${index}: allowedTools must be an array`);
-    }
-
-    if (typeof rule.readonly !== 'boolean') {
-      throw new Error(`Rule ${index}: readonly must be a boolean`);
-    }
-
-    // Validate regex patterns
-    for (const pattern of rule.allowedProjects) {
-      try {
-        new RegExp(pattern);
-      } catch {
-        throw new Error(`Rule ${index}: Invalid regex pattern '${pattern}'`);
-      }
-    }
+    validatePermissionRule(rule, index);
   }
 
   /**
    * Validate default rule
    */
   private validateDefaultRule(rule: Partial<PermissionRule>): void {
-    if (rule.allowedProjects !== undefined && !Array.isArray(rule.allowedProjects)) {
-      throw new Error('Default rule: allowedProjects must be an array');
-    }
-
-    if (rule.allowedTools !== undefined && !Array.isArray(rule.allowedTools)) {
-      throw new Error('Default rule: allowedTools must be an array');
-    }
-
-    if (rule.readonly !== undefined && typeof rule.readonly !== 'boolean') {
-      throw new Error('Default rule: readonly must be a boolean');
-    }
+    validatePartialPermissionRule(rule);
   }
 
   /**

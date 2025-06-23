@@ -5,8 +5,7 @@ import { createLogger } from '../utils/logger.js';
 import { withErrorHandling } from '../errors.js';
 import { withMCPErrorHandling } from '../utils/error-handler.js';
 import { createStructuredResponse } from '../utils/structured-response.js';
-import { contextProvider } from '../auth/context-provider.js';
-import { permissionManager } from '../auth/permission-manager.js';
+import { getContextAccess } from '../auth/context-utils.js';
 
 const logger = createLogger('handlers/projects-with-permissions');
 
@@ -27,9 +26,8 @@ export const handleSonarQubeProjectsWithPermissions = withMCPErrorHandling(
   ) => {
     logger.debug('Handling SonarQube projects request with permissions', params);
 
-    // Get user context from async local storage
-    const userContext = contextProvider.getUserContext();
-    const permissionService = permissionManager.getPermissionService();
+    // Get user context and permission service
+    const { userContext, permissionService, hasPermissions } = getContextAccess();
 
     const projectsParams: PaginationParams = {
       page: nullToUndefined(params.page),
@@ -62,13 +60,13 @@ export const handleSonarQubeProjectsWithPermissions = withMCPErrorHandling(
 
     // Apply permission filtering if available
     let filteredProjects = result.projects;
-    if (permissionService && userContext) {
+    if (hasPermissions) {
       logger.debug('Applying permission filtering to projects', {
-        userId: userContext.userId,
+        userId: userContext!.userId,
         projectCount: result.projects.length,
       });
 
-      filteredProjects = await permissionService.filterProjects(userContext, result.projects);
+      filteredProjects = await permissionService!.filterProjects(userContext!, result.projects);
 
       logger.info('Projects filtered by permissions', {
         originalCount: result.projects.length,
