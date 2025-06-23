@@ -114,6 +114,11 @@ export type {
 const logger = createLogger('sonarqube');
 
 /**
+ * Type alias for optional organization parameter
+ */
+type OptionalOrganization = string | null;
+
+/**
  * Default SonarQube URL
  */
 const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
@@ -123,7 +128,7 @@ const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
  */
 export class SonarQubeClient implements ISonarQubeClient {
   private readonly webApiClient: WebApiClient;
-  private readonly organization: string | null;
+  private readonly organization: OptionalOrganization;
 
   // Domain modules
   private readonly projectsDomain: ProjectsDomain;
@@ -141,7 +146,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param baseUrl Base URL of the SonarQube instance (default: https://sonarcloud.io)
    * @param organization Organization name
    */
-  constructor(token: string, baseUrl = DEFAULT_SONARQUBE_URL, organization?: string | null) {
+  constructor(token: string, baseUrl = DEFAULT_SONARQUBE_URL, organization?: OptionalOrganization) {
     this.webApiClient = WebApiClient.withToken(
       baseUrl,
       token,
@@ -169,7 +174,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    */
   private static initializeDomains(client: {
     webApiClient: WebApiClient;
-    organization: string | null;
+    organization: OptionalOrganization;
     projectsDomain?: ProjectsDomain;
     issuesDomain?: IssuesDomain;
     metricsDomain?: MetricsDomain;
@@ -205,7 +210,7 @@ export class SonarQubeClient implements ISonarQubeClient {
     username: string,
     password: string,
     baseUrl = DEFAULT_SONARQUBE_URL,
-    organization?: string | null
+    organization?: OptionalOrganization
   ): SonarQubeClient {
     const client = Object.create(SonarQubeClient.prototype);
     client.webApiClient = WebApiClient.withBasicAuth(
@@ -229,7 +234,7 @@ export class SonarQubeClient implements ISonarQubeClient {
   static withPasscode(
     passcode: string,
     baseUrl = DEFAULT_SONARQUBE_URL,
-    organization?: string | null
+    organization?: OptionalOrganization
   ): SonarQubeClient {
     const client = Object.create(SonarQubeClient.prototype);
     client.webApiClient = WebApiClient.withPasscode(
@@ -552,7 +557,7 @@ export function createSonarQubeClientWithBasicAuth(
   username: string,
   password: string,
   baseUrl?: string,
-  organization?: string | null
+  organization?: OptionalOrganization
 ): ISonarQubeClient {
   return SonarQubeClient.withBasicAuth(username, password, baseUrl, organization);
 }
@@ -567,7 +572,7 @@ export function createSonarQubeClientWithBasicAuth(
 export function createSonarQubeClientWithPasscode(
   passcode: string,
   baseUrl?: string,
-  organization?: string | null
+  organization?: OptionalOrganization
 ): ISonarQubeClient {
   return SonarQubeClient.withPasscode(passcode, baseUrl, organization);
 }
@@ -663,7 +668,7 @@ async function tryCreateClientWithElicitation(): Promise<ISonarQubeClient | null
 function createClientFromAuthMethod(
   auth: { method: string; token?: string; username?: string; password?: string; passcode?: string },
   baseUrl: string,
-  organization: string | null
+  organization: OptionalOrganization
 ): ISonarQubeClient | null {
   switch (auth.method) {
     case 'token':
@@ -683,7 +688,7 @@ function createClientFromAuthMethod(
 function handleTokenAuth(
   token: string | undefined,
   baseUrl: string,
-  organization: string | null
+  organization: OptionalOrganization
 ): ISonarQubeClient | null {
   if (!token) return null;
   process.env.SONARQUBE_TOKEN = token;
@@ -697,7 +702,7 @@ function handleBasicAuth(
   username: string | undefined,
   password: string | undefined,
   baseUrl: string,
-  organization: string | null
+  organization: OptionalOrganization
 ): ISonarQubeClient | null {
   if (!username || !password) return null;
   process.env.SONARQUBE_USERNAME = username;
@@ -711,7 +716,7 @@ function handleBasicAuth(
 function handlePasscodeAuth(
   passcode: string | undefined,
   baseUrl: string,
-  organization: string | null
+  organization: OptionalOrganization
 ): ISonarQubeClient | null {
   if (!passcode) return null;
   process.env.SONARQUBE_PASSCODE = passcode;
@@ -728,7 +733,7 @@ function handlePasscodeAuth(
 export function createSonarQubeClient(
   token: string,
   baseUrl?: string,
-  organization?: string | null
+  organization?: OptionalOrganization
 ): ISonarQubeClient {
   return new SonarQubeClient(token, baseUrl, organization);
 }
