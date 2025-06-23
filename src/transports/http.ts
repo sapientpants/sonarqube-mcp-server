@@ -16,6 +16,9 @@ import {
 import { SessionManager } from '../auth/session-manager.js';
 import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
+import { permissionManager } from '../auth/permission-manager.js';
+import { UserContext } from '../auth/types.js';
+import { contextProvider } from '../auth/context-provider.js';
 
 const logger = createLogger('HttpTransport');
 
@@ -25,6 +28,7 @@ const logger = createLogger('HttpTransport');
 export interface AuthenticatedRequest extends Request {
   user?: TokenClaims;
   sessionId?: string;
+  userContext?: UserContext;
 }
 
 /**
@@ -258,6 +262,7 @@ export class HttpTransport implements ITransport {
     this.app.post(
       '/mcp',
       express.json({ limit: '10mb' }),
+      contextProvider.createExpressMiddleware(),
       async (req: AuthenticatedRequest, res) => {
         const sessionId = req.sessionId ?? (req.headers['mcp-session-id'] as string);
         const protocolVersion = req.headers['mcp-protocol-version'] as string;
@@ -668,6 +673,12 @@ export class HttpTransport implements ITransport {
    */
   private attachClaimsWithoutSession(req: AuthenticatedRequest, claims: TokenClaims): void {
     req.user = claims;
+
+    // Extract user context for permissions
+    if (permissionManager.isEnabled()) {
+      req.userContext = permissionManager.extractUserContext(claims) ?? undefined;
+    }
+
     logger.debug('Token validated successfully (no session management)', {
       sub: claims.sub,
       iss: claims.iss,
@@ -689,6 +700,12 @@ export class HttpTransport implements ITransport {
       // Valid existing session
       req.user = session.claims;
       req.sessionId = sessionId;
+
+      // Extract user context for permissions
+      if (permissionManager.isEnabled()) {
+        req.userContext = permissionManager.extractUserContext(session.claims) ?? undefined;
+      }
+
       logger.debug('Using existing session', { sessionId, userId: claims.sub });
       return true;
     }
@@ -717,6 +734,11 @@ export class HttpTransport implements ITransport {
 
       req.user = claims;
       req.sessionId = sessionId;
+
+      // Extract user context for permissions
+      if (permissionManager.isEnabled()) {
+        req.userContext = permissionManager.extractUserContext(claims) ?? undefined;
+      }
 
       logger.debug('Created new session', {
         sessionId,
