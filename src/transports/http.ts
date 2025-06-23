@@ -1041,8 +1041,8 @@ export class HttpTransport implements ITransport {
       // Test the regex with a sample string to ensure it doesn't hang
       const testString = 'a'.repeat(100);
       const startTime = Date.now();
-      // We're only interested in timing, not the result
-      void regex.test(testString);
+      // Execute test to measure performance, result is not needed
+      regex.test(testString);
       const elapsed = Date.now() - startTime;
 
       // If the test takes too long, it might be problematic
