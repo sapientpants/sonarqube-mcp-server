@@ -247,7 +247,7 @@ export class HttpTransport implements ITransport {
       '/mcp',
       express.json({ limit: '10mb' }),
       async (req: AuthenticatedRequest, res) => {
-        const sessionId = req.sessionId || (req.headers['mcp-session-id'] as string);
+        const sessionId = req.sessionId ?? (req.headers['mcp-session-id'] as string);
         const protocolVersion = req.headers['mcp-protocol-version'] as string;
 
         // Validate protocol version
@@ -293,42 +293,47 @@ export class HttpTransport implements ITransport {
     );
 
     // Start Express server (HTTP or HTTPS)
-    await new Promise<void>(async (resolve, reject) => {
-      try {
-        if (this.options.tls.enabled && this.options.tls.cert && this.options.tls.key) {
-          // Read TLS certificates
-          const tlsOptions: https.ServerOptions = {
-            cert: await fs.readFile(this.options.tls.cert, 'utf8'),
-            key: await fs.readFile(this.options.tls.key, 'utf8'),
-          };
+    try {
+      if (this.options.tls.enabled && this.options.tls.cert && this.options.tls.key) {
+        // Read TLS certificates
+        const tlsOptions: https.ServerOptions = {
+          cert: await fs.readFile(this.options.tls.cert, 'utf8'),
+          key: await fs.readFile(this.options.tls.key, 'utf8'),
+        };
 
-          if (this.options.tls.ca) {
-            tlsOptions.ca = await fs.readFile(this.options.tls.ca, 'utf8');
-          }
+        if (this.options.tls.ca) {
+          tlsOptions.ca = await fs.readFile(this.options.tls.ca, 'utf8');
+        }
 
-          // Create HTTPS server
+        // Create HTTPS server
+        await new Promise<void>((resolve, reject) => {
           this.server = https.createServer(tlsOptions, this.app);
           this.server.listen(this.options.port, this.options.host, () => {
             logger.info(`HTTPS transport listening on ${this.options.host}:${this.options.port}`);
             resolve();
           });
-        } else {
-          // Create HTTP server
+          this.server.on('error', (error) => {
+            logger.error('HTTP server error', error);
+            reject(error);
+          });
+        });
+      } else {
+        // Create HTTP server
+        await new Promise<void>((resolve, reject) => {
           this.server = this.app.listen(this.options.port, this.options.host, () => {
             logger.info(`HTTP transport listening on ${this.options.host}:${this.options.port}`);
             resolve();
           });
-        }
-
-        this.server.on('error', (error) => {
-          logger.error('HTTP server error', error);
-          reject(error);
+          this.server!.on('error', (error) => {
+            logger.error('HTTP server error', error);
+            reject(error);
+          });
         });
-      } catch (error) {
-        logger.error('Failed to start HTTP server', error);
-        reject(error instanceof Error ? error : new Error(String(error)));
       }
-    });
+    } catch (error) {
+      logger.error('Failed to start HTTP server', error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
 
   /**
@@ -466,172 +471,303 @@ export class HttpTransport implements ITransport {
     res: Response,
     next: NextFunction
   ): Promise<void> {
+    // Extract and validate Bearer token
+    const token = this.extractBearerToken(req, res);
+    if (!token) {
+      return; // Response already sent
+    }
+
+    // Check if token validator is configured
+    if (!this.tokenValidator) {
+      await this.handleMissingTokenValidator(res, next);
+      return;
+    }
+
+    // Validate token and handle session
+    await this.validateTokenAndHandleSession(req, res, next, token);
+  }
+
+  /**
+   * Extract Bearer token from request
+   * @returns token string or null if not found
+   */
+  private extractBearerToken(req: AuthenticatedRequest, res: Response): string | null {
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
-      // RFC6750: Include WWW-Authenticate header on 401 responses
-      const wwwAuthenticate = [
-        'Bearer',
-        'realm="MCP SonarQube Server"',
-        `resource_metadata="${this.options.publicUrl}/.well-known/oauth-protected-resource"`,
-      ].join(' ');
-
-      res.set('WWW-Authenticate', wwwAuthenticate);
-      res.status(401).json({
-        error: 'unauthorized',
-        error_description: 'Bearer token required',
-      });
-      return;
+      this.handleMissingBearerToken(res);
+      return null;
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    return authHeader.substring(7); // Remove 'Bearer ' prefix
+  }
 
-    // Security check: Handle missing token validator
-    if (!this.tokenValidator) {
-      // SECURITY WARNING: This bypass is ONLY for backward compatibility
-      // DO NOT USE IN PRODUCTION WITHOUT PROPER TOKEN VALIDATION
-
-      // Check if insecure mode is explicitly enabled
-      const allowInsecure = process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true';
-
-      if (!allowInsecure) {
-        // Reject the request if insecure mode is not explicitly enabled
-        logger.error(
-          'SECURITY: No token validator configured and insecure mode not explicitly enabled. ' +
-            'To allow unauthenticated access (NOT RECOMMENDED FOR PRODUCTION), set MCP_HTTP_ALLOW_NO_AUTH=true'
-        );
-
-        const wwwAuthenticate = [
-          'Bearer',
-          'realm="MCP SonarQube Server"',
-          'error="configuration_error"',
-          'error_description="Authentication not properly configured"',
-        ].join(' ');
-
-        res.set('WWW-Authenticate', wwwAuthenticate);
-        res.status(500).json({
-          error: 'configuration_error',
-          error_description:
-            'Authentication is not properly configured. Contact your administrator.',
-        });
-        return;
-      }
-
-      // Log a prominent warning when allowing unauthenticated access
-      logger.warn(
-        '⚠️  SECURITY WARNING: Allowing unauthenticated access to MCP endpoints! ⚠️\n' +
-          '    This is EXTREMELY DANGEROUS and should NEVER be used in production.\n' +
-          '    Configure proper OAuth 2.0 authentication by setting either:\n' +
-          '    - MCP_OAUTH_AUTH_SERVERS: Comma-separated list of OAuth authorization server URLs\n' +
-          '    - MCP_OAUTH_BUILTIN=true: Enable built-in OAuth server (for development only)\n' +
-          '    See https://github.com/sapientpants/sonarqube-mcp-server#authentication for details'
-      );
-
-      // Allow the request to proceed (backward compatibility only)
-      next();
-      return;
-    }
-
+  /**
+   * Validate token and handle session management
+   */
+  private async validateTokenAndHandleSession(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction,
+    token: string
+  ): Promise<void> {
     try {
       // Validate the token
-      const claims = await this.tokenValidator.validateToken(token);
+      const claims = await this.tokenValidator!.validateToken(token);
 
-      // Check for existing session
-      let sessionId = req.headers['mcp-session-id'] as string;
-
-      if (sessionId && this.sessionManager) {
-        // Try to get existing session
-        const session = this.sessionManager.getSession(sessionId);
-        if (session && session.claims.sub === claims.sub) {
-          // Valid existing session
-          req.user = session.claims;
-          req.sessionId = sessionId;
-          logger.debug('Using existing session', { sessionId, userId: claims.sub });
-          next();
-          return;
-        }
-      }
-
-      // Create new session if session management is enabled
-      if (this.sessionManager && this.serviceAccountMapper) {
-        try {
-          // Get SonarQube client for user
-          const { client, serviceAccountId } =
-            await this.serviceAccountMapper.getClientForUser(claims);
-
-          // Create session
-          sessionId = this.sessionManager.createSession(claims, client, serviceAccountId);
-
-          // Set session ID in response header
-          res.setHeader('MCP-Session-ID', sessionId);
-
-          req.user = claims;
-          req.sessionId = sessionId;
-
-          logger.debug('Created new session', {
-            sessionId,
-            userId: claims.sub,
-            serviceAccountId,
-          });
-        } catch (error) {
-          logger.error('Failed to create session', error);
-          res.status(503).json({
-            error: 'service_unavailable',
-            error_description: 'Failed to create user session',
-          });
-          return;
-        }
-      } else {
-        // No session management - just attach claims
-        req.user = claims;
-
-        logger.debug('Token validated successfully (no session management)', {
-          sub: claims.sub,
-          iss: claims.iss,
-          scope: claims.scope,
-        });
+      // Handle session management
+      const sessionHandled = await this.handleSessionManagement(req, res, claims);
+      if (!sessionHandled) {
+        return; // Error response already sent
       }
 
       next();
     } catch (error) {
-      if (error instanceof TokenValidationError) {
-        // Build WWW-Authenticate header with error details
-        const wwwAuthParams = [
-          'Bearer',
-          'realm="MCP SonarQube Server"',
-          `error="${error.code}"`,
-          `error_description="${error.message}"`,
-        ];
-
-        if (error.wwwAuthenticateParams) {
-          Object.entries(error.wwwAuthenticateParams).forEach(([key, value]) => {
-            wwwAuthParams.push(`${key}="${value}"`);
-          });
-        }
-
-        res.set('WWW-Authenticate', wwwAuthParams.join(', '));
-
-        // Return appropriate status code
-        const statusCode =
-          error.code === TokenValidationErrorCode.INVALID_TOKEN ||
-          error.code === TokenValidationErrorCode.INVALID_SIGNATURE ||
-          error.code === TokenValidationErrorCode.EXPIRED_TOKEN
-            ? 401
-            : 403;
-
-        res.status(statusCode).json({
-          error: error.code,
-          error_description: error.message,
-        });
-      } else {
-        // Unexpected error
-        logger.error('Unexpected authentication error', error);
-        res.status(500).json({
-          error: 'internal_error',
-          error_description: 'Authentication failed',
-        });
-      }
+      this.handleAuthenticationError(res, error);
     }
+  }
+
+  /**
+   * Handle missing Bearer token in request
+   */
+  private handleMissingBearerToken(res: Response): void {
+    // RFC6750: Include WWW-Authenticate header on 401 responses
+    const wwwAuthenticate = [
+      'Bearer',
+      'realm="MCP SonarQube Server"',
+      `resource_metadata="${this.options.publicUrl}/.well-known/oauth-protected-resource"`,
+    ].join(' ');
+
+    res.set('WWW-Authenticate', wwwAuthenticate);
+    res.status(401).json({
+      error: 'unauthorized',
+      error_description: 'Bearer token required',
+    });
+  }
+
+  /**
+   * Handle missing token validator (insecure mode)
+   */
+  private async handleMissingTokenValidator(res: Response, next: NextFunction): Promise<void> {
+    // SECURITY WARNING: This bypass is ONLY for backward compatibility
+    // DO NOT USE IN PRODUCTION WITHOUT PROPER TOKEN VALIDATION
+
+    if (this.isInsecureModeAllowed()) {
+      this.logInsecureModeWarning();
+      next();
+    } else {
+      this.rejectInsecureAccess(res);
+    }
+  }
+
+  /**
+   * Check if insecure mode is explicitly allowed
+   */
+  private isInsecureModeAllowed(): boolean {
+    return process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true';
+  }
+
+  /**
+   * Log warning about insecure mode
+   */
+  private logInsecureModeWarning(): void {
+    logger.warn(
+      '⚠️  SECURITY WARNING: Allowing unauthenticated access to MCP endpoints! ⚠️\n' +
+        '    This is EXTREMELY DANGEROUS and should NEVER be used in production.\n' +
+        '    Configure proper OAuth 2.0 authentication by setting either:\n' +
+        '    - MCP_OAUTH_AUTH_SERVERS: Comma-separated list of OAuth authorization server URLs\n' +
+        '    - MCP_OAUTH_BUILTIN=true: Enable built-in OAuth server (for development only)\n' +
+        '    See https://github.com/sapientpants/sonarqube-mcp-server#authentication for details'
+    );
+  }
+
+  /**
+   * Reject request when authentication is not properly configured
+   */
+  private rejectInsecureAccess(res: Response): void {
+    logger.error(
+      'SECURITY: No token validator configured and insecure mode not explicitly enabled. ' +
+        'To allow unauthenticated access (NOT RECOMMENDED FOR PRODUCTION), set MCP_HTTP_ALLOW_NO_AUTH=true'
+    );
+
+    const wwwAuthenticate = [
+      'Bearer',
+      'realm="MCP SonarQube Server"',
+      'error="configuration_error"',
+      'error_description="Authentication not properly configured"',
+    ].join(' ');
+
+    res.set('WWW-Authenticate', wwwAuthenticate);
+    res.status(500).json({
+      error: 'configuration_error',
+      error_description: 'Authentication is not properly configured. Contact your administrator.',
+    });
+  }
+
+  /**
+   * Handle session management for authenticated request
+   * @returns true if session handling succeeded, false if error occurred
+   */
+  private async handleSessionManagement(
+    req: AuthenticatedRequest,
+    res: Response,
+    claims: TokenClaims
+  ): Promise<boolean> {
+    // Try to use existing session if available
+    if (this.tryReuseExistingSession(req, claims)) {
+      return true;
+    }
+
+    // Create new session if session management is enabled
+    if (this.isSessionManagementEnabled()) {
+      return await this.createNewSession(req, res, claims);
+    }
+
+    // No session management - just attach claims
+    this.attachClaimsWithoutSession(req, claims);
+    return true;
+  }
+
+  /**
+   * Try to reuse an existing session
+   * @returns true if existing session was reused
+   */
+  private tryReuseExistingSession(req: AuthenticatedRequest, claims: TokenClaims): boolean {
+    const sessionId = req.headers['mcp-session-id'] as string;
+
+    if (!sessionId || !this.sessionManager) {
+      return false;
+    }
+
+    return this.tryUseExistingSession(req, sessionId, claims);
+  }
+
+  /**
+   * Check if session management is enabled
+   */
+  private isSessionManagementEnabled(): boolean {
+    return !!(this.sessionManager && this.serviceAccountMapper);
+  }
+
+  /**
+   * Attach claims without session management
+   */
+  private attachClaimsWithoutSession(req: AuthenticatedRequest, claims: TokenClaims): void {
+    req.user = claims;
+    logger.debug('Token validated successfully (no session management)', {
+      sub: claims.sub,
+      iss: claims.iss,
+      scope: claims.scope,
+    });
+  }
+
+  /**
+   * Try to use an existing session
+   * @returns true if existing session is valid and used
+   */
+  private tryUseExistingSession(
+    req: AuthenticatedRequest,
+    sessionId: string,
+    claims: TokenClaims
+  ): boolean {
+    const session = this.sessionManager!.getSession(sessionId);
+    if (session && session.claims.sub === claims.sub) {
+      // Valid existing session
+      req.user = session.claims;
+      req.sessionId = sessionId;
+      logger.debug('Using existing session', { sessionId, userId: claims.sub });
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Create a new session for the user
+   * @returns true if session created successfully, false if error occurred
+   */
+  private async createNewSession(
+    req: AuthenticatedRequest,
+    res: Response,
+    claims: TokenClaims
+  ): Promise<boolean> {
+    try {
+      // Get SonarQube client for user
+      const { client, serviceAccountId } =
+        await this.serviceAccountMapper!.getClientForUser(claims);
+
+      // Create session
+      const sessionId = this.sessionManager!.createSession(claims, client, serviceAccountId);
+
+      // Set session ID in response header
+      res.setHeader('MCP-Session-ID', sessionId);
+
+      req.user = claims;
+      req.sessionId = sessionId;
+
+      logger.debug('Created new session', {
+        sessionId,
+        userId: claims.sub,
+        serviceAccountId,
+      });
+      return true;
+    } catch (error) {
+      logger.error('Failed to create session', error);
+      res.status(503).json({
+        error: 'service_unavailable',
+        error_description: 'Failed to create user session',
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Handle authentication errors
+   */
+  private handleAuthenticationError(res: Response, error: unknown): void {
+    if (error instanceof TokenValidationError) {
+      this.handleTokenValidationError(res, error);
+    } else {
+      // Unexpected error
+      logger.error('Unexpected authentication error', error);
+      res.status(500).json({
+        error: 'internal_error',
+        error_description: 'Authentication failed',
+      });
+    }
+  }
+
+  /**
+   * Handle token validation errors
+   */
+  private handleTokenValidationError(res: Response, error: TokenValidationError): void {
+    // Build WWW-Authenticate header with error details
+    const wwwAuthParams = [
+      'Bearer',
+      'realm="MCP SonarQube Server"',
+      `error="${error.code}"`,
+      `error_description="${error.message}"`,
+    ];
+
+    if (error.wwwAuthenticateParams) {
+      Object.entries(error.wwwAuthenticateParams).forEach(([key, value]) => {
+        wwwAuthParams.push(`${key}="${value}"`);
+      });
+    }
+
+    res.set('WWW-Authenticate', wwwAuthParams.join(', '));
+
+    // Return appropriate status code
+    const statusCode =
+      error.code === TokenValidationErrorCode.INVALID_TOKEN ||
+      error.code === TokenValidationErrorCode.INVALID_SIGNATURE ||
+      error.code === TokenValidationErrorCode.EXPIRED_TOKEN
+        ? 401
+        : 403;
+
+    res.status(statusCode).json({
+      error: error.code,
+      error_description: error.message,
+    });
   }
 
   /**

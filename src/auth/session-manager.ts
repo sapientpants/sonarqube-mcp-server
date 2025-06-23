@@ -39,8 +39,8 @@ export interface SessionManagerOptions {
  * Manages user sessions for concurrent access
  */
 export class SessionManager {
-  private sessions: Map<string, UserSession> = new Map();
-  private userToSessions: Map<string, Set<string>> = new Map();
+  private readonly sessions: Map<string, UserSession> = new Map();
+  private readonly userToSessions: Map<string, Set<string>> = new Map();
   private cleanupTimer?: NodeJS.Timeout;
   private readonly options: Required<SessionManagerOptions>;
 
