@@ -798,6 +798,65 @@ export class HttpTransport implements ITransport {
   }
 
   /**
+   * Safely create a RegExp from a string pattern with validation
+   * @param pattern The regex pattern string
+   * @param context Context for error messages
+   * @returns RegExp object or undefined if invalid
+   */
+  private safeCreateRegExp(pattern: string, context: string): RegExp | undefined {
+    // Check for potentially dangerous patterns that could cause ReDoS
+    const dangerousPatterns = [
+      /(\w+\+)+\w+/, // Nested quantifiers like (a+)+
+      /(\w+\*)+\w+/, // Nested quantifiers like (a*)*
+      /(\w+\{[\d,]+\})+/, // Nested quantifiers like (a{1,3})+
+      /(\(.*\)\+)+/, // Nested groups with quantifiers
+      /(\[.*\]\+)+/, // Nested character classes with quantifiers
+    ];
+
+    for (const dangerous of dangerousPatterns) {
+      if (dangerous.test(pattern)) {
+        logger.warn('Potentially dangerous regex pattern detected', {
+          pattern,
+          context,
+          reason: 'Nested quantifiers can cause ReDoS',
+        });
+        return undefined;
+      }
+    }
+
+    // Try to compile the regex
+    try {
+      const regex = new RegExp(pattern);
+
+      // Test the regex with a sample string to ensure it doesn't hang
+      const testString = 'a'.repeat(100);
+      const startTime = Date.now();
+      regex.test(testString);
+      const elapsed = Date.now() - startTime;
+
+      // If the test takes too long, it might be problematic
+      if (elapsed > 100) {
+        logger.warn('Regex pattern took too long to execute', {
+          pattern,
+          context,
+          elapsed,
+          reason: 'Pattern may cause performance issues',
+        });
+        return undefined;
+      }
+
+      return regex;
+    } catch (error) {
+      logger.warn('Invalid regex pattern', {
+        pattern,
+        context,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return undefined;
+    }
+  }
+
+  /**
    * Load service account mapping rules from environment variables
    */
   private loadMappingRulesFromEnv(): void {
@@ -823,17 +882,38 @@ export class HttpTransport implements ITransport {
       const rule: MappingRuleBuilder = { priority: i };
       const parts = ruleEnv.split(',');
 
+      let hasInvalidPattern = false;
+
       for (const part of parts) {
-        const [key, value] = part.split(':');
+        const splitResult = part.split(':');
+        if (splitResult.length !== 2) {
+          logger.warn('Malformed mapping rule part, skipping', { part });
+          continue;
+        }
+        const [key, value] = splitResult;
         switch (key) {
           case 'priority':
             rule.priority = parseInt(value, 10);
             break;
           case 'user':
-            rule.userPattern = new RegExp(value);
+            rule.userPattern = this.safeCreateRegExp(value, `MCP_MAPPING_RULE_${i}:user`);
+            if (!rule.userPattern) {
+              logger.warn('Skipping rule due to invalid user pattern', {
+                ruleIndex: i,
+                pattern: value,
+              });
+              hasInvalidPattern = true;
+            }
             break;
           case 'issuer':
-            rule.issuerPattern = new RegExp(value);
+            rule.issuerPattern = this.safeCreateRegExp(value, `MCP_MAPPING_RULE_${i}:issuer`);
+            if (!rule.issuerPattern) {
+              logger.warn('Skipping rule due to invalid issuer pattern', {
+                ruleIndex: i,
+                pattern: value,
+              });
+              hasInvalidPattern = true;
+            }
             break;
           case 'scopes':
             rule.requiredScopes = value.split('|');
@@ -844,7 +924,7 @@ export class HttpTransport implements ITransport {
         }
       }
 
-      if (rule.serviceAccountId) {
+      if (rule.serviceAccountId && !hasInvalidPattern) {
         this.serviceAccountMapper.addMappingRule({
           priority: rule.priority,
           userPattern: rule.userPattern,
