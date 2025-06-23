@@ -841,26 +841,47 @@ export class HttpTransport implements ITransport {
           continue;
         }
 
-        if (char === '(') {
-          depth++;
-          if (depth === 1) {
-            inGroup = true;
-            hasQuantifierInGroup = false;
-          }
-        } else if (char === ')') {
-          if (shouldCheckForNestedQuantifier(depth, inGroup, hasQuantifierInGroup, nextChar)) {
-            return { found: true };
-          }
-          depth--;
-          if (depth === 0) {
-            inGroup = false;
-          }
-        } else if (inGroup && depth === 1 && isQuantifier(char)) {
-          hasQuantifierInGroup = true;
+        const result = processCharacter(char, nextChar, depth, inGroup, hasQuantifierInGroup);
+        if (result.found) {
+          return { found: true };
         }
+        depth = result.depth;
+        inGroup = result.inGroup;
+        hasQuantifierInGroup = result.hasQuantifierInGroup;
       }
 
       return { found: false };
+    };
+
+    // Helper to process each character and update state
+    const processCharacter = (
+      char: string,
+      nextChar: string | undefined,
+      depth: number,
+      inGroup: boolean,
+      hasQuantifierInGroup: boolean
+    ): { found: boolean; depth: number; inGroup: boolean; hasQuantifierInGroup: boolean } => {
+      if (char === '(') {
+        depth++;
+        if (depth === 1) {
+          return { found: false, depth, inGroup: true, hasQuantifierInGroup: false };
+        }
+        return { found: false, depth, inGroup, hasQuantifierInGroup };
+      }
+
+      if (char === ')') {
+        if (shouldCheckForNestedQuantifier(depth, inGroup, hasQuantifierInGroup, nextChar)) {
+          return { found: true, depth, inGroup, hasQuantifierInGroup };
+        }
+        depth--;
+        return { found: false, depth, inGroup: depth > 0, hasQuantifierInGroup };
+      }
+
+      if (inGroup && depth === 1 && isQuantifier(char)) {
+        return { found: false, depth, inGroup, hasQuantifierInGroup: true };
+      }
+
+      return { found: false, depth, inGroup, hasQuantifierInGroup };
     };
 
     // Helper to check if we should flag a nested quantifier
@@ -1021,7 +1042,7 @@ export class HttpTransport implements ITransport {
       const testString = 'a'.repeat(100);
       const startTime = Date.now();
       // We're only interested in timing, not the result
-      regex.test(testString);
+      void regex.test(testString);
       const elapsed = Date.now() - startTime;
 
       // If the test takes too long, it might be problematic
