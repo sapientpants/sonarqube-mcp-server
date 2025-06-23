@@ -5,6 +5,7 @@ import { HttpTransport } from '../http.js';
 import type { Express } from 'express';
 import type { SessionManager } from '../../auth/session-manager.js';
 import type { ServiceAccountMapper } from '../../auth/service-account-mapper.js';
+import type { ISonarQubeClient } from '../../types/index.js';
 
 interface HttpTransportPrivate {
   app: Express;
@@ -534,6 +535,129 @@ describe('HttpTransport', () => {
       const options = (transport as unknown as HttpTransportPrivate).options;
 
       expect(options.publicUrl).toBe('https://mcp.company.com');
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle HTTPS server creation with invalid certificates', async () => {
+      transport = new HttpTransport({
+        port: 0,
+        tls: {
+          enabled: true,
+          cert: '/invalid/cert.pem',
+          key: '/invalid/key.pem',
+        },
+      });
+
+      await expect(transport.connect(mockServer)).rejects.toThrow('ENOENT');
+    });
+
+    it('should handle server startup errors', async () => {
+      // Create transport with invalid port
+      transport = new HttpTransport({ port: -1 });
+
+      await expect(transport.connect(mockServer)).rejects.toThrow();
+    });
+  });
+
+  describe('session management errors', () => {
+    beforeEach(async () => {
+      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+      process.env.SONARQUBE_TOKEN = 'test-token';
+
+      transport = new HttpTransport({ port: 0 });
+      await transport.connect(mockServer);
+      app = (transport as unknown as HttpTransportPrivate).app;
+    });
+
+    it('should handle session creation failures', async () => {
+      // Get the service account mapper and mock it to throw
+      const mapper = (transport as unknown as HttpTransportPrivate).serviceAccountMapper!;
+      jest.spyOn(mapper, 'getClientForUser').mockRejectedValue(new Error('Mapping failed'));
+
+      // Mock token validator to return valid claims
+      const validator = (transport as unknown as HttpTransportPrivate & { tokenValidator: unknown })
+        .tokenValidator;
+      jest.spyOn(validator, 'validateToken').mockResolvedValue({
+        sub: 'test-user',
+        iss: 'https://auth.example.com',
+        aud: 'https://mcp.example.com',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+        nbf: Math.floor(Date.now() / 1000),
+      });
+
+      const response = await request(app)
+        .post('/mcp')
+        .set('Authorization', 'Bearer valid-token')
+        .send({ jsonrpc: '2.0', method: 'test', id: 1 });
+
+      expect(response.status).toBe(503);
+      expect(response.body.error).toBe('service_unavailable');
+      expect(response.body.error_description).toBe('Failed to create user session');
+    });
+
+    it('should handle existing session with different user', async () => {
+      const sessionManager = (transport as unknown as HttpTransportPrivate).sessionManager!;
+      const validator = (transport as unknown as HttpTransportPrivate & { tokenValidator: unknown })
+        .tokenValidator;
+
+      // Create session for user1
+      const claims1 = {
+        sub: 'user1',
+        iss: 'https://auth.example.com',
+        aud: 'https://mcp.example.com',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+        nbf: Math.floor(Date.now() / 1000),
+      };
+
+      const sessionId = sessionManager.createSession(claims1, {} as ISonarQubeClient, 'default');
+
+      // Mock validator to return different user
+      jest.spyOn(validator, 'validateToken').mockResolvedValue({
+        ...claims1,
+        sub: 'user2',
+      });
+
+      const response = await request(app)
+        .post('/mcp')
+        .set('Authorization', 'Bearer valid-token')
+        .set('MCP-Session-ID', sessionId)
+        .send({ jsonrpc: '2.0', method: 'test', id: 1 });
+
+      // Should get 503 because no SSE connection, but session should be created
+      expect(response.status).toBe(503);
+      expect(response.headers['mcp-session-id']).toBeDefined();
+      expect(response.headers['mcp-session-id']).not.toBe(sessionId);
+    });
+  });
+
+  describe('rate limiting', () => {
+    beforeEach(async () => {
+      transport = new HttpTransport({
+        port: 0,
+        rateLimitOptions: {
+          windowMs: 100, // 100ms window for testing
+          max: 2, // Only 2 requests allowed
+        },
+      });
+      await transport.connect(mockServer);
+      app = (transport as unknown as HttpTransportPrivate).app;
+    });
+
+    it('should enforce rate limits', async () => {
+      // Make allowed requests
+      await request(app).post('/mcp').expect(401);
+      await request(app).post('/mcp').expect(401);
+
+      // Third request should be rate limited
+      const response = await request(app).post('/mcp').expect(429);
+
+      expect(response.body).toEqual({
+        error: 'too_many_requests',
+        error_description: 'Too many authentication attempts, please try again later',
+      });
     });
   });
 });

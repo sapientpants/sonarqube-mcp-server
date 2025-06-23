@@ -191,5 +191,79 @@ describe('SessionManager', () => {
       const session = sessionManager.getSession(sessionId);
       expect(session).toBeUndefined();
     });
+
+    it('should clean up multiple expired sessions in bulk', async () => {
+      // Create multiple sessions
+      const sessionIds: string[] = [];
+      for (let i = 0; i < 5; i++) {
+        const claims = { ...mockClaims, sub: `user${i}` };
+        sessionIds.push(sessionManager.createSession(claims, mockClient));
+      }
+
+      // Wait for sessions to expire and cleanup to run
+      await new Promise((resolve) => setTimeout(resolve, 1600));
+
+      // All sessions should be removed
+      sessionIds.forEach((id) => {
+        expect(sessionManager.getSession(id)).toBeUndefined();
+      });
+
+      // Stats should show no sessions
+      const stats = sessionManager.getStats();
+      expect(stats.totalSessions).toBe(0);
+      expect(stats.totalUsers).toBe(0);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle removal of oldest session when finding oldest', () => {
+      // Create sessions with small delays to ensure different timestamps
+      const sessions: Array<{ id: string; created: Date }> = [];
+
+      // Create max sessions
+      for (let i = 0; i < 3; i++) {
+        const claims = { ...mockClaims, sub: `user${i}` };
+        const id = sessionManager.createSession(claims, mockClient);
+        const session = sessionManager.getSession(id);
+        sessions.push({ id, created: session!.createdAt });
+      }
+
+      // Sort by creation time to find oldest
+      sessions.sort((a, b) => a.created.getTime() - b.created.getTime());
+      const oldestId = sessions[0].id;
+
+      // Create one more session to trigger removal
+      const newClaims = { ...mockClaims, sub: 'user-new' };
+      sessionManager.createSession(newClaims, mockClient);
+
+      // Oldest session should be removed
+      expect(sessionManager.getSession(oldestId)).toBeUndefined();
+
+      // Other sessions should still exist
+      for (let i = 1; i < sessions.length; i++) {
+        expect(sessionManager.getSession(sessions[i].id)).toBeDefined();
+      }
+    });
+
+    it('should handle empty user session cleanup', () => {
+      // Create sessions for a user
+      const userId = 'test-user';
+      const claims = { ...mockClaims, sub: userId };
+
+      const session1 = sessionManager.createSession(claims, mockClient);
+      const session2 = sessionManager.createSession(claims, mockClient);
+
+      // Remove one session
+      sessionManager.removeSession(session1);
+
+      // User should still have sessions
+      expect(sessionManager.getUserSessions(userId)).toHaveLength(1);
+
+      // Remove last session
+      sessionManager.removeSession(session2);
+
+      // User should have no sessions
+      expect(sessionManager.getUserSessions(userId)).toHaveLength(0);
+    });
   });
 });

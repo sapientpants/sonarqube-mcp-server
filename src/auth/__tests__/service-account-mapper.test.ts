@@ -316,5 +316,82 @@ describe('ServiceAccountMapper', () => {
       expect(sa1?.organization).toBe('my-org');
       expect(sa1?.allowedScopes).toEqual(['read', 'write', 'admin']);
     });
+
+    it('should parse allowed scopes with whitespace from environment', () => {
+      process.env.SONARQUBE_SA1_TOKEN = 'token';
+      process.env.SONARQUBE_SA1_SCOPES = ' read , write , admin ';
+
+      mapper = new ServiceAccountMapper();
+
+      const accounts = mapper.getServiceAccounts();
+      const sa1 = accounts.find((a) => a.id === 'sa1');
+
+      expect(sa1?.allowedScopes).toEqual(['read', 'write', 'admin']);
+    });
+  });
+
+  describe('error handling', () => {
+    it('should throw when mapped service account does not exist', async () => {
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        mappingRules: [
+          {
+            priority: 1,
+            userPattern: /.*/,
+            serviceAccountId: 'non-existent-sa',
+          },
+        ],
+      });
+
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow(
+        'Service account non-existent-sa not found'
+      );
+    });
+
+    it('should skip rules when required scopes do not match', async () => {
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [
+          { id: 'default', name: 'Default', token: 'default-token' },
+          { id: 'admin', name: 'Admin', token: 'admin-token' },
+        ],
+        mappingRules: [
+          {
+            priority: 1,
+            requiredScopes: ['admin:full', 'system:write'],
+            serviceAccountId: 'admin',
+          },
+        ],
+      });
+
+      // User has different scopes
+      const claims = { ...mockClaims, scope: 'read:basic write:basic' };
+      const result = await mapper.getClientForUser(claims);
+
+      // Should fall back to default
+      expect(result.serviceAccountId).toBe('default');
+    });
+
+    it('should handle missing scope in claims', async () => {
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        mappingRules: [
+          {
+            priority: 1,
+            requiredScopes: ['admin'],
+            serviceAccountId: 'default',
+          },
+        ],
+      });
+
+      // Claims without scope property
+      const claimsNoScope = { ...mockClaims };
+      delete (claimsNoScope as { scope?: string }).scope;
+
+      const result = await mapper.getClientForUser(claimsNoScope);
+      expect(result.serviceAccountId).toBe('default');
+    });
   });
 });
