@@ -822,16 +822,23 @@ export class HttpTransport implements ITransport {
     // Helper function to check if a pattern contains nested quantifiers
     const hasNestedQuantifiers = (str: string): boolean => {
       // Look for patterns like (...)+ or (...)* where ... contains quantifiers
+      const result = checkForNestedQuantifiers(str);
+      return result.found;
+    };
+
+    // Extracted helper to reduce cognitive complexity
+    const checkForNestedQuantifiers = (str: string): { found: boolean } => {
       let depth = 0;
       let inGroup = false;
       let hasQuantifierInGroup = false;
 
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i];
-        const nextChar = str[i + 1];
+      const chars = [...str];
+      for (const [index, char] of chars.entries()) {
+        const nextChar = chars[index + 1];
 
         if (char === '\\') {
-          i++; // Skip escaped character
+          // Skip next character as it's escaped
+          chars[index + 1] = '';
           continue;
         }
 
@@ -842,76 +849,126 @@ export class HttpTransport implements ITransport {
             hasQuantifierInGroup = false;
           }
         } else if (char === ')') {
-          if (depth === 1 && inGroup && hasQuantifierInGroup) {
-            // Check if this group has a quantifier after it
-            if (nextChar === '+' || nextChar === '*' || nextChar === '?' || nextChar === '{') {
-              return true; // Found nested quantifier
-            }
+          if (shouldCheckForNestedQuantifier(depth, inGroup, hasQuantifierInGroup, nextChar)) {
+            return { found: true };
           }
           depth--;
           if (depth === 0) {
             inGroup = false;
           }
-        } else if (inGroup && depth === 1) {
-          // Check for quantifiers inside the group
-          if (char === '+' || char === '*' || char === '?' || char === '{') {
-            hasQuantifierInGroup = true;
-          }
+        } else if (inGroup && depth === 1 && isQuantifier(char)) {
+          hasQuantifierInGroup = true;
         }
       }
 
-      return false;
+      return { found: false };
+    };
+
+    // Helper to check if we should flag a nested quantifier
+    const shouldCheckForNestedQuantifier = (
+      depth: number,
+      inGroup: boolean,
+      hasQuantifierInGroup: boolean,
+      nextChar: string | undefined
+    ): boolean => {
+      return depth === 1 && inGroup && hasQuantifierInGroup && isQuantifier(nextChar);
+    };
+
+    // Helper to check if a character is a quantifier
+    const isQuantifier = (char: string | undefined): boolean => {
+      return char === '+' || char === '*' || char === '?' || char === '{';
     };
 
     // Check for adjacent quantifiers (e.g., a+*, a{2}+)
     const hasAdjacentQuantifiers = (str: string): boolean => {
+      const state = checkAdjacentQuantifiersInString(str);
+      return state.hasAdjacent;
+    };
+
+    // Extracted helper to reduce cognitive complexity
+    const checkAdjacentQuantifiersInString = (str: string): { hasAdjacent: boolean } => {
       const quantifiers = ['+', '*', '?'];
       let lastWasQuantifier = false;
       let inBraces = false;
 
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i];
-
+      const chars = [...str];
+      for (const [index, char] of chars.entries()) {
         if (char === '\\') {
-          i++; // Skip escaped character
+          // Skip next character as it's escaped
+          chars[index + 1] = '';
           lastWasQuantifier = false;
           continue;
         }
 
-        if (char === '{') {
-          inBraces = true;
-          if (lastWasQuantifier) return true;
-          continue;
+        const result = processCharForAdjacentQuantifiers(
+          char,
+          inBraces,
+          lastWasQuantifier,
+          quantifiers
+        );
+
+        if (result.shouldReturn) {
+          return { hasAdjacent: true };
         }
 
-        if (char === '}') {
-          inBraces = false;
-          lastWasQuantifier = true;
-          continue;
-        }
-
-        if (!inBraces && quantifiers.includes(char)) {
-          if (lastWasQuantifier) return true;
-          lastWasQuantifier = true;
-        } else if (!inBraces && char !== ' ' && char !== '\t') {
-          lastWasQuantifier = false;
-        }
+        inBraces = result.inBraces;
+        lastWasQuantifier = result.lastWasQuantifier;
       }
 
-      return false;
+      return { hasAdjacent: false };
+    };
+
+    // Helper to process each character for adjacent quantifier check
+    const processCharForAdjacentQuantifiers = (
+      char: string,
+      inBraces: boolean,
+      lastWasQuantifier: boolean,
+      quantifiers: string[]
+    ): { shouldReturn: boolean; inBraces: boolean; lastWasQuantifier: boolean } => {
+      if (char === '{') {
+        return {
+          shouldReturn: lastWasQuantifier,
+          inBraces: true,
+          lastWasQuantifier,
+        };
+      }
+
+      if (char === '}') {
+        return {
+          shouldReturn: false,
+          inBraces: false,
+          lastWasQuantifier: true,
+        };
+      }
+
+      if (!inBraces && quantifiers.includes(char)) {
+        return {
+          shouldReturn: lastWasQuantifier,
+          inBraces,
+          lastWasQuantifier: true,
+        };
+      }
+
+      const isWhitespace = char === ' ' || char === '\t';
+      return {
+        shouldReturn: false,
+        inBraces,
+        lastWasQuantifier: inBraces || isWhitespace ? lastWasQuantifier : false,
+      };
     };
 
     // Check for character class with multiple quantifiers (e.g., [a-z]+{2})
     const hasCharClassMultipleQuantifiers = (str: string): boolean => {
       let inCharClass = false;
 
-      for (let i = 0; i < str.length; i++) {
-        const char = str[i];
-        const nextChar = str[i + 1];
-        const nextNextChar = str[i + 2];
+      const chars = [...str];
+      for (const [index, char] of chars.entries()) {
+        const nextChar = chars[index + 1];
+        const nextNextChar = chars[index + 2];
 
         if (char === '\\') {
-          i++; // Skip escaped character
+          // Skip next character as it's escaped
+          chars[index + 1] = '';
           continue;
         }
 
@@ -966,7 +1023,7 @@ export class HttpTransport implements ITransport {
       const testString = 'a'.repeat(100);
       const startTime = Date.now();
       // We're only interested in timing, not the result
-      void regex.test(testString);
+      regex.test(testString);
       const elapsed = Date.now() - startTime;
 
       // If the test takes too long, it might be problematic
