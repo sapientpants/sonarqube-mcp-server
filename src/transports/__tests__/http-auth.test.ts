@@ -116,7 +116,10 @@ describe('HttpTransport Authentication', () => {
       expect(response.body.error).toBe('unauthorized');
     });
 
-    it('should allow access when no validator is configured', async () => {
+    it('should allow access when no validator is configured and insecure mode enabled', async () => {
+      // Enable insecure mode
+      process.env.MCP_HTTP_ALLOW_NO_AUTH = 'true';
+
       // Create transport without auth servers
       const noAuthTransport = new HttpTransport({
         port: 0,
@@ -139,6 +142,9 @@ describe('HttpTransport Authentication', () => {
       expect(response.body.error).toBe('service_unavailable');
 
       await noAuthTransport.shutdown();
+
+      // Clean up
+      delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
     });
 
     it('should handle expired token with proper error response', async () => {

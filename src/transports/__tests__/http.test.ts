@@ -205,7 +205,10 @@ describe('HttpTransport', () => {
       expect(response.headers['www-authenticate']).toContain('error="invalid_token"');
     });
 
-    it('should allow Bearer token when no validation is configured', async () => {
+    it('should allow Bearer token when no validation is configured and insecure mode is enabled', async () => {
+      // Enable insecure mode for this test
+      process.env.MCP_HTTP_ALLOW_NO_AUTH = 'true';
+
       // Create transport without authorization servers
       const noAuthTransport = new HttpTransport({
         port: 0,
@@ -216,7 +219,7 @@ describe('HttpTransport', () => {
       const noAuthApp = (noAuthTransport as unknown as { app: Express }).app;
       await noAuthTransport.connect(mockServer);
 
-      // Without auth servers, any Bearer token should pass
+      // Without auth servers, any Bearer token should pass in insecure mode
       // We expect 503 because no SSE connection is established in tests
       const response = await request(noAuthApp)
         .post('/mcp')
@@ -228,11 +231,48 @@ describe('HttpTransport', () => {
       expect(response.body.error).toBe('service_unavailable');
 
       await noAuthTransport.shutdown();
+
+      // Clean up
+      delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
+    });
+
+    it('should reject requests when no validation is configured and insecure mode is disabled', async () => {
+      // Ensure insecure mode is disabled
+      delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
+
+      // Create transport without authorization servers
+      const noAuthTransport = new HttpTransport({
+        port: 0,
+        publicUrl: 'https://mcp.example.com',
+        authorizationServers: [],
+      });
+
+      const noAuthApp = (noAuthTransport as unknown as { app: Express }).app;
+      await noAuthTransport.connect(mockServer);
+
+      // Without auth servers and insecure mode disabled, requests should be rejected
+      const response = await request(noAuthApp)
+        .post('/mcp')
+        .set('Authorization', 'Bearer dummy-token')
+        .send({ jsonrpc: '2.0', method: 'test', id: 1 })
+        .expect(500);
+
+      expect(response.status).toBe(500);
+      expect(response.body.error).toBe('configuration_error');
+      expect(response.body.error_description).toBe(
+        'Authentication is not properly configured. Contact your administrator.'
+      );
+      expect(response.headers['www-authenticate']).toContain('error="configuration_error"');
+
+      await noAuthTransport.shutdown();
     });
   });
 
   describe('Protocol version', () => {
     beforeEach(async () => {
+      // Enable insecure mode for these tests since we're not testing authentication
+      process.env.MCP_HTTP_ALLOW_NO_AUTH = 'true';
+
       transport = new HttpTransport({
         port: 0,
         publicUrl: 'https://mcp.example.com',
@@ -241,6 +281,11 @@ describe('HttpTransport', () => {
       // Access private property for testing
       app = (transport as unknown as { app: Express }).app;
       await transport.connect(mockServer);
+    });
+
+    afterEach(async () => {
+      // Clean up environment variable
+      delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
     });
 
     it('should reject invalid protocol version', async () => {
