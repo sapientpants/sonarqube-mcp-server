@@ -1,11 +1,25 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { ITransport } from './base.js';
 import { createLogger } from '../utils/logger.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import {
+  TokenValidator,
+  TokenValidationError,
+  TokenValidationErrorCode,
+  TokenClaims,
+} from '../auth/token-validator.js';
 
 const logger = createLogger('HttpTransport');
+
+/**
+ * Extended Express Request with authenticated user context
+ */
+export interface AuthenticatedRequest extends Request {
+  user?: TokenClaims;
+}
 
 /**
  * OAuth 2.0 Protected Resource Metadata as per RFC9728
@@ -50,6 +64,14 @@ interface OAuthAuthorizationServerMetadata {
 
 /**
  * Configuration options for HTTP transport
+ *
+ * SECURITY NOTE: Authentication is REQUIRED for production use.
+ * Configure either external OAuth servers via `authorizationServers`
+ * or enable the built-in auth server via `builtInAuthServer`.
+ *
+ * To temporarily disable authentication (DEVELOPMENT ONLY):
+ * Set environment variable MCP_HTTP_ALLOW_NO_AUTH=true
+ * This is EXTREMELY DANGEROUS and should NEVER be used in production.
  */
 export interface HttpTransportOptions {
   /**
@@ -81,6 +103,18 @@ export interface HttpTransportOptions {
    * CORS configuration
    */
   corsOptions?: cors.CorsOptions;
+
+  /**
+   * Rate limiting configuration
+   */
+  rateLimitOptions?: {
+    /** Window duration in minutes */
+    windowMs?: number;
+    /** Maximum number of requests per window */
+    max?: number;
+    /** Message to send when rate limit is exceeded */
+    message?: string;
+  };
 }
 
 /**
@@ -89,12 +123,17 @@ export interface HttpTransportOptions {
  * - POST for client-to-server messages
  * - GET with SSE for server-to-client streaming
  * - OAuth 2.0 metadata endpoints as per RFC9728 and RFC8414
+ *
+ * SECURITY: This transport REQUIRES OAuth 2.0 authentication in production.
+ * Authentication can be bypassed ONLY for development by setting MCP_HTTP_ALLOW_NO_AUTH=true.
+ * Never use unauthenticated mode in production as it exposes all MCP endpoints without any access control.
  */
 export class HttpTransport implements ITransport {
   private readonly app: Express;
   private server?: ReturnType<Express['listen']>;
   private mcpTransport?: SSEServerTransport;
   private readonly options: Required<HttpTransportOptions>;
+  private tokenValidator?: TokenValidator;
 
   constructor(options: HttpTransportOptions = {}) {
     this.options = {
@@ -110,11 +149,13 @@ export class HttpTransport implements ITransport {
         [],
       builtInAuthServer: options.builtInAuthServer ?? process.env.MCP_OAUTH_BUILTIN === 'true',
       corsOptions: options.corsOptions ?? {},
+      rateLimitOptions: options.rateLimitOptions ?? {},
     };
 
     this.app = express();
     this.setupMiddleware();
     this.setupMetadataEndpoints();
+    this.setupTokenValidator();
   }
 
   /**
@@ -127,8 +168,28 @@ export class HttpTransport implements ITransport {
       publicUrl: this.options.publicUrl,
     });
 
-    // Set up authentication middleware for the MCP endpoint
-    this.app.use('/mcp', this.authMiddleware.bind(this));
+    // Set up rate limiting for authentication endpoints
+    const rateLimitOptions = this.options.rateLimitOptions ?? {};
+    const authRateLimiter = rateLimit({
+      windowMs: rateLimitOptions.windowMs ?? 15 * 60 * 1000, // 15 minutes default
+      max: rateLimitOptions.max ?? 100, // 100 requests per window default
+      message:
+        rateLimitOptions.message ?? 'Too many authentication attempts, please try again later',
+      standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+      legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+      handler: (req, res) => {
+        res.status(429).json({
+          error: 'too_many_requests',
+          error_description:
+            rateLimitOptions.message ?? 'Too many authentication attempts, please try again later',
+        });
+      },
+    });
+
+    // Set up authentication middleware with rate limiting for the MCP endpoint
+    this.app.use('/mcp', authRateLimiter, (req, res, next) => {
+      this.authMiddleware(req as AuthenticatedRequest, res, next).catch(next);
+    });
 
     // Set up the MCP endpoint that handles both POST and GET
     // GET requests open SSE streams for server-to-client communication
@@ -265,12 +326,50 @@ export class HttpTransport implements ITransport {
   }
 
   /**
+   * Set up token validator
+   */
+  private setupTokenValidator(): void {
+    if (this.options.authorizationServers.length > 0 || this.options.builtInAuthServer) {
+      // Create JWKS endpoints map
+      const jwksEndpoints = new Map<string, string>();
+
+      // Add external authorization servers
+      this.options.authorizationServers.forEach((server) => {
+        // Assume JWKS endpoint follows OAuth 2.0 metadata convention
+        const jwksUri = server.endsWith('/')
+          ? `${server}.well-known/jwks.json`
+          : `${server}/.well-known/jwks.json`;
+        jwksEndpoints.set(server, jwksUri);
+      });
+
+      // Add built-in auth server if enabled
+      if (this.options.builtInAuthServer) {
+        jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
+      }
+
+      this.tokenValidator = new TokenValidator({
+        audience: this.options.publicUrl,
+        issuers: [
+          ...this.options.authorizationServers,
+          ...(this.options.builtInAuthServer ? [this.options.publicUrl] : []),
+        ],
+        jwksEndpoints,
+        clockTolerance: 5,
+        validateResource: true,
+        expectedResources: [this.options.publicUrl],
+      });
+    }
+  }
+
+  /**
    * Authentication middleware for MCP endpoints.
    * Implements RFC6750 Bearer Token Usage.
    */
-  private authMiddleware(req: Request, res: Response, next: NextFunction): void {
-    // For now, we're just setting up the structure for OAuth
-    // Actual authentication will be implemented in a future story
+  private async authMiddleware(
+    req: AuthenticatedRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
@@ -289,10 +388,108 @@ export class HttpTransport implements ITransport {
       return;
     }
 
-    // Token validation will be implemented in a future story
-    // For now, we'll log and pass through
-    logger.debug('Bearer token received (validation not yet implemented)');
-    next();
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Security check: Handle missing token validator
+    if (!this.tokenValidator) {
+      // SECURITY WARNING: This bypass is ONLY for backward compatibility
+      // DO NOT USE IN PRODUCTION WITHOUT PROPER TOKEN VALIDATION
+
+      // Check if insecure mode is explicitly enabled
+      const allowInsecure = process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true';
+
+      if (!allowInsecure) {
+        // Reject the request if insecure mode is not explicitly enabled
+        logger.error(
+          'SECURITY: No token validator configured and insecure mode not explicitly enabled. ' +
+            'To allow unauthenticated access (NOT RECOMMENDED FOR PRODUCTION), set MCP_HTTP_ALLOW_NO_AUTH=true'
+        );
+
+        const wwwAuthenticate = [
+          'Bearer',
+          'realm="MCP SonarQube Server"',
+          'error="configuration_error"',
+          'error_description="Authentication not properly configured"',
+        ].join(' ');
+
+        res.set('WWW-Authenticate', wwwAuthenticate);
+        res.status(500).json({
+          error: 'configuration_error',
+          error_description:
+            'Authentication is not properly configured. Contact your administrator.',
+        });
+        return;
+      }
+
+      // Log a prominent warning when allowing unauthenticated access
+      logger.warn(
+        '⚠️  SECURITY WARNING: Allowing unauthenticated access to MCP endpoints! ⚠️\n' +
+          '    This is EXTREMELY DANGEROUS and should NEVER be used in production.\n' +
+          '    Configure proper OAuth 2.0 authentication by setting either:\n' +
+          '    - MCP_OAUTH_AUTH_SERVERS: Comma-separated list of OAuth authorization server URLs\n' +
+          '    - MCP_OAUTH_BUILTIN=true: Enable built-in OAuth server (for development only)\n' +
+          '    See https://github.com/sapientpants/sonarqube-mcp-server#authentication for details'
+      );
+
+      // Allow the request to proceed (backward compatibility only)
+      next();
+      return;
+    }
+
+    try {
+      // Validate the token
+      const claims = await this.tokenValidator.validateToken(token);
+
+      // Attach user context to request
+      req.user = claims;
+
+      // Log successful authentication (without the token)
+      logger.debug('Token validated successfully', {
+        sub: claims.sub,
+        iss: claims.iss,
+        scope: claims.scope,
+      });
+
+      next();
+    } catch (error) {
+      if (error instanceof TokenValidationError) {
+        // Build WWW-Authenticate header with error details
+        const wwwAuthParams = [
+          'Bearer',
+          'realm="MCP SonarQube Server"',
+          `error="${error.code}"`,
+          `error_description="${error.message}"`,
+        ];
+
+        if (error.wwwAuthenticateParams) {
+          Object.entries(error.wwwAuthenticateParams).forEach(([key, value]) => {
+            wwwAuthParams.push(`${key}="${value}"`);
+          });
+        }
+
+        res.set('WWW-Authenticate', wwwAuthParams.join(', '));
+
+        // Return appropriate status code
+        const statusCode =
+          error.code === TokenValidationErrorCode.INVALID_TOKEN ||
+          error.code === TokenValidationErrorCode.INVALID_SIGNATURE ||
+          error.code === TokenValidationErrorCode.EXPIRED_TOKEN
+            ? 401
+            : 403;
+
+        res.status(statusCode).json({
+          error: error.code,
+          error_description: error.message,
+        });
+      } else {
+        // Unexpected error
+        logger.error('Unexpected authentication error', error);
+        res.status(500).json({
+          error: 'internal_error',
+          error_description: 'Authentication failed',
+        });
+      }
+    }
   }
 
   /**
