@@ -1041,9 +1041,14 @@ export class HttpTransport implements ITransport {
       // Test the regex with a sample string to ensure it doesn't hang
       const testString = 'a'.repeat(100);
       const startTime = Date.now();
-      // Execute test to measure performance, result is not needed
-      regex.test(testString);
+      // Execute test to measure performance and validate regex works
+      const testResult = regex.test(testString);
       const elapsed = Date.now() - startTime;
+
+      // Log if regex didn't match test string (might indicate issue with pattern)
+      if (!testResult) {
+        logger.debug('Regex pattern did not match test string', { pattern, context });
+      }
 
       // If the test takes too long, it might be problematic
       if (elapsed > 100) {
