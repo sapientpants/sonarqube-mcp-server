@@ -202,4 +202,86 @@ describe('HttpTransport Authentication', () => {
       expect(response.body).toEqual({ status: 'ok' });
     });
   });
+
+  describe('Rate limiting', () => {
+    it('should rate limit authentication attempts', async () => {
+      // Create transport with strict rate limiting
+      const rateLimitedTransport = new HttpTransport({
+        port: 0,
+        host: 'localhost',
+        publicUrl: testPublicUrl,
+        authorizationServers: [testIssuer],
+        rateLimitOptions: {
+          windowMs: 60 * 1000, // 1 minute
+          max: 3, // Only 3 requests per minute
+        },
+      });
+
+      await rateLimitedTransport.connect(mockServer);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rateLimitedApp = (rateLimitedTransport as any).app;
+
+      // Make requests up to the limit
+      for (let i = 0; i < 3; i++) {
+        const response = await request(rateLimitedApp)
+          .post('/mcp')
+          .set('Authorization', 'Bearer invalid-token')
+          .send({ test: 'data' });
+        expect(response.status).toBe(401);
+      }
+
+      // Next request should be rate limited
+      const rateLimitedResponse = await request(rateLimitedApp)
+        .post('/mcp')
+        .set('Authorization', 'Bearer invalid-token')
+        .send({ test: 'data' });
+
+      expect(rateLimitedResponse.status).toBe(429);
+      expect(rateLimitedResponse.body).toEqual({
+        error: 'too_many_requests',
+        error_description: 'Too many authentication attempts, please try again later',
+      });
+      expect(rateLimitedResponse.headers['ratelimit-limit']).toBe('3');
+      expect(rateLimitedResponse.headers['ratelimit-remaining']).toBe('0');
+
+      await rateLimitedTransport.shutdown();
+    });
+
+    it('should use custom rate limit message', async () => {
+      const customMessage = 'Custom rate limit message';
+      const rateLimitedTransport = new HttpTransport({
+        port: 0,
+        host: 'localhost',
+        publicUrl: testPublicUrl,
+        authorizationServers: [testIssuer],
+        rateLimitOptions: {
+          windowMs: 60 * 1000,
+          max: 1,
+          message: customMessage,
+        },
+      });
+
+      await rateLimitedTransport.connect(mockServer);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rateLimitedApp = (rateLimitedTransport as any).app;
+
+      // First request is OK
+      await request(rateLimitedApp)
+        .post('/mcp')
+        .set('Authorization', 'Bearer invalid-token')
+        .send({ test: 'data' })
+        .expect(401);
+
+      // Second request should be rate limited with custom message
+      const response = await request(rateLimitedApp)
+        .post('/mcp')
+        .set('Authorization', 'Bearer invalid-token')
+        .send({ test: 'data' });
+
+      expect(response.status).toBe(429);
+      expect(response.body.error_description).toBe(customMessage);
+
+      await rateLimitedTransport.shutdown();
+    });
+  });
 });

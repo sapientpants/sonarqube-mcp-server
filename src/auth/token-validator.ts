@@ -62,6 +62,8 @@ export interface TokenValidationOptions {
   validateResource?: boolean;
   /** Expected resource indicators */
   expectedResources?: string[];
+  /** Static public keys for testing (maps issuer to public key) */
+  staticPublicKeys?: Map<string, string | Buffer>;
 }
 
 /**
@@ -184,7 +186,35 @@ export class TokenValidator {
         );
       }
 
+      if (error instanceof jwt.NotBeforeError) {
+        throw new TokenValidationError(
+          TokenValidationErrorCode.TOKEN_NOT_ACTIVE,
+          'Token not yet active',
+          { error_description: 'Token nbf claim is in the future' }
+        );
+      }
+
       if (error instanceof jwt.JsonWebTokenError) {
+        // Parse the error message to determine the specific error type
+        const message = error.message.toLowerCase();
+
+        if (message.includes('jwt audience invalid')) {
+          throw new TokenValidationError(
+            TokenValidationErrorCode.INVALID_AUDIENCE,
+            'Token audience does not include this server',
+            { error_description: error.message }
+          );
+        }
+
+        if (message.includes('jwt issuer invalid')) {
+          throw new TokenValidationError(
+            TokenValidationErrorCode.INVALID_ISSUER,
+            'Invalid issuer',
+            { error_description: error.message }
+          );
+        }
+
+        // Default to signature error for other JsonWebTokenError instances
         throw new TokenValidationError(
           TokenValidationErrorCode.INVALID_SIGNATURE,
           'Invalid token signature',
@@ -249,6 +279,17 @@ export class TokenValidator {
 
   /**
    * Get public key for token verification
+   *
+   * TODO: Implement JWKS endpoint fetching with caching
+   * - Fetch JWKS from the configured endpoint
+   * - Cache the keys with TTL
+   * - Find the matching key by kid (key ID)
+   * - Convert JWK to PEM format for verification
+   *
+   * For testing environments, consider using:
+   * - Static public keys configured via environment variables
+   * - Mock JWKS endpoints
+   * - Test-specific key pairs
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async getPublicKey(issuer: string, _kid?: string): Promise<string | Buffer> {
@@ -260,11 +301,26 @@ export class TokenValidator {
       );
     }
 
-    // For now, throw an error indicating JWKS fetching is not yet implemented
-    // This will be implemented when we add HTTP client functionality
+    // TODO: Implement JWKS fetching logic here
+    // This is a placeholder implementation that will be replaced
+    // when HTTP client functionality is added to the project
+
+    // Check if a static public key is configured for this issuer
+    if (this.options.staticPublicKeys?.has(issuer)) {
+      logger.debug('Using static public key for issuer', { issuer });
+      return this.options.staticPublicKeys.get(issuer)!;
+    }
+
+    // For now, check if a static public key is provided via environment
+    const staticPublicKey = process.env[`JWT_PUBLIC_KEY_${issuer.replace(/[^a-zA-Z0-9]/g, '_')}`];
+    if (staticPublicKey) {
+      logger.debug('Using static public key from environment for issuer', { issuer });
+      return staticPublicKey;
+    }
+
     throw new TokenValidationError(
       TokenValidationErrorCode.INVALID_TOKEN,
-      'JWKS endpoint fetching not yet implemented. Please use a static public key.'
+      'JWKS endpoint fetching not yet implemented. Configure a static public key via staticPublicKeys option or JWT_PUBLIC_KEY_<issuer> environment variable for testing.'
     );
   }
 

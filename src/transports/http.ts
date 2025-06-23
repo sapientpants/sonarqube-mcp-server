@@ -1,6 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import { ITransport } from './base.js';
 import { createLogger } from '../utils/logger.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
@@ -94,6 +95,18 @@ export interface HttpTransportOptions {
    * CORS configuration
    */
   corsOptions?: cors.CorsOptions;
+
+  /**
+   * Rate limiting configuration
+   */
+  rateLimitOptions?: {
+    /** Window duration in minutes */
+    windowMs?: number;
+    /** Maximum number of requests per window */
+    max?: number;
+    /** Message to send when rate limit is exceeded */
+    message?: string;
+  };
 }
 
 /**
@@ -124,6 +137,7 @@ export class HttpTransport implements ITransport {
         [],
       builtInAuthServer: options.builtInAuthServer ?? process.env.MCP_OAUTH_BUILTIN === 'true',
       corsOptions: options.corsOptions ?? {},
+      rateLimitOptions: options.rateLimitOptions ?? {},
     };
 
     this.app = express();
@@ -142,8 +156,26 @@ export class HttpTransport implements ITransport {
       publicUrl: this.options.publicUrl,
     });
 
-    // Set up authentication middleware for the MCP endpoint
-    this.app.use('/mcp', (req, res, next) => {
+    // Set up rate limiting for authentication endpoints
+    const rateLimitOptions = this.options.rateLimitOptions ?? {};
+    const authRateLimiter = rateLimit({
+      windowMs: rateLimitOptions.windowMs ?? 15 * 60 * 1000, // 15 minutes default
+      max: rateLimitOptions.max ?? 100, // 100 requests per window default
+      message:
+        rateLimitOptions.message ?? 'Too many authentication attempts, please try again later',
+      standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+      legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+      handler: (req, res) => {
+        res.status(429).json({
+          error: 'too_many_requests',
+          error_description:
+            rateLimitOptions.message ?? 'Too many authentication attempts, please try again later',
+        });
+      },
+    });
+
+    // Set up authentication middleware with rate limiting for the MCP endpoint
+    this.app.use('/mcp', authRateLimiter, (req, res, next) => {
       this.authMiddleware(req as AuthenticatedRequest, res, next).catch(next);
     });
 
