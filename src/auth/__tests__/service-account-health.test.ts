@@ -1,13 +1,15 @@
 import { jest } from '@jest/globals';
 import { ServiceAccountHealthMonitor } from '../service-account-health.js';
 import type { ServiceAccount } from '../service-account-mapper.js';
-import { createSonarQubeClient } from '../../sonarqube.js';
 import type { SonarQubeClientMock, ServiceAccountHealthMonitorInternal } from './test-helpers.js';
 
-// Mock the sonarqube module
-jest.mock('../../sonarqube.js', () => ({
-  createSonarQubeClient: jest.fn().mockReturnValue({}),
+// Mock the sonarqube module using unstable_mockModule
+jest.unstable_mockModule('../../sonarqube.js', () => ({
+  createSonarQubeClient: jest.fn(),
 }));
+
+// Import after mocking
+const { createSonarQubeClient } = await import('../../sonarqube.js');
 
 describe('ServiceAccountHealthMonitor', () => {
   let monitor: ServiceAccountHealthMonitor;

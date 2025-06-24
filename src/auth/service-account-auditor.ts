@@ -56,6 +56,8 @@ export interface ServiceAccountAuditorOptions {
   enableFileLogging?: boolean;
   /** Whether to track detailed statistics (default: true) */
   enableStatistics?: boolean;
+  /** Number of days to retain audit events (default: 7) */
+  retentionDays?: number;
 }
 
 /**
@@ -71,12 +73,14 @@ export class ServiceAccountAuditor {
       maxEvents: options.maxEvents ?? 10000,
       enableFileLogging: options.enableFileLogging ?? true,
       enableStatistics: options.enableStatistics ?? true,
+      retentionDays: options.retentionDays ?? 7,
     };
 
     logger.info('Service account auditor initialized', {
       maxEvents: this.options.maxEvents,
       fileLogging: this.options.enableFileLogging,
       statistics: this.options.enableStatistics,
+      retentionDays: this.options.retentionDays,
     });
   }
 
@@ -243,6 +247,14 @@ export class ServiceAccountAuditor {
   }
 
   /**
+   * Get recent events in reverse chronological order
+   */
+  getRecentEvents(limit?: number): ServiceAccountAuditEvent[] {
+    const events = [...this.auditEvents].reverse();
+    return limit ? events.slice(0, limit) : events;
+  }
+
+  /**
    * Get statistics for a specific service account
    */
   getAccountStatistics(serviceAccountId: string): ServiceAccountStats | undefined {
@@ -267,18 +279,25 @@ export class ServiceAccountAuditor {
     deniedReasons: Record<string, number>;
     failuresByAccount: Record<string, number>;
     healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
+    failoversByAccount?: Record<string, number>;
   } {
-    const stats = {
+    const stats: {
+      totalEvents: number;
+      eventsByType: Record<string, number>;
+      eventsByAccount: Record<string, number>;
+      eventsByUser: Record<string, number>;
+      deniedReasons: Record<string, number>;
+      failuresByAccount: Record<string, number>;
+      healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
+      failoversByAccount?: Record<string, number>;
+    } = {
       totalEvents: this.auditEvents.length,
-      eventsByType: {} as Record<string, number>,
-      eventsByAccount: {} as Record<string, number>,
-      eventsByUser: {} as Record<string, number>,
-      deniedReasons: {} as Record<string, number>,
-      failuresByAccount: {} as Record<string, number>,
-      healthChecksByAccount: {} as Record<
-        string,
-        { total: number; successful: number; failed: number }
-      >,
+      eventsByType: {},
+      eventsByAccount: {},
+      eventsByUser: {},
+      deniedReasons: {},
+      failuresByAccount: {},
+      healthChecksByAccount: {},
     };
 
     // Initialize basic event type counters for backward compatibility
@@ -349,6 +368,15 @@ export class ServiceAccountAuditor {
         } else {
           stats.healthChecksByAccount[event.serviceAccountId].failed++;
         }
+      }
+
+      // Track failovers by account
+      if (event.eventType === AuditEventType.ACCOUNT_FAILOVER) {
+        if (!stats.failoversByAccount) {
+          stats.failoversByAccount = {};
+        }
+        stats.failoversByAccount[event.serviceAccountId] =
+          (stats.failoversByAccount[event.serviceAccountId] || 0) + 1;
       }
     }
 
@@ -445,9 +473,12 @@ export class ServiceAccountAuditor {
   /**
    * Clear old audit events
    */
-  pruneOldEvents(maxAge: Date): number {
+  pruneOldEvents(maxAge?: Date): number {
+    // If no maxAge provided, use retentionDays
+    const cutoffDate =
+      maxAge || new Date(Date.now() - this.options.retentionDays * 24 * 60 * 60 * 1000);
     const initialCount = this.auditEvents.length;
-    const cutoffTime = maxAge.getTime();
+    const cutoffTime = cutoffDate.getTime();
 
     // Remove events older than maxAge
     let writeIndex = 0;
