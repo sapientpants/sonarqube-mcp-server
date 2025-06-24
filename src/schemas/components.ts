@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { stringToNumberTransform, numberOrStringToString } from '../utils/transforms.js';
+import { stringToNumberTransform } from '../utils/transforms.js';
+import { pullRequestSchema } from './common.js';
 
 /**
  * Valid component qualifiers based on SonarQube API
@@ -49,9 +50,5 @@ export const componentsToolSchema = {
 
   // Additional filters
   branch: z.string().optional().describe('Branch name'),
-  pullRequest: z
-    .union([z.string(), z.number()])
-    .optional()
-    .transform(numberOrStringToString)
-    .describe('Pull request ID'),
+  pullRequest: pullRequestSchema.describe('Pull request ID'),
 };

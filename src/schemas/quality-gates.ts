@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { numberOrStringToString } from '../utils/transforms.js';
+import { pullRequestSchema } from './common.js';
 
 /**
  * Schemas for quality gates tools
@@ -14,5 +14,5 @@ export const qualityGateToolSchema = {
 export const qualityGateStatusToolSchema = {
   project_key: z.string(),
   branch: z.string().optional(),
-  pull_request: z.union([z.string(), z.number()]).optional().transform(numberOrStringToString),
+  pull_request: pullRequestSchema,
 };

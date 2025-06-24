@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { numberOrStringToString } from '../utils/transforms.js';
 
 /**
  * Common schemas used across multiple domains
@@ -48,3 +49,16 @@ export const impactSoftwareQualitiesSchema = z
   .array(z.enum(['MAINTAINABILITY', 'RELIABILITY', 'SECURITY']))
   .nullable()
   .optional();
+
+// Pull request schema - accepts either string or number and converts to string
+export const pullRequestSchema = z
+  .union([z.string(), z.number()])
+  .optional()
+  .transform(numberOrStringToString);
+
+// Pull request schema with nullable - for schemas that allow null values
+export const pullRequestNullableSchema = z
+  .union([z.string(), z.number()])
+  .nullable()
+  .optional()
+  .transform(numberOrStringToString);
