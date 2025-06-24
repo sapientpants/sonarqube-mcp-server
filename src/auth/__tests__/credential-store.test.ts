@@ -1,21 +1,29 @@
 import { jest } from '@jest/globals';
-import { CredentialStore } from '../credential-store.js';
 import type { CredentialStoreInternal } from './test-helpers.js';
 
-// Manually mock the fs module
+// Create mock functions
+const mockExistsSync = jest.fn();
+const mockReadFileSync = jest.fn();
+const mockWriteFileSync = jest.fn();
+const mockMkdirSync = jest.fn();
+const mockReadFile = jest.fn();
+const mockWriteFile = jest.fn();
+const mockChmod = jest.fn();
+
+// Mock the modules before importing
 jest.unstable_mockModule('fs', () => ({
-  existsSync: jest.fn(),
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  mkdirSync: jest.fn(),
+  existsSync: mockExistsSync,
+  readFileSync: mockReadFileSync,
+  writeFileSync: mockWriteFileSync,
+  mkdirSync: mockMkdirSync,
+  appendFileSync: jest.fn(),
   promises: {
-    readFile: jest.fn(),
-    writeFile: jest.fn(),
-    chmod: jest.fn(),
+    readFile: mockReadFile,
+    writeFile: mockWriteFile,
+    chmod: mockChmod,
   },
 }));
 
-// Mock the path module
 jest.unstable_mockModule('path', () => ({
   dirname: jest.fn().mockImplementation((p: string) => {
     const lastSlash = p.lastIndexOf('/');
@@ -23,15 +31,8 @@ jest.unstable_mockModule('path', () => ({
   }),
 }));
 
-// Import the mocked module after mocking
-const { existsSync, readFileSync, writeFileSync, mkdirSync, promises: fs } = await import('fs');
-const mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
-const mockReadFileSync = readFileSync as jest.MockedFunction<typeof readFileSync>;
-const mockWriteFileSync = writeFileSync as jest.MockedFunction<typeof writeFileSync>;
-const mockMkdirSync = mkdirSync as jest.MockedFunction<typeof mkdirSync>;
-const mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
-const mockWriteFile = fs.writeFile as jest.MockedFunction<typeof fs.writeFile>;
-const mockChmod = fs.chmod as jest.MockedFunction<typeof fs.chmod>;
+// Import the module after mocking
+const { CredentialStore } = await import('../credential-store.js');
 
 describe('CredentialStore', () => {
   beforeEach(() => {

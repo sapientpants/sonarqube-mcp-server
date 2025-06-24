@@ -38,6 +38,7 @@ export class ServiceAccountHealthMonitor {
   private healthTimer?: NodeJS.Timeout;
   private readonly healthStatus: Map<string, HealthCheckResult> = new Map();
   private readonly accountFailures: Map<string, number> = new Map();
+  private readonly accounts: Map<string, ServiceAccount> = new Map();
 
   constructor(options: ServiceAccountHealthOptions = {}) {
     this.options = {
@@ -186,11 +187,81 @@ export class ServiceAccountHealthMonitor {
   }
 
   /**
+   * Add an account to monitoring
+   */
+  addAccount(account: ServiceAccount): void {
+    this.accounts.set(account.id, account);
+
+    // Initialize health status if not exists
+    if (!this.healthStatus.has(account.id)) {
+      this.healthStatus.set(account.id, {
+        accountId: account.id,
+        isHealthy: account.isHealthy ?? true,
+        lastCheck: new Date(),
+      });
+    }
+
+    logger.info('Account added to health monitoring', {
+      accountId: account.id,
+      accountName: account.name,
+    });
+  }
+
+  /**
+   * Remove an account from monitoring
+   */
+  removeAccount(accountId: string): void {
+    this.accounts.delete(accountId);
+    this.healthStatus.delete(accountId);
+    this.accountFailures.delete(accountId);
+
+    logger.info('Account removed from health monitoring', { accountId });
+  }
+
+  /**
+   * Update an existing account
+   */
+  updateAccount(account: ServiceAccount): void {
+    this.accounts.set(account.id, account);
+
+    logger.info('Account updated in health monitoring', {
+      accountId: account.id,
+      accountName: account.name,
+    });
+  }
+
+  /**
+   * Get health status for all accounts (alias for getAllHealthStatuses)
+   */
+  getHealthStatus(): Map<string, HealthCheckResult> {
+    return this.getAllHealthStatuses();
+  }
+
+  /**
    * Force an immediate health check for all accounts
    */
   async checkAllAccounts(): Promise<void> {
-    // This will be called by ServiceAccountMapper
-    logger.info('Skipping automatic health check - waiting for mapper integration');
+    const accounts = Array.from(this.accounts.values());
+
+    if (accounts.length === 0) {
+      logger.debug('No accounts to check');
+      return;
+    }
+
+    logger.info('Checking health of all accounts', { accountCount: accounts.length });
+
+    const checks = accounts.map(async (account) => {
+      try {
+        await this.checkAccount(account);
+      } catch (error) {
+        logger.error('Failed to check account health', {
+          accountId: account.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+
+    await Promise.allSettled(checks);
   }
 
   /**
