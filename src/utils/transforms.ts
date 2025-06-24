@@ -58,3 +58,40 @@ export function numberOrStringToString(
   }
   return String(value);
 }
+
+/**
+ * Parses a JSON string array or returns the array as-is
+ * Useful for MCP parameters that might be sent as JSON strings
+ * @param value Array, JSON string array, null, or undefined
+ * @returns Array of strings, or null/undefined
+ */
+export function parseJsonStringArray(
+  value: string[] | string | null | undefined
+): string[] | null | undefined {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  // If it's already an array, return it
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  // If it's a string, try to parse it as JSON
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      // If parsed but not an array, wrap it
+      return [String(parsed)];
+    } catch {
+      // If not valid JSON, treat as single value array
+      return [value];
+    }
+  }
+
+  // Shouldn't reach here, but handle edge cases
+  return [String(value)];
+}

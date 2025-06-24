@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stringToNumberTransform } from '../utils/transforms.js';
+import { stringToNumberTransform, parseJsonStringArray } from '../utils/transforms.js';
 import {
   severitySchema,
   severitiesSchema,
@@ -128,16 +128,23 @@ export const reopenIssueToolSchema = {
 export const issuesToolSchema = {
   // Component filters (backward compatible)
   project_key: z.string().optional().describe('Single project key for backward compatibility'), // Made optional to support projects array
-  projects: z.array(z.string()).nullable().optional().describe('Filter by project keys'),
+  projects: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional()
+    .describe('Filter by project keys'),
   component_keys: z
-    .array(z.string())
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
       'Filter by component keys (file paths, directories, or modules). Use this to filter issues by specific files or folders'
     ),
   components: z
-    .array(z.string())
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Alias for component_keys - filter by file paths, directories, or modules'),
@@ -146,10 +153,28 @@ export const issuesToolSchema = {
     .nullable()
     .optional()
     .describe('Return only issues on the specified components, not on their sub-components'),
-  directories: z.array(z.string()).nullable().optional().describe('Filter by directory paths'),
-  files: z.array(z.string()).nullable().optional().describe('Filter by specific file paths'),
+  directories: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional()
+    .describe('Filter by directory paths'),
+  files: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional()
+    .describe('Filter by specific file paths'),
   scopes: z
-    .array(z.enum(['MAIN', 'TEST', 'OVERALL']))
+    .union([z.array(z.enum(['MAIN', 'TEST', 'OVERALL'])), z.string()])
+    .transform((val) => {
+      const parsed = parseJsonStringArray(val);
+      // Validate that all values are valid scopes
+      if (parsed && Array.isArray(parsed)) {
+        return parsed.filter((v) => ['MAIN', 'TEST', 'OVERALL'].includes(v));
+      }
+      return parsed;
+    })
     .nullable()
     .optional()
     .describe('Filter by issue scopes (MAIN, TEST, OVERALL)'),
@@ -159,7 +184,11 @@ export const issuesToolSchema = {
   pull_request: pullRequestNullableSchema,
 
   // Issue filters
-  issues: z.array(z.string()).nullable().optional(),
+  issues: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
   severity: severitySchema, // Deprecated single value
   severities: severitiesSchema, // New array support
   statuses: statusSchema,
@@ -177,9 +206,15 @@ export const issuesToolSchema = {
   issue_statuses: statusSchema, // New issue status values
 
   // Rules and tags
-  rules: z.array(z.string()).nullable().optional().describe('Filter by rule keys'),
+  rules: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional()
+    .describe('Filter by rule keys'),
   tags: z
-    .array(z.string())
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
@@ -199,29 +234,64 @@ export const issuesToolSchema = {
     .optional()
     .describe('Filter to only assigned (true) or unassigned (false) issues'),
   assignees: z
-    .array(z.string())
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
       'Filter by assignee logins. Critical for targeted clean-up sprints and workload analysis'
     ),
   author: z.string().nullable().optional().describe('Filter by single issue author'), // Single author
-  authors: z.array(z.string()).nullable().optional().describe('Filter by multiple issue authors'), // Multiple authors
+  authors: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional()
+    .describe('Filter by multiple issue authors'), // Multiple authors
 
   // Security standards
-  cwe: z.array(z.string()).nullable().optional(),
-  owasp_top10: z.array(z.string()).nullable().optional(),
-  owasp_top10_v2021: z.array(z.string()).nullable().optional(), // New 2021 version
-  sans_top25: z.array(z.string()).nullable().optional(),
-  sonarsource_security: z.array(z.string()).nullable().optional(),
-  sonarsource_security_category: z.array(z.string()).nullable().optional(),
+  cwe: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
+  owasp_top10: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
+  owasp_top10_v2021: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(), // New 2021 version
+  sans_top25: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
+  sonarsource_security: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
+  sonarsource_security_category: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
 
   // Languages
-  languages: z.array(z.string()).nullable().optional(),
+  languages: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
 
   // Facets
   facets: z
-    .array(z.string())
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
@@ -253,7 +323,11 @@ export const issuesToolSchema = {
     .optional(), // Sort direction
 
   // Response optimization
-  additional_fields: z.array(z.string()).nullable().optional(),
+  additional_fields: z
+    .union([z.array(z.string()), z.string()])
+    .transform(parseJsonStringArray)
+    .nullable()
+    .optional(),
 
   // Pagination
   page: z.string().optional().transform(stringToNumberTransform),

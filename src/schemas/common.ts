@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { numberOrStringToString } from '../utils/transforms.js';
+import { numberOrStringToString, parseJsonStringArray } from '../utils/transforms.js';
 
 /**
  * Common schemas used across multiple domains
@@ -12,41 +12,103 @@ export const severitySchema = z
   .optional();
 
 export const severitiesSchema = z
-  .array(z.enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER']))
+  .union([z.array(z.enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid severities
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) => ['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'].includes(v));
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
 // Status schemas
 export const statusSchema = z
-  .array(z.enum(['OPEN', 'CONFIRMED', 'REOPENED', 'RESOLVED', 'CLOSED']))
+  .union([z.array(z.enum(['OPEN', 'CONFIRMED', 'REOPENED', 'RESOLVED', 'CLOSED'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid statuses
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) =>
+        ['OPEN', 'CONFIRMED', 'REOPENED', 'RESOLVED', 'CLOSED'].includes(v)
+      );
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
 // Resolution schemas
 export const resolutionSchema = z
-  .array(z.enum(['FALSE-POSITIVE', 'WONTFIX', 'FIXED', 'REMOVED']))
+  .union([z.array(z.enum(['FALSE-POSITIVE', 'WONTFIX', 'FIXED', 'REMOVED'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid resolutions
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) => ['FALSE-POSITIVE', 'WONTFIX', 'FIXED', 'REMOVED'].includes(v));
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
 // Type schemas
 export const typeSchema = z
-  .array(z.enum(['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT']))
+  .union([z.array(z.enum(['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid types
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) =>
+        ['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT'].includes(v)
+      );
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
 // Clean Code taxonomy schemas
 export const cleanCodeAttributeCategoriesSchema = z
-  .array(z.enum(['ADAPTABLE', 'CONSISTENT', 'INTENTIONAL', 'RESPONSIBLE']))
+  .union([z.array(z.enum(['ADAPTABLE', 'CONSISTENT', 'INTENTIONAL', 'RESPONSIBLE'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid categories
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) =>
+        ['ADAPTABLE', 'CONSISTENT', 'INTENTIONAL', 'RESPONSIBLE'].includes(v)
+      );
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
 export const impactSeveritiesSchema = z
-  .array(z.enum(['HIGH', 'MEDIUM', 'LOW']))
+  .union([z.array(z.enum(['HIGH', 'MEDIUM', 'LOW'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid impact severities
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) => ['HIGH', 'MEDIUM', 'LOW'].includes(v));
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
 export const impactSoftwareQualitiesSchema = z
-  .array(z.enum(['MAINTAINABILITY', 'RELIABILITY', 'SECURITY']))
+  .union([z.array(z.enum(['MAINTAINABILITY', 'RELIABILITY', 'SECURITY'])), z.string()])
+  .transform((val) => {
+    const parsed = parseJsonStringArray(val);
+    // Validate that all values are valid software qualities
+    if (parsed && Array.isArray(parsed)) {
+      return parsed.filter((v) => ['MAINTAINABILITY', 'RELIABILITY', 'SECURITY'].includes(v));
+    }
+    return parsed;
+  })
   .nullable()
   .optional();
 
