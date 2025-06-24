@@ -3,6 +3,9 @@ import type { TokenClaims } from './token-validator.js';
 import type { ISonarQubeClient } from '../types/index.js';
 import { createSonarQubeClient } from '../sonarqube.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
+import { ServiceAccountHealthMonitor } from './service-account-health.js';
+import { ServiceAccountAuditor } from './service-account-auditor.js';
+import { CredentialStore } from './credential-store.js';
 
 const logger = createLogger('ServiceAccountMapper');
 
@@ -22,6 +25,16 @@ export interface ServiceAccount {
   organization?: string;
   /** Allowed scopes for this service account */
   allowedScopes?: string[];
+  /** Team or environment this account is for (e.g., 'dev-team', 'prod') */
+  environment?: string;
+  /** Whether this account is marked as healthy */
+  isHealthy?: boolean;
+  /** Last health check timestamp */
+  lastHealthCheck?: Date;
+  /** Number of consecutive failures */
+  failureCount?: number;
+  /** Fallback service account ID if this one fails */
+  fallbackAccountId?: string;
 }
 
 /**
@@ -36,8 +49,12 @@ export interface MappingRule {
   issuerPattern?: PatternMatcher;
   /** Required scopes */
   requiredScopes?: string[];
+  /** Required user groups (if any must match) */
+  requiredGroups?: string[];
   /** Service account ID to use */
   serviceAccountId: string;
+  /** Environment or team this rule applies to */
+  environment?: string;
 }
 
 /**
@@ -54,6 +71,18 @@ export interface ServiceAccountMapperOptions {
   mappingRules?: MappingRule[];
   /** Default service account ID (fallback) */
   defaultServiceAccountId?: string;
+  /** Health monitor instance (optional, will create one if not provided) */
+  healthMonitor?: ServiceAccountHealthMonitor;
+  /** Auditor instance (optional, will create one if not provided) */
+  auditor?: ServiceAccountAuditor;
+  /** Credential store instance (optional) */
+  credentialStore?: CredentialStore;
+  /** Enable automatic failover (default: true) */
+  enableFailover?: boolean;
+  /** Enable health monitoring (default: true) */
+  enableHealthMonitoring?: boolean;
+  /** Enable audit logging (default: true) */
+  enableAuditLogging?: boolean;
 }
 
 /**
@@ -65,11 +94,33 @@ export class ServiceAccountMapper {
   private readonly defaultUrl: string;
   private readonly defaultOrganization?: string;
   private readonly defaultServiceAccountId?: string;
+  private readonly healthMonitor?: ServiceAccountHealthMonitor;
+  private readonly auditor?: ServiceAccountAuditor;
+  private readonly credentialStore?: CredentialStore;
+  private readonly enableFailover: boolean;
+  private readonly enableHealthMonitoring: boolean;
+  private readonly enableAuditLogging: boolean;
 
   constructor(options: ServiceAccountMapperOptions = {}) {
     this.defaultUrl = options.defaultUrl ?? process.env.SONARQUBE_URL ?? 'https://sonarcloud.io';
     this.defaultOrganization = options.defaultOrganization ?? process.env.SONARQUBE_ORGANIZATION;
     this.defaultServiceAccountId = options.defaultServiceAccountId;
+    this.enableFailover = options.enableFailover ?? true;
+    this.enableHealthMonitoring = options.enableHealthMonitoring ?? true;
+    this.enableAuditLogging = options.enableAuditLogging ?? true;
+
+    // Initialize health monitor if enabled
+    if (this.enableHealthMonitoring) {
+      this.healthMonitor = options.healthMonitor ?? new ServiceAccountHealthMonitor();
+    }
+
+    // Initialize auditor if enabled
+    if (this.enableAuditLogging) {
+      this.auditor = options.auditor ?? new ServiceAccountAuditor();
+    }
+
+    // Set credential store if provided
+    this.credentialStore = options.credentialStore;
 
     // Load service accounts from options or environment
     this.loadServiceAccounts(options.serviceAccounts);
@@ -77,10 +128,16 @@ export class ServiceAccountMapper {
     // Sort mapping rules by priority
     this.mappingRules = (options.mappingRules ?? []).sort((a, b) => a.priority - b.priority);
 
+    // Initialize health for all accounts
+    this.initializeAccountHealth();
+
     logger.info('Service account mapper initialized', {
       serviceAccountCount: this.serviceAccounts.size,
       mappingRuleCount: this.mappingRules.length,
       hasDefaultAccount: !!this.defaultServiceAccountId,
+      healthMonitoring: this.enableHealthMonitoring,
+      auditLogging: this.enableAuditLogging,
+      failover: this.enableFailover,
     });
   }
 
@@ -92,29 +149,24 @@ export class ServiceAccountMapper {
     serviceAccountId: string;
   }> {
     // Find matching service account
-    const serviceAccountId = this.findServiceAccountForUser(claims);
-    if (!serviceAccountId) {
-      throw new Error(
-        `No service account mapping found for user ${claims.sub} from issuer ${claims.iss}`
-      );
+    const primaryAccountId = this.findServiceAccountForUser(claims);
+    if (!primaryAccountId) {
+      const error = `No service account mapping found for user ${claims.sub} from issuer ${claims.iss}`;
+      this.auditor?.logAccountAccessDenied(claims, 'no-mapping', error);
+      throw new Error(error);
     }
 
-    const serviceAccount = this.serviceAccounts.get(serviceAccountId);
-    if (!serviceAccount) {
-      throw new Error(`Service account ${serviceAccountId} not found`);
-    }
-
-    // Create client for the service account
-    const client = await this.createClientForServiceAccount(serviceAccount);
+    // Try primary account and failover if needed
+    const { client, accountId } = await this.getClientWithFailover(primaryAccountId, claims);
 
     logger.info('Created client for user', {
       userId: claims.sub,
       issuer: claims.iss,
-      serviceAccountId,
-      serviceAccountName: serviceAccount.name,
+      serviceAccountId: accountId,
+      serviceAccountName: this.serviceAccounts.get(accountId)?.name,
     });
 
-    return { client, serviceAccountId };
+    return { client, serviceAccountId: accountId };
   }
 
   /**
@@ -169,6 +221,7 @@ export class ServiceAccountMapper {
    */
   private findServiceAccountForUser(claims: TokenClaims): string | undefined {
     const userScopes = claims.scope?.split(' ') ?? [];
+    const userGroups = Array.isArray(claims.groups) ? claims.groups : [];
 
     for (const rule of this.mappingRules) {
       // Check user pattern
@@ -185,6 +238,26 @@ export class ServiceAccountMapper {
       if (rule.requiredScopes) {
         const hasAllScopes = rule.requiredScopes.every((scope) => userScopes.includes(scope));
         if (!hasAllScopes) {
+          continue;
+        }
+      }
+
+      // Check required groups
+      if (rule.requiredGroups && rule.requiredGroups.length > 0) {
+        const hasMatchingGroup = rule.requiredGroups.some((group) => userGroups.includes(group));
+        if (!hasMatchingGroup) {
+          continue;
+        }
+      }
+
+      // Check if account is healthy (if health monitoring is enabled)
+      if (this.enableHealthMonitoring) {
+        const account = this.serviceAccounts.get(rule.serviceAccountId);
+        if (account && account.isHealthy === false) {
+          logger.warn('Skipping unhealthy service account', {
+            accountId: rule.serviceAccountId,
+            accountName: account.name,
+          });
           continue;
         }
       }
@@ -247,6 +320,8 @@ export class ServiceAccountMapper {
       token,
       url: process.env[`SONARQUBE${suffix}_URL`],
       organization: process.env[`SONARQUBE${suffix}_ORGANIZATION`],
+      environment: process.env[`SONARQUBE${suffix}_ENVIRONMENT`],
+      fallbackAccountId: process.env[`SONARQUBE${suffix}_FALLBACK`],
     };
 
     // Parse allowed scopes if provided
@@ -263,5 +338,185 @@ export class ServiceAccountMapper {
       hasOrg: !!account.organization,
       scopeCount: account.allowedScopes?.length ?? 0,
     });
+  }
+
+  /**
+   * Initialize health status for all accounts
+   */
+  private initializeAccountHealth(): void {
+    if (!this.enableHealthMonitoring || !this.healthMonitor) {
+      return;
+    }
+
+    // Mark all accounts as healthy initially
+    for (const account of this.serviceAccounts.values()) {
+      account.isHealthy = true;
+      account.failureCount = 0;
+    }
+
+    // Schedule initial health checks
+    setTimeout(() => {
+      this.checkAllAccountsHealth().catch((error) => {
+        logger.error('Failed to perform initial health check', error);
+      });
+    }, 5000); // Check after 5 seconds
+  }
+
+  /**
+   * Check health of all service accounts
+   */
+  async checkAllAccountsHealth(): Promise<void> {
+    if (!this.enableHealthMonitoring || !this.healthMonitor) {
+      return;
+    }
+
+    logger.info('Checking health of all service accounts');
+    const promises: Promise<void>[] = [];
+
+    for (const account of this.serviceAccounts.values()) {
+      const promise = this.healthMonitor
+        .checkAccount(account, this.defaultUrl, this.defaultOrganization)
+        .then((result) => {
+          this.auditor?.logHealthCheck(
+            account.id,
+            account.name,
+            result.isHealthy,
+            result.latency,
+            result.error
+          );
+        })
+        .catch((error) => {
+          logger.error('Health check failed for account', {
+            accountId: account.id,
+            error,
+          });
+        });
+      promises.push(promise);
+    }
+
+    await Promise.allSettled(promises);
+  }
+
+  /**
+   * Get client with automatic failover support
+   */
+  private async getClientWithFailover(
+    primaryAccountId: string,
+    claims: TokenClaims
+  ): Promise<{ client: ISonarQubeClient; accountId: string }> {
+    let currentAccountId = primaryAccountId;
+    const attemptedAccounts = new Set<string>();
+
+    while (currentAccountId) {
+      // Prevent infinite loops
+      if (attemptedAccounts.has(currentAccountId)) {
+        break;
+      }
+      attemptedAccounts.add(currentAccountId);
+
+      const account = this.serviceAccounts.get(currentAccountId);
+      if (!account) {
+        throw new Error(`Service account ${currentAccountId} not found`);
+      }
+
+      try {
+        // Get token from credential store if available
+        const token = this.getAccountToken(account);
+        const accountWithToken = { ...account, token };
+
+        // Create client
+        const client = await this.createClientForServiceAccount(accountWithToken);
+
+        // Test the client if health monitoring is enabled
+        if (this.enableHealthMonitoring && this.healthMonitor) {
+          const healthResult = await this.healthMonitor.checkAccount(
+            accountWithToken,
+            this.defaultUrl,
+            this.defaultOrganization
+          );
+
+          if (!healthResult.isHealthy) {
+            throw new Error(`Service account health check failed: ${healthResult.error}`);
+          }
+        }
+
+        // Success - log access and return
+        this.auditor?.logAccountAccess(claims, currentAccountId, account.name, account.environment);
+        return { client, accountId: currentAccountId };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Failed to create client for service account', {
+          accountId: currentAccountId,
+          error: errorMessage,
+        });
+
+        // Mark account as failed
+        this.healthMonitor?.markAccountFailed(currentAccountId, errorMessage);
+        this.auditor?.logAccountFailure(currentAccountId, account.name, errorMessage, claims.sub);
+
+        // Try failover if enabled
+        if (this.enableFailover && account.fallbackAccountId) {
+          logger.info('Attempting failover to backup account', {
+            fromAccount: currentAccountId,
+            toAccount: account.fallbackAccountId,
+          });
+          this.auditor?.logFailover(
+            currentAccountId,
+            account.fallbackAccountId,
+            errorMessage,
+            claims.sub
+          );
+          currentAccountId = account.fallbackAccountId;
+        } else {
+          // No failover available, re-throw the error
+          throw error;
+        }
+      }
+    }
+
+    // All attempts failed
+    throw new Error('All service accounts failed, no failover available');
+  }
+
+  /**
+   * Get token for a service account (from credential store or direct)
+   */
+  private getAccountToken(account: ServiceAccount): string {
+    // Try credential store first
+    if (this.credentialStore && this.credentialStore.hasCredential(account.id)) {
+      const token = this.credentialStore.getCredential(account.id);
+      if (token) {
+        return token;
+      }
+    }
+
+    // Fall back to account token
+    if (!account.token) {
+      throw new Error(`No token available for service account ${account.id}`);
+    }
+
+    return account.token;
+  }
+
+  /**
+   * Get health monitor instance
+   */
+  getHealthMonitor(): ServiceAccountHealthMonitor | undefined {
+    return this.healthMonitor;
+  }
+
+  /**
+   * Get auditor instance
+   */
+  getAuditor(): ServiceAccountAuditor | undefined {
+    return this.auditor;
+  }
+
+  /**
+   * Shutdown the mapper and its components
+   */
+  shutdown(): void {
+    this.healthMonitor?.stop();
+    logger.info('Service account mapper shut down');
   }
 }
