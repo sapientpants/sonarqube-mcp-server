@@ -55,6 +55,9 @@ describe('ServiceAccountMapper', () => {
   let mockClaims: TokenClaims;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+
     // Clear environment variables
     Object.keys(process.env).forEach((key) => {
       if (key.startsWith('SONARQUBE_') || key.startsWith('MCP_')) {
@@ -71,6 +74,13 @@ describe('ServiceAccountMapper', () => {
       nbf: Math.floor(Date.now() / 1000),
       scope: 'sonarqube:read sonarqube:write',
     };
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    if (mapper) {
+      mapper.shutdown();
+    }
   });
 
   describe('constructor', () => {
@@ -443,6 +453,7 @@ describe('ServiceAccountMapper', () => {
           },
         ],
         enableHealthMonitoring: true,
+        enableFailover: false, // Disable failover to test skipping behavior
       });
 
       const result = await mapper.getClientForUser(mockClaims);
@@ -642,6 +653,11 @@ describe('ServiceAccountMapper', () => {
       jest.spyOn(mockCredentialStore, 'hasCredential').mockReturnValue(true);
       jest.spyOn(mockCredentialStore, 'getCredential').mockReturnValue('store-token');
 
+      const { createSonarQubeClient } = await import('../../sonarqube.js');
+      const createClientSpy = createSonarQubeClient as jest.MockedFunction<
+        typeof createSonarQubeClient
+      >;
+
       mapper = new ServiceAccountMapper({
         serviceAccounts: [{ id: 'default', name: 'Default', token: 'original-token' }],
         defaultServiceAccountId: 'default',
@@ -650,8 +666,7 @@ describe('ServiceAccountMapper', () => {
 
       await mapper.getClientForUser(mockClaims);
 
-      const { createSonarQubeClient } = await import('../../sonarqube.js');
-      expect(createSonarQubeClient).toHaveBeenCalledWith(
+      expect(createClientSpy).toHaveBeenCalledWith(
         'store-token', // Should use token from store
         expect.any(String),
         expect.any(String)
@@ -663,6 +678,11 @@ describe('ServiceAccountMapper', () => {
       jest.spyOn(mockCredentialStore, 'hasCredential').mockReturnValue(true);
       jest.spyOn(mockCredentialStore, 'getCredential').mockReturnValue(undefined);
 
+      const { createSonarQubeClient } = await import('../../sonarqube.js');
+      const createClientSpy = createSonarQubeClient as jest.MockedFunction<
+        typeof createSonarQubeClient
+      >;
+
       mapper = new ServiceAccountMapper({
         serviceAccounts: [{ id: 'default', name: 'Default', token: 'account-token' }],
         defaultServiceAccountId: 'default',
@@ -671,8 +691,7 @@ describe('ServiceAccountMapper', () => {
 
       await mapper.getClientForUser(mockClaims);
 
-      const { createSonarQubeClient } = await import('../../sonarqube.js');
-      expect(createSonarQubeClient).toHaveBeenCalledWith(
+      expect(createClientSpy).toHaveBeenCalledWith(
         'account-token', // Should use account token
         expect.any(String),
         expect.any(String)
