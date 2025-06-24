@@ -43,3 +43,18 @@ export function ensureStringArray(value: string | string[] | undefined): string[
   if (value.includes(',')) return value.split(',').map((s) => s.trim());
   return [value];
 }
+
+/**
+ * Converts a number or string to a string
+ * Useful for parameters that can be passed as either type but need to be strings for the API
+ * @param value Number, string, null, or undefined
+ * @returns String representation of the value, or the original null/undefined
+ */
+export function numberOrStringToString(
+  value: number | string | null | undefined
+): string | null | undefined {
+  if (value === null || value === undefined) {
+    return value;
+  }
+  return String(value);
+}

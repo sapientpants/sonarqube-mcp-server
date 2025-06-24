@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { stringToNumberTransform } from '../utils/transforms.js';
+import { pullRequestSchema } from './common.js';
 
 /**
  * Schemas for source code tools
@@ -10,7 +11,7 @@ export const sourceCodeToolSchema = {
   from: z.string().optional().transform(stringToNumberTransform),
   to: z.string().optional().transform(stringToNumberTransform),
   branch: z.string().optional(),
-  pull_request: z.string().optional(),
+  pull_request: pullRequestSchema,
 };
 
 export const scmBlameToolSchema = {
@@ -18,5 +19,5 @@ export const scmBlameToolSchema = {
   from: z.string().optional().transform(stringToNumberTransform),
   to: z.string().optional().transform(stringToNumberTransform),
   branch: z.string().optional(),
-  pull_request: z.string().optional(),
+  pull_request: pullRequestSchema,
 };

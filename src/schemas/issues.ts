@@ -9,6 +9,7 @@ import {
   cleanCodeAttributeCategoriesSchema,
   impactSeveritiesSchema,
   impactSoftwareQualitiesSchema,
+  pullRequestNullableSchema,
 } from './common.js';
 
 /**
@@ -155,7 +156,7 @@ export const issuesToolSchema = {
 
   // Branch and PR support
   branch: z.string().nullable().optional(),
-  pull_request: z.string().nullable().optional(),
+  pull_request: pullRequestNullableSchema,
 
   // Issue filters
   issues: z.array(z.string()).nullable().optional(),

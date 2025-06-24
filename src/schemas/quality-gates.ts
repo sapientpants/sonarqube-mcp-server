@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pullRequestSchema } from './common.js';
 
 /**
  * Schemas for quality gates tools
@@ -13,5 +14,5 @@ export const qualityGateToolSchema = {
 export const qualityGateStatusToolSchema = {
   project_key: z.string(),
   branch: z.string().optional(),
-  pull_request: z.string().optional(),
+  pull_request: pullRequestSchema,
 };

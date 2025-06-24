@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { stringToNumberTransform } from '../utils/transforms.js';
+import { pullRequestNullableSchema } from './common.js';
 import { hotspotStatusSchema, hotspotResolutionSchema } from './hotspots.js';
 
 /**
@@ -9,7 +10,7 @@ import { hotspotStatusSchema, hotspotResolutionSchema } from './hotspots.js';
 export const hotspotsToolSchema = {
   project_key: z.string().optional(),
   branch: z.string().nullable().optional(),
-  pull_request: z.string().nullable().optional(),
+  pull_request: pullRequestNullableSchema,
   status: hotspotStatusSchema,
   resolution: hotspotResolutionSchema,
   files: z.array(z.string()).nullable().optional(),
