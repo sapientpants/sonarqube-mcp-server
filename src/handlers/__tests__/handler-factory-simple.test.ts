@@ -1,6 +1,48 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// Mock external dependencies to prevent import errors
+jest.mock('../../auth/permission-manager.js', () => ({
+  permissionManager: {
+    getPermissionService: jest.fn().mockReturnValue(null),
+  },
+}));
+
+jest.mock('../../auth/context-provider.js', () => ({
+  contextProvider: {
+    getUserContext: jest.fn().mockReturnValue(null),
+  },
+}));
+
+jest.mock('../../utils/logger.js', () => ({
+  createLogger: () => ({
+    debug: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+  }),
+}));
+
+jest.mock('../projects.js', () => ({
+  handleSonarQubeProjects: jest.fn().mockResolvedValue('projects-result'),
+}));
+
+jest.mock('../issues.js', () => ({
+  handleSonarQubeGetIssues: jest.fn().mockResolvedValue('issues-result'),
+}));
+
+jest.mock('../projects-with-permissions.js', () => ({
+  handleSonarQubeProjectsWithPermissions: jest.fn().mockResolvedValue('projects-permission-result'),
+}));
+
+jest.mock('../issues-with-permissions.js', () => ({
+  handleSonarQubeGetIssuesWithPermissions: jest.fn().mockResolvedValue('issues-permission-result'),
+}));
 
 describe('HandlerFactory Simple Coverage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should import and use HandlerFactory methods', async () => {
     const { HandlerFactory } = await import('../handler-factory.js');
 
@@ -77,41 +119,21 @@ describe('HandlerFactory Simple Coverage', () => {
       const wrappedHandler = HandlerFactory.createHandler(tool, handler);
       expect(typeof wrappedHandler).toBe('function');
 
-      // Try calling with different parameter types (will fail due to dependencies, but exercises code)
-      try {
-        await wrappedHandler({ project_key: 'test' });
-      } catch (error) {
-        // Expected to fail
-        expect(error).toBeDefined();
-      }
+      // Call with different parameter types (should work with mocked dependencies)
+      const result1 = await wrappedHandler({ project_key: 'test' });
+      expect(result1).toBeDefined();
 
-      try {
-        await wrappedHandler({ projectKey: 'test' });
-      } catch (error) {
-        // Expected to fail
-        expect(error).toBeDefined();
-      }
+      const result2 = await wrappedHandler({ projectKey: 'test' });
+      expect(result2).toBeDefined();
 
-      try {
-        await wrappedHandler({ component: 'test:file.ts' });
-      } catch (error) {
-        // Expected to fail
-        expect(error).toBeDefined();
-      }
+      const result3 = await wrappedHandler({ component: 'test:file.ts' });
+      expect(result3).toBeDefined();
 
-      try {
-        await wrappedHandler({ components: ['test1:file.ts', 'test2:file.ts'] });
-      } catch (error) {
-        // Expected to fail
-        expect(error).toBeDefined();
-      }
+      const result4 = await wrappedHandler({ components: ['test1:file.ts', 'test2:file.ts'] });
+      expect(result4).toBeDefined();
 
-      try {
-        await wrappedHandler({ component_keys: ['key1', 'key2'] });
-      } catch (error) {
-        // Expected to fail
-        expect(error).toBeDefined();
-      }
+      const result5 = await wrappedHandler({ component_keys: ['key1', 'key2'] });
+      expect(result5).toBeDefined();
     }
   });
 
@@ -143,12 +165,8 @@ describe('HandlerFactory Simple Coverage', () => {
     const wrappedHandler = HandlerFactory.createHandler('source_code', handler);
 
     for (const params of edgeCaseParams) {
-      try {
-        await wrappedHandler(params);
-      } catch (error) {
-        // Expected to fail due to dependencies, but this exercises the code paths
-        expect(error).toBeDefined();
-      }
+      const result = await wrappedHandler(params);
+      expect(result).toBeDefined();
     }
   });
 
@@ -179,5 +197,29 @@ describe('HandlerFactory Simple Coverage', () => {
 
     expect(typeof handler1).toBe('function');
     expect(typeof handler2).toBe('function');
+  });
+
+  it('should test handler creation without calling them', async () => {
+    const { HandlerFactory } = await import('../handler-factory.js');
+
+    // Test that the factory methods work and return functions
+    const projectsHandler = HandlerFactory.getProjectsHandler();
+    const issuesHandler = HandlerFactory.getIssuesHandler();
+
+    expect(typeof projectsHandler).toBe('function');
+    expect(typeof issuesHandler).toBe('function');
+
+    // Test createHandler with various tool types
+    const handler1 = HandlerFactory.createHandler('projects', async () => 'test');
+    const handler2 = HandlerFactory.createHandler(
+      'issues',
+      async () => 'test',
+      async () => 'permission-test'
+    );
+    const handler3 = HandlerFactory.createHandler('measures_component', async () => 'test');
+
+    expect(typeof handler1).toBe('function');
+    expect(typeof handler2).toBe('function');
+    expect(typeof handler3).toBe('function');
   });
 });
