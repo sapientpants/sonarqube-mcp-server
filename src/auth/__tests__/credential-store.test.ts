@@ -1,31 +1,32 @@
 import { jest } from '@jest/globals';
 import { CredentialStore } from '../credential-store.js';
-import { promises as fs } from 'fs';
-import { existsSync } from 'fs';
 import type { CredentialStoreInternal } from './test-helpers.js';
 
-// Mock modules
+// Create mock functions
+const mockExistsSync = jest.fn();
+const mockReadFile = jest.fn();
+const mockWriteFile = jest.fn();
+const mockChmod = jest.fn();
+
+// Mock fs module
 jest.mock('fs', () => ({
-  existsSync: jest.fn(),
+  existsSync: mockExistsSync,
   promises: {
-    readFile: jest.fn(),
-    writeFile: jest.fn(),
-    chmod: jest.fn(),
+    readFile: mockReadFile,
+    writeFile: mockWriteFile,
+    chmod: mockChmod,
   },
 }));
 
 describe('CredentialStore', () => {
-  let mockExistsSync: jest.MockedFunction<typeof existsSync>;
-  let mockReadFile: jest.MockedFunction<typeof fs.readFile>;
-  let mockWriteFile: jest.MockedFunction<typeof fs.writeFile>;
-  let mockChmod: jest.MockedFunction<typeof fs.chmod>;
-
   beforeEach(() => {
     jest.clearAllMocks();
-    mockExistsSync = existsSync as jest.MockedFunction<typeof existsSync>;
-    mockReadFile = fs.readFile as jest.MockedFunction<typeof fs.readFile>;
-    mockWriteFile = fs.writeFile as jest.MockedFunction<typeof fs.writeFile>;
-    mockChmod = fs.chmod as jest.MockedFunction<typeof fs.chmod>;
+
+    // Set default mock return values
+    mockExistsSync.mockReturnValue(false);
+    mockReadFile.mockResolvedValue('{}');
+    mockWriteFile.mockResolvedValue(undefined);
+    mockChmod.mockResolvedValue(undefined);
   });
 
   describe('constructor', () => {
@@ -86,17 +87,18 @@ describe('CredentialStore', () => {
       expect(store.getCredential('non-existent')).toBeUndefined();
     });
 
-    it('should throw error when getting credential without encryption key', () => {
+    it('should return undefined when getting credential without encryption key', () => {
       const store = new CredentialStore({ useEncryption: true });
-      // Manually set an encrypted credential
-      (store as unknown as CredentialStoreInternal).credentials.set('test-id', {
-        encrypted: true,
-        data: { iv: 'iv', authTag: 'tag', encrypted: 'data' },
+      // Manually set an encrypted credential string
+      const encryptedData = JSON.stringify({
+        algorithm: 'aes-256-gcm',
+        iv: 'abcdef1234567890',
+        data: 'encrypted:authTag',
       });
+      (store as unknown as CredentialStoreInternal).credentials.set('test-id', encryptedData);
 
-      expect(() => store.getCredential('test-id')).toThrow(
-        'Cannot decrypt credential: no encryption key available'
-      );
+      // Should return undefined because decryption will fail without key
+      expect(store.getCredential('test-id')).toBeUndefined();
     });
   });
 

@@ -6,19 +6,19 @@ import type { SonarQubeClientMock, ServiceAccountHealthMonitorInternal } from '.
 
 // Mock the sonarqube module
 jest.mock('../../sonarqube.js', () => ({
-  createSonarQubeClient: jest.fn(),
+  createSonarQubeClient: jest.fn().mockReturnValue({}),
 }));
 
 describe('ServiceAccountHealthMonitor', () => {
   let monitor: ServiceAccountHealthMonitor;
-  let mockCreateClient: jest.MockedFunction<typeof createSonarQubeClient>;
+  let mockCreateClient: jest.Mock;
   let mockAccount: ServiceAccount;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
 
-    mockCreateClient = createSonarQubeClient as jest.MockedFunction<typeof createSonarQubeClient>;
+    mockCreateClient = createSonarQubeClient as jest.Mock;
 
     monitor = new ServiceAccountHealthMonitor({
       checkInterval: 60000, // 1 minute

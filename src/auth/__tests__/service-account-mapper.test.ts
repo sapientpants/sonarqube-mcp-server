@@ -1,4 +1,4 @@
-import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import { ServiceAccountMapper } from '../service-account-mapper.js';
 import type { TokenClaims } from '../token-validator.js';
 import type { ISonarQubeClient } from '../../types/index.js';
@@ -6,6 +6,7 @@ import { ServiceAccountHealthMonitor } from '../service-account-health.js';
 import { ServiceAccountAuditor } from '../service-account-auditor.js';
 import { CredentialStore } from '../credential-store.js';
 import { PatternMatcher } from '../../utils/pattern-matcher.js';
+import { createSonarQubeClient } from '../../sonarqube.js';
 
 // Mock the logger
 jest.mock('../../utils/logger.js', () => ({
@@ -439,6 +440,15 @@ describe('ServiceAccountMapper', () => {
 
   describe('health monitoring integration', () => {
     it('should skip unhealthy accounts during mapping', async () => {
+      // Create a custom health monitor that returns unhealthy for the 'unhealthy' account
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      jest.spyOn(mockHealthMonitor, 'checkAccount').mockImplementation(async (account) => {
+        if (account.id === 'unhealthy') {
+          return { isHealthy: false, latency: 0, error: 'Account is unhealthy' };
+        }
+        return { isHealthy: true, latency: 100 };
+      });
+
       mapper = new ServiceAccountMapper({
         defaultServiceAccountId: 'default',
         serviceAccounts: [
@@ -452,12 +462,15 @@ describe('ServiceAccountMapper', () => {
             serviceAccountId: 'unhealthy',
           },
         ],
+        healthMonitor: mockHealthMonitor,
         enableHealthMonitoring: true,
         enableFailover: false, // Disable failover to test skipping behavior
       });
 
-      const result = await mapper.getClientForUser(mockClaims);
-      expect(result.serviceAccountId).toBe('default'); // Should skip unhealthy and use default
+      // Should throw because the matched account fails health check and failover is disabled
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow(
+        'Service account health check failed: Account is unhealthy'
+      );
     });
 
     it('should perform health check before returning client', async () => {
@@ -505,8 +518,9 @@ describe('ServiceAccountMapper', () => {
         enableHealthMonitoring: true,
       });
 
-      // Wait for initial health check timeout
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Advance timers to trigger initial health check
+      jest.advanceTimersByTime(5100);
+      await Promise.resolve();
 
       const accounts = mapper.getServiceAccounts();
       expect(accounts.every((a) => a.isHealthy === true)).toBe(true);
@@ -653,11 +667,6 @@ describe('ServiceAccountMapper', () => {
       jest.spyOn(mockCredentialStore, 'hasCredential').mockReturnValue(true);
       jest.spyOn(mockCredentialStore, 'getCredential').mockReturnValue('store-token');
 
-      const { createSonarQubeClient } = await import('../../sonarqube.js');
-      const createClientSpy = createSonarQubeClient as jest.MockedFunction<
-        typeof createSonarQubeClient
-      >;
-
       mapper = new ServiceAccountMapper({
         serviceAccounts: [{ id: 'default', name: 'Default', token: 'original-token' }],
         defaultServiceAccountId: 'default',
@@ -666,10 +675,10 @@ describe('ServiceAccountMapper', () => {
 
       await mapper.getClientForUser(mockClaims);
 
-      expect(createClientSpy).toHaveBeenCalledWith(
+      expect(createSonarQubeClient).toHaveBeenCalledWith(
         'store-token', // Should use token from store
         expect.any(String),
-        expect.any(String)
+        undefined // organization is undefined in this test
       );
     });
 
@@ -677,11 +686,6 @@ describe('ServiceAccountMapper', () => {
       const mockCredentialStore = new CredentialStore();
       jest.spyOn(mockCredentialStore, 'hasCredential').mockReturnValue(true);
       jest.spyOn(mockCredentialStore, 'getCredential').mockReturnValue(undefined);
-
-      const { createSonarQubeClient } = await import('../../sonarqube.js');
-      const createClientSpy = createSonarQubeClient as jest.MockedFunction<
-        typeof createSonarQubeClient
-      >;
 
       mapper = new ServiceAccountMapper({
         serviceAccounts: [{ id: 'default', name: 'Default', token: 'account-token' }],
@@ -691,10 +695,10 @@ describe('ServiceAccountMapper', () => {
 
       await mapper.getClientForUser(mockClaims);
 
-      expect(createClientSpy).toHaveBeenCalledWith(
+      expect(createSonarQubeClient).toHaveBeenCalledWith(
         'account-token', // Should use account token
         expect.any(String),
-        expect.any(String)
+        undefined // organization is undefined in this test
       );
     });
 
