@@ -55,7 +55,7 @@ export class CredentialStore {
       masterPassword: options.masterPassword ?? process.env.MCP_CREDENTIAL_MASTER_PASSWORD ?? '',
       storagePath: options.storagePath ?? process.env.MCP_CREDENTIAL_STORE_PATH ?? '',
       algorithm: options.algorithm ?? 'aes-256-gcm',
-      iterations: options.iterations ?? 100000,
+      iterations: options.iterations ?? 16384, // N must be a power of 2 for scrypt
       useEncryption: options.useEncryption ?? !!options.masterPassword,
     };
 
