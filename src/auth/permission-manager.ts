@@ -1,8 +1,8 @@
 import { createLogger } from '../utils/logger.js';
 import { PermissionService } from './permission-service.js';
 import { PermissionConfig, PermissionRule, UserContext } from './types.js';
-import { TokenClaims } from './token-validator.js';
 import { validatePermissionRule, validatePartialPermissionRule } from './validation-utils.js';
+import { TokenClaims } from './token-validator.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -15,15 +15,24 @@ export class PermissionManager {
   private permissionService: PermissionService | null = null;
   private configPath: string | null = null;
 
-  constructor() {
-    // Check for permission config from environment
+  private constructor(configPath: string | null) {
+    this.configPath = configPath;
+  }
+
+  /**
+   * Create and initialize PermissionManager
+   */
+  static async create(): Promise<PermissionManager> {
     const configPathFromEnv = process.env.MCP_PERMISSION_CONFIG_PATH;
+    const manager = new PermissionManager(configPathFromEnv || null);
+
     if (configPathFromEnv) {
-      this.configPath = configPathFromEnv;
-      this.loadConfiguration().catch((err) => {
-        logger.error('Failed to load permission configuration', err);
-      });
+      await manager.loadConfiguration();
+    } else {
+      logger.debug('No permission configuration path specified');
     }
+
+    return manager;
   }
 
   /**
@@ -249,5 +258,31 @@ export class PermissionManager {
   }
 }
 
-// Global instance
-export const permissionManager = new PermissionManager();
+// Global instance - will be initialized asynchronously
+let _permissionManager: PermissionManager | null = null;
+
+/**
+ * Get or create the global permission manager instance
+ */
+export async function getPermissionManager(): Promise<PermissionManager> {
+  if (!_permissionManager) {
+    _permissionManager = await PermissionManager.create();
+  }
+  return _permissionManager;
+}
+
+// For backward compatibility - deprecated
+export const permissionManager = {
+  getPermissionService: () => {
+    logger.warn('Using deprecated permissionManager export. Use getPermissionManager() instead.');
+    return _permissionManager?.getPermissionService() || null;
+  },
+  isEnabled: () => {
+    logger.warn('Using deprecated permissionManager export. Use getPermissionManager() instead.');
+    return _permissionManager?.isEnabled() || false;
+  },
+  extractUserContext: (claims: TokenClaims) => {
+    logger.warn('Using deprecated permissionManager export. Use getPermissionManager() instead.');
+    return _permissionManager?.extractUserContext(claims) || null;
+  },
+};

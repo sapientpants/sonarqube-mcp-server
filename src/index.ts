@@ -17,6 +17,7 @@ import { validateEnvironmentVariables, resetDefaultClient } from './utils/client
 import { createElicitationManager } from './utils/elicitation.js';
 import { SERVER_VERSION, VERSION_INFO } from './config/versions.js';
 import { TransportFactory } from './transports/index.js';
+import { getPermissionManager } from './auth/permission-manager.js';
 import {
   handleSonarQubeProjects,
   handleSonarQubeGetIssues,
@@ -875,6 +876,10 @@ if (process.env.NODE_ENV !== 'test') {
     logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
     elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
   });
+
+  // Initialize permission manager before starting the server
+  await getPermissionManager();
+  logger.info('Permission manager initialized');
 
   // Create transport using the factory
   const transport = TransportFactory.createFromEnvironment();

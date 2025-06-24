@@ -1,5 +1,5 @@
 import { contextProvider } from './context-provider.js';
-import { permissionManager } from './permission-manager.js';
+import { getPermissionManager } from './permission-manager.js';
 import { UserContext } from './types.js';
 import { PermissionService } from './permission-service.js';
 
@@ -15,9 +15,10 @@ export interface ContextAccess {
 /**
  * Get user context and permission service in a consistent way
  */
-export function getContextAccess(): ContextAccess {
+export async function getContextAccess(): Promise<ContextAccess> {
   const userContext = contextProvider.getUserContext();
-  const permissionService = permissionManager.getPermissionService();
+  const manager = await getPermissionManager();
+  const permissionService = manager.getPermissionService();
 
   return {
     userContext,
@@ -29,8 +30,8 @@ export function getContextAccess(): ContextAccess {
 /**
  * Check if permission checking is enabled and context is available
  */
-export function isPermissionCheckingEnabled(): boolean {
-  const { hasPermissions } = getContextAccess();
+export async function isPermissionCheckingEnabled(): Promise<boolean> {
+  const { hasPermissions } = await getContextAccess();
   return hasPermissions;
 }
 
@@ -48,8 +49,9 @@ export function getUserContextOrThrow(): UserContext {
 /**
  * Get permission service with validation
  */
-export function getPermissionServiceOrThrow(): PermissionService {
-  const permissionService = permissionManager.getPermissionService();
+export async function getPermissionServiceOrThrow(): Promise<PermissionService> {
+  const manager = await getPermissionManager();
+  const permissionService = manager.getPermissionService();
   if (!permissionService) {
     throw new Error('Permission service not available');
   }

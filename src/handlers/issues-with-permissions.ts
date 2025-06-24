@@ -22,7 +22,7 @@ export const handleSonarQubeGetIssuesWithPermissions = withMCPErrorHandling(
     logger.debug('Handling SonarQube issues request with permissions', params);
 
     // Get user context and permission service
-    const { userContext, permissionService, hasPermissions } = getContextAccess();
+    const { userContext, permissionService, hasPermissions } = await getContextAccess();
 
     // Check project access if specific project is requested
     if (hasPermissions && params.projects?.length) {
@@ -42,15 +42,18 @@ export const handleSonarQubeGetIssuesWithPermissions = withMCPErrorHandling(
       });
 
       // Filter issues by project access
-      filteredIssues = [];
-      for (const issue of result.issues) {
-        if (issue.project) {
-          const access = await permissionService!.checkProjectAccess(userContext!, issue.project);
-          if (access.allowed) {
-            filteredIssues.push(issue);
+      const projectAccessResults = await Promise.all(
+        result.issues.map(async (issue) => {
+          if (issue.project) {
+            const access = await permissionService!.checkProjectAccess(userContext!, issue.project);
+            return access.allowed ? issue : null;
           }
-        }
-      }
+          return null;
+        })
+      );
+      filteredIssues = projectAccessResults.filter(
+        (issue): issue is SonarQubeIssue => issue !== null
+      );
 
       // Apply additional issue filtering (severity, status, sensitive data)
       filteredIssues = (await permissionService!.filterIssues(

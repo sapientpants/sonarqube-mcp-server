@@ -11,14 +11,14 @@ describe('context-utils simple coverage', () => {
     expect(typeof contextUtils.getPermissionServiceOrThrow).toBe('function');
 
     // Test getContextAccess
-    const contextAccess = contextUtils.getContextAccess();
+    const contextAccess = await contextUtils.getContextAccess();
     expect(contextAccess).toBeDefined();
     expect('hasPermissions' in contextAccess).toBe(true);
     expect('userContext' in contextAccess).toBe(true);
     expect('permissionService' in contextAccess).toBe(true);
 
     // Test isPermissionCheckingEnabled
-    const isEnabled = contextUtils.isPermissionCheckingEnabled();
+    const isEnabled = await contextUtils.isPermissionCheckingEnabled();
     expect(typeof isEnabled).toBe('boolean');
 
     // Test getUserContextOrThrow - should throw when context not available
@@ -31,7 +31,7 @@ describe('context-utils simple coverage', () => {
 
     // Test getPermissionServiceOrThrow - should throw when service not available
     try {
-      contextUtils.getPermissionServiceOrThrow();
+      await contextUtils.getPermissionServiceOrThrow();
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe('Permission service not available');
@@ -42,14 +42,14 @@ describe('context-utils simple coverage', () => {
     const { getContextAccess, isPermissionCheckingEnabled } = await import('../context-utils.js');
 
     // Call multiple times to ensure consistency
-    const result1 = getContextAccess();
-    const result2 = getContextAccess();
+    const result1 = await getContextAccess();
+    const result2 = await getContextAccess();
 
     expect(result1.hasPermissions).toBe(result2.hasPermissions);
 
     // Test isPermissionCheckingEnabled multiple times
-    const enabled1 = isPermissionCheckingEnabled();
-    const enabled2 = isPermissionCheckingEnabled();
+    const enabled1 = await isPermissionCheckingEnabled();
+    const enabled2 = await isPermissionCheckingEnabled();
 
     expect(enabled1).toBe(enabled2);
   });
@@ -72,7 +72,7 @@ describe('context-utils simple coverage', () => {
 
     let permissionServiceError: Error | null = null;
     try {
-      getPermissionServiceOrThrow();
+      await getPermissionServiceOrThrow();
     } catch (error) {
       permissionServiceError = error as Error;
     }
@@ -84,7 +84,7 @@ describe('context-utils simple coverage', () => {
   it('should test the ContextAccess interface structure', async () => {
     const { getContextAccess } = await import('../context-utils.js');
 
-    const access = getContextAccess();
+    const access = await getContextAccess();
 
     // Test the structure
     expect(access).toHaveProperty('userContext');

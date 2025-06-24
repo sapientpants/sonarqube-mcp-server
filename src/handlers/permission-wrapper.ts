@@ -32,7 +32,7 @@ export function createPermissionAwareHandler<TParams extends Record<string, unkn
   return async (params: TParams, context?: HandlerContext): Promise<HandlerResponse<TResult>> => {
     try {
       // Get context access information
-      const { userContext, permissionService, hasPermissions } = getContextAccess();
+      const { userContext, permissionService, hasPermissions } = await getContextAccess();
 
       // Override context if provided
       const effectiveUserContext = context?.userContext ?? userContext;
@@ -107,17 +107,17 @@ async function applyPermissionFiltering(
         'components' in result &&
         Array.isArray(result.components)
       ) {
-        const filtered: unknown[] = [];
-        for (const component of result.components) {
-          if (component && typeof component === 'object' && 'key' in component) {
-            const projectKey = extractProjectKey(component.key as string);
-            const access = await permissionService.checkProjectAccess(userContext, projectKey);
-            if (access.allowed) {
-              filtered.push(component);
+        const filtered = await Promise.all(
+          result.components.map(async (component) => {
+            if (component && typeof component === 'object' && 'key' in component) {
+              const projectKey = extractProjectKey(component.key as string);
+              const access = await permissionService.checkProjectAccess(userContext, projectKey);
+              return access.allowed ? component : null;
             }
-          }
-        }
-        return { ...result, components: filtered };
+            return null;
+          })
+        );
+        return { ...result, components: filtered.filter((component) => component !== null) };
       }
       break;
 

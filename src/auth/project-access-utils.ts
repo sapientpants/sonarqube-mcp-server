@@ -19,7 +19,7 @@ export function extractProjectKey(componentKey: string): string {
 export async function checkSingleProjectAccess(
   projectKey: string
 ): Promise<{ allowed: boolean; reason?: string }> {
-  const { userContext, permissionService, hasPermissions } = getContextAccess();
+  const { userContext, permissionService, hasPermissions } = await getContextAccess();
 
   if (!hasPermissions) {
     return { allowed: true }; // No permission checking
@@ -50,7 +50,7 @@ export async function checkMultipleProjectAccess(
 export async function checkProjectAccessForParams(
   params: Record<string, unknown>
 ): Promise<{ allowed: boolean; reason?: string }> {
-  const { hasPermissions } = getContextAccess();
+  const { hasPermissions } = await getContextAccess();
 
   if (!hasPermissions) {
     return { allowed: true }; // No permission checking

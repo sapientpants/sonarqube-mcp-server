@@ -2,7 +2,7 @@ import type { PaginationParams, ISonarQubeClient, SonarQubeProject } from '../ty
 import { getDefaultClient } from '../utils/client-factory.js';
 import { nullToUndefined } from '../utils/transforms.js';
 import { createLogger } from '../utils/logger.js';
-import { withErrorHandling } from '../errors.js';
+import { withErrorHandling, SonarQubeAPIError, SonarQubeErrorType } from '../errors.js';
 import { withMCPErrorHandling } from '../utils/error-handler.js';
 import { createStructuredResponse } from '../utils/structured-response.js';
 import { getContextAccess } from '../auth/context-utils.js';
@@ -27,7 +27,7 @@ export const handleSonarQubeProjectsWithPermissions = withMCPErrorHandling(
     logger.debug('Handling SonarQube projects request with permissions', params);
 
     // Get user context and permission service
-    const { userContext, permissionService, hasPermissions } = getContextAccess();
+    const { userContext, permissionService, hasPermissions } = await getContextAccess();
 
     const projectsParams: PaginationParams = {
       page: nullToUndefined(params.page),
@@ -42,17 +42,21 @@ export const handleSonarQubeProjectsWithPermissions = withMCPErrorHandling(
     } catch (error: unknown) {
       // Check if this is an authorization error and provide helpful guidance
       if (
-        error instanceof Error &&
-        (error.message.includes('Insufficient privileges') ||
-          error.message.includes('requires authentication') ||
-          error.message.includes('403') ||
-          error.message.includes('Administer System'))
+        error instanceof SonarQubeAPIError &&
+        (error.type === SonarQubeErrorType.AUTHORIZATION_FAILED || error.statusCode === 403)
       ) {
-        throw new Error(
+        throw new SonarQubeAPIError(
           `${error.message}\n\nNote: The 'projects' tool requires admin permissions. ` +
             `Non-admin users can use the 'components' tool instead:\n` +
             `- To list all accessible projects: components with qualifiers: ['TRK']\n` +
-            `- To search projects: components with query: 'search-term', qualifiers: ['TRK']`
+            `- To search projects: components with query: 'search-term', qualifiers: ['TRK']`,
+          SonarQubeErrorType.AUTHORIZATION_FAILED,
+          {
+            operation: 'List SonarQube projects',
+            statusCode: error.statusCode,
+            context: error.context,
+            solution: error.solution,
+          }
         );
       }
       throw error;

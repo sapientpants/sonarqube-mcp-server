@@ -16,7 +16,7 @@ import {
 import { SessionManager } from '../auth/session-manager.js';
 import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
-import { permissionManager } from '../auth/permission-manager.js';
+import { getPermissionManager } from '../auth/permission-manager.js';
 import { UserContext } from '../auth/types.js';
 import { contextProvider } from '../auth/context-provider.js';
 
@@ -633,7 +633,7 @@ export class HttpTransport implements ITransport {
     claims: TokenClaims
   ): Promise<boolean> {
     // Try to use existing session if available
-    if (this.tryReuseExistingSession(req, claims)) {
+    if (await this.tryReuseExistingSession(req, claims)) {
       return true;
     }
 
@@ -643,7 +643,7 @@ export class HttpTransport implements ITransport {
     }
 
     // No session management - just attach claims
-    this.attachClaimsWithoutSession(req, claims);
+    await this.attachClaimsWithoutSession(req, claims);
     return true;
   }
 
@@ -651,14 +651,17 @@ export class HttpTransport implements ITransport {
    * Try to reuse an existing session
    * @returns true if existing session was reused
    */
-  private tryReuseExistingSession(req: AuthenticatedRequest, claims: TokenClaims): boolean {
+  private async tryReuseExistingSession(
+    req: AuthenticatedRequest,
+    claims: TokenClaims
+  ): Promise<boolean> {
     const sessionId = req.headers['mcp-session-id'] as string;
 
     if (!sessionId || !this.sessionManager) {
       return false;
     }
 
-    return this.tryUseExistingSession(req, sessionId, claims);
+    return await this.tryUseExistingSession(req, sessionId, claims);
   }
 
   /**
@@ -671,12 +674,16 @@ export class HttpTransport implements ITransport {
   /**
    * Attach claims without session management
    */
-  private attachClaimsWithoutSession(req: AuthenticatedRequest, claims: TokenClaims): void {
+  private async attachClaimsWithoutSession(
+    req: AuthenticatedRequest,
+    claims: TokenClaims
+  ): Promise<void> {
     req.user = claims;
 
     // Extract user context for permissions
-    if (permissionManager.isEnabled()) {
-      req.userContext = permissionManager.extractUserContext(claims) ?? undefined;
+    const manager = await getPermissionManager();
+    if (manager.isEnabled()) {
+      req.userContext = manager.extractUserContext(claims) ?? undefined;
     }
 
     logger.debug('Token validated successfully (no session management)', {
@@ -690,11 +697,11 @@ export class HttpTransport implements ITransport {
    * Try to use an existing session
    * @returns true if existing session is valid and used
    */
-  private tryUseExistingSession(
+  private async tryUseExistingSession(
     req: AuthenticatedRequest,
     sessionId: string,
     claims: TokenClaims
-  ): boolean {
+  ): Promise<boolean> {
     const session = this.sessionManager!.getSession(sessionId);
     if (session && session.claims.sub === claims.sub) {
       // Valid existing session
@@ -702,8 +709,9 @@ export class HttpTransport implements ITransport {
       req.sessionId = sessionId;
 
       // Extract user context for permissions
-      if (permissionManager.isEnabled()) {
-        req.userContext = permissionManager.extractUserContext(session.claims) ?? undefined;
+      const manager = await getPermissionManager();
+      if (manager.isEnabled()) {
+        req.userContext = manager.extractUserContext(session.claims) ?? undefined;
       }
 
       logger.debug('Using existing session', { sessionId, userId: claims.sub });
@@ -736,8 +744,9 @@ export class HttpTransport implements ITransport {
       req.sessionId = sessionId;
 
       // Extract user context for permissions
-      if (permissionManager.isEnabled()) {
-        req.userContext = permissionManager.extractUserContext(claims) ?? undefined;
+      const manager = await getPermissionManager();
+      if (manager.isEnabled()) {
+        req.userContext = manager.extractUserContext(claims) ?? undefined;
       }
 
       logger.debug('Created new session', {
