@@ -4,6 +4,7 @@ import {
   ensureStringArray,
   nullToUndefined,
   stringToNumberTransform,
+  numberOrStringToString,
 } from '../../utils/transforms';
 
 describe('transforms', () => {
@@ -105,6 +106,35 @@ describe('transforms', () => {
     test('handles strings with no commas', () => {
       expect(ensureStringArray('nocommas')).toEqual(['nocommas']);
       expect(ensureStringArray('single-value')).toEqual(['single-value']);
+    });
+  });
+
+  describe('numberOrStringToString', () => {
+    test('converts number to string', () => {
+      expect(numberOrStringToString(123)).toBe('123');
+      expect(numberOrStringToString(0)).toBe('0');
+      expect(numberOrStringToString(-456)).toBe('-456');
+      expect(numberOrStringToString(12.34)).toBe('12.34');
+    });
+
+    test('preserves string values', () => {
+      expect(numberOrStringToString('123')).toBe('123');
+      expect(numberOrStringToString('abc')).toBe('abc');
+      expect(numberOrStringToString('')).toBe('');
+      expect(numberOrStringToString('pr-123')).toBe('pr-123');
+    });
+
+    test('preserves null and undefined', () => {
+      expect(numberOrStringToString(null)).toBeNull();
+      expect(numberOrStringToString(undefined)).toBeUndefined();
+    });
+
+    test('handles edge cases', () => {
+      expect(numberOrStringToString(0)).toBe('0');
+      expect(numberOrStringToString('')).toBe('');
+      expect(numberOrStringToString(NaN)).toBe('NaN');
+      expect(numberOrStringToString(Infinity)).toBe('Infinity');
+      expect(numberOrStringToString(-Infinity)).toBe('-Infinity');
     });
   });
 });

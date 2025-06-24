@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stringToNumberTransform } from '../utils/transforms.js';
+import { stringToNumberTransform, numberOrStringToString } from '../utils/transforms.js';
 import {
   severitySchema,
   severitiesSchema,
@@ -155,7 +155,11 @@ export const issuesToolSchema = {
 
   // Branch and PR support
   branch: z.string().nullable().optional(),
-  pull_request: z.string().nullable().optional(),
+  pull_request: z
+    .union([z.string(), z.number()])
+    .nullable()
+    .optional()
+    .transform(numberOrStringToString),
 
   // Issue filters
   issues: z.array(z.string()).nullable().optional(),

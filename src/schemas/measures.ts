@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stringToNumberTransform } from '../utils/transforms.js';
+import { stringToNumberTransform, numberOrStringToString } from '../utils/transforms.js';
 
 /**
  * Schemas for measures tools
@@ -10,7 +10,7 @@ export const componentMeasuresToolSchema = {
   metric_keys: z.array(z.string()),
   additional_fields: z.array(z.string()).optional(),
   branch: z.string().optional(),
-  pull_request: z.string().optional(),
+  pull_request: z.union([z.string(), z.number()]).optional().transform(numberOrStringToString),
   period: z.string().optional(),
 };
 
@@ -19,7 +19,7 @@ export const componentsMeasuresToolSchema = {
   metric_keys: z.array(z.string()),
   additional_fields: z.array(z.string()).optional(),
   branch: z.string().optional(),
-  pull_request: z.string().optional(),
+  pull_request: z.union([z.string(), z.number()]).optional().transform(numberOrStringToString),
   period: z.string().optional(),
   page: z.string().optional().transform(stringToNumberTransform),
   page_size: z.string().optional().transform(stringToNumberTransform),
@@ -31,7 +31,7 @@ export const measuresHistoryToolSchema = {
   from: z.string().optional(),
   to: z.string().optional(),
   branch: z.string().optional(),
-  pull_request: z.string().optional(),
+  pull_request: z.union([z.string(), z.number()]).optional().transform(numberOrStringToString),
   page: z.string().optional().transform(stringToNumberTransform),
   page_size: z.string().optional().transform(stringToNumberTransform),
 };

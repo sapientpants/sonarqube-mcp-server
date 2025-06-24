@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { stringToNumberTransform } from '../utils/transforms.js';
+import { stringToNumberTransform, numberOrStringToString } from '../utils/transforms.js';
 import { hotspotStatusSchema, hotspotResolutionSchema } from './hotspots.js';
 
 /**
@@ -9,7 +9,11 @@ import { hotspotStatusSchema, hotspotResolutionSchema } from './hotspots.js';
 export const hotspotsToolSchema = {
   project_key: z.string().optional(),
   branch: z.string().nullable().optional(),
-  pull_request: z.string().nullable().optional(),
+  pull_request: z
+    .union([z.string(), z.number()])
+    .nullable()
+    .optional()
+    .transform(numberOrStringToString),
   status: hotspotStatusSchema,
   resolution: hotspotResolutionSchema,
   files: z.array(z.string()).nullable().optional(),
