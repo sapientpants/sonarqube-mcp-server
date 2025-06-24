@@ -63,25 +63,56 @@ export async function checkProjectAccessForParams(
     const value = params[paramName];
     if (!value) continue;
 
-    if (typeof value === 'string') {
-      const projectKey = extractProjectKey(value);
-      const result = await checkSingleProjectAccess(projectKey);
-      if (!result.allowed) {
-        return result;
-      }
-    } else if (Array.isArray(value)) {
-      for (const item of value) {
-        if (typeof item === 'string') {
-          const projectKey = extractProjectKey(item);
-          const result = await checkSingleProjectAccess(projectKey);
-          if (!result.allowed) {
-            return result;
-          }
-        }
-      }
+    const result = await checkProjectValueAccess(value);
+    if (!result.allowed) {
+      return result;
     }
   }
 
+  return { allowed: true };
+}
+
+/**
+ * Helper function to check access for a parameter value (string or array)
+ */
+async function checkProjectValueAccess(
+  value: unknown
+): Promise<{ allowed: boolean; reason?: string }> {
+  if (typeof value === 'string') {
+    return await checkStringProjectAccess(value);
+  }
+
+  if (Array.isArray(value)) {
+    return await checkArrayProjectAccess(value);
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Helper function to check access for a string project key
+ */
+async function checkStringProjectAccess(
+  value: string
+): Promise<{ allowed: boolean; reason?: string }> {
+  const projectKey = extractProjectKey(value);
+  return await checkSingleProjectAccess(projectKey);
+}
+
+/**
+ * Helper function to check access for an array of project keys
+ */
+async function checkArrayProjectAccess(
+  value: unknown[]
+): Promise<{ allowed: boolean; reason?: string }> {
+  for (const item of value) {
+    if (typeof item === 'string') {
+      const result = await checkStringProjectAccess(item);
+      if (!result.allowed) {
+        return result;
+      }
+    }
+  }
   return { allowed: true };
 }
 

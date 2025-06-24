@@ -1,6 +1,7 @@
 import { createLogger } from '../utils/logger.js';
 import type { TokenClaims } from './token-validator.js';
 import type { ISonarQubeClient } from '../types/index.js';
+import type { ServiceAccount } from './service-account-types.js';
 import { createSonarQubeClient } from '../sonarqube.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
 import { ServiceAccountHealthMonitor } from './service-account-health.js';
@@ -8,34 +9,6 @@ import { ServiceAccountAuditor } from './service-account-auditor.js';
 import { CredentialStore } from './credential-store.js';
 
 const logger = createLogger('ServiceAccountMapper');
-
-/**
- * Service account configuration
- */
-export interface ServiceAccount {
-  /** Unique identifier for the service account */
-  id: string;
-  /** Display name for the service account */
-  name: string;
-  /** SonarQube API token */
-  token: string;
-  /** Optional SonarQube URL (overrides default) */
-  url?: string;
-  /** Optional organization (for SonarCloud) */
-  organization?: string;
-  /** Allowed scopes for this service account */
-  allowedScopes?: string[];
-  /** Team or environment this account is for (e.g., 'dev-team', 'prod') */
-  environment?: string;
-  /** Whether this account is marked as healthy */
-  isHealthy?: boolean;
-  /** Last health check timestamp */
-  lastHealthCheck?: Date;
-  /** Number of consecutive failures */
-  failureCount?: number;
-  /** Fallback service account ID if this one fails */
-  fallbackAccountId?: string;
-}
 
 /**
  * Mapping rule for user to service account
@@ -483,7 +456,7 @@ export class ServiceAccountMapper {
    */
   private getAccountToken(account: ServiceAccount): string {
     // Try credential store first
-    if (this.credentialStore && this.credentialStore.hasCredential(account.id)) {
+    if (this.credentialStore?.hasCredential(account.id)) {
       const token = this.credentialStore.getCredential(account.id);
       if (token) {
         return token;

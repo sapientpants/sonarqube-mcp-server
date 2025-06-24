@@ -110,7 +110,7 @@ export function validateProjects(projectKey: string, rule: PermissionRule): bool
  */
 export function validateTools(tool: string, rule: PermissionRule): boolean {
   // Check if tool is explicitly denied
-  if (rule.deniedTools && rule.deniedTools.includes(tool)) {
+  if (rule.deniedTools?.includes(tool)) {
     return false;
   }
 
@@ -145,7 +145,7 @@ export function isToolAllowed(
   deniedTools?: string[]
 ): boolean {
   // Check if tool is explicitly denied
-  if (deniedTools && deniedTools.includes(tool)) {
+  if (deniedTools?.includes(tool)) {
     return false;
   }
 

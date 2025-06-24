@@ -143,7 +143,7 @@ async function applyPermissionFiltering(
         const filtered: unknown[] = [];
         for (const hotspot of result.hotspots) {
           if (hotspot && typeof hotspot === 'object' && 'project' in hotspot) {
-            const projectKey = (hotspot.project as { key?: string }).key || hotspot.project;
+            const projectKey = (hotspot.project as { key?: string }).key ?? hotspot.project;
             const access = await permissionService.checkProjectAccess(userContext, projectKey);
             if (access.allowed) {
               filtered.push(hotspot);

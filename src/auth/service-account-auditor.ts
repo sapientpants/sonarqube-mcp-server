@@ -372,9 +372,7 @@ export class ServiceAccountAuditor {
 
       // Track failovers by account
       if (event.eventType === AuditEventType.ACCOUNT_FAILOVER) {
-        if (!stats.failoversByAccount) {
-          stats.failoversByAccount = {};
-        }
+        stats.failoversByAccount ??= {};
         stats.failoversByAccount[event.serviceAccountId] =
           (stats.failoversByAccount[event.serviceAccountId] || 0) + 1;
       }

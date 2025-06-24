@@ -1,20 +1,9 @@
 import { createLogger } from '../utils/logger.js';
-import type { ServiceAccount } from './service-account-mapper.js';
+import type { ServiceAccount, HealthCheckResult } from './service-account-types.js';
 import type { ISonarQubeClient } from '../types/index.js';
 import { createSonarQubeClient } from '../sonarqube.js';
 
 const logger = createLogger('ServiceAccountHealth');
-
-/**
- * Health check result for a service account
- */
-export interface HealthCheckResult {
-  accountId: string;
-  isHealthy: boolean;
-  lastCheck: Date;
-  latency?: number;
-  error?: string;
-}
 
 /**
  * Service account health monitoring options
@@ -110,7 +99,7 @@ export class ServiceAccountHealthMonitor {
 
     try {
       // Create a client for the service account
-      const client = await createSonarQubeClient(
+      const client = createSonarQubeClient(
         account.token,
         account.url ?? defaultUrl ?? 'https://sonarcloud.io',
         account.organization ?? defaultOrganization

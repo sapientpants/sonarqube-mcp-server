@@ -3,6 +3,7 @@
  */
 
 export * from './types.js';
+export * from './service-account-types.js';
 export {
   TokenValidator,
   TokenValidationError,

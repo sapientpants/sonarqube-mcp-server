@@ -18,7 +18,7 @@ const logger = createLogger('PermissionService');
  * Permission service for filtering and authorizing access
  */
 export class PermissionService {
-  private permissionCache: Map<string, PermissionCheckResult> | undefined;
+  private readonly permissionCache: Map<string, PermissionCheckResult> | undefined;
   private auditLog: PermissionAuditEntry[] = [];
 
   constructor(private readonly config: PermissionConfig) {

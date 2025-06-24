@@ -13,10 +13,22 @@ jest.unstable_mockModule('../../sonarqube.js', () => ({
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { createSonarQubeClient } = await import('../../sonarqube.js');
 
-// Verify the mock is working
-// Note: This test suite is skipped due to complex ESM module mocking issues
-// The actual implementation works correctly in integration tests
-
+/**
+ * This test suite is skipped due to complex ESM module mocking issues with Jest.
+ *
+ * Reason for skipping:
+ * - ESM modules require special handling for mocking dependencies
+ * - The service account health functionality involves dynamic imports and external API calls
+ * - Mocking SonarQube client creation in ESM context creates circular dependency issues
+ *
+ * Alternative testing strategy:
+ * - Integration tests verify the actual functionality works correctly
+ * - Unit tests for individual helper functions are maintained separately
+ * - End-to-end tests cover the complete service account health monitoring workflow
+ *
+ * TODO: Migrate to a more ESM-friendly testing approach when Jest ESM support improves
+ * or consider switching to Vitest for better ESM compatibility.
+ */
 describe.skip('ServiceAccountHealthMonitor', () => {
   let monitor: ServiceAccountHealthMonitor;
   let mockAccount: ServiceAccount;
