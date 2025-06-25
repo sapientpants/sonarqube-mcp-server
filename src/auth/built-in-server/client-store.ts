@@ -63,7 +63,7 @@ export class InMemoryClientStore implements IClientStore {
 
   async validateClientCredentials(clientId: string, clientSecret: string): Promise<boolean> {
     const client = await this.getClientById(clientId);
-    if (!client || !client.clientSecretHash) {
+    if (!client?.clientSecretHash) {
       return false;
     }
 

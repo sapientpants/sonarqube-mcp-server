@@ -8,7 +8,7 @@ import type {
 
 export class InMemoryAuthorizationCodeStore implements IAuthorizationCodeStore {
   private readonly codes = new Map<string, AuthorizationCode>();
-  private cleanupInterval: NodeJS.Timeout;
+  private readonly cleanupInterval: NodeJS.Timeout;
 
   constructor() {
     this.cleanupInterval = setInterval(() => {
@@ -61,7 +61,7 @@ export class InMemoryAuthorizationCodeStore implements IAuthorizationCodeStore {
 export class InMemoryRefreshTokenStore implements IRefreshTokenStore {
   private readonly tokens = new Map<string, RefreshToken>();
   private readonly userTokens = new Map<string, Set<string>>();
-  private cleanupInterval: NodeJS.Timeout;
+  private readonly cleanupInterval: NodeJS.Timeout;
 
   constructor() {
     this.cleanupInterval = setInterval(

@@ -6,7 +6,7 @@ import { InMemoryClientStore, ClientSecretGenerator } from './client-store.js';
 import { InMemoryAuthorizationCodeStore, InMemoryRefreshTokenStore } from './auth-code-store.js';
 import { KeyManager } from './key-manager.js';
 import { PKCEValidator } from './pkce.js';
-import type { User } from './types.js';
+import type { User, OAuthClient } from './types.js';
 
 interface AuthServerOptions {
   issuer: string;
@@ -293,6 +293,31 @@ export class BuiltInAuthServer {
     }
   }
 
+  private async validateClient(
+    clientId: string,
+    clientSecret: string | undefined,
+    res: Response
+  ): Promise<OAuthClient | null> {
+    const client = await this.clientStore.getClientById(clientId);
+    if (!client) {
+      res.status(401).json({ error: 'invalid_client' });
+      return null;
+    }
+
+    if (client.tokenEndpointAuthMethod !== 'none' && clientSecret) {
+      const validCredentials = await this.clientStore.validateClientCredentials(
+        clientId,
+        clientSecret
+      );
+      if (!validCredentials) {
+        res.status(401).json({ error: 'invalid_client' });
+        return null;
+      }
+    }
+
+    return client;
+  }
+
   private async handleAuthorizationCodeGrant(req: Request, res: Response): Promise<void> {
     const schema = z.object({
       grant_type: z.literal('authorization_code'),
@@ -305,21 +330,9 @@ export class BuiltInAuthServer {
 
     const body = schema.parse(req.body);
 
-    const client = await this.clientStore.getClientById(body.client_id);
+    const client = await this.validateClient(body.client_id, body.client_secret, res);
     if (!client) {
-      res.status(401).json({ error: 'invalid_client' });
       return;
-    }
-
-    if (client.tokenEndpointAuthMethod !== 'none' && body.client_secret) {
-      const validCredentials = await this.clientStore.validateClientCredentials(
-        body.client_id,
-        body.client_secret
-      );
-      if (!validCredentials) {
-        res.status(401).json({ error: 'invalid_client' });
-        return;
-      }
     }
 
     const authCode = await this.authCodeStore.getAuthorizationCode(body.code);
@@ -408,21 +421,9 @@ export class BuiltInAuthServer {
 
     const body = schema.parse(req.body);
 
-    const client = await this.clientStore.getClientById(body.client_id);
+    const client = await this.validateClient(body.client_id, body.client_secret, res);
     if (!client) {
-      res.status(401).json({ error: 'invalid_client' });
       return;
-    }
-
-    if (client.tokenEndpointAuthMethod !== 'none' && body.client_secret) {
-      const validCredentials = await this.clientStore.validateClientCredentials(
-        body.client_id,
-        body.client_secret
-      );
-      if (!validCredentials) {
-        res.status(401).json({ error: 'invalid_client' });
-        return;
-      }
     }
 
     const refreshTokenData = await this.refreshTokenStore.getRefreshToken(body.refresh_token);
@@ -432,7 +433,7 @@ export class BuiltInAuthServer {
     }
 
     const user = await this.userStore.getUserById(refreshTokenData.userId);
-    if (!user || !user.isActive) {
+    if (!user?.isActive) {
       res.status(400).json({ error: 'invalid_grant' });
       return;
     }
