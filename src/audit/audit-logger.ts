@@ -2,7 +2,14 @@ import { createHash, createHmac } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createLogger } from '../utils/logger.js';
-import type { AuditEvent, AuditConfig, IAuditLogger, AuditEventFilters } from './types.js';
+import {
+  AuditEventType,
+  AuditEventCategory,
+  type AuditEvent,
+  type AuditConfig,
+  type IAuditLogger,
+  type AuditEventFilters,
+} from './types.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const logger = createLogger('AuditLogger');
@@ -42,7 +49,7 @@ const DEFAULT_CONFIG: Required<AuditConfig> = {
  */
 const PII_PATTERNS = {
   email: /\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
-  ipv4: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
+  ipv4: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
   ipv6: /\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b/g,
   creditCard: /\b(?:\d[ -]*?){13,19}\b/g,
   ssn: /\b(?:\d{3}-\d{2}-\d{4}|\d{9})\b/g,
@@ -57,11 +64,10 @@ export class AuditLogger implements IAuditLogger {
   private currentLogFile?: string;
   private flushTimer?: NodeJS.Timeout;
   private isInitialized = false;
+  private initializationPromise: Promise<void> | null = null;
 
   constructor(config: AuditConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    // Initialize asynchronously without blocking constructor
-    void this.initialize();
   }
 
   /**
@@ -70,6 +76,18 @@ export class AuditLogger implements IAuditLogger {
   private async initialize(): Promise<void> {
     if (this.isInitialized) return;
 
+    // Use singleton initialization promise
+    if (!this.initializationPromise) {
+      this.initializationPromise = this.performInitialization();
+    }
+
+    return this.initializationPromise;
+  }
+
+  /**
+   * Perform the actual initialization
+   */
+  private async performInitialization(): Promise<void> {
     try {
       // Create audit log directory
       await fs.mkdir(this.config.auditLogPath, { recursive: true });
@@ -270,9 +288,7 @@ export class AuditLogger implements IAuditLogger {
     const events = [...this.buffer];
     this.buffer = [];
 
-    for (const event of events) {
-      await this.writeEvent(event);
-    }
+    await Promise.all(events.map((event) => this.writeEvent(event)));
   }
 
   /**
@@ -449,6 +465,23 @@ export class AuditLogger implements IAuditLogger {
 let auditLogger: AuditLogger | undefined;
 
 export function getAuditLogger(config?: AuditConfig): AuditLogger {
-  auditLogger ??= new AuditLogger(config);
+  if (!auditLogger) {
+    auditLogger = new AuditLogger(config);
+    // Trigger initialization immediately
+    auditLogger
+      .logEvent({
+        eventType: AuditEventType.SYSTEM_STARTED,
+        eventCategory: AuditEventCategory.SYSTEM,
+        actor: { userId: 'system' },
+        target: { type: 'system', id: 'audit-logger' },
+        action: { type: 'start', result: 'success' },
+        context: {},
+        security: {},
+        compliance: {},
+      })
+      .catch((error) => {
+        logger.error('Failed to initialize audit logger', { error });
+      });
+  }
   return auditLogger;
 }
