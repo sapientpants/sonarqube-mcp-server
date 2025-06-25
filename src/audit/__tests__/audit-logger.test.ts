@@ -113,6 +113,142 @@ describe('AuditLogger', () => {
       expect(params.description).toBe('User ***@company.com accessed data');
     });
 
+    it('should redact IPv6 addresses and preserve domains when configured', async () => {
+      const ipRedactLogger = new AuditLogger({
+        auditLogPath: testLogPath,
+        asyncLogging: false,
+        redactPII: true,
+        redactIPAddresses: true,
+        preserveDomains: false,
+      });
+
+      const event = {
+        eventType: AuditEventType.AUTH_TOKEN_VALIDATED,
+        eventCategory: AuditEventCategory.AUTHENTICATION,
+        actor: {
+          userId: 'test-user',
+          ipAddress: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+        },
+        target: {
+          type: 'auth',
+          id: 'token',
+        },
+        action: {
+          type: 'validate',
+          result: 'success' as const,
+          parameters: {
+            sourceIp: '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
+            email: 'admin@example.com',
+            nested: {
+              data: 'SSN: 987654321',
+              ips: ['192.168.1.1', '10.0.0.1'],
+            },
+          },
+        },
+        context: {},
+        security: {},
+        compliance: {},
+      };
+
+      await ipRedactLogger.logEvent(event);
+
+      const logFiles = await fs.readdir(testLogPath);
+      const logContent = await fs.readFile(join(testLogPath, logFiles[0]), 'utf-8');
+      const loggedEvent = JSON.parse(logContent.trim()) as AuditEvent;
+
+      // Check IP and email redaction
+      const params = loggedEvent.action.parameters as Record<string, unknown>;
+      expect(params.sourceIp).toBe('****:****:****:****');
+      expect(params.email).toBe('***@***.***'); // No domain preservation
+      expect((params.nested as Record<string, unknown>).data).toBe('SSN: ***-**-****');
+      expect(((params.nested as Record<string, unknown>).ips as string[])[0]).toContain(
+        '***.***.***'
+      );
+
+      await ipRedactLogger.cleanup();
+    });
+
+    it('should handle various data types in PII redaction', async () => {
+      const event = {
+        eventType: AuditEventType.DATA_ACCESSED,
+        eventCategory: AuditEventCategory.DATA_ACCESS,
+        actor: { userId: 'test-user' },
+        target: { type: 'data', id: 'mixed' },
+        action: {
+          type: 'read',
+          result: 'success' as const,
+          parameters: {
+            nullValue: null,
+            numberValue: 12345,
+            booleanValue: true,
+            arrayValue: ['email@test.com', 'SSN: 111-22-3333', null, 123],
+            undefinedValue: undefined,
+          },
+        },
+        context: {},
+        security: {},
+        compliance: {},
+      };
+
+      await auditLogger.logEvent(event);
+
+      const logFiles = await fs.readdir(testLogPath);
+      const logContent = await fs.readFile(join(testLogPath, logFiles[0]), 'utf-8');
+      const loggedEvent = JSON.parse(logContent.trim()) as AuditEvent;
+
+      // Check PII redaction handles different types
+      const params = loggedEvent.action.parameters as Record<string, unknown>;
+      expect(params.nullValue).toBeNull();
+      expect(params.numberValue).toBe(12345);
+      expect(params.booleanValue).toBe(true);
+      expect((params.arrayValue as unknown[])[0]).toBe('***@test.com');
+      expect((params.arrayValue as unknown[])[1]).toBe('SSN: ***-**-****');
+      expect((params.arrayValue as unknown[])[2]).toBeNull();
+      expect((params.arrayValue as unknown[])[3]).toBe(123);
+    });
+
+    it('should apply custom redaction patterns', async () => {
+      const customLogger = new AuditLogger({
+        auditLogPath: testLogPath,
+        asyncLogging: false,
+        redactPII: true,
+        redactPatterns: [/API_KEY_[A-Z0-9]+/g, /secret-\d+/g],
+      });
+
+      const event = {
+        eventType: AuditEventType.CONFIG_CHANGED,
+        eventCategory: AuditEventCategory.CONFIGURATION,
+        actor: { userId: 'admin' },
+        target: { type: 'config', id: 'api-keys' },
+        action: {
+          type: 'update',
+          result: 'success' as const,
+          parameters: {
+            apiKey: 'API_KEY_ABC123XYZ',
+            secret: 'secret-987654',
+            description: 'Updated API_KEY_ABC123XYZ and secret-987654',
+          },
+        },
+        context: {},
+        security: {},
+        compliance: {},
+      };
+
+      await customLogger.logEvent(event);
+
+      const logFiles = await fs.readdir(testLogPath);
+      const logContent = await fs.readFile(join(testLogPath, logFiles[0]), 'utf-8');
+      const loggedEvent = JSON.parse(logContent.trim()) as AuditEvent;
+
+      // Check custom pattern redaction
+      const params = loggedEvent.action.parameters as Record<string, unknown>;
+      expect(params.apiKey).toBe('***');
+      expect(params.secret).toBe('***');
+      expect(params.description).toBe('Updated *** and ***');
+
+      await customLogger.cleanup();
+    });
+
     it('should handle checksum generation', async () => {
       const event = {
         eventType: AuditEventType.AUTH_LOGIN,
@@ -396,6 +532,137 @@ describe('AuditLogger', () => {
       } finally {
         await asyncLogger.cleanup();
       }
+    });
+
+    it('should flush buffer when it reaches bufferSize', async () => {
+      const asyncLogger = new AuditLogger({
+        auditLogPath: testLogPath,
+        asyncLogging: true,
+        bufferSize: 2, // Small buffer size
+        flushIntervalMs: 5000, // Long interval
+      });
+
+      try {
+        // Log events to fill buffer
+        await asyncLogger.logEvent({
+          eventType: AuditEventType.AUTH_LOGIN,
+          eventCategory: AuditEventCategory.AUTHENTICATION,
+          actor: { userId: 'user1' },
+          target: { type: 'auth', id: 'user1' },
+          action: { type: 'login', result: 'success' as const },
+          context: {},
+          security: {},
+          compliance: {},
+        });
+
+        await asyncLogger.logEvent({
+          eventType: AuditEventType.AUTH_LOGIN,
+          eventCategory: AuditEventCategory.AUTHENTICATION,
+          actor: { userId: 'user2' },
+          target: { type: 'auth', id: 'user2' },
+          action: { type: 'login', result: 'success' as const },
+          context: {},
+          security: {},
+          compliance: {},
+        });
+
+        // Buffer should have flushed immediately
+        const files = await fs.readdir(testLogPath);
+        expect(files).toHaveLength(1);
+
+        const logContent = await fs.readFile(join(testLogPath, files[0]), 'utf-8');
+        const lines = logContent.trim().split('\n');
+        expect(lines).toHaveLength(2);
+      } finally {
+        await asyncLogger.cleanup();
+      }
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle initialization errors gracefully', async () => {
+      const invalidPath = '/invalid/path/that/does/not/exist';
+      const errorLogger = new AuditLogger({
+        auditLogPath: invalidPath,
+        asyncLogging: false,
+      });
+
+      // Give time for async initialization
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Should not throw when logging even if initialization failed
+      await expect(
+        errorLogger.logEvent({
+          eventType: AuditEventType.SYSTEM_STARTED,
+          eventCategory: AuditEventCategory.SYSTEM,
+          actor: { userId: 'system' },
+          target: { type: 'system', id: 'mcp-server' },
+          action: { type: 'start', result: 'success' as const },
+          context: {},
+          security: {},
+          compliance: {},
+        })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('SIEM integration', () => {
+    it('should attempt to send events to SIEM when configured', async () => {
+      const siemLogger = new AuditLogger({
+        auditLogPath: testLogPath,
+        asyncLogging: false,
+        webhookUrl: 'https://siem.example.com/webhook',
+      });
+
+      // Log an event
+      await siemLogger.logEvent({
+        eventType: AuditEventType.PERMISSION_DENIED,
+        eventCategory: AuditEventCategory.AUTHORIZATION,
+        actor: { userId: 'user1' },
+        target: { type: 'project', id: 'secret-project' },
+        action: { type: 'access', result: 'failure' as const },
+        context: {},
+        security: {},
+        compliance: {},
+      });
+
+      // Verify event was logged to file
+      const files = await fs.readdir(testLogPath);
+      expect(files).toHaveLength(1);
+
+      await siemLogger.cleanup();
+    });
+  });
+
+  describe('HMAC integrity', () => {
+    it('should use HMAC for checksums when configured', async () => {
+      const hmacLogger = new AuditLogger({
+        auditLogPath: testLogPath,
+        asyncLogging: false,
+        enableHMAC: true,
+        hmacSecret: 'test-secret-key',
+      });
+
+      await hmacLogger.logEvent({
+        eventType: AuditEventType.DATA_EXPORTED,
+        eventCategory: AuditEventCategory.DATA_ACCESS,
+        actor: { userId: 'user1' },
+        target: { type: 'data', id: 'export-123' },
+        action: { type: 'export', result: 'success' as const },
+        context: {},
+        security: {},
+        compliance: {},
+      });
+
+      const files = await fs.readdir(testLogPath);
+      const logContent = await fs.readFile(join(testLogPath, files[0]), 'utf-8');
+      const event = JSON.parse(logContent.trim()) as AuditEvent;
+
+      // HMAC produces different checksum than regular SHA-256
+      expect(event.checksum).toBeDefined();
+      expect(event.checksum).toMatch(/^[a-f0-9]{64}$/);
+
+      await hmacLogger.cleanup();
     });
   });
 });

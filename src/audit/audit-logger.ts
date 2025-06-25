@@ -331,7 +331,7 @@ export class AuditLogger implements IAuditLogger {
       // Archive directory might not exist
     }
 
-    return files.sort();
+    return files.sort((a, b) => a.localeCompare(b));
   }
 
   /**
