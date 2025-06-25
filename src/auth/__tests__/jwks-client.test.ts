@@ -305,4 +305,125 @@ describe('JWKSClient', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('edge cases', () => {
+    it('should throw error when no keys are found in JWKS', async () => {
+      const emptyJWKS: JWKSResponse = {
+        keys: [],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => emptyJWKS,
+      } as Response);
+
+      await expect(
+        client.getKey('https://example.com', undefined, 'https://jwks.uri')
+      ).rejects.toThrow('No suitable key found in JWKS');
+    });
+
+    it('should handle RSA keys without use property', async () => {
+      const mockJWKS: JWKSResponse = {
+        keys: [
+          {
+            kty: 'RSA',
+            kid: 'key1',
+            n: 'xjlCRBq...',
+            e: 'AQAB',
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockJWKS,
+      } as Response);
+
+      const key = await client.getKey('https://example.com', undefined, 'https://jwks.uri');
+      expect(key).toContain('BEGIN PUBLIC KEY');
+    });
+
+    it('should throw error for RSA keys missing n or e', async () => {
+      const invalidJWKS: JWKSResponse = {
+        keys: [
+          {
+            kty: 'RSA',
+            kid: 'key1',
+            n: 'xjlCRBq...',
+            // Missing e
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => invalidJWKS,
+      } as Response);
+
+      await expect(
+        client.getKey('https://example.com', undefined, 'https://jwks.uri')
+      ).rejects.toThrow('Invalid RSA key: missing n or e');
+    });
+
+    it('should handle discovery document without jwks_uri', async () => {
+      const invalidDiscovery = {
+        issuer: 'https://example.com',
+        // Missing jwks_uri
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => invalidDiscovery,
+      } as Response);
+
+      await expect(client.getKey('https://example.com')).rejects.toThrow(
+        'Discovery document missing jwks_uri'
+      );
+    });
+
+    it('should handle large RSA modulus values', async () => {
+      // Test with a key that has high bit set (needs leading zero in ASN.1)
+      const mockJWKS: JWKSResponse = {
+        keys: [
+          {
+            kty: 'RSA',
+            kid: 'key1',
+            n: 'xjlCRBqFPutijR3p_k5qRrROi1Gldqw8lYl9lz1AbxOiwuQfrA0Lx0r3qn_YOeDNH5TZ9O3PAqn5GU2xBvjH9hcR4qSe7EH7TFgYBN1TBuFBod3Oet7WKJqBKS0fPVKHpNY7LA9pcM1huNhPXDPj7rKZL0VRpuLFWZWZBpZTLrAZQVGqLcG3s5xLWhWB8JqKLNpHgbLCXzXbFEnGBBQcnKlEsHe7raCO7wLj1BkQxBpoyvLUxvH_0vH2a5e4bvhLKpPrOUnmA4iZBeNqYMPQp3zSNm5N4BQCvj4FmF0isxV5bCnQAjY4P1cnFG_43kTGJ-S4ymHHtLZiLYLF4Q',
+            e: 'AQAB',
+          },
+        ],
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockJWKS,
+      } as Response);
+
+      const key = await client.getKey('https://example.com', undefined, 'https://jwks.uri');
+      expect(key).toContain('BEGIN PUBLIC KEY');
+      expect(key).toContain('END PUBLIC KEY');
+    });
+
+    it('should handle ASN.1 length encoding for large values', async () => {
+      // Create a client to test private methods
+      const testClient = new JWKSClient();
+
+      // Test encodeLength method via reflection
+      const encodeLength = (
+        testClient as unknown as { encodeLength: (data: Buffer) => Buffer }
+      ).encodeLength.bind(testClient);
+
+      // Test short form (< 128)
+      const shortData = Buffer.alloc(50);
+      const shortEncoded = encodeLength(shortData);
+      expect(shortEncoded).toEqual(Buffer.from([50]));
+
+      // Test long form (>= 128)
+      const longData = Buffer.alloc(300);
+      const longEncoded = encodeLength(longData);
+      expect(longEncoded[0]).toBe(0x82); // Long form with 2 bytes
+      expect(longEncoded[1]).toBe(1); // First byte of length
+      expect(longEncoded[2]).toBe(44); // Second byte: 300 = 256 + 44
+    });
+  });
 });

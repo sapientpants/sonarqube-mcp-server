@@ -127,25 +127,30 @@ export class ExternalIdPManager {
       return claims;
     }
 
+    // Clone the claims object to avoid mutations
+    const extractedClaims = { ...claims };
+
     // Extract groups if configured
-    if (idp.groupsClaim && claims[idp.groupsClaim]) {
-      const groups = claims[idp.groupsClaim];
+    if (idp.groupsClaim && extractedClaims[idp.groupsClaim]) {
+      const groups = extractedClaims[idp.groupsClaim];
 
       // Apply transformation if needed
       if (idp.groupsTransform && idp.groupsTransform !== 'none' && Array.isArray(groups)) {
-        claims.groups = groups.map((group) => this.transformGroup(group, idp.groupsTransform!));
+        extractedClaims.groups = groups.map((group) =>
+          this.transformGroup(group, idp.groupsTransform!)
+        );
       } else {
-        claims.groups = groups;
+        extractedClaims.groups = groups;
       }
     }
 
     // Add provider-specific claims
-    claims.idp_provider = idp.provider;
+    extractedClaims.idp_provider = idp.provider;
     if (idp.tenantId) {
-      claims.idp_tenant = idp.tenantId;
+      extractedClaims.idp_tenant = idp.tenantId;
     }
 
-    return claims;
+    return extractedClaims;
   }
 
   /**

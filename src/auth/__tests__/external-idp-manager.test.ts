@@ -419,4 +419,127 @@ describe('ExternalIdPManager', () => {
       expect(mockJWKSClient.clearCache).toHaveBeenCalled();
     });
   });
+
+  describe('edge cases', () => {
+    it('should return original claims when no IdP is configured', () => {
+      const manager = new ExternalIdPManager();
+      const claims = {
+        sub: 'user123',
+        groups: ['group1'],
+      };
+
+      const extracted = manager.extractClaims('https://unknown.com', claims);
+      expect(extracted).toEqual(claims);
+      expect(extracted).toBe(claims); // Returns original when no IdP configured
+    });
+
+    it('should handle getIdP for non-existent issuer', () => {
+      const manager = new ExternalIdPManager();
+      const idp = manager.getIdP('https://unknown.com');
+      expect(idp).toBeUndefined();
+    });
+
+    it('should handle transformGroup with non-string values', () => {
+      const manager = new ExternalIdPManager();
+      const config: ExternalIdPConfig = {
+        provider: 'generic',
+        issuer: 'https://example.com',
+        audience: 'api://app',
+        groupsClaim: 'groups',
+        groupsTransform: 'extract_name',
+      };
+
+      manager.addIdP(config);
+
+      const claims = {
+        sub: 'user123',
+        groups: [123, { name: 'group' }, null, undefined],
+      };
+
+      const extracted = manager.extractClaims('https://example.com', claims);
+      expect(extracted.groups).toEqual(['123', '[object Object]', 'null', 'undefined']);
+    });
+
+    it('should handle health check errors gracefully', async () => {
+      const mockJwksClient = {
+        getKey: jest.fn().mockRejectedValue(new Error('Network error')),
+        clearCache: jest.fn(),
+        getCacheStats: jest.fn(),
+      };
+
+      const manager = new ExternalIdPManager({
+        jwksClient: mockJwksClient as unknown as JWKSClient,
+        healthCheckInterval: 50,
+      });
+
+      const config: ExternalIdPConfig = {
+        provider: 'azure-ad',
+        issuer: 'https://example.com',
+        audience: 'api://app',
+        enableHealthMonitoring: true,
+      };
+
+      manager.addIdP(config);
+
+      // Wait for health check to run
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const status = manager.getIdPHealthStatus('https://example.com');
+      expect(status?.healthy).toBe(false);
+      expect(status?.error).toBe('Network error');
+      expect(status?.consecutiveFailures).toBeGreaterThan(0);
+
+      manager.shutdown();
+    });
+
+    it('should not modify original claims object', () => {
+      const manager = new ExternalIdPManager();
+      const config: ExternalIdPConfig = {
+        provider: 'azure-ad',
+        issuer: 'https://example.com',
+        audience: 'api://app',
+        groupsClaim: 'groups',
+        tenantId: 'tenant123',
+      };
+
+      manager.addIdP(config);
+
+      const originalClaims = {
+        sub: 'user123',
+        groups: ['group1', 'group2'],
+      };
+
+      const claimsBeforeExtract = { ...originalClaims };
+      const extracted = manager.extractClaims('https://example.com', originalClaims);
+
+      // Original claims should be unchanged
+      expect(originalClaims).toEqual(claimsBeforeExtract);
+
+      // Extracted claims should have additional properties
+      expect(extracted).not.toEqual(originalClaims);
+      expect(extracted.idp_provider).toBe('azure-ad');
+      expect(extracted.idp_tenant).toBe('tenant123');
+    });
+
+    it('should handle extract_id transform with different path formats', () => {
+      const manager = new ExternalIdPManager();
+      const config: ExternalIdPConfig = {
+        provider: 'generic',
+        issuer: 'https://example.com',
+        audience: 'api://app',
+        groupsClaim: 'groups',
+        groupsTransform: 'extract_id',
+      };
+
+      manager.addIdP(config);
+
+      const claims = {
+        sub: 'user123',
+        groups: ['/groups/123/admins', 'groups/456/users', 'simple-group', '/single/', ''],
+      };
+
+      const extracted = manager.extractClaims('https://example.com', claims);
+      expect(extracted.groups).toEqual(['admins', 'users', 'simple-group', 'single', '']);
+    });
+  });
 });

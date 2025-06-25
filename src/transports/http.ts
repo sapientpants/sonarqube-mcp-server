@@ -23,7 +23,7 @@ import { getAuditLogger } from '../audit/audit-logger.js';
 import { AuditEventBuilder } from '../audit/audit-event-builder.js';
 import { AuditEventType } from '../audit/types.js';
 import { ExternalIdPManager } from '../auth/external-idp-manager.js';
-import { ExternalIdPProvider } from '../auth/external-idp-types.js';
+import { ExternalIdPProvider, ExternalIdPConfig } from '../auth/external-idp-types.js';
 
 const logger = createLogger('HttpTransport');
 const auditLogger = getAuditLogger();
@@ -149,16 +149,7 @@ export interface HttpTransportOptions {
   /**
    * External IdP configurations
    */
-  externalIdPs?: Array<{
-    provider: string;
-    issuer: string;
-    jwksUri?: string;
-    audience: string | string[];
-    groupsClaim?: string;
-    groupsTransform?: string;
-    enableHealthMonitoring?: boolean;
-    tenantId?: string;
-  }>;
+  externalIdPs?: ExternalIdPConfig[];
 }
 
 /**
@@ -1026,26 +1017,8 @@ export class HttpTransport implements ITransport {
   /**
    * Parse external IdP configurations from environment variables
    */
-  private parseExternalIdPsFromEnv(): Array<{
-    provider: string;
-    issuer: string;
-    jwksUri?: string;
-    audience: string | string[];
-    groupsClaim?: string;
-    groupsTransform?: string;
-    enableHealthMonitoring?: boolean;
-    tenantId?: string;
-  }> {
-    const idps: Array<{
-      provider: string;
-      issuer: string;
-      jwksUri?: string;
-      audience: string | string[];
-      groupsClaim?: string;
-      groupsTransform?: string;
-      enableHealthMonitoring?: boolean;
-      tenantId?: string;
-    }> = [];
+  private parseExternalIdPsFromEnv(): ExternalIdPConfig[] {
+    const idps: ExternalIdPConfig[] = [];
 
     // Parse from environment variables like MCP_EXTERNAL_IDP_1, MCP_EXTERNAL_IDP_2, etc.
     for (let i = 1; i <= 10; i++) {
@@ -1061,9 +1034,10 @@ export class HttpTransport implements ITransport {
 
         for (const part of parts) {
           const [key, ...valueParts] = part.split(':');
-          const value = valueParts.join(':'); // Handle URLs with colons
+          const trimmedKey = key.trim();
+          const value = valueParts.join(':').trim(); // Handle URLs with colons
 
-          switch (key) {
+          switch (trimmedKey) {
             case 'provider':
               idpConfig.provider = value;
               break;
@@ -1093,12 +1067,16 @@ export class HttpTransport implements ITransport {
 
         if (idpConfig.provider && idpConfig.issuer && idpConfig.audience) {
           idps.push({
-            provider: idpConfig.provider as string,
+            provider: idpConfig.provider as ExternalIdPProvider,
             issuer: idpConfig.issuer as string,
             audience: idpConfig.audience as string | string[],
             jwksUri: idpConfig.jwksUri as string | undefined,
             groupsClaim: idpConfig.groupsClaim as string | undefined,
-            groupsTransform: idpConfig.groupsTransform as string | undefined,
+            groupsTransform: idpConfig.groupsTransform as
+              | 'none'
+              | 'extract_name'
+              | 'extract_id'
+              | undefined,
             enableHealthMonitoring: idpConfig.enableHealthMonitoring as boolean | undefined,
             tenantId: idpConfig.tenantId as string | undefined,
           });
