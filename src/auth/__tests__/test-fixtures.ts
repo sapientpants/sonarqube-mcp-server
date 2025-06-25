@@ -1,5 +1,5 @@
 import { PermissionConfig, PermissionRule, UserContext } from '../types.js';
-import { TokenClaims } from '../token-validator.js';
+import { TokenClaims } from '../types.js';
 
 /**
  * Test fixtures and factories for permission system tests

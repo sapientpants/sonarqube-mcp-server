@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from '@jest/globals';
 import { PermissionService } from '../permission-service.js';
 import { PermissionConfig, UserContext } from '../types.js';
-import { TokenClaims } from '../token-validator.js';
+import { TokenClaims } from '../types.js';
 
 describe('PermissionService', () => {
   let permissionService: PermissionService;

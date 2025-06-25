@@ -11,20 +11,26 @@ import {
   TokenValidator,
   TokenValidationError,
   TokenValidationErrorCode,
-  TokenClaims,
 } from '../auth/token-validator.js';
+import { TokenClaims, UserContext } from '../auth/types.js';
 import { SessionManager } from '../auth/session-manager.js';
 import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
 import { getPermissionManager } from '../auth/permission-manager.js';
-import { UserContext } from '../auth/types.js';
 import { contextProvider } from '../auth/context-provider.js';
 import { getAuditLogger } from '../audit/audit-logger.js';
 import { AuditEventBuilder } from '../audit/audit-event-builder.js';
 import { AuditEventType } from '../audit/types.js';
+import { ExternalIdPManager } from '../auth/external-idp-manager.js';
+import { ExternalIdPProvider, ExternalIdPConfig } from '../auth/external-idp-types.js';
 
 const logger = createLogger('HttpTransport');
 const auditLogger = getAuditLogger();
+
+/**
+ * Type for IdP configuration values during parsing
+ */
+type IdPConfigValue = string | string[] | boolean | undefined;
 
 /**
  * Extended Express Request with authenticated user context
@@ -143,6 +149,11 @@ export interface HttpTransportOptions {
     /** Enable HTTPS */
     enabled?: boolean;
   };
+
+  /**
+   * External IdP configurations
+   */
+  externalIdPs?: ExternalIdPConfig[];
 }
 
 /**
@@ -175,6 +186,7 @@ export class HttpTransport implements ITransport {
   private tokenValidator?: TokenValidator;
   private sessionManager?: SessionManager;
   private serviceAccountMapper?: ServiceAccountMapper;
+  private externalIdPManager?: ExternalIdPManager;
 
   constructor(options: HttpTransportOptions = {}) {
     const tlsEnabled = options.tls?.enabled ?? process.env.MCP_HTTP_TLS_ENABLED === 'true';
@@ -202,7 +214,8 @@ export class HttpTransport implements ITransport {
         key: options.tls?.key ?? process.env.MCP_HTTP_TLS_KEY,
         ca: options.tls?.ca ?? process.env.MCP_HTTP_TLS_CA,
       },
-    };
+      externalIdPs: options.externalIdPs ?? this.parseExternalIdPsFromEnv(),
+    } as Required<HttpTransportOptions>;
 
     this.app = express();
     this.setupMiddleware();
@@ -408,15 +421,35 @@ export class HttpTransport implements ITransport {
           }
         }
 
+        // Get external IdP health if available
+        let externalIdPHealth: Record<string, unknown> | undefined;
+        if (this.externalIdPManager) {
+          const healthStatuses = this.externalIdPManager.getHealthStatus();
+          externalIdPHealth = {
+            totalIdPs: this.externalIdPManager.getIdPs().length,
+            healthyIdPs: healthStatuses.filter((h) => h.healthy).length,
+            idps: healthStatuses.map((status) => ({
+              issuer: status.issuer,
+              healthy: status.healthy,
+              lastSuccess: status.lastSuccess,
+              lastFailure: status.lastFailure,
+              consecutiveFailures: status.consecutiveFailures,
+              error: status.error,
+            })),
+          };
+        }
+
         res.json({
           status: 'ready',
           features: {
             authentication: !!this.tokenValidator,
             sessionManagement: !!this.sessionManager,
             serviceAccountMapping: !!this.serviceAccountMapper,
+            externalIdPIntegration: !!this.externalIdPManager,
             tls: this.options.tls.enabled,
           },
           serviceAccountHealth,
+          externalIdPHealth,
         });
       } else {
         res.status(503).json({
@@ -474,35 +507,106 @@ export class HttpTransport implements ITransport {
    * Set up token validator
    */
   private setupTokenValidator(): void {
-    if (this.options.authorizationServers.length > 0 || this.options.builtInAuthServer) {
-      // Create JWKS endpoints map
-      const jwksEndpoints = new Map<string, string>();
+    if (!this.hasAuthenticationConfigured()) {
+      return;
+    }
 
-      // Add external authorization servers
-      this.options.authorizationServers.forEach((server) => {
-        // Assume JWKS endpoint follows OAuth 2.0 metadata convention
-        const jwksUri = server.endsWith('/')
-          ? `${server}.well-known/jwks.json`
-          : `${server}/.well-known/jwks.json`;
-        jwksEndpoints.set(server, jwksUri);
-      });
+    this.setupExternalIdPManager();
+    const { jwksEndpoints, issuers } = this.buildJwksConfiguration();
 
-      // Add built-in auth server if enabled
-      if (this.options.builtInAuthServer) {
-        jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
+    this.tokenValidator = new TokenValidator({
+      audience: this.options.publicUrl,
+      issuers,
+      jwksEndpoints,
+      clockTolerance: 5,
+      validateResource: true,
+      expectedResources: [this.options.publicUrl],
+      externalIdPManager: this.externalIdPManager,
+    });
+  }
+
+  /**
+   * Check if any authentication method is configured
+   */
+  private hasAuthenticationConfigured(): boolean {
+    return (
+      this.options.authorizationServers.length > 0 ||
+      this.options.builtInAuthServer ||
+      this.options.externalIdPs.length > 0
+    );
+  }
+
+  /**
+   * Set up external IdP manager if configured
+   */
+  private setupExternalIdPManager(): void {
+    if (this.options.externalIdPs.length === 0) {
+      return;
+    }
+
+    this.externalIdPManager = new ExternalIdPManager({
+      healthCheckInterval: 300000, // 5 minutes
+    });
+
+    // Add configured external IdPs
+    for (const idpConfig of this.options.externalIdPs) {
+      this.externalIdPManager.addIdP(idpConfig);
+    }
+  }
+
+  /**
+   * Build JWKS endpoints and issuers configuration
+   */
+  private buildJwksConfiguration(): {
+    jwksEndpoints: Map<string, string>;
+    issuers: string[];
+  } {
+    const jwksEndpoints = new Map<string, string>();
+    const issuers: string[] = [];
+
+    this.addExternalAuthServers(jwksEndpoints, issuers);
+    this.addBuiltInAuthServer(jwksEndpoints, issuers);
+    this.addExternalIdPIssuers(jwksEndpoints, issuers);
+
+    return { jwksEndpoints, issuers };
+  }
+
+  /**
+   * Add external authorization servers to JWKS configuration
+   */
+  private addExternalAuthServers(jwksEndpoints: Map<string, string>, issuers: string[]): void {
+    this.options.authorizationServers.forEach((server) => {
+      const jwksUri = server.endsWith('/')
+        ? `${server}.well-known/jwks.json`
+        : `${server}/.well-known/jwks.json`;
+      jwksEndpoints.set(server, jwksUri);
+      issuers.push(server);
+    });
+  }
+
+  /**
+   * Add built-in auth server to JWKS configuration
+   */
+  private addBuiltInAuthServer(jwksEndpoints: Map<string, string>, issuers: string[]): void {
+    if (this.options.builtInAuthServer) {
+      jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
+      issuers.push(this.options.publicUrl);
+    }
+  }
+
+  /**
+   * Add external IdP issuers to JWKS configuration
+   */
+  private addExternalIdPIssuers(jwksEndpoints: Map<string, string>, issuers: string[]): void {
+    if (!this.externalIdPManager) {
+      return;
+    }
+
+    for (const idp of this.externalIdPManager.getIdPs()) {
+      jwksEndpoints.set(idp.issuer, idp.jwksUri ?? `${idp.issuer}/.well-known/jwks.json`);
+      if (!issuers.includes(idp.issuer)) {
+        issuers.push(idp.issuer);
       }
-
-      this.tokenValidator = new TokenValidator({
-        audience: this.options.publicUrl,
-        issuers: [
-          ...this.options.authorizationServers,
-          ...(this.options.builtInAuthServer ? [this.options.publicUrl] : []),
-        ],
-        jwksEndpoints,
-        clockTolerance: 5,
-        validateResource: true,
-        expectedResources: [this.options.publicUrl],
-      });
     }
   }
 
@@ -946,6 +1050,112 @@ export class HttpTransport implements ITransport {
   }
 
   /**
+   * Parse external IdP configurations from environment variables
+   */
+  private parseExternalIdPsFromEnv(): ExternalIdPConfig[] {
+    const idps: ExternalIdPConfig[] = [];
+
+    // Parse from environment variables like MCP_EXTERNAL_IDP_1, MCP_EXTERNAL_IDP_2, etc.
+    for (let i = 1; i <= 10; i++) {
+      const idpEnv = process.env[`MCP_EXTERNAL_IDP_${i}`];
+      if (!idpEnv) {
+        continue;
+      }
+
+      try {
+        const config = this.parseIdPConfigFromString(idpEnv);
+        if (config) {
+          idps.push(config);
+          logger.info('Loaded external IdP configuration from environment', {
+            index: i,
+            provider: config.provider,
+            issuer: config.issuer,
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to parse external IdP configuration', { index: i, error });
+      }
+    }
+
+    return idps;
+  }
+
+  /**
+   * Parse a single IdP configuration from a string
+   */
+  private parseIdPConfigFromString(configStr: string): ExternalIdPConfig | null {
+    // Parse format: provider:azure-ad,issuer:https://...,audience:...,tenantId:...
+    const parts = configStr.split(',');
+    const idpConfig: Record<string, IdPConfigValue> = {};
+
+    for (const part of parts) {
+      const [key, ...valueParts] = part.split(':');
+      const trimmedKey = key.trim();
+      const value = valueParts.join(':').trim(); // Handle URLs with colons
+
+      this.setIdPConfigValue(idpConfig, trimmedKey, value);
+    }
+
+    return this.buildIdPConfig(idpConfig);
+  }
+
+  /**
+   * Set a configuration value based on the key
+   */
+  private setIdPConfigValue(
+    config: Record<string, IdPConfigValue>,
+    key: string,
+    value: string
+  ): void {
+    switch (key) {
+      case 'provider':
+        config.provider = value;
+        break;
+      case 'issuer':
+        config.issuer = value;
+        break;
+      case 'jwksUri':
+        config.jwksUri = value;
+        break;
+      case 'audience':
+        config.audience = value.includes('|') ? value.split('|') : value;
+        break;
+      case 'groupsClaim':
+        config.groupsClaim = value;
+        break;
+      case 'groupsTransform':
+        config.groupsTransform = value;
+        break;
+      case 'enableHealthMonitoring':
+        config.enableHealthMonitoring = value === 'true';
+        break;
+      case 'tenantId':
+        config.tenantId = value;
+        break;
+    }
+  }
+
+  /**
+   * Build an ExternalIdPConfig from parsed values
+   */
+  private buildIdPConfig(config: Record<string, IdPConfigValue>): ExternalIdPConfig | null {
+    if (!config.provider || !config.issuer || !config.audience) {
+      return null;
+    }
+
+    return {
+      provider: config.provider as ExternalIdPProvider,
+      issuer: config.issuer as string,
+      audience: config.audience as string | string[],
+      jwksUri: config.jwksUri as string | undefined,
+      groupsClaim: config.groupsClaim as string | undefined,
+      groupsTransform: config.groupsTransform as 'none' | 'extract_name' | 'extract_id' | undefined,
+      enableHealthMonitoring: config.enableHealthMonitoring as boolean | undefined,
+      tenantId: config.tenantId as string | undefined,
+    };
+  }
+
+  /**
    * Load service account mapping rules from environment variables
    */
   private loadMappingRulesFromEnv(): void {
@@ -1086,6 +1296,11 @@ export class HttpTransport implements ITransport {
     // Shut down session manager
     if (this.sessionManager) {
       this.sessionManager.shutdown();
+    }
+
+    // Shut down external IdP manager
+    if (this.externalIdPManager) {
+      this.externalIdPManager.shutdown();
     }
 
     if (this.server?.listening) {

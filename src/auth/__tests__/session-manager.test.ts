@@ -1,6 +1,6 @@
 import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import { SessionManager } from '../session-manager.js';
-import type { TokenClaims } from '../token-validator.js';
+import type { TokenClaims } from '../types.js';
 import type { ISonarQubeClient } from '../../types/index.js';
 
 // Mock the logger

@@ -1,8 +1,7 @@
 import { createLogger } from '../utils/logger.js';
 import { PermissionService } from './permission-service.js';
-import { PermissionConfig, PermissionRule, UserContext } from './types.js';
+import { PermissionConfig, PermissionRule, UserContext, TokenClaims } from './types.js';
 import { validatePermissionRule, validatePartialPermissionRule } from './validation-utils.js';
-import { TokenClaims } from './token-validator.js';
 import fs from 'fs/promises';
 import path from 'path';
 

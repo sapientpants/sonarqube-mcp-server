@@ -7,8 +7,7 @@ import {
   type AuditSecurity,
   type AuditCompliance,
 } from './types.js';
-import type { UserContext } from '../auth/types.js';
-import type { TokenClaims } from '../auth/token-validator.js';
+import type { UserContext, TokenClaims } from '../auth/types.js';
 
 /**
  * Builder class for creating audit events
