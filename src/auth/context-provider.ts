@@ -18,7 +18,7 @@ export interface RequestContext {
  * Context provider using AsyncLocalStorage for request-scoped context
  */
 class ContextProvider {
-  private storage = new AsyncLocalStorage<RequestContext>();
+  private readonly storage = new AsyncLocalStorage<RequestContext>();
 
   /**
    * Run a function with the given context

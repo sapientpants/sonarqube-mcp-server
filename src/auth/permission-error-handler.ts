@@ -55,7 +55,7 @@ export function createProjectAccessDeniedError(
 ): PermissionErrorResponse {
   return {
     success: false,
-    error: `Access denied to project '${projectKey}'${reason ? `: ${reason}` : ''}`,
+    error: `Access denied to project '${projectKey}'` + (reason ? `: ${reason}` : ''),
     errorCode: 'PROJECT_ACCESS_DENIED',
   };
 }

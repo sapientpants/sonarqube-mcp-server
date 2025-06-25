@@ -1,10 +1,10 @@
-import { describe, expect, it, jest, beforeEach } from '@jest/globals';
-import { ServiceAccountMapper } from '../service-account-mapper.js';
+import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import type { TokenClaims } from '../token-validator.js';
 import type { ISonarQubeClient } from '../../types/index.js';
+import { PatternMatcher } from '../../utils/pattern-matcher.js';
 
 // Mock the logger
-jest.mock('../../utils/logger.js', () => ({
+jest.unstable_mockModule('../../utils/logger.js', () => ({
   createLogger: jest.fn(() => ({
     info: jest.fn(),
     debug: jest.fn(),
@@ -14,15 +14,72 @@ jest.mock('../../utils/logger.js', () => ({
 }));
 
 // Mock the SonarQube client creation
-jest.mock('../../sonarqube.js', () => ({
-  createSonarQubeClient: jest.fn(() => ({}) as ISonarQubeClient),
+const mockCreateSonarQubeClient = jest.fn(() => ({}) as ISonarQubeClient);
+jest.unstable_mockModule('../../sonarqube.js', () => ({
+  createSonarQubeClient: mockCreateSonarQubeClient,
 }));
+
+// Mock the health monitor
+const mockHealthMonitor = {
+  checkAccount: jest.fn().mockResolvedValue({ isHealthy: true, latency: 100 }),
+  markAccountFailed: jest.fn(),
+  stop: jest.fn(),
+};
+jest.unstable_mockModule('../service-account-health.js', () => ({
+  ServiceAccountHealthMonitor: jest.fn().mockImplementation(() => mockHealthMonitor),
+}));
+
+// Mock the auditor
+const mockAuditor = {
+  logAccountAccess: jest.fn(),
+  logAccountAccessDenied: jest.fn(),
+  logAccountFailure: jest.fn(),
+  logHealthCheck: jest.fn(),
+  logFailover: jest.fn(),
+};
+jest.unstable_mockModule('../service-account-auditor.js', () => ({
+  ServiceAccountAuditor: jest.fn().mockImplementation(() => mockAuditor),
+}));
+
+// Mock the credential store
+const mockCredentialStore = {
+  hasCredential: jest.fn().mockReturnValue(false),
+  getCredential: jest.fn(),
+};
+jest.unstable_mockModule('../credential-store.js', () => ({
+  CredentialStore: jest.fn().mockImplementation(() => mockCredentialStore),
+}));
+
+// Import modules after mocking
+const { ServiceAccountMapper } = await import('../service-account-mapper.js');
+const { ServiceAccountHealthMonitor } = await import('../service-account-health.js');
+const { ServiceAccountAuditor } = await import('../service-account-auditor.js');
 
 describe('ServiceAccountMapper', () => {
   let mapper: ServiceAccountMapper;
   let mockClaims: TokenClaims;
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+
+    // Reset all mocks
+    mockCreateSonarQubeClient.mockClear();
+    mockHealthMonitor.checkAccount.mockClear();
+    mockHealthMonitor.markAccountFailed.mockClear();
+    mockHealthMonitor.stop.mockClear();
+    mockAuditor.logAccountAccess.mockClear();
+    mockAuditor.logAccountAccessDenied.mockClear();
+    mockAuditor.logAccountFailure.mockClear();
+    mockAuditor.logHealthCheck.mockClear();
+    mockAuditor.logFailover.mockClear();
+    mockCredentialStore.hasCredential.mockClear();
+    mockCredentialStore.getCredential.mockClear();
+
+    // Reset return values
+    mockHealthMonitor.checkAccount.mockResolvedValue({ isHealthy: true, latency: 100 });
+    mockCredentialStore.hasCredential.mockReturnValue(false);
+
     // Clear environment variables
     Object.keys(process.env).forEach((key) => {
       if (key.startsWith('SONARQUBE_') || key.startsWith('MCP_')) {
@@ -39,6 +96,13 @@ describe('ServiceAccountMapper', () => {
       nbf: Math.floor(Date.now() / 1000),
       scope: 'sonarqube:read sonarqube:write',
     };
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    if (mapper) {
+      mapper.shutdown();
+    }
   });
 
   describe('constructor', () => {
@@ -96,7 +160,7 @@ describe('ServiceAccountMapper', () => {
         mappingRules: [
           {
             priority: 1,
-            userPattern: /.*@dev\.example\.com/,
+            userPattern: new PatternMatcher('*@dev.example.com'),
             serviceAccountId: 'dev-sa',
           },
         ],
@@ -161,7 +225,7 @@ describe('ServiceAccountMapper', () => {
     it('should match by user pattern', async () => {
       mapper.addMappingRule({
         priority: 1,
-        userPattern: /.*@dev\.company\.com/,
+        userPattern: new PatternMatcher('*@dev.company.com'),
         serviceAccountId: 'dev',
       });
 
@@ -173,7 +237,7 @@ describe('ServiceAccountMapper', () => {
     it('should match by issuer pattern', async () => {
       mapper.addMappingRule({
         priority: 1,
-        issuerPattern: /auth\.qa\.company\.com/,
+        issuerPattern: new PatternMatcher('*auth.qa.company.com*'),
         serviceAccountId: 'qa',
       });
 
@@ -197,13 +261,13 @@ describe('ServiceAccountMapper', () => {
     it('should respect priority order', async () => {
       mapper.addMappingRule({
         priority: 10,
-        userPattern: /.*/,
+        userPattern: new PatternMatcher('*'),
         serviceAccountId: 'dev',
       });
 
       mapper.addMappingRule({
         priority: 1,
-        userPattern: /.*@example\.com/,
+        userPattern: new PatternMatcher('*@example.com'),
         serviceAccountId: 'qa',
       });
 
@@ -214,7 +278,7 @@ describe('ServiceAccountMapper', () => {
     it('should match combined conditions', async () => {
       mapper.addMappingRule({
         priority: 1,
-        userPattern: /.*@dev\.company\.com/,
+        userPattern: new PatternMatcher('*@dev.company.com'),
         requiredScopes: ['sonarqube:write'],
         serviceAccountId: 'dev',
       });
@@ -338,7 +402,7 @@ describe('ServiceAccountMapper', () => {
         mappingRules: [
           {
             priority: 1,
-            userPattern: /.*/,
+            userPattern: new PatternMatcher('*'),
             serviceAccountId: 'non-existent-sa',
           },
         ],
@@ -392,6 +456,411 @@ describe('ServiceAccountMapper', () => {
 
       const result = await mapper.getClientForUser(claimsNoScope);
       expect(result.serviceAccountId).toBe('default');
+    });
+  });
+
+  describe('health monitoring integration', () => {
+    it('should skip unhealthy accounts during mapping', async () => {
+      // Create a custom health monitor that returns unhealthy for the 'unhealthy' account
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      jest.spyOn(mockHealthMonitor, 'checkAccount').mockImplementation(async (account) => {
+        if (account.id === 'unhealthy') {
+          return { isHealthy: false, latency: 0, error: 'Account is unhealthy' };
+        }
+        return { isHealthy: true, latency: 100 };
+      });
+
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [
+          { id: 'default', name: 'Default', token: 'token1' },
+          { id: 'unhealthy', name: 'Unhealthy', token: 'token2', isHealthy: false },
+        ],
+        mappingRules: [
+          {
+            priority: 1,
+            userPattern: new PatternMatcher('*'),
+            serviceAccountId: 'unhealthy',
+          },
+        ],
+        healthMonitor: mockHealthMonitor,
+        enableHealthMonitoring: true,
+        enableFailover: false, // Disable failover to test skipping behavior
+      });
+
+      // Should throw because the matched account fails health check and failover is disabled
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow(
+        'Service account health check failed: Account is unhealthy'
+      );
+    });
+
+    it('should perform health check before returning client', async () => {
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      const checkAccountSpy = jest.spyOn(mockHealthMonitor, 'checkAccount');
+
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        healthMonitor: mockHealthMonitor,
+        enableHealthMonitoring: true,
+      });
+
+      await mapper.getClientForUser(mockClaims);
+      expect(checkAccountSpy).toHaveBeenCalled();
+    });
+
+    it('should handle health check failures', async () => {
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      jest.spyOn(mockHealthMonitor, 'checkAccount').mockResolvedValue({
+        isHealthy: false,
+        latency: 0,
+        error: 'Health check failed',
+      });
+
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        healthMonitor: mockHealthMonitor,
+        enableHealthMonitoring: true,
+        enableFailover: false,
+      });
+
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow(
+        'Service account health check failed'
+      );
+    });
+
+    it('should initialize account health on startup', async () => {
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [
+          { id: 'sa1', name: 'SA1', token: 'token1' },
+          { id: 'sa2', name: 'SA2', token: 'token2' },
+        ],
+        enableHealthMonitoring: true,
+      });
+
+      // Advance timers to trigger initial health check
+      jest.advanceTimersByTime(5100);
+      await Promise.resolve();
+
+      const accounts = mapper.getServiceAccounts();
+      expect(accounts.every((a) => a.isHealthy === true)).toBe(true);
+      expect(accounts.every((a) => a.failureCount === 0)).toBe(true);
+    });
+  });
+
+  describe('audit logging integration', () => {
+    it('should log successful access', async () => {
+      const mockAuditor = new ServiceAccountAuditor();
+      const logAccessSpy = jest.spyOn(mockAuditor, 'logAccountAccess');
+
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        auditor: mockAuditor,
+        enableAuditLogging: true,
+      });
+
+      await mapper.getClientForUser(mockClaims);
+      expect(logAccessSpy).toHaveBeenCalledWith(mockClaims, 'default', 'Default', undefined);
+    });
+
+    it('should log access denied', async () => {
+      const mockAuditor = new ServiceAccountAuditor();
+      const logDeniedSpy = jest.spyOn(mockAuditor, 'logAccountAccessDenied');
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [],
+        auditor: mockAuditor,
+        enableAuditLogging: true,
+      });
+
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow();
+      expect(logDeniedSpy).toHaveBeenCalledWith(
+        mockClaims,
+        'no-mapping',
+        expect.stringContaining('No service account mapping found')
+      );
+    });
+
+    it('should log health checks', async () => {
+      const mockAuditor = new ServiceAccountAuditor();
+      const logHealthSpy = jest.spyOn(mockAuditor, 'logHealthCheck');
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        auditor: mockAuditor,
+        enableAuditLogging: true,
+        enableHealthMonitoring: true,
+      });
+
+      await mapper.checkAllAccountsHealth();
+      expect(logHealthSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('failover support', () => {
+    it('should failover to backup account on failure', async () => {
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      jest
+        .spyOn(mockHealthMonitor, 'checkAccount')
+        .mockResolvedValueOnce({ isHealthy: false, latency: 0, error: 'Primary failed' })
+        .mockResolvedValueOnce({ isHealthy: true, latency: 100 });
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [
+          { id: 'primary', name: 'Primary', token: 'token1', fallbackAccountId: 'backup' },
+          { id: 'backup', name: 'Backup', token: 'token2' },
+        ],
+        mappingRules: [
+          { priority: 1, userPattern: new PatternMatcher('*'), serviceAccountId: 'primary' },
+        ],
+        healthMonitor: mockHealthMonitor,
+        enableFailover: true,
+        enableHealthMonitoring: true,
+      });
+
+      const result = await mapper.getClientForUser(mockClaims);
+      expect(result.serviceAccountId).toBe('backup');
+    });
+
+    it('should detect circular failover dependencies', async () => {
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [
+          { id: 'sa1', name: 'SA1', token: 'token1', fallbackAccountId: 'sa2' },
+          { id: 'sa2', name: 'SA2', token: 'token2', fallbackAccountId: 'sa1' },
+        ],
+        defaultServiceAccountId: 'sa1',
+        enableFailover: true,
+        enableHealthMonitoring: true,
+      });
+
+      // Mock both accounts to fail
+      const mockHealthMonitor = mapper.getHealthMonitor();
+      if (mockHealthMonitor) {
+        jest
+          .spyOn(mockHealthMonitor, 'checkAccount')
+          .mockResolvedValue({ isHealthy: false, latency: 0, error: 'Failed' });
+      }
+
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow(
+        'All service accounts failed'
+      );
+    });
+
+    it('should log failover events', async () => {
+      const mockAuditor = new ServiceAccountAuditor();
+      const logFailoverSpy = jest.spyOn(mockAuditor, 'logFailover');
+
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      jest
+        .spyOn(mockHealthMonitor, 'checkAccount')
+        .mockResolvedValueOnce({ isHealthy: false, latency: 0, error: 'Primary failed' })
+        .mockResolvedValueOnce({ isHealthy: true, latency: 100 });
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [
+          { id: 'primary', name: 'Primary', token: 'token1', fallbackAccountId: 'backup' },
+          { id: 'backup', name: 'Backup', token: 'token2' },
+        ],
+        mappingRules: [
+          { priority: 1, userPattern: new PatternMatcher('*'), serviceAccountId: 'primary' },
+        ],
+        healthMonitor: mockHealthMonitor,
+        auditor: mockAuditor,
+        enableFailover: true,
+        enableHealthMonitoring: true,
+        enableAuditLogging: true,
+      });
+
+      await mapper.getClientForUser(mockClaims);
+      expect(logFailoverSpy).toHaveBeenCalledWith(
+        'primary',
+        'backup',
+        expect.stringContaining('Primary failed'),
+        mockClaims.sub
+      );
+    });
+  });
+
+  describe('credential store integration', () => {
+    it('should use credential from store if available', async () => {
+      mockCredentialStore.hasCredential.mockReturnValue(true);
+      mockCredentialStore.getCredential.mockReturnValue('store-token');
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'original-token' }],
+        defaultServiceAccountId: 'default',
+        credentialStore: mockCredentialStore,
+      });
+
+      await mapper.getClientForUser(mockClaims);
+
+      expect(mockCreateSonarQubeClient).toHaveBeenCalledWith(
+        'store-token', // Should use token from store
+        expect.any(String),
+        undefined // organization is undefined in this test
+      );
+    });
+
+    it('should fall back to account token when store returns undefined', async () => {
+      mockCredentialStore.hasCredential.mockReturnValue(true);
+      mockCredentialStore.getCredential.mockReturnValue(undefined);
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'account-token' }],
+        defaultServiceAccountId: 'default',
+        credentialStore: mockCredentialStore,
+      });
+
+      await mapper.getClientForUser(mockClaims);
+
+      expect(mockCreateSonarQubeClient).toHaveBeenCalledWith(
+        'account-token', // Should use account token
+        expect.any(String),
+        undefined // organization is undefined in this test
+      );
+    });
+
+    it('should throw when no token is available', async () => {
+      mockCredentialStore.hasCredential.mockReturnValue(false);
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [{ id: 'default', name: 'Default', token: '' }],
+        defaultServiceAccountId: 'default',
+        credentialStore: mockCredentialStore,
+      });
+
+      await expect(mapper.getClientForUser(mockClaims)).rejects.toThrow(
+        'No token available for service account default'
+      );
+    });
+  });
+
+  describe('group-based mapping', () => {
+    it('should match by required groups', async () => {
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [
+          { id: 'default', name: 'Default', token: 'token1' },
+          { id: 'admin', name: 'Admin', token: 'token2' },
+        ],
+        mappingRules: [
+          {
+            priority: 1,
+            requiredGroups: ['admins', 'developers'],
+            serviceAccountId: 'admin',
+          },
+        ],
+      });
+
+      const claimsWithGroups = {
+        ...mockClaims,
+        groups: ['users', 'developers'],
+      };
+
+      const result = await mapper.getClientForUser(claimsWithGroups);
+      expect(result.serviceAccountId).toBe('admin');
+    });
+
+    it('should skip rule when groups do not match', async () => {
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [
+          { id: 'default', name: 'Default', token: 'token1' },
+          { id: 'admin', name: 'Admin', token: 'token2' },
+        ],
+        mappingRules: [
+          {
+            priority: 1,
+            requiredGroups: ['admins'],
+            serviceAccountId: 'admin',
+          },
+        ],
+      });
+
+      const claimsWithGroups = {
+        ...mockClaims,
+        groups: ['users', 'developers'],
+      };
+
+      const result = await mapper.getClientForUser(claimsWithGroups);
+      expect(result.serviceAccountId).toBe('default');
+    });
+
+    it('should handle claims without groups', async () => {
+      mapper = new ServiceAccountMapper({
+        defaultServiceAccountId: 'default',
+        serviceAccounts: [
+          { id: 'default', name: 'Default', token: 'token1' },
+          { id: 'admin', name: 'Admin', token: 'token2' },
+        ],
+        mappingRules: [
+          {
+            priority: 1,
+            requiredGroups: ['admins'],
+            serviceAccountId: 'admin',
+          },
+        ],
+      });
+
+      const result = await mapper.getClientForUser(mockClaims);
+      expect(result.serviceAccountId).toBe('default');
+    });
+  });
+
+  describe('environment variable support for new features', () => {
+    it('should load environment and fallback account from env vars', () => {
+      process.env.SONARQUBE_SA1_TOKEN = 'token1';
+      process.env.SONARQUBE_SA1_ENVIRONMENT = 'production';
+      process.env.SONARQUBE_SA1_FALLBACK = 'sa2';
+      process.env.SONARQUBE_SA2_TOKEN = 'token2';
+
+      mapper = new ServiceAccountMapper();
+
+      const accounts = mapper.getServiceAccounts();
+      const sa1 = accounts.find((a) => a.id === 'sa1');
+
+      expect(sa1?.environment).toBe('production');
+      expect(sa1?.fallbackAccountId).toBe('sa2');
+    });
+  });
+
+  describe('shutdown', () => {
+    it('should stop health monitor on shutdown', () => {
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      const stopSpy = jest.spyOn(mockHealthMonitor, 'stop');
+
+      mapper = new ServiceAccountMapper({
+        serviceAccounts: [{ id: 'default', name: 'Default', token: 'token' }],
+        healthMonitor: mockHealthMonitor,
+        enableHealthMonitoring: true,
+      });
+
+      mapper.shutdown();
+      expect(stopSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('getters', () => {
+    it('should return health monitor instance', () => {
+      const mockHealthMonitor = new ServiceAccountHealthMonitor();
+      mapper = new ServiceAccountMapper({
+        healthMonitor: mockHealthMonitor,
+        enableHealthMonitoring: true,
+      });
+
+      expect(mapper.getHealthMonitor()).toBe(mockHealthMonitor);
+    });
+
+    it('should return auditor instance', () => {
+      const mockAuditor = new ServiceAccountAuditor();
+      mapper = new ServiceAccountMapper({
+        auditor: mockAuditor,
+        enableAuditLogging: true,
+      });
+
+      expect(mapper.getAuditor()).toBe(mockAuditor);
     });
   });
 });

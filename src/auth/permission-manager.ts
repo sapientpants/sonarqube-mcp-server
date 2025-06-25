@@ -13,7 +13,7 @@ const logger = createLogger('PermissionManager');
  */
 export class PermissionManager {
   private permissionService: PermissionService | null = null;
-  private configPath: string | null = null;
+  private readonly configPath: string | null = null;
 
   private constructor(configPath: string | null) {
     this.configPath = configPath;
@@ -24,7 +24,7 @@ export class PermissionManager {
    */
   static async create(): Promise<PermissionManager> {
     const configPathFromEnv = process.env.MCP_PERMISSION_CONFIG_PATH;
-    const manager = new PermissionManager(configPathFromEnv || null);
+    const manager = new PermissionManager(configPathFromEnv ?? null);
 
     if (configPathFromEnv) {
       await manager.loadConfiguration();
@@ -265,9 +265,7 @@ let _permissionManager: PermissionManager | null = null;
  * Get or create the global permission manager instance
  */
 export async function getPermissionManager(): Promise<PermissionManager> {
-  if (!_permissionManager) {
-    _permissionManager = await PermissionManager.create();
-  }
+  _permissionManager ??= await PermissionManager.create();
   return _permissionManager;
 }
 

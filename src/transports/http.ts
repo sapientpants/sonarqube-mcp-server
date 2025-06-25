@@ -384,6 +384,26 @@ export class HttpTransport implements ITransport {
         (this.tokenValidator !== undefined || process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true');
 
       if (ready) {
+        // Get service account health if available
+        let serviceAccountHealth: Record<string, unknown> | undefined;
+        if (this.serviceAccountMapper) {
+          const healthMonitor = this.serviceAccountMapper.getHealthMonitor();
+          if (healthMonitor) {
+            const healthStatuses = healthMonitor.getAllHealthStatuses();
+            serviceAccountHealth = {
+              totalAccounts: this.serviceAccountMapper.getServiceAccounts().length,
+              healthyAccounts: Array.from(healthStatuses.values()).filter((h) => h.isHealthy)
+                .length,
+              accounts: Array.from(healthStatuses.entries()).map(([id, status]) => ({
+                id,
+                healthy: status.isHealthy,
+                lastCheck: status.lastCheck,
+                error: status.error,
+              })),
+            };
+          }
+        }
+
         res.json({
           status: 'ready',
           features: {
@@ -392,6 +412,7 @@ export class HttpTransport implements ITransport {
             serviceAccountMapping: !!this.serviceAccountMapper,
             tls: this.options.tls.enabled,
           },
+          serviceAccountHealth,
         });
       } else {
         res.status(503).json({
