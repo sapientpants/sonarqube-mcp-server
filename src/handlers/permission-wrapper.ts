@@ -8,6 +8,11 @@ import {
 } from '../auth/permission-error-handler.js';
 import { getContextAccess } from '../auth/context-utils.js';
 import { extractProjectKey } from '../auth/project-access-utils.js';
+import { getAuditLogger } from '../audit/audit-logger.js';
+import { AuditEventBuilder } from '../audit/audit-event-builder.js';
+import { AuditEventType } from '../audit/types.js';
+
+const auditLogger = getAuditLogger();
 
 /**
  * Context passed to permission-aware handlers
@@ -30,6 +35,9 @@ export function createPermissionAwareHandler<TParams extends Record<string, unkn
   handler: (params: TParams, context?: HandlerContext) => Promise<TResult>
 ): (params: TParams, context?: HandlerContext) => Promise<HandlerResponse<TResult>> {
   return async (params: TParams, context?: HandlerContext): Promise<HandlerResponse<TResult>> => {
+    const startTime = Date.now();
+    let toolInvoked = false;
+
     try {
       // Get context access information
       const { userContext, permissionService, hasPermissions } = await getContextAccess();
@@ -37,16 +45,57 @@ export function createPermissionAwareHandler<TParams extends Record<string, unkn
       // Override context if provided
       const effectiveUserContext = context?.userContext ?? userContext;
 
+      // Log tool invocation
+      if (effectiveUserContext) {
+        await auditLogger.logEvent(
+          new AuditEventBuilder()
+            .withEventType(AuditEventType.TOOL_INVOKED)
+            .withUserContext(effectiveUserContext, context?.sessionId)
+            .withTarget('tool', tool)
+            .withAction('execute', 'success', params as Record<string, unknown>)
+            .withContext({
+              sessionId: context?.sessionId,
+              traceId: (params as Record<string, unknown>).traceId as string | undefined,
+            })
+            .build()
+        );
+        toolInvoked = true;
+      }
+
       // Check if permissions are enabled
       if (!hasPermissions) {
         // No permission checking - call handler directly
         const result = await handler(params, context);
+
+        // Log successful completion
+        if (toolInvoked && effectiveUserContext) {
+          const duration = Date.now() - startTime;
+          await auditLogger.logEvent(
+            AuditEventBuilder.toolInvocation(
+              tool,
+              params as Record<string, unknown>,
+              effectiveUserContext,
+              duration
+            ).build()
+          );
+        }
+
         return createSuccessResponse(result);
       }
 
       // Check tool access
       const accessResult = await permissionService!.checkToolAccess(effectiveUserContext!, tool);
       if (!accessResult.allowed) {
+        // Log permission denial
+        await auditLogger.logEvent(
+          AuditEventBuilder.permissionDenied(
+            'tool',
+            tool,
+            'execute',
+            accessResult.reason || 'Access denied',
+            effectiveUserContext
+          ).build()
+        );
         return createPermissionDeniedError(tool, effectiveUserContext!.userId, accessResult.reason);
       }
 
@@ -61,8 +110,35 @@ export function createPermissionAwareHandler<TParams extends Record<string, unkn
         permissionService!
       );
 
+      // Log successful completion
+      if (toolInvoked && effectiveUserContext) {
+        const duration = Date.now() - startTime;
+        await auditLogger.logEvent(
+          AuditEventBuilder.toolInvocation(
+            tool,
+            params as Record<string, unknown>,
+            effectiveUserContext,
+            duration
+          ).build()
+        );
+      }
+
       return createSuccessResponse(filteredResult as TResult);
     } catch (error) {
+      // Log tool failure
+      if (toolInvoked && context?.userContext) {
+        const duration = Date.now() - startTime;
+        await auditLogger.logEvent(
+          AuditEventBuilder.toolFailure(
+            tool,
+            params as Record<string, unknown>,
+            error instanceof Error ? error.message : String(error),
+            context.userContext,
+            duration
+          ).build()
+        );
+      }
+
       return handlePermissionError(tool, context?.userContext, error);
     }
   };
@@ -82,7 +158,24 @@ async function applyPermissionFiltering(
     case 'projects':
       // Filter projects based on permissions
       if (Array.isArray(result)) {
-        return await permissionService.filterProjects(userContext, result);
+        const originalCount = result.length;
+        const filtered = await permissionService.filterProjects(userContext, result);
+
+        // Log data filtering if items were removed
+        if (filtered.length < originalCount) {
+          await auditLogger.logEvent(
+            AuditEventBuilder.dataAccess(
+              'projects',
+              'all',
+              'read',
+              filtered.length,
+              true,
+              userContext
+            ).build()
+          );
+        }
+
+        return filtered;
       }
       break;
 
@@ -94,7 +187,23 @@ async function applyPermissionFiltering(
         'issues' in result &&
         Array.isArray(result.issues)
       ) {
+        const originalCount = result.issues.length;
         const filtered = await permissionService.filterIssues(userContext, result.issues);
+
+        // Log data filtering if items were removed
+        if (filtered.length < originalCount) {
+          await auditLogger.logEvent(
+            AuditEventBuilder.dataAccess(
+              'issues',
+              'query',
+              'read',
+              filtered.length,
+              true,
+              userContext
+            ).build()
+          );
+        }
+
         return { ...result, issues: filtered, total: filtered.length };
       }
       break;
@@ -107,6 +216,7 @@ async function applyPermissionFiltering(
         'components' in result &&
         Array.isArray(result.components)
       ) {
+        const originalCount = result.components.length;
         const filtered = await Promise.all(
           result.components.map(async (component) => {
             if (component && typeof component === 'object' && 'key' in component) {
@@ -117,7 +227,23 @@ async function applyPermissionFiltering(
             return null;
           })
         );
-        return { ...result, components: filtered.filter((component) => component !== null) };
+        const filteredComponents = filtered.filter((component) => component !== null);
+
+        // Log data filtering if items were removed
+        if (filteredComponents.length < originalCount) {
+          await auditLogger.logEvent(
+            AuditEventBuilder.dataAccess(
+              'components',
+              'query',
+              'read',
+              filteredComponents.length,
+              true,
+              userContext
+            ).build()
+          );
+        }
+
+        return { ...result, components: filteredComponents };
       }
       break;
 
@@ -140,6 +266,7 @@ async function applyPermissionFiltering(
         'hotspots' in result &&
         Array.isArray(result.hotspots)
       ) {
+        const originalCount = result.hotspots.length;
         const filtered: unknown[] = [];
         for (const hotspot of result.hotspots) {
           if (hotspot && typeof hotspot === 'object' && 'project' in hotspot) {
@@ -150,6 +277,21 @@ async function applyPermissionFiltering(
             }
           }
         }
+
+        // Log data filtering if items were removed
+        if (filtered.length < originalCount) {
+          await auditLogger.logEvent(
+            AuditEventBuilder.dataAccess(
+              'hotspots',
+              'query',
+              'read',
+              filtered.length,
+              true,
+              userContext
+            ).build()
+          );
+        }
+
         return { ...result, hotspots: filtered };
       }
       break;

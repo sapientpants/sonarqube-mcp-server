@@ -535,6 +535,97 @@ The server supports file-based logging for debugging and monitoring. Since MCP s
 2024-01-15T10:30:50.567Z INFO [index] Successfully retrieved projects {"count": 5}
 ```
 
+### Audit Logging (Enterprise HTTP Transport)
+
+When using the HTTP transport with authentication enabled, the server provides comprehensive audit logging for compliance with SOC 2, ISO 27001, and other enterprise security requirements.
+
+**Features:**
+- **Structured JSON audit logs** with all security-relevant fields
+- **Authentication tracking**: All login attempts, token validations, and failures
+- **Tool invocation logging**: Complete audit trail of all MCP tool calls with parameters
+- **Permission checks**: Log of all authorization decisions and denials  
+- **Data access tracking**: Records of data queries and filtering operations
+- **PII redaction**: Automatic redaction of sensitive data (emails, IPs, SSNs, etc.)
+- **Log integrity**: SHA-256 checksums for tamper detection
+- **Configurable retention**: Automatic pruning based on retention policies
+
+**Configuration:**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "transport": ["http"],
+      "transportOptions": {
+        "port": 3000,
+        "publicUrl": "https://mcp.example.com"
+      },
+      "env": {
+        "SONARQUBE_URL": "https://sonarqube.example.com",
+        "MCP_OAUTH_AUTH_SERVERS": "https://auth.example.com",
+        "AUDIT_LOG_PATH": "/var/log/sonarqube-mcp/audit",
+        "AUDIT_RETENTION_DAYS": "90",
+        "AUDIT_REDACT_PII": "true"
+      }
+    }
+  }
+}
+```
+
+**Audit Event Example:**
+```json
+{
+  "timestamp": "2024-01-20T10:30:00.123Z",
+  "eventId": "550e8400-e29b-41d4-a716-446655440000",
+  "eventType": "TOOL_COMPLETED",
+  "eventCategory": "tool_access",
+  "actor": {
+    "userId": "user@company.com",
+    "userGroups": ["engineering"],
+    "ipAddress": "192.168.1.100"
+  },
+  "target": {
+    "type": "tool",
+    "id": "issues"
+  },
+  "action": {
+    "type": "execute",
+    "result": "success",
+    "parameters": {
+      "project": "frontend",
+      "severities": ["CRITICAL", "BLOCKER"]
+    },
+    "duration": 245
+  },
+  "context": {
+    "sessionId": "session-123",
+    "traceId": "trace-456"
+  },
+  "security": {
+    "tokenAud": "https://mcp.example.com",
+    "tokenIss": "https://auth.example.com",
+    "tlsVersion": "1.3"
+  },
+  "compliance": {
+    "dataClassification": "internal",
+    "piiRedacted": true
+  },
+  "checksum": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
+}
+```
+
+**Environment Variables:**
+- `AUDIT_LOG_PATH`: Directory for audit log files (default: `./logs/audit`)
+- `AUDIT_RETENTION_DAYS`: Days to retain audit logs (default: 90)
+- `AUDIT_REDACT_PII`: Enable PII redaction (default: true)
+- `AUDIT_REDACT_IP_ADDRESSES`: Redact IP addresses (default: false)
+- `AUDIT_LOG_MAX_SIZE_MB`: Max size per log file (default: 100)
+- `AUDIT_ENABLE_HMAC`: Enable HMAC signing for integrity (default: false)
+- `AUDIT_HMAC_SECRET`: Secret key for HMAC signing
+
+**Note:** Audit logging is only available when using HTTP transport with OAuth authentication enabled. It is not available in stdio mode.
+
 ## Security Model and Authentication
 
 ### Current Security Model

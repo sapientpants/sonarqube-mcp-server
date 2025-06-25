@@ -19,8 +19,12 @@ import { PatternMatcher } from '../utils/pattern-matcher.js';
 import { getPermissionManager } from '../auth/permission-manager.js';
 import { UserContext } from '../auth/types.js';
 import { contextProvider } from '../auth/context-provider.js';
+import { getAuditLogger } from '../audit/audit-logger.js';
+import { AuditEventBuilder } from '../audit/audit-event-builder.js';
+import { AuditEventType } from '../audit/types.js';
 
 const logger = createLogger('HttpTransport');
+const auditLogger = getAuditLogger();
 
 /**
  * Extended Express Request with authenticated user context
@@ -512,7 +516,7 @@ export class HttpTransport implements ITransport {
     next: NextFunction
   ): Promise<void> {
     // Extract and validate Bearer token
-    const token = this.extractBearerToken(req, res);
+    const token = await this.extractBearerToken(req, res);
     if (!token) {
       return; // Response already sent
     }
@@ -531,11 +535,14 @@ export class HttpTransport implements ITransport {
    * Extract Bearer token from request
    * @returns token string or null if not found
    */
-  private extractBearerToken(req: AuthenticatedRequest, res: Response): string | null {
+  private async extractBearerToken(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<string | null> {
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
-      this.handleMissingBearerToken(res);
+      await this.handleMissingBearerToken(req, res);
       return null;
     }
 
@@ -555,6 +562,21 @@ export class HttpTransport implements ITransport {
       // Validate the token
       const claims = await this.tokenValidator!.validateToken(token);
 
+      // Log successful token validation
+      await auditLogger.logEvent(
+        AuditEventBuilder.authentication('token_validated', claims, true)
+          .withActor({
+            userId: claims.sub,
+            userGroups: claims.groups as string[] | undefined,
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          })
+          .withContext({
+            traceId: req.get('x-request-id'),
+          })
+          .build()
+      );
+
       // Handle session management
       const sessionHandled = await this.handleSessionManagement(req, res, claims);
       if (!sessionHandled) {
@@ -563,14 +585,35 @@ export class HttpTransport implements ITransport {
 
       next();
     } catch (error) {
-      this.handleAuthenticationError(res, error);
+      this.handleAuthenticationError(req, res, error, token);
     }
   }
 
   /**
    * Handle missing Bearer token in request
    */
-  private handleMissingBearerToken(res: Response): void {
+  private async handleMissingBearerToken(req: AuthenticatedRequest, res: Response): Promise<void> {
+    // Log authentication attempt without token
+    try {
+      await auditLogger.logEvent(
+        new AuditEventBuilder()
+          .withEventType(AuditEventType.AUTH_TOKEN_REJECTED)
+          .withActor({
+            userId: 'anonymous',
+            ipAddress: req.ip,
+            userAgent: req.get('user-agent'),
+          })
+          .withTarget('auth', 'anonymous')
+          .withAction('token_validation', 'failure', undefined, 'Bearer token required')
+          .withContext({
+            traceId: req.get('x-request-id'),
+          })
+          .build()
+      );
+    } catch (error) {
+      logger.error('Failed to log missing bearer token', { error });
+    }
+
     // RFC6750: Include WWW-Authenticate header on 401 responses
     const wwwAuthenticate = [
       'Bearer',
@@ -789,8 +832,49 @@ export class HttpTransport implements ITransport {
   /**
    * Handle authentication errors
    */
-  private handleAuthenticationError(res: Response, error: unknown): void {
+  private async handleAuthenticationError(
+    req: AuthenticatedRequest,
+    res: Response,
+    error: unknown,
+    token: string
+  ): Promise<void> {
     if (error instanceof TokenValidationError) {
+      // Log token rejection
+      try {
+        // Try to extract basic claims from the token for logging (even if invalid)
+        const tokenParts = token.split('.');
+        let userId = 'unknown';
+        if (tokenParts.length === 3) {
+          try {
+            const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+            userId = payload.sub || 'unknown';
+          } catch {
+            // Ignore parsing errors
+          }
+        }
+
+        await auditLogger.logEvent(
+          new AuditEventBuilder()
+            .withEventType(AuditEventType.AUTH_TOKEN_REJECTED)
+            .withActor({
+              userId,
+              ipAddress: req.ip,
+              userAgent: req.get('user-agent'),
+            })
+            .withTarget('auth', userId)
+            .withAction('token_validation', 'failure', undefined, error.message)
+            .withContext({
+              traceId: req.get('x-request-id'),
+            })
+            .withSecurity({
+              tokenJti: error.wwwAuthenticateParams?.jti,
+            })
+            .build()
+        );
+      } catch (auditError) {
+        logger.error('Failed to log authentication failure', { error: auditError });
+      }
+
       this.handleTokenValidationError(res, error);
     } else {
       // Unexpected error
