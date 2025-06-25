@@ -76,9 +76,9 @@ describe('HttpTransport Authentication', () => {
       expect(response.status).toBe(200);
       expect(response.body).toMatchObject({
         issuer: testPublicUrl,
-        authorization_endpoint: `${testPublicUrl}/oauth/authorize`,
-        token_endpoint: `${testPublicUrl}/oauth/token`,
-        jwks_uri: `${testPublicUrl}/oauth/jwks`,
+        authorization_endpoint: `${testPublicUrl}/auth/authorize`,
+        token_endpoint: `${testPublicUrl}/auth/token`,
+        jwks_uri: `${testPublicUrl}/auth/jwks`,
         scopes_supported: ['sonarqube:read', 'sonarqube:write', 'sonarqube:admin'],
       });
 
