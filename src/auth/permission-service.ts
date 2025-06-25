@@ -9,8 +9,8 @@ import {
   TOOL_OPERATIONS,
   IssueSeverity,
   IssueStatus,
+  TokenClaims,
 } from './types.js';
-import { TokenClaims } from './types.js';
 import { getAuditLogger } from '../audit/audit-logger.js';
 import { AuditEventBuilder } from '../audit/audit-event-builder.js';
 import { AuditEventType } from '../audit/types.js';

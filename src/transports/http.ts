@@ -12,12 +12,11 @@ import {
   TokenValidationError,
   TokenValidationErrorCode,
 } from '../auth/token-validator.js';
-import { TokenClaims } from '../auth/types.js';
+import { TokenClaims, UserContext } from '../auth/types.js';
 import { SessionManager } from '../auth/session-manager.js';
 import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
 import { getPermissionManager } from '../auth/permission-manager.js';
-import { UserContext } from '../auth/types.js';
 import { contextProvider } from '../auth/context-provider.js';
 import { getAuditLogger } from '../audit/audit-logger.js';
 import { AuditEventBuilder } from '../audit/audit-event-builder.js';
@@ -27,6 +26,11 @@ import { ExternalIdPProvider, ExternalIdPConfig } from '../auth/external-idp-typ
 
 const logger = createLogger('HttpTransport');
 const auditLogger = getAuditLogger();
+
+/**
+ * Type for IdP configuration values during parsing
+ */
+type IdPConfigValue = string | string[] | boolean | undefined;
 
 /**
  * Extended Express Request with authenticated user context
@@ -1082,7 +1086,7 @@ export class HttpTransport implements ITransport {
   private parseIdPConfigFromString(configStr: string): ExternalIdPConfig | null {
     // Parse format: provider:azure-ad,issuer:https://...,audience:...,tenantId:...
     const parts = configStr.split(',');
-    const idpConfig: Record<string, string | string[] | boolean | undefined> = {};
+    const idpConfig: Record<string, IdPConfigValue> = {};
 
     for (const part of parts) {
       const [key, ...valueParts] = part.split(':');
@@ -1099,7 +1103,7 @@ export class HttpTransport implements ITransport {
    * Set a configuration value based on the key
    */
   private setIdPConfigValue(
-    config: Record<string, string | string[] | boolean | undefined>,
+    config: Record<string, IdPConfigValue>,
     key: string,
     value: string
   ): void {
@@ -1134,9 +1138,7 @@ export class HttpTransport implements ITransport {
   /**
    * Build an ExternalIdPConfig from parsed values
    */
-  private buildIdPConfig(
-    config: Record<string, string | string[] | boolean | undefined>
-  ): ExternalIdPConfig | null {
+  private buildIdPConfig(config: Record<string, IdPConfigValue>): ExternalIdPConfig | null {
     if (!config.provider || !config.issuer || !config.audience) {
       return null;
     }
