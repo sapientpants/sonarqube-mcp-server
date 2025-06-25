@@ -127,7 +127,7 @@ export class ExternalIdPManager {
       return claims;
     }
 
-    // Clone the claims object to avoid mutations
+    // Deep clone the claims object to avoid mutations
     const extractedClaims = { ...claims };
 
     // Extract groups if configured
@@ -140,7 +140,8 @@ export class ExternalIdPManager {
           this.transformGroup(group, idp.groupsTransform!)
         );
       } else {
-        extractedClaims.groups = groups;
+        // Clone arrays to avoid mutations
+        extractedClaims.groups = Array.isArray(groups) ? [...groups] : groups;
       }
     }
 
