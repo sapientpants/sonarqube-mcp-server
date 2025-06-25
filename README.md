@@ -12,7 +12,18 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.7.0
+## What's New in v1.8.0
+
+### External Identity Provider (IdP) Integration
+- **OIDC/OAuth 2.0 Support**: Full integration with external identity providers
+- **JWKS Endpoint Discovery**: Automatic discovery and caching of JSON Web Key Sets
+- **Provider Support**: Pre-configured support for Azure AD, Okta, Auth0, and Keycloak
+- **Group Claim Mapping**: Automatic transformation of provider-specific group formats
+- **Multi-tenant Support**: Handle multiple tenants with tenant-specific configurations
+- **IdP Health Monitoring**: Continuous monitoring of IdP availability with failover
+- **Fallback Authentication**: Graceful fallback to static keys when IdPs are unavailable
+
+### Previous Updates (v1.7.0)
 
 ### HTTP Transport with OAuth 2.0 Metadata
 - **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
@@ -386,6 +397,9 @@ For development or customization:
 | `MCP_HTTP_PUBLIC_URL` | Public URL for metadata endpoints | ❌ No | `http://localhost:3000` |
 | `MCP_OAUTH_AUTH_SERVERS` | Comma-separated list of OAuth authorization servers | ❌ No | - |
 | `MCP_OAUTH_BUILTIN` | Enable built-in OAuth authorization server metadata | ❌ No | `false` |
+| **External IdP Settings** | | | |
+| `MCP_EXTERNAL_IDP_1` | External IdP configuration (see format below) | ❌ No | - |
+| `MCP_EXTERNAL_IDP_2` | Additional IdP configurations (up to 10) | ❌ No | - |
 
 ### Authentication Methods
 
@@ -458,6 +472,46 @@ The server supports three authentication methods, with important differences bet
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
 - All authentication methods are supported
+
+### External Identity Provider (IdP) Configuration
+
+When using HTTP transport, you can configure external identity providers for enhanced authentication with JWKS endpoint discovery and automatic token validation.
+
+**Configuration Format:**
+```
+MCP_EXTERNAL_IDP_1=provider:azure-ad,issuer:https://login.microsoftonline.com/{tenant}/v2.0,audience:api://your-app-id,tenantId:your-tenant-id
+MCP_EXTERNAL_IDP_2=provider:okta,issuer:https://your-domain.okta.com,audience:api://default
+MCP_EXTERNAL_IDP_3=provider:auth0,issuer:https://your-domain.auth0.com/,audience:https://your-api
+MCP_EXTERNAL_IDP_4=provider:keycloak,issuer:https://keycloak.example.com/realms/your-realm,audience:account
+```
+
+**Supported Providers:**
+- `azure-ad` - Microsoft Azure Active Directory
+- `okta` - Okta Identity Platform
+- `auth0` - Auth0 Identity Platform
+- `keycloak` - Keycloak/Red Hat SSO
+- `generic` - Any OIDC-compliant provider
+
+**Configuration Options:**
+- `provider` - Provider type (required)
+- `issuer` - OIDC issuer URL (required)
+- `audience` - Expected audience (required, use `|` for multiple)
+- `jwksUri` - JWKS endpoint (optional, auto-discovered via OIDC)
+- `groupsClaim` - JWT claim containing groups (optional, provider defaults apply)
+- `groupsTransform` - Transform groups: `none`, `extract_name`, `extract_id` (optional)
+- `enableHealthMonitoring` - Enable health checks: `true`/`false` (optional)
+- `tenantId` - Tenant ID for multi-tenant providers (optional)
+
+**Example with Full Options:**
+```bash
+MCP_EXTERNAL_IDP_1=provider:azure-ad,issuer:https://login.microsoftonline.com/12345678-1234-1234-1234-123456789012/v2.0,audience:api://my-app-id|api://another-app,groupsClaim:groups,groupsTransform:extract_id,enableHealthMonitoring:true,tenantId:12345678-1234-1234-1234-123456789012
+```
+
+**Provider-Specific Defaults:**
+- **Azure AD**: `groupsClaim=groups`, `groupsTransform=extract_id`
+- **Okta**: `groupsClaim=groups`, `groupsTransform=none`
+- **Auth0**: `groupsClaim=https://auth0.com/groups`, `groupsTransform=none`
+- **Keycloak**: `groupsClaim=groups`, `groupsTransform=extract_name`
 
 ### Elicitation Configuration (Experimental)
 
