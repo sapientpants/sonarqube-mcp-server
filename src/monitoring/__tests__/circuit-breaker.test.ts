@@ -1,16 +1,16 @@
 import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
 import { CircuitBreakerFactory } from '../circuit-breaker.js';
-import { MetricsService, cleanupMetricsService } from '../metrics.js';
+import { getMetricsService, cleanupMetricsService } from '../metrics.js';
 
 describe('Circuit Breaker', () => {
   let mockFn: jest.Mock;
-  let metricsService: MetricsService;
+  let metricsService: ReturnType<typeof getMetricsService>;
 
   beforeEach(() => {
     // Reset circuit breaker factory
     CircuitBreakerFactory.reset();
     cleanupMetricsService();
-    metricsService = MetricsService.getInstance();
+    metricsService = getMetricsService();
 
     mockFn = jest.fn();
   });
@@ -63,7 +63,7 @@ describe('Circuit Breaker', () => {
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
         resetTimeout: 100,
-        requestVolumeThreshold: 2,
+        volumeThreshold: 2,
       });
 
       // First two failures should open the circuit
@@ -90,7 +90,7 @@ describe('Circuit Breaker', () => {
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
         resetTimeout: 100,
-        requestVolumeThreshold: 3,
+        volumeThreshold: 3,
       });
 
       // One failure, two successes - should not open
@@ -113,7 +113,7 @@ describe('Circuit Breaker', () => {
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
         resetTimeout: 50, // 50ms reset timeout
-        requestVolumeThreshold: 2,
+        volumeThreshold: 2,
       });
 
       // Open the circuit
@@ -139,7 +139,7 @@ describe('Circuit Breaker', () => {
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
         resetTimeout: 50,
-        requestVolumeThreshold: 2,
+        volumeThreshold: 2,
       });
 
       // Open the circuit
@@ -187,7 +187,7 @@ describe('Circuit Breaker', () => {
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
         resetTimeout: 50,
-        requestVolumeThreshold: 2,
+        volumeThreshold: 2,
       });
 
       // Open the circuit
@@ -222,7 +222,7 @@ describe('Circuit Breaker', () => {
 
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
-        requestVolumeThreshold: 1,
+        volumeThreshold: 1,
         errorFilter: (err: Error) => !err.message.includes('Ignorable'),
       });
 

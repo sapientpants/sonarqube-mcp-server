@@ -2,16 +2,16 @@ import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import express, { Request, Response } from 'express';
 import request from 'supertest';
 import { metricsMiddleware } from '../middleware.js';
-import { MetricsService, cleanupMetricsService } from '../metrics.js';
+import { getMetricsService, cleanupMetricsService } from '../metrics.js';
 
 describe('Metrics Middleware', () => {
   let app: express.Express;
-  let metricsService: MetricsService;
+  let metricsService: ReturnType<typeof getMetricsService>;
 
   beforeEach(() => {
     // Reset metrics service
     cleanupMetricsService();
-    metricsService = MetricsService.getInstance();
+    metricsService = getMetricsService();
 
     app = express();
     app.use(metricsMiddleware);

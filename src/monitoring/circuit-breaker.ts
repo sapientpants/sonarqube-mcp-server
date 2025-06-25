@@ -145,6 +145,13 @@ export class CircuitBreakerFactory {
 
     this.breakers.clear();
   }
+
+  /**
+   * Reset all circuit breakers (for testing)
+   */
+  static reset(): void {
+    this.breakers.clear();
+  }
 }
 
 /**

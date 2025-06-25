@@ -3,8 +3,7 @@ import { HealthService } from '../health.js';
 import { ExternalIdPManager } from '../../auth/external-idp-manager.js';
 import { BuiltInAuthServer } from '../../auth/built-in-server/auth-server.js';
 import { ServiceAccountMapper } from '../../auth/service-account-mapper.js';
-import * as serviceAccounts from '../../config/service-accounts.js';
-import { createSonarQubeClient } from '../../sonarqube.js';
+
 // Mock dependencies
 jest.mock('../../utils/logger.js', () => ({
   createLogger: jest.fn(() => ({
@@ -15,8 +14,17 @@ jest.mock('../../utils/logger.js', () => ({
   })),
 }));
 
-jest.mock('../../config/service-accounts.js');
-jest.mock('../../sonarqube.js');
+// Mock functions need to be defined before the mock
+const mockGetServiceAccountConfig = jest.fn();
+const mockCreateSonarQubeClient = jest.fn();
+
+jest.mock('../../config/service-accounts.js', () => ({
+  getServiceAccountConfig: mockGetServiceAccountConfig,
+}));
+
+jest.mock('../../sonarqube.js', () => ({
+  createSonarQubeClient: mockCreateSonarQubeClient,
+}));
 
 describe('HealthService', () => {
   let mockExternalIdPManager: jest.Mocked<ExternalIdPManager>;
@@ -28,6 +36,9 @@ describe('HealthService', () => {
     jest.useFakeTimers();
     // Reset singleton
     HealthService.resetInstance();
+
+    // Reset all mocks
+    jest.clearAllMocks();
 
     // Create mocks
     mockExternalIdPManager = {
@@ -42,19 +53,37 @@ describe('HealthService', () => {
       ping: jest.fn().mockResolvedValue(undefined),
     };
 
-    jest.mocked(createSonarQubeClient).mockReturnValue(mockSonarQubeClient);
+    // Setup default mock behaviors
+    mockGetServiceAccountConfig.mockReturnValue({
+      id: 'default',
+      token: 'test-token',
+      url: 'https://sonarqube.example.com',
+    });
+
+    mockCreateSonarQubeClient.mockReturnValue(mockSonarQubeClient);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
     HealthService.resetInstance();
+    // Reset environment variables
+    delete process.env.SONARQUBE_URL;
+    delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
   });
 
   describe('getInstance', () => {
     it('should return singleton instance', () => {
-      const instance1 = HealthService.getInstance();
-      const instance2 = HealthService.getInstance();
+      const instance1 = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
+      const instance2 = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
 
       expect(instance1).toBe(instance2);
     });
@@ -72,13 +101,11 @@ describe('HealthService', () => {
 
   describe('checkHealth', () => {
     it('should return healthy status when all dependencies are healthy', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-        url: 'https://sonarqube.example.com',
-      });
-
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkHealth();
 
       expect(result.status).toBe('healthy');
@@ -87,9 +114,13 @@ describe('HealthService', () => {
     });
 
     it('should return unhealthy when SonarQube is not configured', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue(null);
+      mockGetServiceAccountConfig.mockReturnValue(null);
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkHealth();
 
       expect(result.status).toBe('unhealthy');
@@ -98,14 +129,18 @@ describe('HealthService', () => {
     });
 
     it('should return unhealthy when SonarQube ping fails', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
+      mockGetServiceAccountConfig.mockReturnValue({
         id: 'default',
         token: 'test-token',
       });
 
       mockSonarQubeClient.ping.mockRejectedValue(new Error('Connection refused'));
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkHealth();
 
       expect(result.status).toBe('unhealthy');
@@ -114,11 +149,6 @@ describe('HealthService', () => {
     });
 
     it('should check built-in auth server when enabled', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
       const healthService = HealthService.getInstance(undefined, mockBuiltInAuthServer, undefined);
       const result = await healthService.checkHealth();
 
@@ -128,11 +158,6 @@ describe('HealthService', () => {
     });
 
     it('should check external IdPs when configured', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
       mockExternalIdPManager.getHealthStatus.mockReturnValue([
         { provider: 'azure-ad', healthy: true, lastCheck: new Date() },
         { provider: 'okta', healthy: true, lastCheck: new Date() },
@@ -148,11 +173,6 @@ describe('HealthService', () => {
     });
 
     it('should return degraded when some IdPs are unhealthy', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
       mockExternalIdPManager.getHealthStatus.mockReturnValue([
         { provider: 'azure-ad', healthy: true, lastCheck: new Date() },
         { provider: 'okta', healthy: false, lastCheck: new Date(), error: 'Timeout' },
@@ -167,12 +187,11 @@ describe('HealthService', () => {
     });
 
     it('should cache health results', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
 
       // First call
       const result1 = await healthService.checkHealth();
@@ -187,12 +206,12 @@ describe('HealthService', () => {
 
     it('should refresh cache after timeout', async () => {
       jest.useRealTimers(); // Use real timers for this test
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
 
       // First call
       await healthService.checkHealth();
@@ -210,12 +229,11 @@ describe('HealthService', () => {
     }, 10000);
 
     it('should include uptime in response', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
 
       // Advance time to simulate uptime
       jest.advanceTimersByTime(100);
@@ -227,14 +245,13 @@ describe('HealthService', () => {
 
   describe('checkReadiness', () => {
     it('should return ready when all checks pass', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
       process.env.MCP_HTTP_ALLOW_NO_AUTH = 'true';
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkReadiness();
 
       expect(result.ready).toBe(true);
@@ -246,7 +263,7 @@ describe('HealthService', () => {
     it('should return not ready when authentication is not configured', async () => {
       delete process.env.MCP_HTTP_ALLOW_NO_AUTH;
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(undefined, undefined, undefined);
       const result = await healthService.checkReadiness();
 
       expect(result.ready).toBe(false);
@@ -255,11 +272,6 @@ describe('HealthService', () => {
     });
 
     it('should return ready when external IdP is configured', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
       const healthService = HealthService.getInstance(mockExternalIdPManager, undefined, undefined);
       const result = await healthService.checkReadiness();
 
@@ -267,11 +279,6 @@ describe('HealthService', () => {
     });
 
     it('should return ready when built-in auth is configured', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
-        id: 'default',
-        token: 'test-token',
-      });
-
       const healthService = HealthService.getInstance(undefined, mockBuiltInAuthServer, undefined);
       const result = await healthService.checkReadiness();
 
@@ -279,10 +286,14 @@ describe('HealthService', () => {
     });
 
     it('should return not ready when SonarQube is unhealthy', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue(null);
+      mockGetServiceAccountConfig.mockReturnValue(null);
       process.env.MCP_HTTP_ALLOW_NO_AUTH = 'true';
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkReadiness();
 
       expect(result.ready).toBe(false);
@@ -293,11 +304,15 @@ describe('HealthService', () => {
 
   describe('Error handling', () => {
     it('should handle exceptions in SonarQube check', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockImplementation(() => {
+      mockGetServiceAccountConfig.mockImplementation(() => {
         throw new Error('Config error');
       });
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkHealth();
 
       expect(result.status).toBe('unhealthy');
@@ -306,11 +321,15 @@ describe('HealthService', () => {
     });
 
     it('should handle non-Error exceptions', async () => {
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockImplementation(() => {
+      mockGetServiceAccountConfig.mockImplementation(() => {
         throw 'String error';
       });
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       const result = await healthService.checkHealth();
 
       expect(result.dependencies.sonarqube.message).toBe('Unknown error');
@@ -321,15 +340,19 @@ describe('HealthService', () => {
     it('should use SONARQUBE_URL from environment', async () => {
       process.env.SONARQUBE_URL = 'https://custom.sonarqube.com';
 
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
+      mockGetServiceAccountConfig.mockReturnValue({
         id: 'default',
         token: 'test-token',
       });
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       await healthService.checkHealth();
 
-      expect(createSonarQubeClient).toHaveBeenCalledWith(
+      expect(mockCreateSonarQubeClient).toHaveBeenCalledWith(
         'test-token',
         'https://custom.sonarqube.com',
         undefined
@@ -339,16 +362,20 @@ describe('HealthService', () => {
     it('should use config URL over environment', async () => {
       process.env.SONARQUBE_URL = 'https://env.sonarqube.com';
 
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
+      mockGetServiceAccountConfig.mockReturnValue({
         id: 'default',
         token: 'test-token',
         url: 'https://config.sonarqube.com',
       });
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       await healthService.checkHealth();
 
-      expect(createSonarQubeClient).toHaveBeenCalledWith(
+      expect(mockCreateSonarQubeClient).toHaveBeenCalledWith(
         'test-token',
         'https://config.sonarqube.com',
         undefined
@@ -358,15 +385,19 @@ describe('HealthService', () => {
     it('should default to SonarCloud when no URL configured', async () => {
       delete process.env.SONARQUBE_URL;
 
-      (serviceAccounts.getServiceAccountConfig as jest.Mock).mockReturnValue({
+      mockGetServiceAccountConfig.mockReturnValue({
         id: 'default',
         token: 'test-token',
       });
 
-      const healthService = HealthService.getInstance();
+      const healthService = HealthService.getInstance(
+        mockExternalIdPManager,
+        mockBuiltInAuthServer,
+        mockServiceAccountMapper
+      );
       await healthService.checkHealth();
 
-      expect(createSonarQubeClient).toHaveBeenCalledWith(
+      expect(mockCreateSonarQubeClient).toHaveBeenCalledWith(
         'test-token',
         'https://sonarcloud.io',
         undefined

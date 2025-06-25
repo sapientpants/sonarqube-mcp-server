@@ -12,6 +12,8 @@ import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('Tracing');
 
+let sdkInstance: NodeSDK | null = null;
+
 export interface TracingOptions {
   enabled?: boolean;
   serviceName?: string;
@@ -107,6 +109,7 @@ export function initializeTracing(options: TracingOptions = {}): NodeSDK | null 
         .catch((error) => logger.error('Error shutting down OpenTelemetry SDK', error));
     });
 
+    sdkInstance = sdk;
     return sdk;
   } catch (error) {
     logger.error('Failed to initialize OpenTelemetry tracing', error);
@@ -291,5 +294,20 @@ export function addSpanEvent(name: string, attributes?: Record<string, unknown>)
     } else {
       span.addEvent(name);
     }
+  }
+}
+
+/**
+ * Shutdown tracing
+ */
+export async function shutdownTracing(): Promise<void> {
+  if (sdkInstance) {
+    try {
+      await sdkInstance.shutdown();
+      logger.info('OpenTelemetry SDK shut down successfully');
+    } catch (error) {
+      logger.error('Error shutting down OpenTelemetry SDK', error);
+    }
+    sdkInstance = null;
   }
 }
