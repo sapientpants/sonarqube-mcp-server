@@ -12,9 +12,22 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.8.0
+## What's New in v1.9.0
 
-### External Identity Provider (IdP) Integration
+### Built-in Authorization Server
+- **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
+- **Authorization Code Flow**: Full support for OAuth 2.0 authorization code flow with PKCE
+- **Dynamic Client Registration**: Register OAuth clients dynamically via API (RFC7591)
+- **User Management**: Built-in user store with secure password hashing (bcrypt)
+- **API Key Support**: Generate API keys for automation and CI/CD workflows
+- **Token Management**: JWT token issuance with RS256 signing and automatic key rotation
+- **Refresh Token Rotation**: Secure refresh token support with automatic rotation
+- **Admin Interface**: RESTful API for user and client management
+- **Zero Configuration**: Automatically creates default admin user on first start
+
+## Previous Updates
+
+### v1.8.0 - External Identity Provider (IdP) Integration
 - **OIDC/OAuth 2.0 Support**: Full integration with external identity providers
 - **JWKS Endpoint Discovery**: Automatic discovery and caching of JSON Web Key Sets
 - **Provider Support**: Pre-configured support for Azure AD, Okta, Auth0, and Keycloak
@@ -512,6 +525,52 @@ MCP_EXTERNAL_IDP_1=provider:azure-ad,issuer:https://login.microsoftonline.com/12
 - **Okta**: `groupsClaim=groups`, `groupsTransform=none`
 - **Auth0**: `groupsClaim=https://auth0.com/groups`, `groupsTransform=none`
 - **Keycloak**: `groupsClaim=groups`, `groupsTransform=extract_name`
+
+### Built-in Authorization Server
+
+For environments that cannot use external IdPs, the server includes a minimal built-in OAuth 2.0 authorization server.
+
+**Enabling the Built-in Auth Server:**
+```bash
+MCP_BUILT_IN_AUTH_SERVER=true
+```
+
+**Features:**
+- OAuth 2.0 authorization code flow with PKCE
+- Dynamic client registration (POST `/auth/register`)
+- User authentication with secure password storage
+- API key generation for automation
+- JWT token issuance with automatic key rotation
+- Refresh token support with rotation
+
+**Default Admin User:**
+On first start, a default admin user is created:
+- Email: `admin@example.com`
+- Password: Randomly generated and logged to console
+- **Important**: Change this password immediately via the admin API
+
+**Endpoints:**
+- `GET /.well-known/oauth-authorization-server` - OAuth 2.0 metadata
+- `POST /auth/register` - Register new OAuth client
+- `GET /auth/authorize` - Authorization endpoint
+- `POST /auth/token` - Token endpoint
+- `POST /auth/revoke` - Token revocation
+- `GET /auth/jwks` - JSON Web Key Set
+- `POST /auth/admin/users` - Create users (admin only)
+- `GET /auth/admin/users` - List users (admin only)
+- `POST /auth/admin/users/:id/api-keys` - Generate API keys
+
+**API Key Authentication:**
+For automation and CI/CD, use API keys instead of OAuth flow:
+```bash
+curl -H "Authorization: ApiKey YOUR_API_KEY" http://localhost:3000/mcp
+```
+
+**Security Notes:**
+- This is a minimal implementation for development/testing
+- For production, use external IdPs when possible
+- Always use HTTPS in production (configure TLS)
+- Regularly rotate API keys
 
 ### Elicitation Configuration (Experimental)
 

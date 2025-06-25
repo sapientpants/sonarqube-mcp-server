@@ -156,9 +156,11 @@ describe('HttpTransport', () => {
 
         expect(response.body).toEqual({
           issuer: 'https://mcp.example.com',
-          authorization_endpoint: 'https://mcp.example.com/oauth/authorize',
-          token_endpoint: 'https://mcp.example.com/oauth/token',
-          jwks_uri: 'https://mcp.example.com/oauth/jwks',
+          authorization_endpoint: 'https://mcp.example.com/auth/authorize',
+          token_endpoint: 'https://mcp.example.com/auth/token',
+          jwks_uri: 'https://mcp.example.com/auth/jwks',
+          registration_endpoint: 'https://mcp.example.com/auth/register',
+          revocation_endpoint: 'https://mcp.example.com/auth/revoke',
           scopes_supported: ['sonarqube:read', 'sonarqube:write', 'sonarqube:admin'],
           response_types_supported: ['code'],
           response_modes_supported: ['query'],

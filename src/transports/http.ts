@@ -23,6 +23,7 @@ import { AuditEventBuilder } from '../audit/audit-event-builder.js';
 import { AuditEventType } from '../audit/types.js';
 import { ExternalIdPManager } from '../auth/external-idp-manager.js';
 import { ExternalIdPProvider, ExternalIdPConfig } from '../auth/external-idp-types.js';
+import { BuiltInAuthServer } from '../auth/built-in-server/auth-server.js';
 
 const logger = createLogger('HttpTransport');
 const auditLogger = getAuditLogger();
@@ -187,6 +188,7 @@ export class HttpTransport implements ITransport {
   private sessionManager?: SessionManager;
   private serviceAccountMapper?: ServiceAccountMapper;
   private externalIdPManager?: ExternalIdPManager;
+  private builtInAuthServer?: BuiltInAuthServer;
 
   constructor(options: HttpTransportOptions = {}) {
     const tlsEnabled = options.tls?.enabled ?? process.env.MCP_HTTP_TLS_ENABLED === 'true';
@@ -251,6 +253,39 @@ export class HttpTransport implements ITransport {
         });
       },
     });
+
+    // Set up built-in auth server if enabled
+    if (this.options.builtInAuthServer) {
+      this.builtInAuthServer = new BuiltInAuthServer({
+        issuer: this.options.publicUrl,
+        audience: ['sonarqube-mcp-server'],
+      });
+
+      // Mount auth server routes with rate limiting
+      this.app.use('/auth', authRateLimiter, this.builtInAuthServer.getRouter());
+
+      // Create default admin user asynchronously after construction
+      this.builtInAuthServer
+        .createDefaultAdminUser()
+        .then((adminCreds) => {
+          logger.info('Built-in auth server initialized with default admin user', {
+            email: adminCreds.email,
+            password: adminCreds.password,
+            note: 'Please change this password immediately',
+          });
+        })
+        .catch((error) => {
+          logger.error('Failed to create default admin user', error);
+        });
+
+      logger.info('Built-in auth server endpoints available', {
+        register: `${this.options.publicUrl}/auth/register`,
+        authorize: `${this.options.publicUrl}/auth/authorize`,
+        token: `${this.options.publicUrl}/auth/token`,
+        revoke: `${this.options.publicUrl}/auth/revoke`,
+        jwks: `${this.options.publicUrl}/auth/jwks`,
+      });
+    }
 
     // Set up authentication middleware with rate limiting for the MCP endpoint
     this.app.use('/mcp', authRateLimiter, (req, res, next) => {
@@ -484,9 +519,11 @@ export class HttpTransport implements ITransport {
       this.app.get('/.well-known/oauth-authorization-server', (req: Request, res: Response) => {
         const metadata: OAuthAuthorizationServerMetadata = {
           issuer: this.options.publicUrl,
-          authorization_endpoint: `${this.options.publicUrl}/oauth/authorize`,
-          token_endpoint: `${this.options.publicUrl}/oauth/token`,
-          jwks_uri: `${this.options.publicUrl}/oauth/jwks`,
+          authorization_endpoint: `${this.options.publicUrl}/auth/authorize`,
+          token_endpoint: `${this.options.publicUrl}/auth/token`,
+          jwks_uri: `${this.options.publicUrl}/auth/jwks`,
+          registration_endpoint: `${this.options.publicUrl}/auth/register`,
+          revocation_endpoint: `${this.options.publicUrl}/auth/revoke`,
           scopes_supported: ['sonarqube:read', 'sonarqube:write', 'sonarqube:admin'],
           response_types_supported: ['code'],
           response_modes_supported: ['query'],
@@ -589,7 +626,7 @@ export class HttpTransport implements ITransport {
    */
   private addBuiltInAuthServer(jwksEndpoints: Map<string, string>, issuers: string[]): void {
     if (this.options.builtInAuthServer) {
-      jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
+      jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/auth/jwks`);
       issuers.push(this.options.publicUrl);
     }
   }
@@ -645,6 +682,34 @@ export class HttpTransport implements ITransport {
   ): Promise<string | null> {
     const authHeader = req.headers.authorization;
 
+    // Check for API key authentication with built-in auth server
+    if (authHeader?.startsWith('ApiKey ') && this.builtInAuthServer) {
+      const apiKey = authHeader.substring(7); // Remove 'ApiKey ' prefix
+      const user = await this.builtInAuthServer.authenticateApiKey(apiKey);
+
+      if (user) {
+        // Generate a temporary JWT for the API key user
+        const claims: TokenClaims = {
+          sub: user.id,
+          email: user.email,
+          groups: user.groups,
+          iss: this.options.publicUrl,
+          aud: ['sonarqube-mcp-server'],
+          exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+          iat: Math.floor(Date.now() / 1000),
+        };
+
+        req.user = claims;
+        return 'api-key'; // Special marker for API key auth
+      }
+
+      res.status(401).json({
+        error: 'invalid_token',
+        error_description: 'Invalid API key',
+      });
+      return null;
+    }
+
     if (!authHeader?.startsWith('Bearer ')) {
       await this.handleMissingBearerToken(req, res);
       return null;
@@ -663,8 +728,15 @@ export class HttpTransport implements ITransport {
     token: string
   ): Promise<void> {
     try {
-      // Validate the token
-      const claims = await this.tokenValidator!.validateToken(token);
+      let claims: TokenClaims;
+
+      // Check if this is API key authentication
+      if (token === 'api-key' && req.user) {
+        claims = req.user;
+      } else {
+        // Validate the JWT token
+        claims = await this.tokenValidator!.validateToken(token);
+      }
 
       // Log successful token validation
       await auditLogger.logEvent(
