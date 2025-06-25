@@ -77,9 +77,7 @@ export class AuditLogger implements IAuditLogger {
     if (this.isInitialized) return;
 
     // Use singleton initialization promise
-    if (!this.initializationPromise) {
-      this.initializationPromise = this.performInitialization();
-    }
+    this.initializationPromise ??= this.performInitialization();
 
     return this.initializationPromise;
   }
