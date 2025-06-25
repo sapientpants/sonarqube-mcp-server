@@ -103,7 +103,7 @@ describe('Tracing', () => {
 
   describe('shutdownTracing', () => {
     it('should shutdown the SDK gracefully', async () => {
-      const sdk = await initializeTracing({ enabled: true });
+      await initializeTracing({ enabled: true });
 
       // The SDK is mocked, so we just check that shutdownTracing doesn't throw
       await expect(shutdownTracing()).resolves.toBeUndefined();
