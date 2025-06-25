@@ -281,104 +281,189 @@ export class ServiceAccountAuditor {
     healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
     failoversByAccount?: Record<string, number>;
   } {
-    const stats: {
-      totalEvents: number;
-      eventsByType: Record<string, number>;
-      eventsByAccount: Record<string, number>;
-      eventsByUser: Record<string, number>;
-      deniedReasons: Record<string, number>;
-      failuresByAccount: Record<string, number>;
-      healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
-      failoversByAccount?: Record<string, number>;
-    } = {
+    const stats = this.initializeStatistics();
+
+    // Process all events
+    for (const event of this.auditEvents) {
+      this.updateEventTypeCount(stats.eventsByType, event.eventType);
+      this.updateAccountStatistics(stats, event);
+      this.updateUserStatistics(stats, event);
+      this.updateSpecializedStatistics(stats, event);
+    }
+
+    return stats;
+  }
+
+  /**
+   * Initialize the statistics object with default values
+   */
+  private initializeStatistics(): {
+    totalEvents: number;
+    eventsByType: Record<string, number>;
+    eventsByAccount: Record<string, number>;
+    eventsByUser: Record<string, number>;
+    deniedReasons: Record<string, number>;
+    failuresByAccount: Record<string, number>;
+    healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
+    failoversByAccount?: Record<string, number>;
+  } {
+    return {
       totalEvents: this.auditEvents.length,
-      eventsByType: {},
+      eventsByType: {
+        access: 0,
+        accessDenied: 0,
+        failure: 0,
+        healthCheck: 0,
+        failover: 0,
+        configChange: 0,
+      },
       eventsByAccount: {},
       eventsByUser: {},
       deniedReasons: {},
       failuresByAccount: {},
       healthChecksByAccount: {},
     };
+  }
 
-    // Initialize basic event type counters for backward compatibility
-    stats.eventsByType.access = 0;
-    stats.eventsByType.accessDenied = 0;
-    stats.eventsByType.failure = 0;
-    stats.eventsByType.healthCheck = 0;
-    stats.eventsByType.failover = 0;
-    stats.eventsByType.configChange = 0;
+  /**
+   * Update event type counts based on the event type
+   */
+  private updateEventTypeCount(
+    eventsByType: Record<string, number>,
+    eventType: AuditEventType
+  ): void {
+    const typeMapping: Record<AuditEventType, string> = {
+      [AuditEventType.ACCOUNT_ACCESSED]: 'access',
+      [AuditEventType.ACCOUNT_ACCESS_DENIED]: 'accessDenied',
+      [AuditEventType.ACCOUNT_FAILED]: 'failure',
+      [AuditEventType.HEALTH_CHECK_PASSED]: 'healthCheck',
+      [AuditEventType.HEALTH_CHECK_FAILED]: 'healthCheck',
+      [AuditEventType.ACCOUNT_FAILOVER]: 'failover',
+      [AuditEventType.CONFIGURATION_CHANGED]: 'configChange',
+    };
 
-    // Process all events
-    for (const event of this.auditEvents) {
-      // Count by event type using simplified names
-      if (event.eventType === AuditEventType.ACCOUNT_ACCESSED) {
-        stats.eventsByType.access++;
-      } else if (event.eventType === AuditEventType.ACCOUNT_ACCESS_DENIED) {
-        stats.eventsByType.accessDenied++;
-      } else if (event.eventType === AuditEventType.ACCOUNT_FAILED) {
-        stats.eventsByType.failure++;
-      } else if (
-        event.eventType === AuditEventType.HEALTH_CHECK_PASSED ||
-        event.eventType === AuditEventType.HEALTH_CHECK_FAILED
-      ) {
-        stats.eventsByType.healthCheck++;
-      } else if (event.eventType === AuditEventType.ACCOUNT_FAILOVER) {
-        stats.eventsByType.failover++;
-      } else if (event.eventType === AuditEventType.CONFIGURATION_CHANGED) {
-        stats.eventsByType.configChange++;
-      }
+    const key = typeMapping[eventType];
+    if (key) {
+      eventsByType[key]++;
+    }
+  }
 
-      // Count by account
-      stats.eventsByAccount[event.serviceAccountId] =
-        (stats.eventsByAccount[event.serviceAccountId] || 0) + 1;
+  /**
+   * Update basic account and user statistics
+   */
+  private updateAccountStatistics(
+    stats: {
+      eventsByAccount: Record<string, number>;
+    },
+    event: ServiceAccountAuditEvent
+  ): void {
+    stats.eventsByAccount[event.serviceAccountId] =
+      (stats.eventsByAccount[event.serviceAccountId] ?? 0) + 1;
+  }
 
-      // Count by user
-      if (event.userId) {
-        stats.eventsByUser[event.userId] = (stats.eventsByUser[event.userId] || 0) + 1;
-      }
+  /**
+   * Update user-related statistics
+   */
+  private updateUserStatistics(
+    stats: {
+      eventsByUser: Record<string, number>;
+    },
+    event: ServiceAccountAuditEvent
+  ): void {
+    if (event.userId) {
+      stats.eventsByUser[event.userId] = (stats.eventsByUser[event.userId] ?? 0) + 1;
+    }
+  }
 
-      // Track denied reasons
-      if (event.eventType === AuditEventType.ACCOUNT_ACCESS_DENIED) {
-        // In the test, the second parameter is used as the reason key
-        const reason = event.serviceAccountId;
-        stats.deniedReasons[reason] = (stats.deniedReasons[reason] || 0) + 1;
-      }
+  /**
+   * Update specialized statistics based on event type
+   */
+  private updateSpecializedStatistics(
+    stats: {
+      deniedReasons: Record<string, number>;
+      failuresByAccount: Record<string, number>;
+      healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
+      failoversByAccount?: Record<string, number>;
+    },
+    event: ServiceAccountAuditEvent
+  ): void {
+    switch (event.eventType) {
+      case AuditEventType.ACCOUNT_ACCESS_DENIED:
+        this.updateDeniedReasons(stats, event);
+        break;
+      case AuditEventType.ACCOUNT_FAILED:
+        this.updateFailureStatistics(stats, event);
+        break;
+      case AuditEventType.HEALTH_CHECK_PASSED:
+      case AuditEventType.HEALTH_CHECK_FAILED:
+        this.updateHealthCheckStatistics(stats, event);
+        break;
+      case AuditEventType.ACCOUNT_FAILOVER:
+        this.updateFailoverStatistics(stats, event);
+        break;
+    }
+  }
 
-      // Track failures by account
-      if (event.eventType === AuditEventType.ACCOUNT_FAILED) {
-        stats.failuresByAccount[event.serviceAccountId] =
-          (stats.failuresByAccount[event.serviceAccountId] || 0) + 1;
-      }
+  /**
+   * Update denied access reasons
+   */
+  private updateDeniedReasons(
+    stats: { deniedReasons: Record<string, number> },
+    event: ServiceAccountAuditEvent
+  ): void {
+    // In the test, the second parameter is used as the reason key
+    const reason = event.serviceAccountId;
+    stats.deniedReasons[reason] = (stats.deniedReasons[reason] ?? 0) + 1;
+  }
 
-      // Track health checks by account
-      if (
-        event.eventType === AuditEventType.HEALTH_CHECK_PASSED ||
-        event.eventType === AuditEventType.HEALTH_CHECK_FAILED
-      ) {
-        if (!stats.healthChecksByAccount[event.serviceAccountId]) {
-          stats.healthChecksByAccount[event.serviceAccountId] = {
-            total: 0,
-            successful: 0,
-            failed: 0,
-          };
-        }
-        stats.healthChecksByAccount[event.serviceAccountId].total++;
-        if (event.eventType === AuditEventType.HEALTH_CHECK_PASSED) {
-          stats.healthChecksByAccount[event.serviceAccountId].successful++;
-        } else {
-          stats.healthChecksByAccount[event.serviceAccountId].failed++;
-        }
-      }
+  /**
+   * Update failure statistics by account
+   */
+  private updateFailureStatistics(
+    stats: { failuresByAccount: Record<string, number> },
+    event: ServiceAccountAuditEvent
+  ): void {
+    stats.failuresByAccount[event.serviceAccountId] =
+      (stats.failuresByAccount[event.serviceAccountId] ?? 0) + 1;
+  }
 
-      // Track failovers by account
-      if (event.eventType === AuditEventType.ACCOUNT_FAILOVER) {
-        stats.failoversByAccount ??= {};
-        stats.failoversByAccount[event.serviceAccountId] =
-          (stats.failoversByAccount[event.serviceAccountId] || 0) + 1;
-      }
+  /**
+   * Update health check statistics
+   */
+  private updateHealthCheckStatistics(
+    stats: {
+      healthChecksByAccount: Record<string, { total: number; successful: number; failed: number }>;
+    },
+    event: ServiceAccountAuditEvent
+  ): void {
+    if (!stats.healthChecksByAccount[event.serviceAccountId]) {
+      stats.healthChecksByAccount[event.serviceAccountId] = {
+        total: 0,
+        successful: 0,
+        failed: 0,
+      };
     }
 
-    return stats;
+    const healthStats = stats.healthChecksByAccount[event.serviceAccountId];
+    healthStats.total++;
+
+    if (event.eventType === AuditEventType.HEALTH_CHECK_PASSED) {
+      healthStats.successful++;
+    } else {
+      healthStats.failed++;
+    }
+  }
+
+  /**
+   * Update failover statistics
+   */
+  private updateFailoverStatistics(
+    stats: { failoversByAccount?: Record<string, number> },
+    event: ServiceAccountAuditEvent
+  ): void {
+    stats.failoversByAccount ??= {};
+    stats.failoversByAccount[event.serviceAccountId] =
+      (stats.failoversByAccount[event.serviceAccountId] ?? 0) + 1;
   }
 
   /**

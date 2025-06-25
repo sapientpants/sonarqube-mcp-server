@@ -193,54 +193,97 @@ export class ServiceAccountMapper {
    * Find service account for user based on mapping rules
    */
   private findServiceAccountForUser(claims: TokenClaims): string | undefined {
-    const userScopes = claims.scope?.split(' ') ?? [];
-    const userGroups = Array.isArray(claims.groups) ? claims.groups : [];
+    const userContext = this.extractUserContext(claims);
 
     for (const rule of this.mappingRules) {
-      // Check user pattern
-      if (rule.userPattern && !rule.userPattern.test(claims.sub)) {
-        continue;
+      if (this.isRuleMatchingUser(rule, claims, userContext)) {
+        return rule.serviceAccountId;
       }
-
-      // Check issuer pattern
-      if (rule.issuerPattern && !rule.issuerPattern.test(claims.iss)) {
-        continue;
-      }
-
-      // Check required scopes
-      if (rule.requiredScopes) {
-        const hasAllScopes = rule.requiredScopes.every((scope) => userScopes.includes(scope));
-        if (!hasAllScopes) {
-          continue;
-        }
-      }
-
-      // Check required groups
-      if (rule.requiredGroups && rule.requiredGroups.length > 0) {
-        const hasMatchingGroup = rule.requiredGroups.some((group) => userGroups.includes(group));
-        if (!hasMatchingGroup) {
-          continue;
-        }
-      }
-
-      // Check if account is healthy (if health monitoring is enabled)
-      if (this.enableHealthMonitoring) {
-        const account = this.serviceAccounts.get(rule.serviceAccountId);
-        if (account && account.isHealthy === false) {
-          logger.warn('Skipping unhealthy service account', {
-            accountId: rule.serviceAccountId,
-            accountName: account.name,
-          });
-          continue;
-        }
-      }
-
-      // Rule matches
-      return rule.serviceAccountId;
     }
 
     // Return default if no rules match
     return this.defaultServiceAccountId;
+  }
+
+  /**
+   * Extract user context from claims
+   */
+  private extractUserContext(claims: TokenClaims): {
+    scopes: string[];
+    groups: string[];
+  } {
+    return {
+      scopes: claims.scope?.split(' ') ?? [],
+      groups: Array.isArray(claims.groups) ? claims.groups : [],
+    };
+  }
+
+  /**
+   * Check if a rule matches the user
+   */
+  private isRuleMatchingUser(
+    rule: MappingRule,
+    claims: TokenClaims,
+    userContext: { scopes: string[]; groups: string[] }
+  ): boolean {
+    // Check all rule criteria
+    if (!this.isUserPatternMatching(rule, claims.sub)) return false;
+    if (!this.isIssuerPatternMatching(rule, claims.iss)) return false;
+    if (!this.areScopesMatching(rule, userContext.scopes)) return false;
+    if (!this.areGroupsMatching(rule, userContext.groups)) return false;
+    if (!this.isAccountHealthy(rule.serviceAccountId)) return false;
+
+    return true;
+  }
+
+  /**
+   * Check if user pattern matches
+   */
+  private isUserPatternMatching(rule: MappingRule, userSub: string): boolean {
+    if (!rule.userPattern) return true;
+    return rule.userPattern.test(userSub);
+  }
+
+  /**
+   * Check if issuer pattern matches
+   */
+  private isIssuerPatternMatching(rule: MappingRule, issuer: string): boolean {
+    if (!rule.issuerPattern) return true;
+    return rule.issuerPattern.test(issuer);
+  }
+
+  /**
+   * Check if required scopes are present
+   */
+  private areScopesMatching(rule: MappingRule, userScopes: string[]): boolean {
+    if (!rule.requiredScopes) return true;
+    return rule.requiredScopes.every((scope) => userScopes.includes(scope));
+  }
+
+  /**
+   * Check if required groups are present
+   */
+  private areGroupsMatching(rule: MappingRule, userGroups: string[]): boolean {
+    if (!rule.requiredGroups || rule.requiredGroups.length === 0) return true;
+    return rule.requiredGroups.some((group) => userGroups.includes(group));
+  }
+
+  /**
+   * Check if the service account is healthy
+   */
+  private isAccountHealthy(accountId: string): boolean {
+    if (!this.enableHealthMonitoring) return true;
+
+    const account = this.serviceAccounts.get(accountId);
+    if (account && account.isHealthy === false) {
+      logger.warn('Skipping unhealthy service account', {
+        accountId,
+        accountName: account.name,
+      });
+      return false;
+    }
+
+    return true;
   }
 
   /**
@@ -377,78 +420,180 @@ export class ServiceAccountMapper {
     primaryAccountId: string,
     claims: TokenClaims
   ): Promise<{ client: ISonarQubeClient; accountId: string }> {
-    let currentAccountId = primaryAccountId;
     const attemptedAccounts = new Set<string>();
+    let currentAccountId: string | undefined = primaryAccountId;
+    let lastError: Error | undefined;
+    let hasFailover = false;
 
-    while (currentAccountId) {
-      // Prevent infinite loops
-      if (attemptedAccounts.has(currentAccountId)) {
-        break;
-      }
+    while (currentAccountId && !attemptedAccounts.has(currentAccountId)) {
       attemptedAccounts.add(currentAccountId);
 
-      const account = this.serviceAccounts.get(currentAccountId);
-      if (!account) {
-        throw new Error(`Service account ${currentAccountId} not found`);
+      const result = await this.tryCreateClientForAccount(currentAccountId, claims);
+      if (result.success) {
+        return result;
       }
 
-      try {
-        // Get token from credential store if available
-        const token = this.getAccountToken(account);
-        const accountWithToken = { ...account, token };
+      // Store the error
+      lastError = result.error ?? new Error(result.errorMessage);
 
-        // Create client
-        const client = await this.createClientForServiceAccount(accountWithToken);
+      // Get next account to try
+      const nextAccountId = this.getFailoverAccountId(
+        currentAccountId,
+        result.errorMessage,
+        claims
+      );
 
-        // Test the client if health monitoring is enabled
-        if (this.enableHealthMonitoring && this.healthMonitor) {
-          const healthResult = await this.healthMonitor.checkAccount(
-            accountWithToken,
-            this.defaultUrl,
-            this.defaultOrganization
-          );
-
-          if (!healthResult.isHealthy) {
-            throw new Error(`Service account health check failed: ${healthResult.error}`);
-          }
-        }
-
-        // Success - log access and return
-        this.auditor?.logAccountAccess(claims, currentAccountId, account.name, account.environment);
-        return { client, accountId: currentAccountId };
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('Failed to create client for service account', {
-          accountId: currentAccountId,
-          error: errorMessage,
-        });
-
-        // Mark account as failed
-        this.healthMonitor?.markAccountFailed(currentAccountId, errorMessage);
-        this.auditor?.logAccountFailure(currentAccountId, account.name, errorMessage, claims.sub);
-
-        // Try failover if enabled
-        if (this.enableFailover && account.fallbackAccountId) {
-          logger.info('Attempting failover to backup account', {
-            fromAccount: currentAccountId,
-            toAccount: account.fallbackAccountId,
-          });
-          this.auditor?.logFailover(
-            currentAccountId,
-            account.fallbackAccountId,
-            errorMessage,
-            claims.sub
-          );
-          currentAccountId = account.fallbackAccountId;
-        } else {
-          // No failover available, re-throw the error
-          throw error;
-        }
+      // If no failover is available and this is the first attempt, throw the original error
+      if (!nextAccountId && attemptedAccounts.size === 1) {
+        throw lastError;
       }
+
+      if (nextAccountId) {
+        hasFailover = true;
+      }
+
+      currentAccountId = nextAccountId;
     }
 
-    // All attempts failed
-    throw new Error('All service accounts failed, no failover available');
+    // If we had failover attempts (including circular), throw generic error
+    if (hasFailover || attemptedAccounts.size > 1) {
+      throw new Error('All service accounts failed, no failover available');
+    }
+
+    // Otherwise throw the specific error
+    throw lastError ?? new Error('All service accounts failed, no failover available');
+  }
+
+  /**
+   * Try to create a client for a specific account
+   */
+  private async tryCreateClientForAccount(
+    accountId: string,
+    claims: TokenClaims
+  ): Promise<
+    | { success: true; client: ISonarQubeClient; accountId: string }
+    | { success: false; errorMessage: string; error?: Error }
+  > {
+    const account = this.serviceAccounts.get(accountId);
+    if (!account) {
+      const errorMessage = `Service account ${accountId} not found`;
+      return {
+        success: false,
+        errorMessage,
+        error: new Error(errorMessage),
+      };
+    }
+
+    try {
+      const client = await this.createAndValidateClient(account);
+      this.logSuccessfulAccess(claims, accountId, account);
+      return { success: true, client, accountId };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.handleAccountFailure(accountId, account, errorMessage, claims);
+      return {
+        success: false,
+        errorMessage,
+        error: error instanceof Error ? error : new Error(errorMessage),
+      };
+    }
+  }
+
+  /**
+   * Create and validate a client for a service account
+   */
+  private async createAndValidateClient(account: ServiceAccount): Promise<ISonarQubeClient> {
+    // Get token from credential store if available
+    const token = this.getAccountToken(account);
+    const accountWithToken = { ...account, token };
+
+    // Create client
+    const client = await this.createClientForServiceAccount(accountWithToken);
+
+    // Validate client health if enabled
+    await this.validateClientHealth(accountWithToken);
+
+    return client;
+  }
+
+  /**
+   * Validate client health if health monitoring is enabled
+   */
+  private async validateClientHealth(account: ServiceAccount): Promise<void> {
+    if (!this.enableHealthMonitoring || !this.healthMonitor) {
+      return;
+    }
+
+    const healthResult = await this.healthMonitor.checkAccount(
+      account,
+      this.defaultUrl,
+      this.defaultOrganization
+    );
+
+    if (!healthResult.isHealthy) {
+      throw new Error(`Service account health check failed: ${healthResult.error}`);
+    }
+  }
+
+  /**
+   * Log successful account access
+   */
+  private logSuccessfulAccess(
+    claims: TokenClaims,
+    accountId: string,
+    account: ServiceAccount
+  ): void {
+    this.auditor?.logAccountAccess(claims, accountId, account.name, account.environment);
+  }
+
+  /**
+   * Handle account failure
+   */
+  private handleAccountFailure(
+    accountId: string,
+    account: ServiceAccount,
+    errorMessage: string,
+    claims: TokenClaims
+  ): void {
+    logger.error('Failed to create client for service account', {
+      accountId,
+      error: errorMessage,
+    });
+
+    this.healthMonitor?.markAccountFailed(accountId, errorMessage);
+    this.auditor?.logAccountFailure(accountId, account.name, errorMessage, claims.sub);
+  }
+
+  /**
+   * Get failover account ID if available
+   */
+  private getFailoverAccountId(
+    currentAccountId: string,
+    errorMessage: string,
+    claims: TokenClaims
+  ): string | undefined {
+    if (!this.enableFailover) {
+      return undefined;
+    }
+
+    const account = this.serviceAccounts.get(currentAccountId);
+    if (!account?.fallbackAccountId) {
+      return undefined;
+    }
+
+    logger.info('Attempting failover to backup account', {
+      fromAccount: currentAccountId,
+      toAccount: account.fallbackAccountId,
+    });
+
+    this.auditor?.logFailover(
+      currentAccountId,
+      account.fallbackAccountId,
+      errorMessage,
+      claims.sub
+    );
+
+    return account.fallbackAccountId;
   }
 
   /**
