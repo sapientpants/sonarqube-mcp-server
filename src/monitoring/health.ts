@@ -143,8 +143,8 @@ export class HealthService {
 
       const client = createSonarQubeClient(
         config.token,
-        config.url || process.env.SONARQUBE_URL || 'https://sonarcloud.io',
-        config.organization || process.env.SONARQUBE_ORGANIZATION
+        config.url ?? process.env.SONARQUBE_URL ?? 'https://sonarcloud.io',
+        config.organization ?? process.env.SONARQUBE_ORGANIZATION
       );
 
       // Try to ping SonarQube

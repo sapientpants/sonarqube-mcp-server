@@ -29,10 +29,11 @@ export function getServiceAccountConfig(accountId: string): ServiceAccountConfig
   }
 
   // For numbered accounts (SA1-SA10)
-  const match = accountId.match(/^SA(\d+)$/);
+  const regex = /^SA(\d+)$/;
+  const match = regex.exec(accountId);
   if (match) {
     const num = match[1];
-    const token = process.env[`MCP_SERVICE_ACCOUNT_${num}_TOKEN`];
+    const token = process.env[`SONARQUBE_SA${num}_TOKEN`];
     if (!token) {
       return null;
     }
@@ -40,8 +41,8 @@ export function getServiceAccountConfig(accountId: string): ServiceAccountConfig
     return {
       id: accountId,
       token,
-      url: process.env[`MCP_SERVICE_ACCOUNT_${num}_URL`],
-      organization: process.env[`MCP_SERVICE_ACCOUNT_${num}_ORGANIZATION`],
+      url: process.env[`SONARQUBE_SA${num}_URL`],
+      organization: process.env[`SONARQUBE_SA${num}_ORGANIZATION`],
     };
   }
 

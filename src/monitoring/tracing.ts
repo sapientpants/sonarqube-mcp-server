@@ -34,8 +34,8 @@ export function initializeTracing(options: TracingOptions = {}): NodeSDK | null 
 
   try {
     const serviceName =
-      options.serviceName || process.env.OTEL_SERVICE_NAME || 'sonarqube-mcp-server';
-    const serviceVersion = options.serviceVersion || process.env.npm_package_version || '1.5.1';
+      options.serviceName ?? process.env.OTEL_SERVICE_NAME ?? 'sonarqube-mcp-server';
+    const serviceVersion = options.serviceVersion ?? process.env.npm_package_version ?? '1.5.1';
 
     // Create resource
     const resource = defaultResource().merge(
@@ -51,17 +51,17 @@ export function initializeTracing(options: TracingOptions = {}): NodeSDK | null 
     // Create metric exporter
     const metricExporter = new OTLPMetricExporter({
       url:
-        options.endpoint ||
-        process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ||
+        options.endpoint ??
+        process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT ??
         'http://localhost:4318/v1/metrics',
-      headers: options.headers || parseHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS),
-      timeoutMillis: options.exportTimeoutMillis || 10000,
+      headers: options.headers ?? parseHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS),
+      timeoutMillis: options.exportTimeoutMillis ?? 10000,
     });
 
     // Create metric reader
     const metricReader = new PeriodicExportingMetricReader({
       exporter: metricExporter,
-      exportIntervalMillis: options.exportIntervalMillis || 60000, // 60 seconds
+      exportIntervalMillis: options.exportIntervalMillis ?? 60000, // 60 seconds
     });
 
     // Create SDK
@@ -95,8 +95,8 @@ export function initializeTracing(options: TracingOptions = {}): NodeSDK | null 
     logger.info('OpenTelemetry tracing initialized', {
       serviceName,
       serviceVersion,
-      exporter: options.exporter || 'otlp',
-      endpoint: options.endpoint || 'default',
+      exporter: options.exporter ?? 'otlp',
+      endpoint: options.endpoint ?? 'default',
     });
 
     // Handle graceful shutdown
@@ -118,22 +118,22 @@ export function initializeTracing(options: TracingOptions = {}): NodeSDK | null 
  * Create trace exporter based on configuration
  */
 function createTraceExporter(options: TracingOptions) {
-  const exporterType = options.exporter || process.env.OTEL_TRACES_EXPORTER || 'otlp';
+  const exporterType = options.exporter ?? process.env.OTEL_TRACES_EXPORTER ?? 'otlp';
 
   switch (exporterType) {
     case 'jaeger':
       return new JaegerExporter({
         endpoint:
-          options.endpoint ||
-          process.env.OTEL_EXPORTER_JAEGER_ENDPOINT ||
+          options.endpoint ??
+          process.env.OTEL_EXPORTER_JAEGER_ENDPOINT ??
           'http://localhost:14268/api/traces',
       });
 
     case 'zipkin':
       return new ZipkinExporter({
         url:
-          options.endpoint ||
-          process.env.OTEL_EXPORTER_ZIPKIN_ENDPOINT ||
+          options.endpoint ??
+          process.env.OTEL_EXPORTER_ZIPKIN_ENDPOINT ??
           'http://localhost:9411/api/v2/spans',
       });
 
@@ -141,11 +141,11 @@ function createTraceExporter(options: TracingOptions) {
     default:
       return new OTLPTraceExporter({
         url:
-          options.endpoint ||
-          process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ||
+          options.endpoint ??
+          process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ??
           'http://localhost:4318/v1/traces',
-        headers: options.headers || parseHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS),
-        timeoutMillis: options.exportTimeoutMillis || 10000,
+        headers: options.headers ?? parseHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS),
+        timeoutMillis: options.exportTimeoutMillis ?? 10000,
       });
   }
 }
