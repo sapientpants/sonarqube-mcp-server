@@ -847,7 +847,7 @@ export class HttpTransport implements ITransport {
         if (tokenParts.length === 3) {
           try {
             const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
-            userId = payload.sub || 'unknown';
+            userId = payload.sub ?? 'unknown';
           } catch {
             // Ignore parsing errors
           }

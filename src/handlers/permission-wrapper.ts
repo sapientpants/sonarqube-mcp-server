@@ -92,7 +92,7 @@ export function createPermissionAwareHandler<TParams extends Record<string, unkn
             'tool',
             tool,
             'execute',
-            accessResult.reason || 'Access denied',
+            accessResult.reason ?? 'Access denied',
             effectiveUserContext
           ).build()
         );

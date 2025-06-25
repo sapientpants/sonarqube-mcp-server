@@ -17,7 +17,6 @@ describe('AuditLogger', () => {
     auditLogger = new AuditLogger({
       auditLogPath: testLogPath,
       asyncLogging: false, // Synchronous for easier testing
-      enableFileLogging: true,
       redactPII: true,
     });
   });
@@ -293,7 +292,6 @@ describe('AuditLogger', () => {
       testAuditLogger = new AuditLogger({
         auditLogPath: testPath,
         asyncLogging: false,
-        enableFileLogging: true,
         redactPII: true,
       });
 

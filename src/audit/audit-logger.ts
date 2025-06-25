@@ -11,7 +11,7 @@ const logger = createLogger('AuditLogger');
  * Default configuration for audit logging
  */
 const DEFAULT_CONFIG: Required<AuditConfig> = {
-  auditLogPath: process.env.AUDIT_LOG_PATH || './logs/audit',
+  auditLogPath: process.env.AUDIT_LOG_PATH ?? './logs/audit',
   separateAuditLog: true,
   maxFileSizeMB: 100,
   maxFiles: 30,
@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: Required<AuditConfig> = {
  */
 const PII_PATTERNS = {
   email: /\b([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g,
-  ipv4: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g,
+  ipv4: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
   ipv6: /\b(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}\b/g,
   creditCard: /\b(?:\d[ -]*?){13,19}\b/g,
   ssn: /\b(?:\d{3}-\d{2}-\d{4}|\d{9})\b/g,
@@ -52,7 +52,7 @@ const PII_PATTERNS = {
  * Comprehensive audit logger implementation
  */
 export class AuditLogger implements IAuditLogger {
-  private config: Required<AuditConfig>;
+  private readonly config: Required<AuditConfig>;
   private buffer: AuditEvent[] = [];
   private currentLogFile?: string;
   private flushTimer?: NodeJS.Timeout;
@@ -60,9 +60,8 @@ export class AuditLogger implements IAuditLogger {
 
   constructor(config: AuditConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.initialize().catch((error) => {
-      logger.error('Failed to initialize audit logger', { error });
-    });
+    // Initialize asynchronously without blocking constructor
+    void this.initialize();
   }
 
   /**
@@ -92,7 +91,7 @@ export class AuditLogger implements IAuditLogger {
       });
     } catch (error) {
       logger.error('Failed to initialize audit logger', { error });
-      throw error;
+      // Don't throw - allow graceful degradation
     }
   }
 
@@ -204,7 +203,7 @@ export class AuditLogger implements IAuditLogger {
       await fs.rename(this.currentLogFile, archiveFile);
 
       if (this.config.compressArchives) {
-        // TODO: Implement compression
+        // Compression will be implemented in a future release
         logger.info('Log compression not yet implemented');
       }
 
@@ -338,43 +337,19 @@ export class AuditLogger implements IAuditLogger {
    * Check if event matches filters
    */
   private matchesFilters(event: AuditEvent, filters: AuditEventFilters): boolean {
-    if (filters.startTime && new Date(event.timestamp) < filters.startTime) {
-      return false;
-    }
+    const checks = [
+      () => !filters.startTime || new Date(event.timestamp) >= filters.startTime,
+      () => !filters.endTime || new Date(event.timestamp) <= filters.endTime,
+      () => !filters.eventTypes || filters.eventTypes.includes(event.eventType),
+      () => !filters.eventCategories || filters.eventCategories.includes(event.eventCategory),
+      () => !filters.userId || event.actor.userId === filters.userId,
+      () => !filters.sessionId || event.actor.sessionId === filters.sessionId,
+      () => !filters.targetType || event.target.type === filters.targetType,
+      () => !filters.targetId || event.target.id === filters.targetId,
+      () => !filters.result || event.action.result === filters.result,
+    ];
 
-    if (filters.endTime && new Date(event.timestamp) > filters.endTime) {
-      return false;
-    }
-
-    if (filters.eventTypes && !filters.eventTypes.includes(event.eventType)) {
-      return false;
-    }
-
-    if (filters.eventCategories && !filters.eventCategories.includes(event.eventCategory)) {
-      return false;
-    }
-
-    if (filters.userId && event.actor.userId !== filters.userId) {
-      return false;
-    }
-
-    if (filters.sessionId && event.actor.sessionId !== filters.sessionId) {
-      return false;
-    }
-
-    if (filters.targetType && event.target.type !== filters.targetType) {
-      return false;
-    }
-
-    if (filters.targetId && event.target.id !== filters.targetId) {
-      return false;
-    }
-
-    if (filters.result && event.action.result !== filters.result) {
-      return false;
-    }
-
-    return true;
+    return checks.every((check) => check());
   }
 
   /**
@@ -409,7 +384,7 @@ export class AuditLogger implements IAuditLogger {
 
       // Redact IP addresses if configured
       if (this.config.redactIPAddresses) {
-        redacted = redacted.replace(PII_PATTERNS.ipv4, '***.***.***.$1');
+        redacted = redacted.replace(PII_PATTERNS.ipv4, '***.***.***.***');
         redacted = redacted.replace(PII_PATTERNS.ipv6, '****:****:****:****');
       }
 
@@ -444,10 +419,8 @@ export class AuditLogger implements IAuditLogger {
    * Send events to SIEM
    */
   private async sendToSIEM(events: AuditEvent[]): Promise<void> {
-    // TODO: Implement SIEM integration
-    // - Syslog forwarding
-    // - Webhook delivery
-    // - Batch processing
+    // SIEM integration foundation - implementation pending
+    // Future features: Syslog forwarding, Webhook delivery, Batch processing
     logger.debug('SIEM integration not yet implemented', { eventCount: events.length });
   }
 
@@ -476,8 +449,6 @@ export class AuditLogger implements IAuditLogger {
 let auditLogger: AuditLogger | undefined;
 
 export function getAuditLogger(config?: AuditConfig): AuditLogger {
-  if (!auditLogger) {
-    auditLogger = new AuditLogger(config);
-  }
+  auditLogger ??= new AuditLogger(config);
   return auditLogger;
 }

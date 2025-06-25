@@ -14,7 +14,7 @@ import type { TokenClaims } from '../auth/token-validator.js';
  * Builder class for creating audit events
  */
 export class AuditEventBuilder {
-  private event: Partial<AuditEvent> = {};
+  private readonly event: Partial<AuditEvent> = {};
 
   /**
    * Set the event type and category
