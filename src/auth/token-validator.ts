@@ -1,24 +1,9 @@
 import jwt from 'jsonwebtoken';
 import { createLogger } from '../utils/logger.js';
 import { ExternalIdPManager } from './external-idp-manager.js';
+import { TokenClaims } from './types.js';
 
 const logger = createLogger('TokenValidator');
-
-/**
- * JWT token claims interface
- */
-export interface TokenClaims {
-  sub: string; // Subject (user ID)
-  iss: string; // Issuer
-  aud: string | string[]; // Audience
-  exp: number; // Expiration time
-  nbf?: number; // Not before
-  iat: number; // Issued at
-  jti?: string; // JWT ID
-  scope?: string; // OAuth 2.0 scopes
-  resource?: string | string[]; // Resource indicators (RFC8707)
-  [key: string]: unknown; // Additional claims
-}
 
 /**
  * Token validation error codes

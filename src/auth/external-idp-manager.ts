@@ -1,7 +1,7 @@
 import { createLogger } from '../utils/logger.js';
 import { JWKSClient } from './jwks-client.js';
 import { ExternalIdPConfig, IdPHealthStatus, PROVIDER_DEFAULTS } from './external-idp-types.js';
-import { TokenClaims } from './token-validator.js';
+import { TokenClaims } from './types.js';
 
 const logger = createLogger('ExternalIdPManager');
 
@@ -9,9 +9,9 @@ const logger = createLogger('ExternalIdPManager');
  * Manages multiple external identity providers
  */
 export class ExternalIdPManager {
-  private idps = new Map<string, ExternalIdPConfig>();
-  private healthStatus = new Map<string, IdPHealthStatus>();
-  private jwksClient: JWKSClient;
+  private readonly idps = new Map<string, ExternalIdPConfig>();
+  private readonly healthStatus = new Map<string, IdPHealthStatus>();
+  private readonly jwksClient: JWKSClient;
   private healthCheckInterval?: NodeJS.Timeout;
   private readonly healthCheckIntervalMs: number;
 
@@ -162,15 +162,17 @@ export class ExternalIdPManager {
     }
 
     switch (transform) {
-      case 'extract_name':
+      case 'extract_name': {
         // Extract name from DN format (e.g., "cn=admins,ou=groups,dc=example,dc=com" -> "admins")
-        const nameMatch = group.match(/cn=([^,]+)/i);
+        const nameMatch = /cn=([^,]+)/i.exec(group);
         return nameMatch ? nameMatch[1] : group;
+      }
 
-      case 'extract_id':
+      case 'extract_id': {
         // Extract last segment from path-like format (e.g., "/groups/123/admins" -> "admins")
         const segments = group.split('/').filter(Boolean);
         return segments[segments.length - 1] ?? group;
+      }
 
       default:
         return group;

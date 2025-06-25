@@ -1,7 +1,7 @@
 import { AuditEventBuilder } from '../audit-event-builder.js';
 import { AuditEventType, AuditEventCategory } from '../types.js';
 import type { UserContext } from '../../auth/types.js';
-import type { TokenClaims } from '../../auth/token-validator.js';
+import type { TokenClaims } from '../../auth/types.js';
 
 describe('AuditEventBuilder', () => {
   const mockUserContext: UserContext = {

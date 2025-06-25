@@ -9,7 +9,7 @@ export {
   TokenValidationError,
   TokenValidationErrorCode,
 } from './token-validator.js';
-export type { TokenClaims } from './token-validator.js';
+export type { TokenClaims } from './types.js';
 export { SessionManager } from './session-manager.js';
 export { ServiceAccountMapper } from './service-account-mapper.js';
 export { PermissionService } from './permission-service.js';

@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { ServiceAccountAuditor } from '../service-account-auditor.js';
-import type { TokenClaims } from '../token-validator.js';
+import type { TokenClaims } from '../types.js';
 
 describe('ServiceAccountAuditor', () => {
   let auditor: ServiceAccountAuditor;

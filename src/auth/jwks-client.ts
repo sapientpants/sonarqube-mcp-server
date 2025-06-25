@@ -7,8 +7,8 @@ const logger = createLogger('JWKSClient');
  * Client for fetching and caching JWKS (JSON Web Key Set) from IdPs
  */
 export class JWKSClient {
-  private cache = new Map<string, CachedJWKS>();
-  private discoveryCache = new Map<string, OIDCDiscoveryDocument>();
+  private readonly cache = new Map<string, CachedJWKS>();
+  private readonly discoveryCache = new Map<string, OIDCDiscoveryDocument>();
   private readonly cacheTTL: number;
   private readonly discoveryTTL: number;
 

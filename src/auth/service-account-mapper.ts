@@ -1,5 +1,5 @@
 import { createLogger } from '../utils/logger.js';
-import type { TokenClaims } from './token-validator.js';
+import type { TokenClaims } from './types.js';
 import type { ISonarQubeClient } from '../types/index.js';
 import type { ServiceAccount } from './service-account-types.js';
 import { createSonarQubeClient } from '../sonarqube.js';

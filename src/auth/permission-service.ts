@@ -10,7 +10,7 @@ import {
   IssueSeverity,
   IssueStatus,
 } from './types.js';
-import { TokenClaims } from './token-validator.js';
+import { TokenClaims } from './types.js';
 import { getAuditLogger } from '../audit/audit-logger.js';
 import { AuditEventBuilder } from '../audit/audit-event-builder.js';
 import { AuditEventType } from '../audit/types.js';

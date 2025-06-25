@@ -2,7 +2,7 @@ import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals
 import { ExternalIdPManager } from '../external-idp-manager.js';
 import { JWKSClient } from '../jwks-client.js';
 import { ExternalIdPConfig } from '../external-idp-types.js';
-import { TokenClaims } from '../token-validator.js';
+import { TokenClaims } from '../types.js';
 
 describe('ExternalIdPManager', () => {
   let manager: ExternalIdPManager;

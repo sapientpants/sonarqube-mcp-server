@@ -11,8 +11,8 @@ import {
   TokenValidator,
   TokenValidationError,
   TokenValidationErrorCode,
-  TokenClaims,
 } from '../auth/token-validator.js';
+import { TokenClaims } from '../auth/types.js';
 import { SessionManager } from '../auth/session-manager.js';
 import { ServiceAccountMapper, MappingRule } from '../auth/service-account-mapper.js';
 import { PatternMatcher } from '../utils/pattern-matcher.js';
@@ -503,75 +503,106 @@ export class HttpTransport implements ITransport {
    * Set up token validator
    */
   private setupTokenValidator(): void {
-    if (
+    if (!this.hasAuthenticationConfigured()) {
+      return;
+    }
+
+    this.setupExternalIdPManager();
+    const { jwksEndpoints, issuers } = this.buildJwksConfiguration();
+
+    this.tokenValidator = new TokenValidator({
+      audience: this.options.publicUrl,
+      issuers,
+      jwksEndpoints,
+      clockTolerance: 5,
+      validateResource: true,
+      expectedResources: [this.options.publicUrl],
+      externalIdPManager: this.externalIdPManager,
+    });
+  }
+
+  /**
+   * Check if any authentication method is configured
+   */
+  private hasAuthenticationConfigured(): boolean {
+    return (
       this.options.authorizationServers.length > 0 ||
       this.options.builtInAuthServer ||
       this.options.externalIdPs.length > 0
-    ) {
-      // Set up external IdP manager if configured
-      if (this.options.externalIdPs.length > 0) {
-        this.externalIdPManager = new ExternalIdPManager({
-          healthCheckInterval: 300000, // 5 minutes
-        });
+    );
+  }
 
-        // Add configured external IdPs
-        for (const idpConfig of this.options.externalIdPs) {
-          this.externalIdPManager.addIdP({
-            provider: idpConfig.provider as ExternalIdPProvider,
-            issuer: idpConfig.issuer,
-            jwksUri: idpConfig.jwksUri,
-            audience: idpConfig.audience,
-            groupsClaim: idpConfig.groupsClaim,
-            groupsTransform: idpConfig.groupsTransform as
-              | 'none'
-              | 'extract_name'
-              | 'extract_id'
-              | undefined,
-            enableHealthMonitoring: idpConfig.enableHealthMonitoring,
-            tenantId: idpConfig.tenantId,
-          });
-        }
+  /**
+   * Set up external IdP manager if configured
+   */
+  private setupExternalIdPManager(): void {
+    if (this.options.externalIdPs.length === 0) {
+      return;
+    }
+
+    this.externalIdPManager = new ExternalIdPManager({
+      healthCheckInterval: 300000, // 5 minutes
+    });
+
+    // Add configured external IdPs
+    for (const idpConfig of this.options.externalIdPs) {
+      this.externalIdPManager.addIdP(idpConfig);
+    }
+  }
+
+  /**
+   * Build JWKS endpoints and issuers configuration
+   */
+  private buildJwksConfiguration(): {
+    jwksEndpoints: Map<string, string>;
+    issuers: string[];
+  } {
+    const jwksEndpoints = new Map<string, string>();
+    const issuers: string[] = [];
+
+    this.addExternalAuthServers(jwksEndpoints, issuers);
+    this.addBuiltInAuthServer(jwksEndpoints, issuers);
+    this.addExternalIdPIssuers(jwksEndpoints, issuers);
+
+    return { jwksEndpoints, issuers };
+  }
+
+  /**
+   * Add external authorization servers to JWKS configuration
+   */
+  private addExternalAuthServers(jwksEndpoints: Map<string, string>, issuers: string[]): void {
+    this.options.authorizationServers.forEach((server) => {
+      const jwksUri = server.endsWith('/')
+        ? `${server}.well-known/jwks.json`
+        : `${server}/.well-known/jwks.json`;
+      jwksEndpoints.set(server, jwksUri);
+      issuers.push(server);
+    });
+  }
+
+  /**
+   * Add built-in auth server to JWKS configuration
+   */
+  private addBuiltInAuthServer(jwksEndpoints: Map<string, string>, issuers: string[]): void {
+    if (this.options.builtInAuthServer) {
+      jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
+      issuers.push(this.options.publicUrl);
+    }
+  }
+
+  /**
+   * Add external IdP issuers to JWKS configuration
+   */
+  private addExternalIdPIssuers(jwksEndpoints: Map<string, string>, issuers: string[]): void {
+    if (!this.externalIdPManager) {
+      return;
+    }
+
+    for (const idp of this.externalIdPManager.getIdPs()) {
+      jwksEndpoints.set(idp.issuer, idp.jwksUri ?? `${idp.issuer}/.well-known/jwks.json`);
+      if (!issuers.includes(idp.issuer)) {
+        issuers.push(idp.issuer);
       }
-
-      // Create JWKS endpoints map
-      const jwksEndpoints = new Map<string, string>();
-      const issuers: string[] = [];
-
-      // Add external authorization servers
-      this.options.authorizationServers.forEach((server) => {
-        // Assume JWKS endpoint follows OAuth 2.0 metadata convention
-        const jwksUri = server.endsWith('/')
-          ? `${server}.well-known/jwks.json`
-          : `${server}/.well-known/jwks.json`;
-        jwksEndpoints.set(server, jwksUri);
-        issuers.push(server);
-      });
-
-      // Add built-in auth server if enabled
-      if (this.options.builtInAuthServer) {
-        jwksEndpoints.set(this.options.publicUrl, `${this.options.publicUrl}/oauth/jwks`);
-        issuers.push(this.options.publicUrl);
-      }
-
-      // Add external IdP issuers
-      if (this.externalIdPManager) {
-        for (const idp of this.externalIdPManager.getIdPs()) {
-          jwksEndpoints.set(idp.issuer, idp.jwksUri ?? `${idp.issuer}/.well-known/jwks.json`);
-          if (!issuers.includes(idp.issuer)) {
-            issuers.push(idp.issuer);
-          }
-        }
-      }
-
-      this.tokenValidator = new TokenValidator({
-        audience: this.options.publicUrl,
-        issuers,
-        jwksEndpoints,
-        clockTolerance: 5,
-        validateResource: true,
-        expectedResources: [this.options.publicUrl],
-        externalIdPManager: this.externalIdPManager,
-      });
     }
   }
 
@@ -1028,62 +1059,13 @@ export class HttpTransport implements ITransport {
       }
 
       try {
-        // Parse format: provider:azure-ad,issuer:https://...,audience:...,tenantId:...
-        const parts = idpEnv.split(',');
-        const idpConfig: Record<string, string | string[] | boolean | undefined> = {};
-
-        for (const part of parts) {
-          const [key, ...valueParts] = part.split(':');
-          const trimmedKey = key.trim();
-          const value = valueParts.join(':').trim(); // Handle URLs with colons
-
-          switch (trimmedKey) {
-            case 'provider':
-              idpConfig.provider = value;
-              break;
-            case 'issuer':
-              idpConfig.issuer = value;
-              break;
-            case 'jwksUri':
-              idpConfig.jwksUri = value;
-              break;
-            case 'audience':
-              idpConfig.audience = value.includes('|') ? value.split('|') : value;
-              break;
-            case 'groupsClaim':
-              idpConfig.groupsClaim = value;
-              break;
-            case 'groupsTransform':
-              idpConfig.groupsTransform = value;
-              break;
-            case 'enableHealthMonitoring':
-              idpConfig.enableHealthMonitoring = value === 'true';
-              break;
-            case 'tenantId':
-              idpConfig.tenantId = value;
-              break;
-          }
-        }
-
-        if (idpConfig.provider && idpConfig.issuer && idpConfig.audience) {
-          idps.push({
-            provider: idpConfig.provider as ExternalIdPProvider,
-            issuer: idpConfig.issuer as string,
-            audience: idpConfig.audience as string | string[],
-            jwksUri: idpConfig.jwksUri as string | undefined,
-            groupsClaim: idpConfig.groupsClaim as string | undefined,
-            groupsTransform: idpConfig.groupsTransform as
-              | 'none'
-              | 'extract_name'
-              | 'extract_id'
-              | undefined,
-            enableHealthMonitoring: idpConfig.enableHealthMonitoring as boolean | undefined,
-            tenantId: idpConfig.tenantId as string | undefined,
-          });
+        const config = this.parseIdPConfigFromString(idpEnv);
+        if (config) {
+          idps.push(config);
           logger.info('Loaded external IdP configuration from environment', {
             index: i,
-            provider: idpConfig.provider,
-            issuer: idpConfig.issuer,
+            provider: config.provider,
+            issuer: config.issuer,
           });
         }
       } catch (error) {
@@ -1092,6 +1074,83 @@ export class HttpTransport implements ITransport {
     }
 
     return idps;
+  }
+
+  /**
+   * Parse a single IdP configuration from a string
+   */
+  private parseIdPConfigFromString(configStr: string): ExternalIdPConfig | null {
+    // Parse format: provider:azure-ad,issuer:https://...,audience:...,tenantId:...
+    const parts = configStr.split(',');
+    const idpConfig: Record<string, string | string[] | boolean | undefined> = {};
+
+    for (const part of parts) {
+      const [key, ...valueParts] = part.split(':');
+      const trimmedKey = key.trim();
+      const value = valueParts.join(':').trim(); // Handle URLs with colons
+
+      this.setIdPConfigValue(idpConfig, trimmedKey, value);
+    }
+
+    return this.buildIdPConfig(idpConfig);
+  }
+
+  /**
+   * Set a configuration value based on the key
+   */
+  private setIdPConfigValue(
+    config: Record<string, string | string[] | boolean | undefined>,
+    key: string,
+    value: string
+  ): void {
+    switch (key) {
+      case 'provider':
+        config.provider = value;
+        break;
+      case 'issuer':
+        config.issuer = value;
+        break;
+      case 'jwksUri':
+        config.jwksUri = value;
+        break;
+      case 'audience':
+        config.audience = value.includes('|') ? value.split('|') : value;
+        break;
+      case 'groupsClaim':
+        config.groupsClaim = value;
+        break;
+      case 'groupsTransform':
+        config.groupsTransform = value;
+        break;
+      case 'enableHealthMonitoring':
+        config.enableHealthMonitoring = value === 'true';
+        break;
+      case 'tenantId':
+        config.tenantId = value;
+        break;
+    }
+  }
+
+  /**
+   * Build an ExternalIdPConfig from parsed values
+   */
+  private buildIdPConfig(
+    config: Record<string, string | string[] | boolean | undefined>
+  ): ExternalIdPConfig | null {
+    if (!config.provider || !config.issuer || !config.audience) {
+      return null;
+    }
+
+    return {
+      provider: config.provider as ExternalIdPProvider,
+      issuer: config.issuer as string,
+      audience: config.audience as string | string[],
+      jwksUri: config.jwksUri as string | undefined,
+      groupsClaim: config.groupsClaim as string | undefined,
+      groupsTransform: config.groupsTransform as 'none' | 'extract_name' | 'extract_id' | undefined,
+      enableHealthMonitoring: config.enableHealthMonitoring as boolean | undefined,
+      tenantId: config.tenantId as string | undefined,
+    };
   }
 
   /**

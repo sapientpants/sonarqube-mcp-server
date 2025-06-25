@@ -1,5 +1,5 @@
 import { createLogger } from '../utils/logger.js';
-import type { TokenClaims } from './token-validator.js';
+import type { TokenClaims } from './types.js';
 
 const logger = createLogger('ServiceAccountAuditor');
 
