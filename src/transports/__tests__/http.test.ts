@@ -160,6 +160,7 @@ describe('HttpTransport', () => {
           token_endpoint: 'https://mcp.example.com/auth/token',
           jwks_uri: 'https://mcp.example.com/auth/jwks',
           registration_endpoint: 'https://mcp.example.com/auth/register',
+          revocation_endpoint: 'https://mcp.example.com/auth/revoke',
           scopes_supported: ['sonarqube:read', 'sonarqube:write', 'sonarqube:admin'],
           response_types_supported: ['code'],
           response_modes_supported: ['query'],

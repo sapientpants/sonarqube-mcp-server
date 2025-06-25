@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { randomBytes } from 'crypto';
 import { z } from 'zod';
+import { generateSecureToken, generateSecureId } from './utils.js';
 import { InMemoryUserStore, PasswordHasher, ApiKeyGenerator } from './user-store.js';
 import { InMemoryClientStore, ClientSecretGenerator } from './client-store.js';
 import { InMemoryAuthorizationCodeStore, InMemoryRefreshTokenStore } from './auth-code-store.js';
@@ -26,14 +26,14 @@ interface TokenResponse {
 }
 
 export class BuiltInAuthServer {
-  private userStore: InMemoryUserStore;
-  private clientStore: InMemoryClientStore;
-  private authCodeStore: InMemoryAuthorizationCodeStore;
-  private refreshTokenStore: InMemoryRefreshTokenStore;
-  private keyManager: KeyManager;
-  private router: Router;
-  private options: Required<AuthServerOptions>;
-  private pendingAuthorizations = new Map<string, PendingAuthorization>();
+  private readonly userStore: InMemoryUserStore;
+  private readonly clientStore: InMemoryClientStore;
+  private readonly authCodeStore: InMemoryAuthorizationCodeStore;
+  private readonly refreshTokenStore: InMemoryRefreshTokenStore;
+  private readonly keyManager: KeyManager;
+  private readonly router: Router;
+  private readonly options: Required<AuthServerOptions>;
+  private readonly pendingAuthorizations = new Map<string, PendingAuthorization>();
 
   constructor(options: AuthServerOptions) {
     this.userStore = new InMemoryUserStore();
@@ -46,7 +46,7 @@ export class BuiltInAuthServer {
     this.options = {
       issuer: options.issuer,
       audience: options.audience ?? [],
-      sessionSecret: options.sessionSecret ?? randomBytes(32).toString('hex'),
+      sessionSecret: options.sessionSecret ?? generateSecureId(32),
       accessTokenTTL: options.accessTokenTTL ?? 3600,
       refreshTokenTTL: options.refreshTokenTTL ?? 2592000,
       authCodeTTL: options.authCodeTTL ?? 600,
@@ -98,7 +98,7 @@ export class BuiltInAuthServer {
         return;
       }
 
-      const clientId = randomBytes(16).toString('hex');
+      const clientId = generateSecureId();
       const clientSecret = ClientSecretGenerator.generateClientSecret();
       const clientSecretHash = await ClientSecretGenerator.hashClientSecret(clientSecret);
 
@@ -158,7 +158,7 @@ export class BuiltInAuthServer {
         return;
       }
 
-      const authId = randomBytes(16).toString('hex');
+      const authId = generateSecureId();
       this.pendingAuthorizations.set(authId, {
         clientId: query.client_id,
         redirectUri: query.redirect_uri,
@@ -593,24 +593,30 @@ export class BuiltInAuthServer {
   }
 
   async authenticateApiKey(apiKey: string): Promise<User | null> {
-    const parts = await this.userStore.listUsers();
-    for (const user of parts) {
-      for (const key of user.apiKeys) {
-        if (await ApiKeyGenerator.verifyApiKey(apiKey, key.keyHash)) {
-          if (key.expiresAt && new Date() > key.expiresAt) {
-            return null;
-          }
-          await this.userStore.updateApiKeyLastUsed(key.id);
-          return user;
-        }
-      }
+    const keyHash = await ApiKeyGenerator.hashApiKey(apiKey);
+    const user = await this.userStore.getUserByApiKeyHash(keyHash);
+
+    if (!user) {
+      return null;
     }
-    return null;
+
+    // Find the specific API key to check expiration
+    const apiKeyRecord = user.apiKeys.find((key) => key.keyHash === keyHash);
+    if (!apiKeyRecord) {
+      return null;
+    }
+
+    if (apiKeyRecord.expiresAt && new Date() > apiKeyRecord.expiresAt) {
+      return null;
+    }
+
+    await this.userStore.updateApiKeyLastUsed(apiKeyRecord.id);
+    return user;
   }
 
   async createDefaultAdminUser(): Promise<{ email: string; password: string }> {
     const email = 'admin@example.com';
-    const password = randomBytes(16).toString('base64url');
+    const password = generateSecureToken(16);
     const passwordHash = await PasswordHasher.hashPassword(password);
 
     await this.userStore.createUser({

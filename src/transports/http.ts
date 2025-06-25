@@ -264,13 +264,19 @@ export class HttpTransport implements ITransport {
       // Mount auth server routes with rate limiting
       this.app.use('/auth', authRateLimiter, this.builtInAuthServer.getRouter());
 
-      // Create default admin user and log credentials
-      const adminCreds = await this.builtInAuthServer.createDefaultAdminUser();
-      logger.info('Built-in auth server initialized with default admin user', {
-        email: adminCreds.email,
-        password: adminCreds.password,
-        note: 'Please change this password immediately',
-      });
+      // Create default admin user asynchronously after construction
+      this.builtInAuthServer
+        .createDefaultAdminUser()
+        .then((adminCreds) => {
+          logger.info('Built-in auth server initialized with default admin user', {
+            email: adminCreds.email,
+            password: adminCreds.password,
+            note: 'Please change this password immediately',
+          });
+        })
+        .catch((error) => {
+          logger.error('Failed to create default admin user', error);
+        });
 
       logger.info('Built-in auth server endpoints available', {
         register: `${this.options.publicUrl}/auth/register`,
@@ -517,6 +523,7 @@ export class HttpTransport implements ITransport {
           token_endpoint: `${this.options.publicUrl}/auth/token`,
           jwks_uri: `${this.options.publicUrl}/auth/jwks`,
           registration_endpoint: `${this.options.publicUrl}/auth/register`,
+          revocation_endpoint: `${this.options.publicUrl}/auth/revoke`,
           scopes_supported: ['sonarqube:read', 'sonarqube:write', 'sonarqube:admin'],
           response_types_supported: ['code'],
           response_modes_supported: ['query'],

@@ -532,7 +532,7 @@ For environments that cannot use external IdPs, the server includes a minimal bu
 
 **Enabling the Built-in Auth Server:**
 ```bash
-MCP_OAUTH_BUILTIN=true
+MCP_BUILT_IN_AUTH_SERVER=true
 ```
 
 **Features:**
@@ -545,7 +545,7 @@ MCP_OAUTH_BUILTIN=true
 
 **Default Admin User:**
 On first start, a default admin user is created:
-- Email: `admin@localhost`
+- Email: `admin@example.com`
 - Password: Randomly generated and logged to console
 - **Important**: Change this password immediately via the admin API
 

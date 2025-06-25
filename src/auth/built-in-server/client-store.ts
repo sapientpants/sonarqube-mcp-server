@@ -1,11 +1,11 @@
-import { randomBytes } from 'crypto';
+import { generateSecureToken } from './utils.js';
 import bcrypt from 'bcrypt';
 import type { OAuthClient, ClientStore as IClientStore } from './types.js';
 
 const SALT_ROUNDS = 12;
 
 export class InMemoryClientStore implements IClientStore {
-  private clients = new Map<string, OAuthClient>();
+  private readonly clients = new Map<string, OAuthClient>();
 
   async createClient(
     clientData: Omit<OAuthClient, 'createdAt' | 'updatedAt'>
@@ -73,7 +73,7 @@ export class InMemoryClientStore implements IClientStore {
 
 export class ClientSecretGenerator {
   static generateClientSecret(): string {
-    return randomBytes(32).toString('base64url');
+    return generateSecureToken();
   }
 
   static async hashClientSecret(clientSecret: string): Promise<string> {

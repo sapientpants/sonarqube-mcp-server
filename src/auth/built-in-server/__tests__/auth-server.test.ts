@@ -49,22 +49,26 @@ describe('BuiltInAuthServer', () => {
     });
 
     it('should require redirect_uris', async () => {
-      await request(app)
+      const response = await request(app)
         .post('/auth/register')
         .send({
           client_name: 'Test Application',
         })
         .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'invalid_request');
     });
 
     it('should validate redirect_uris are valid URLs', async () => {
-      await request(app)
+      const response = await request(app)
         .post('/auth/register')
         .send({
           client_name: 'Test Application',
           redirect_uris: ['not-a-url'],
         })
         .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'invalid_request');
     });
   });
 
@@ -144,7 +148,7 @@ describe('BuiltInAuthServer', () => {
     });
 
     it('should require response_type=code', async () => {
-      await request(app)
+      const response = await request(app)
         .get('/auth/authorize')
         .query({
           response_type: 'token',
@@ -152,6 +156,8 @@ describe('BuiltInAuthServer', () => {
           redirect_uri: 'https://app.example.com/callback',
         })
         .expect(400);
+
+      expect(response.body).toHaveProperty('error', 'invalid_request');
     });
   });
 
@@ -228,7 +234,7 @@ describe('BuiltInAuthServer', () => {
     });
 
     it('should reject invalid auth_id', async () => {
-      await request(app)
+      const response = await request(app)
         .post('/auth/authorize')
         .type('form')
         .send({
@@ -237,6 +243,8 @@ describe('BuiltInAuthServer', () => {
           password: adminCreds.password,
         })
         .expect(400);
+
+      expect(response.text).toContain('Invalid authorization request');
     });
   });
 
@@ -483,23 +491,28 @@ describe('BuiltInAuthServer', () => {
       });
 
       it('should require strong password', async () => {
-        await request(app)
+        const response = await request(app)
           .post('/auth/admin/users')
           .send({
             email: 'newuser@example.com',
             password: 'weak',
           })
           .expect(400);
+
+        expect(response.body).toHaveProperty('error', 'invalid_request');
       });
 
       it('should reject duplicate email', async () => {
-        await request(app)
+        const response = await request(app)
           .post('/auth/admin/users')
           .send({
             email: adminCreds.email,
             password: 'SecurePass123!',
           })
           .expect(500);
+
+        // Expect an error response (internal server error for duplicate)
+        expect(response.status).toBe(500);
       });
     });
 

@@ -19,7 +19,7 @@ export interface KeyPair {
 
 export class KeyManager {
   private currentKeyPair: KeyPair;
-  private keyPairs: Map<string, KeyPair> = new Map();
+  private readonly keyPairs: Map<string, KeyPair> = new Map();
 
   constructor() {
     this.currentKeyPair = this.generateKeyPair();

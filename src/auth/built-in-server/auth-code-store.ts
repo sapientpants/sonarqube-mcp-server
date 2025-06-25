@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { generateSecureToken } from './utils.js';
 import type {
   AuthorizationCode,
   AuthorizationCodeStore as IAuthorizationCodeStore,
@@ -7,7 +7,7 @@ import type {
 } from './types.js';
 
 export class InMemoryAuthorizationCodeStore implements IAuthorizationCodeStore {
-  private codes = new Map<string, AuthorizationCode>();
+  private readonly codes = new Map<string, AuthorizationCode>();
   private cleanupInterval: NodeJS.Timeout;
 
   constructor() {
@@ -54,13 +54,13 @@ export class InMemoryAuthorizationCodeStore implements IAuthorizationCodeStore {
   }
 
   static generateAuthorizationCode(): string {
-    return randomBytes(32).toString('base64url');
+    return generateSecureToken();
   }
 }
 
 export class InMemoryRefreshTokenStore implements IRefreshTokenStore {
-  private tokens = new Map<string, RefreshToken>();
-  private userTokens = new Map<string, Set<string>>();
+  private readonly tokens = new Map<string, RefreshToken>();
+  private readonly userTokens = new Map<string, Set<string>>();
   private cleanupInterval: NodeJS.Timeout;
 
   constructor() {
@@ -150,6 +150,6 @@ export class InMemoryRefreshTokenStore implements IRefreshTokenStore {
   }
 
   static generateRefreshToken(): string {
-    return randomBytes(32).toString('base64url');
+    return generateSecureToken();
   }
 }

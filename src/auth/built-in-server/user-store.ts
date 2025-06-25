@@ -1,14 +1,15 @@
 import bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
+import { generateSecureToken } from './utils.js';
 import type { User, ApiKey, UserStore as IUserStore } from './types.js';
 
 const SALT_ROUNDS = 12;
 
 export class InMemoryUserStore implements IUserStore {
-  private users = new Map<string, User>();
-  private emailIndex = new Map<string, string>();
-  private apiKeyIndex = new Map<string, { userId: string; apiKey: ApiKey }>();
+  private readonly users = new Map<string, User>();
+  private readonly emailIndex = new Map<string, string>();
+  private readonly apiKeyIndex = new Map<string, { userId: string; apiKey: ApiKey }>();
 
   async createUser(userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
     if (await this.getUserByEmail(userData.email)) {
@@ -171,14 +172,16 @@ export class PasswordHasher {
 
 export class ApiKeyGenerator {
   static generateApiKey(): string {
-    return randomBytes(32).toString('base64url');
+    return generateSecureToken();
   }
 
   static async hashApiKey(apiKey: string): Promise<string> {
-    return bcrypt.hash(apiKey, SALT_ROUNDS);
+    // Use SHA256 for deterministic hashing of API keys
+    return createHash('sha256').update(apiKey).digest('hex');
   }
 
   static async verifyApiKey(apiKey: string, hash: string): Promise<boolean> {
-    return bcrypt.compare(apiKey, hash);
+    const computedHash = await this.hashApiKey(apiKey);
+    return computedHash === hash;
   }
 }
