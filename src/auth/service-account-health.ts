@@ -2,6 +2,7 @@ import { createLogger } from '../utils/logger.js';
 import type { ServiceAccount, HealthCheckResult } from './service-account-types.js';
 import type { ISonarQubeClient } from '../types/index.js';
 import { createSonarQubeClient } from '../sonarqube.js';
+import { updateServiceAccountHealthMetrics } from '../monitoring/middleware.js';
 
 const logger = createLogger('ServiceAccountHealth');
 
@@ -158,6 +159,14 @@ export class ServiceAccountHealthMonitor {
 
     // Store result
     this.healthStatus.set(account.id, result);
+
+    // Update metrics
+    updateServiceAccountHealthMetrics(
+      account.id,
+      result.isHealthy,
+      result.latency ? result.latency / 1000 : undefined // Convert to seconds
+    );
+
     return result;
   }
 

@@ -1,6 +1,8 @@
 import { TransportFactory } from '../../transports/factory.js';
 import { StdioTransport } from '../../transports/stdio.js';
 import { HttpTransport } from '../../transports/http.js';
+import { cleanupMetricsService } from '../../monitoring/metrics.js';
+import { HealthService } from '../../monitoring/health.js';
 
 describe('TransportFactory', () => {
   const originalEnv = process.env;
@@ -11,6 +13,8 @@ describe('TransportFactory', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    cleanupMetricsService();
+    HealthService.resetInstance();
   });
 
   describe('create', () => {

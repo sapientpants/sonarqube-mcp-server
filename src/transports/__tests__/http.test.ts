@@ -6,6 +6,8 @@ import type { Express } from 'express';
 import type { SessionManager } from '../../auth/session-manager.js';
 import type { ServiceAccountMapper } from '../../auth/service-account-mapper.js';
 import type { ISonarQubeClient } from '../../types/index.js';
+import { cleanupMetricsService } from '../../monitoring/metrics.js';
+import { HealthService } from '../../monitoring/health.js';
 
 interface HttpTransportPrivate {
   app: Express;
@@ -18,9 +20,13 @@ interface HttpTransportPrivate {
       key?: string;
       ca?: string;
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    externalIdPs?: any[];
   };
   sessionManager?: SessionManager;
   serviceAccountMapper?: ServiceAccountMapper;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  externalIdPManager?: any;
 }
 
 // Mock the logger
@@ -66,6 +72,10 @@ describe('HttpTransport', () => {
     if (transport && transport.shutdown) {
       await transport.shutdown();
     }
+    // Cleanup metrics service to prevent interval leaks
+    cleanupMetricsService();
+    // Reset health service singleton
+    HealthService.resetInstance();
   });
 
   describe('constructor', () => {
@@ -104,6 +114,13 @@ describe('HttpTransport', () => {
       // Get the Express app before connecting
       // Access private property for testing
       app = (transport as unknown as { app: Express }).app;
+    });
+
+    afterEach(async () => {
+      // Clean up any transport created in tests
+      if (transport && transport.shutdown) {
+        await transport.shutdown();
+      }
     });
 
     describe('/.well-known/oauth-protected-resource', () => {
@@ -356,10 +373,22 @@ describe('HttpTransport', () => {
       app = (transport as unknown as { app: Express }).app;
     });
 
-    it('should return 200 OK for health check', async () => {
-      const response = await request(app).get('/health').expect(200).expect('Content-Type', /json/);
+    it('should return 503 for health check when dependencies are not configured', async () => {
+      const response = await request(app).get('/health').expect(503).expect('Content-Type', /json/);
 
-      expect(response.body).toEqual({ status: 'ok' });
+      expect(response.body).toMatchObject({
+        status: 'unhealthy',
+        version: expect.any(String),
+        uptime: expect.any(Number),
+        timestamp: expect.any(String),
+        dependencies: expect.objectContaining({
+          sonarqube: expect.objectContaining({
+            status: 'unhealthy',
+            message: 'No default service account configured',
+          }),
+        }),
+        features: expect.any(Object),
+      });
     });
   });
 
@@ -406,9 +435,18 @@ describe('HttpTransport', () => {
 
       const response = await request(app).get('/ready');
       expect(response.status).toBe(503);
-      expect(response.body).toEqual({
-        status: 'not_ready',
-        message: 'Server is initializing',
+      expect(response.body).toMatchObject({
+        ready: false,
+        checks: expect.objectContaining({
+          authentication: expect.objectContaining({
+            ready: false,
+            message: 'No authentication method configured',
+          }),
+          sonarqube: expect.objectContaining({
+            ready: false,
+            message: 'No default service account configured',
+          }),
+        }),
       });
     });
 
@@ -423,16 +461,17 @@ describe('HttpTransport', () => {
       const app = (transport as unknown as HttpTransportPrivate).app;
 
       const response = await request(app).get('/ready');
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual({
-        status: 'ready',
-        features: {
-          authentication: false,
-          sessionManagement: false,
-          serviceAccountMapping: false,
-          tls: false,
-          externalIdPIntegration: false,
-        },
+      expect(response.status).toBe(503); // Still not ready because no SonarQube configured
+      expect(response.body).toMatchObject({
+        ready: false,
+        checks: expect.objectContaining({
+          server: { ready: true },
+          authentication: { ready: true }, // Insecure mode enabled
+          sonarqube: expect.objectContaining({
+            ready: false,
+            message: 'No default service account configured',
+          }),
+        }),
       });
 
       // Clean up
@@ -440,17 +479,22 @@ describe('HttpTransport', () => {
     });
 
     it('should show authentication features when configured', async () => {
-      process.env.MCP_OAUTH_AUTH_SERVERS = 'https://auth.example.com';
+      // Configure external IdP
+      process.env.MCP_EXTERNAL_IDP_1 =
+        'provider:azure-ad,issuer:https://login.microsoftonline.com/tenant,audience:api://app';
       transport = new HttpTransport({ port: 0 });
       await transport.connect(mockServer);
 
       const app = (transport as unknown as HttpTransportPrivate).app;
-      const response = await request(app).get('/ready');
+      const response = await request(app).get('/health'); // Use health endpoint instead
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(503); // Still unhealthy due to no SonarQube config
       expect(response.body.features.authentication).toBe(true);
       expect(response.body.features.sessionManagement).toBe(true);
-      expect(response.body.features.serviceAccountMapping).toBe(true);
+      expect(response.body.features.externalIdP).toBe(true);
+
+      // Clean up
+      delete process.env.MCP_EXTERNAL_IDP_1;
     });
   });
 

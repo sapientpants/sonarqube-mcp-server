@@ -739,6 +739,200 @@ When using the HTTP transport with authentication enabled, the server provides c
 
 **Note:** Audit logging is only available when using HTTP transport with OAuth authentication enabled. It is not available in stdio mode.
 
+### Monitoring and Observability
+
+The SonarQube MCP Server provides comprehensive monitoring and observability features for production deployments, including Prometheus metrics, OpenTelemetry tracing, health checks, and circuit breakers.
+
+#### Prometheus Metrics
+
+**Endpoint:** `/metrics` (HTTP transport only)
+
+**Available Metrics:**
+
+| Metric | Type | Description | Labels |
+|--------|------|-------------|--------|
+| `mcp_requests_total` | Counter | Total number of MCP requests | `tool`, `status` |
+| `mcp_request_duration_seconds` | Histogram | MCP request duration | `tool` |
+| `mcp_auth_failures_total` | Counter | Authentication failures | `reason` |
+| `mcp_active_sessions` | Gauge | Number of active sessions | `transport` |
+| `mcp_sonarqube_requests_total` | Counter | SonarQube API requests | `endpoint`, `status` |
+| `mcp_sonarqube_request_duration_seconds` | Histogram | SonarQube API request duration | `endpoint` |
+| `mcp_sonarqube_errors_total` | Counter | SonarQube API errors | `type`, `endpoint` |
+| `mcp_permission_denials_total` | Counter | Permission denials | `user`, `resource`, `action` |
+| `mcp_service_account_health_status` | Gauge | Service account health (1=healthy, 0=unhealthy) | `service_account` |
+| `mcp_cache_hits_total` | Counter | Cache hits | `cache` |
+| `mcp_cache_misses_total` | Counter | Cache misses | `cache` |
+| `mcp_circuit_breaker_state` | Gauge | Circuit breaker state (0=closed, 1=open, 2=half-open) | `service` |
+| `mcp_event_loop_lag_seconds` | Histogram | Node.js event loop lag | - |
+
+**Example Prometheus Configuration:**
+
+```yaml
+scrape_configs:
+  - job_name: 'sonarqube-mcp'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/metrics'
+```
+
+#### OpenTelemetry Tracing
+
+The server supports distributed tracing via OpenTelemetry with multiple exporters.
+
+**Environment Variables:**
+
+```bash
+# Enable tracing
+export OTEL_ENABLED=true
+
+# Service configuration
+export OTEL_SERVICE_NAME=sonarqube-mcp-server
+export OTEL_SERVICE_VERSION=1.5.1
+
+# Exporter configuration (choose one)
+export OTEL_TRACES_EXPORTER=otlp  # Options: otlp, jaeger, zipkin
+
+# OTLP exporter (default)
+export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer token"
+
+# Jaeger exporter
+export OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14268/api/traces
+
+# Zipkin exporter
+export OTEL_EXPORTER_ZIPKIN_ENDPOINT=http://localhost:9411/api/v2/spans
+```
+
+**Traced Operations:**
+- All MCP tool invocations
+- SonarQube API calls
+- HTTP requests (Express middleware)
+- Database operations (if applicable)
+
+#### Health Checks
+
+**Endpoints:**
+
+1. **`/health`** - Comprehensive health check
+   ```json
+   {
+     "status": "healthy",
+     "version": "1.5.1",
+     "uptime": 86400000,
+     "timestamp": "2024-01-15T10:30:00Z",
+     "dependencies": {
+       "sonarqube": {
+         "status": "healthy",
+         "latency": 45
+       },
+       "authServer": {
+         "status": "healthy",
+         "latency": 12
+       }
+     },
+     "features": {
+       "authentication": true,
+       "metrics": true,
+       "tracing": true
+     }
+   }
+   ```
+
+2. **`/ready`** - Kubernetes readiness probe
+   ```json
+   {
+     "ready": true,
+     "checks": {
+       "server": { "ready": true },
+       "authentication": { "ready": true },
+       "sonarqube": { "ready": true }
+     }
+   }
+   ```
+
+**Kubernetes Configuration Example:**
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+```
+
+#### Circuit Breakers
+
+All SonarQube API calls are protected by circuit breakers to prevent cascading failures.
+
+**Configuration:**
+- **Timeout:** 30 seconds per request
+- **Error Threshold:** 50% failure rate
+- **Volume Threshold:** 5 requests minimum
+- **Reset Timeout:** 60 seconds
+- **Excluded Errors:** 4xx errors (except 429)
+
+**Behavior:**
+1. **Closed State:** Normal operation
+2. **Open State:** Requests fail fast without calling SonarQube
+3. **Half-Open State:** Limited requests to test recovery
+
+#### Performance Monitoring
+
+**Event Loop Monitoring:**
+- Tracks Node.js event loop lag
+- Measured every 5 seconds
+- Alerts on high lag (>100ms)
+
+**Resource Monitoring:**
+- CPU usage (via default Prometheus metrics)
+- Memory usage (heap, RSS, external)
+- Active handles and requests
+- Garbage collection metrics
+
+#### Integration Examples
+
+**Grafana Dashboard:**
+
+Create a dashboard with these key panels:
+1. Request Rate: `rate(mcp_requests_total[5m])`
+2. Error Rate: `rate(mcp_sonarqube_errors_total[5m])`
+3. Latency P95: `histogram_quantile(0.95, mcp_request_duration_seconds)`
+4. Circuit Breaker Status: `mcp_circuit_breaker_state`
+5. Active Sessions: `mcp_active_sessions`
+
+**Alerting Rules (Prometheus):**
+
+```yaml
+groups:
+  - name: sonarqube-mcp
+    rules:
+      - alert: HighErrorRate
+        expr: rate(mcp_sonarqube_errors_total[5m]) > 0.05
+        for: 5m
+        annotations:
+          summary: "High SonarQube API error rate"
+          
+      - alert: CircuitBreakerOpen
+        expr: mcp_circuit_breaker_state == 1
+        for: 1m
+        annotations:
+          summary: "Circuit breaker is open"
+          
+      - alert: ServiceAccountUnhealthy
+        expr: mcp_service_account_health_status == 0
+        for: 5m
+        annotations:
+          summary: "Service account is unhealthy"
+```
+
 ## Security Model and Authentication
 
 ### Current Security Model

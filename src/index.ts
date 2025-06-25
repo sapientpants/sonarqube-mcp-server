@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 
+import { initializeTracing } from './monitoring/tracing.js';
+
+// Initialize OpenTelemetry tracing before other imports
+initializeTracing({
+  enabled: process.env.OTEL_ENABLED === 'true' || process.env.OTEL_TRACES_EXPORTER !== undefined,
+});
+
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {

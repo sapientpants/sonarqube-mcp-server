@@ -73,6 +73,7 @@ export class ServiceAccountMapper {
   private readonly enableFailover: boolean;
   private readonly enableHealthMonitoring: boolean;
   private readonly enableAuditLogging: boolean;
+  private initialHealthCheckTimeout?: NodeJS.Timeout;
 
   constructor(options: ServiceAccountMapperOptions = {}) {
     this.defaultUrl = options.defaultUrl ?? process.env.SONARQUBE_URL ?? 'https://sonarcloud.io';
@@ -371,7 +372,7 @@ export class ServiceAccountMapper {
     }
 
     // Schedule initial health checks
-    setTimeout(() => {
+    this.initialHealthCheckTimeout = setTimeout(() => {
       this.checkAllAccountsHealth().catch((error) => {
         logger.error('Failed to perform initial health check', error);
       });
@@ -634,6 +635,10 @@ export class ServiceAccountMapper {
    * Shutdown the mapper and its components
    */
   shutdown(): void {
+    if (this.initialHealthCheckTimeout) {
+      clearTimeout(this.initialHealthCheckTimeout);
+      this.initialHealthCheckTimeout = undefined;
+    }
     this.healthMonitor?.stop();
     logger.info('Service account mapper shut down');
   }
