@@ -12,7 +12,17 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.7.0
+## What's New in v1.8.0
+
+### External Identity Provider (IdP) Integration
+- **JWKS Support**: Dynamic public key fetching from JWKS endpoints with caching
+- **OIDC Discovery**: Automatic discovery of IdP endpoints via `.well-known/openid-configuration`
+- **Multi-IdP Support**: Configure multiple external IdPs (Azure AD, Okta, Auth0, Keycloak)
+- **Group Claim Mapping**: Automatic transformation of provider-specific group formats
+- **Health Monitoring**: Built-in health checks for IdP availability
+- **Multi-Tenant**: Support for multiple tenants with different IdPs
+
+### Previous Updates (v1.7.0)
 
 ### HTTP Transport with OAuth 2.0 Metadata
 - **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
@@ -386,6 +396,14 @@ For development or customization:
 | `MCP_HTTP_PUBLIC_URL` | Public URL for metadata endpoints | ❌ No | `http://localhost:3000` |
 | `MCP_OAUTH_AUTH_SERVERS` | Comma-separated list of OAuth authorization servers | ❌ No | - |
 | `MCP_OAUTH_BUILTIN` | Enable built-in OAuth authorization server metadata | ❌ No | `false` |
+| `MCP_HTTP_ALLOW_NO_AUTH` | Allow unauthenticated access (DANGEROUS - development only) | ❌ No | `false` |
+| **External IdP Integration** | | | |
+| `MCP_EXTERNAL_IDP_1` | External IdP configuration (see format below) | ❌ No | - |
+| `MCP_EXTERNAL_IDP_2` | Additional IdP configurations (up to 10) | ❌ No | - |
+| `MCP_JWKS_CACHE_TTL` | JWKS cache TTL in milliseconds | ❌ No | `3600000` (1 hour) |
+| `MCP_JWKS_REQUEST_TIMEOUT` | JWKS request timeout in milliseconds | ❌ No | `5000` (5 seconds) |
+| `MCP_IDP_HEALTH_CHECK_INTERVAL` | IdP health check interval in milliseconds | ❌ No | `300000` (5 minutes) |
+| `MCP_IDP_HEALTH_MONITORING` | Enable IdP health monitoring | ❌ No | `true` |
 
 ### Authentication Methods
 
@@ -458,6 +476,73 @@ The server supports three authentication methods, with important differences bet
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
 - All authentication methods are supported
+
+### External IdP Configuration
+
+When using HTTP transport with OAuth 2.0, you can configure external Identity Providers (IdPs) for token validation. Each IdP is configured using environment variables in the format `MCP_EXTERNAL_IDP_N` where N is 1-10.
+
+**Configuration Format:**
+```
+MCP_EXTERNAL_IDP_1=provider:<provider>,issuer:<issuer_url>,audience:<audience>,groups_claim:<claim_name>
+```
+
+**Supported Providers:**
+- `azure_ad` - Microsoft Azure Active Directory
+- `okta` - Okta
+- `auth0` - Auth0
+- `keycloak` - Keycloak
+- `generic` - Generic OIDC provider
+
+**Configuration Parameters:**
+- `provider` (required): IdP provider type
+- `issuer` (required): OAuth 2.0 issuer URL
+- `audience` (required): Expected audience for tokens
+- `jwks_uri` (optional): JWKS endpoint URL (auto-discovered if not provided)
+- `groups_claim` (optional): JWT claim containing user groups
+- `groups_transform` (optional): Transform for group values (`none`, `extract_name`, `extract_id`)
+- `tenant_id` (optional): Tenant ID for multi-tenant scenarios
+- `health_monitoring` (optional): Enable health monitoring (`true`/`false`)
+
+**Examples:**
+
+Azure AD:
+```bash
+MCP_EXTERNAL_IDP_1=provider:azure_ad,issuer:https://login.microsoftonline.com/{tenant}/v2.0,audience:api://mcp-server,groups_claim:groups
+```
+
+Okta:
+```bash
+MCP_EXTERNAL_IDP_2=provider:okta,issuer:https://company.okta.com,audience:api://mcp-server
+```
+
+Auth0:
+```bash
+MCP_EXTERNAL_IDP_3=provider:auth0,issuer:https://company.auth0.com,audience:api://mcp-server,groups_claim:https://auth0.com/groups
+```
+
+**Health Monitoring:**
+The `/ready` endpoint provides health status for all configured IdPs:
+```json
+{
+  "status": "ready",
+  "features": {
+    "externalIdPIntegration": true
+  },
+  "externalIdPHealth": {
+    "totalIdPs": 2,
+    "healthyIdPs": 2,
+    "idps": [
+      {
+        "issuer": "https://login.microsoftonline.com/tenant/v2.0",
+        "provider": "azure_ad",
+        "healthy": true,
+        "lastCheck": "2025-06-25T10:00:00Z",
+        "responseTime": 150
+      }
+    ]
+  }
+}
+```
 
 ### Elicitation Configuration (Experimental)
 

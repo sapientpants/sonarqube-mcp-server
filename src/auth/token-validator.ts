@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { createLogger } from '../utils/logger.js';
+import { ExternalIdPManager } from './external-idp-manager.js';
 
 const logger = createLogger('TokenValidator');
 
@@ -64,6 +65,8 @@ export interface TokenValidationOptions {
   expectedResources?: string[];
   /** Static public keys for testing (maps issuer to public key) */
   staticPublicKeys?: Map<string, string | Buffer>;
+  /** External IdP manager for advanced IdP integration */
+  externalIdPManager?: ExternalIdPManager;
 }
 
 /**
@@ -104,7 +107,7 @@ export class TokenValidator {
       const verifyOptions = this.buildVerifyOptions();
 
       // Step 5: Verify token signature and standard claims
-      const verified = jwt.verify(token, publicKey, verifyOptions) as TokenClaims;
+      let verified = jwt.verify(token, publicKey, verifyOptions) as TokenClaims;
 
       // Step 6: Additional validations
       this.validateAudience(verified);
@@ -115,11 +118,17 @@ export class TokenValidator {
         this.validateResourceIndicators(verified);
       }
 
+      // Step 8: Apply external IdP claim transformations if available
+      if (this.options.externalIdPManager) {
+        verified = this.options.externalIdPManager.extractClaims(verified.iss, verified);
+      }
+
       logger.debug('Token validated successfully', {
         sub: verified.sub,
         iss: verified.iss,
         aud: verified.aud,
         scope: verified.scope,
+        groups: (verified as { groups?: unknown }).groups,
       });
 
       return verified;
@@ -340,24 +349,27 @@ export class TokenValidator {
   /**
    * Get public key for token verification
    *
-   * NOTE: JWKS endpoint fetching is not yet implemented. The current implementation
-   * supports two fallback mechanisms for obtaining public keys:
-   *
-   * 1. Static public keys configured programmatically via the `staticPublicKeys` option
-   * 2. Environment variables in the format `JWT_PUBLIC_KEY_<issuer>` where special
+   * This method now supports:
+   * 1. External IdP manager with JWKS endpoint fetching (NEW)
+   * 2. Static public keys configured programmatically via the `staticPublicKeys` option
+   * 3. Environment variables in the format `JWT_PUBLIC_KEY_<issuer>` where special
    *    characters in the issuer URL are replaced with underscores
-   *
-   * For detailed information about the token validation implementation and future
-   * enhancements, see docs/oauth-token-validation.md
-   *
-   * When JWKS fetching is implemented in the future, it will:
-   * - Fetch JWKS from the configured endpoint
-   * - Cache the keys with TTL
-   * - Find the matching key by kid (key ID)
-   * - Convert JWK to PEM format for verification
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async getPublicKey(issuer: string, _kid?: string): Promise<string | Buffer> {
+  private async getPublicKey(issuer: string, kid?: string): Promise<string | Buffer> {
+    // Check if external IdP manager is available and has this issuer
+    if (this.options.externalIdPManager) {
+      const idpConfig = this.options.externalIdPManager.getIdPConfig(issuer);
+      if (idpConfig) {
+        try {
+          logger.debug('Using external IdP manager for public key', { issuer, kid });
+          return await this.options.externalIdPManager.getPublicKey(issuer, kid);
+        } catch (error) {
+          logger.warn('Failed to get public key from external IdP manager', { issuer, error });
+          // Fall through to other methods
+        }
+      }
+    }
+
     const jwksEndpoint = this.options.jwksEndpoints.get(issuer);
     if (!jwksEndpoint) {
       throw new TokenValidationError(
@@ -365,10 +377,6 @@ export class TokenValidator {
         `No JWKS endpoint configured for issuer: ${issuer}`
       );
     }
-
-    // NOTE: JWKS fetching implementation is pending. Currently using fallback mechanisms:
-    // static public keys and environment variables. See docs/oauth-token-validation.md
-    // for details about the current implementation status and testing approaches.
 
     // FALLBACK 1: Check if a static public key is configured for this issuer
     // This is the recommended approach for testing environments
@@ -385,14 +393,11 @@ export class TokenValidator {
       return staticPublicKey;
     }
 
-    // NOTE: JWKS endpoint fetching is not yet implemented.
-    // Production deployments will benefit from dynamic JWKS fetching in the future.
-    // Currently, static keys MUST be configured for the system to work.
+    // If no external IdP manager is configured, provide helpful error message
     throw new TokenValidationError(
       TokenValidationErrorCode.INVALID_TOKEN,
       `Public key not configured for issuer: ${issuer}. ` +
-        'For testing: Configure via staticPublicKeys option or JWT_PUBLIC_KEY_<issuer> env var. ' +
-        'For production: JWKS endpoint fetching is not yet implemented - use static keys as a temporary workaround.'
+        'Configure an external IdP or provide static keys via staticPublicKeys option or JWT_PUBLIC_KEY_<issuer> env var.'
     );
   }
 

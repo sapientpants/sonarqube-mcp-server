@@ -428,6 +428,7 @@ describe('HttpTransport', () => {
           authentication: false,
           sessionManagement: false,
           serviceAccountMapping: false,
+          externalIdPIntegration: false,
           tls: false,
         },
       });
