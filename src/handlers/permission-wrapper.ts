@@ -153,100 +153,15 @@ async function applyPermissionFiltering(
   userContext: UserContext,
   permissionService: PermissionService
 ): Promise<unknown> {
-  // Handle different tool results
   switch (tool) {
     case 'projects':
-      // Filter projects based on permissions
-      if (Array.isArray(result)) {
-        const originalCount = result.length;
-        const filtered = await permissionService.filterProjects(userContext, result);
-
-        // Log data filtering if items were removed
-        if (filtered.length < originalCount) {
-          await auditLogger.logEvent(
-            AuditEventBuilder.dataAccess(
-              'projects',
-              'all',
-              'read',
-              filtered.length,
-              true,
-              userContext
-            ).build()
-          );
-        }
-
-        return filtered;
-      }
-      break;
-
+      return await filterProjectsResult(result, userContext, permissionService);
     case 'issues':
-      // Filter issues based on permissions
-      if (
-        result &&
-        typeof result === 'object' &&
-        'issues' in result &&
-        Array.isArray(result.issues)
-      ) {
-        const originalCount = result.issues.length;
-        const filtered = await permissionService.filterIssues(userContext, result.issues);
-
-        // Log data filtering if items were removed
-        if (filtered.length < originalCount) {
-          await auditLogger.logEvent(
-            AuditEventBuilder.dataAccess(
-              'issues',
-              'query',
-              'read',
-              filtered.length,
-              true,
-              userContext
-            ).build()
-          );
-        }
-
-        return { ...result, issues: filtered, total: filtered.length };
-      }
-      break;
-
+      return await filterIssuesResult(result, userContext, permissionService);
     case 'components':
-      // Filter components based on project permissions
-      if (
-        result &&
-        typeof result === 'object' &&
-        'components' in result &&
-        Array.isArray(result.components)
-      ) {
-        const originalCount = result.components.length;
-        const filtered = await Promise.all(
-          result.components.map(async (component) => {
-            if (component && typeof component === 'object' && 'key' in component) {
-              const projectKey = extractProjectKey(component.key as string);
-              const access = await permissionService.checkProjectAccess(userContext, projectKey);
-              return access.allowed ? component : null;
-            }
-            return null;
-          })
-        );
-        const filteredComponents = filtered.filter((component) => component !== null);
-
-        // Log data filtering if items were removed
-        if (filteredComponents.length < originalCount) {
-          await auditLogger.logEvent(
-            AuditEventBuilder.dataAccess(
-              'components',
-              'query',
-              'read',
-              filteredComponents.length,
-              true,
-              userContext
-            ).build()
-          );
-        }
-
-        return { ...result, components: filteredComponents };
-      }
-      break;
-
+      return await filterComponentsResult(result, userContext, permissionService);
+    case 'hotspots':
+      return await filterHotspotsResult(result, userContext, permissionService);
     case 'measures_component':
     case 'measures_components':
     case 'measures_history':
@@ -255,53 +170,169 @@ async function applyPermissionFiltering(
     case 'scm_blame':
       // These tools operate on specific components/projects
       // Access should be checked at the parameter level
-      // The wrapper will have already checked tool access
       return result;
-
-    case 'hotspots':
-      // Filter hotspots based on project permissions
-      if (
-        result &&
-        typeof result === 'object' &&
-        'hotspots' in result &&
-        Array.isArray(result.hotspots)
-      ) {
-        const originalCount = result.hotspots.length;
-        const filtered: unknown[] = [];
-        for (const hotspot of result.hotspots) {
-          if (hotspot && typeof hotspot === 'object' && 'project' in hotspot) {
-            const projectKey = (hotspot.project as { key?: string }).key ?? hotspot.project;
-            const access = await permissionService.checkProjectAccess(userContext, projectKey);
-            if (access.allowed) {
-              filtered.push(hotspot);
-            }
-          }
-        }
-
-        // Log data filtering if items were removed
-        if (filtered.length < originalCount) {
-          await auditLogger.logEvent(
-            AuditEventBuilder.dataAccess(
-              'hotspots',
-              'query',
-              'read',
-              filtered.length,
-              true,
-              userContext
-            ).build()
-          );
-        }
-
-        return { ...result, hotspots: filtered };
-      }
-      break;
-
     default:
-      // For other tools, return result as-is
       return result;
   }
+}
 
-  return result;
+/**
+ * Filter projects result based on permissions
+ */
+async function filterProjectsResult(
+  result: unknown,
+  userContext: UserContext,
+  permissionService: PermissionService
+): Promise<unknown> {
+  if (!Array.isArray(result)) {
+    return result;
+  }
+
+  const originalCount = result.length;
+  const filtered = await permissionService.filterProjects(userContext, result);
+
+  if (filtered.length < originalCount) {
+    await auditLogger.logEvent(
+      AuditEventBuilder.dataAccess(
+        'projects',
+        'all',
+        'read',
+        filtered.length,
+        true,
+        userContext
+      ).build()
+    );
+  }
+
+  return filtered;
+}
+
+/**
+ * Filter issues result based on permissions
+ */
+async function filterIssuesResult(
+  result: unknown,
+  userContext: UserContext,
+  permissionService: PermissionService
+): Promise<unknown> {
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    !('issues' in result) ||
+    !Array.isArray(result.issues)
+  ) {
+    return result;
+  }
+
+  const originalCount = result.issues.length;
+  const filtered = await permissionService.filterIssues(userContext, result.issues);
+
+  if (filtered.length < originalCount) {
+    await auditLogger.logEvent(
+      AuditEventBuilder.dataAccess(
+        'issues',
+        'query',
+        'read',
+        filtered.length,
+        true,
+        userContext
+      ).build()
+    );
+  }
+
+  return { ...result, issues: filtered, total: filtered.length };
+}
+
+/**
+ * Filter components result based on permissions
+ */
+async function filterComponentsResult(
+  result: unknown,
+  userContext: UserContext,
+  permissionService: PermissionService
+): Promise<unknown> {
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    !('components' in result) ||
+    !Array.isArray(result.components)
+  ) {
+    return result;
+  }
+
+  const originalCount = result.components.length;
+  const filtered = await Promise.all(
+    result.components.map(async (component) => {
+      if (component && typeof component === 'object' && 'key' in component) {
+        const projectKey = extractProjectKey(component.key as string);
+        const access = await permissionService.checkProjectAccess(userContext, projectKey);
+        return access.allowed ? component : null;
+      }
+      return null;
+    })
+  );
+  const filteredComponents = filtered.filter((component) => component !== null);
+
+  if (filteredComponents.length < originalCount) {
+    await auditLogger.logEvent(
+      AuditEventBuilder.dataAccess(
+        'components',
+        'query',
+        'read',
+        filteredComponents.length,
+        true,
+        userContext
+      ).build()
+    );
+  }
+
+  return { ...result, components: filteredComponents };
+}
+
+/**
+ * Filter hotspots result based on permissions
+ */
+async function filterHotspotsResult(
+  result: unknown,
+  userContext: UserContext,
+  permissionService: PermissionService
+): Promise<unknown> {
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    !('hotspots' in result) ||
+    !Array.isArray(result.hotspots)
+  ) {
+    return result;
+  }
+
+  const originalCount = result.hotspots.length;
+  const filtered: unknown[] = [];
+
+  for (const hotspot of result.hotspots) {
+    if (hotspot && typeof hotspot === 'object' && 'project' in hotspot) {
+      const projectKey = (hotspot.project as { key?: string }).key ?? hotspot.project;
+      const access = await permissionService.checkProjectAccess(userContext, projectKey);
+      if (access.allowed) {
+        filtered.push(hotspot);
+      }
+    }
+  }
+
+  if (filtered.length < originalCount) {
+    await auditLogger.logEvent(
+      AuditEventBuilder.dataAccess(
+        'hotspots',
+        'query',
+        'read',
+        filtered.length,
+        true,
+        userContext
+      ).build()
+    );
+  }
+
+  return { ...result, hotspots: filtered };
 }
 
 // Extract project key function moved to project-access-utils.ts
