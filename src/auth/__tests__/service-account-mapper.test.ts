@@ -632,6 +632,7 @@ describe('ServiceAccountMapper', () => {
         ],
         defaultServiceAccountId: 'sa1',
         enableFailover: true,
+        enableHealthMonitoring: true,
       });
 
       // Mock both accounts to fail
