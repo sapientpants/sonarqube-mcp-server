@@ -11,8 +11,12 @@ import {
   IssueStatus,
 } from './types.js';
 import { TokenClaims } from './token-validator.js';
+import { getAuditLogger } from '../audit/audit-logger.js';
+import { AuditEventBuilder } from '../audit/audit-event-builder.js';
+import { AuditEventType } from '../audit/types.js';
 
 const logger = createLogger('PermissionService');
+const auditLogger = getAuditLogger();
 
 /**
  * Permission service for filtering and authorizing access
@@ -101,7 +105,7 @@ export class PermissionService {
 
     if (!applicableRule) {
       const result = { allowed: false, reason: 'No applicable permission rule found' };
-      this.audit(userContext, `access_tool:${tool}`, tool, result);
+      await this.audit(userContext, `access_tool:${tool}`, tool, result);
       this.cacheResult(cacheKey, result);
       return result;
     }
@@ -113,7 +117,7 @@ export class PermissionService {
         reason: `Tool '${tool}' is explicitly denied`,
         appliedRule: applicableRule,
       };
-      this.audit(userContext, `access_tool:${tool}`, tool, result);
+      await this.audit(userContext, `access_tool:${tool}`, tool, result);
       this.cacheResult(cacheKey, result);
       return result;
     }
@@ -125,7 +129,7 @@ export class PermissionService {
         reason: `Tool '${tool}' is not in allowed tools list`,
         appliedRule: applicableRule,
       };
-      this.audit(userContext, `access_tool:${tool}`, tool, result);
+      await this.audit(userContext, `access_tool:${tool}`, tool, result);
       this.cacheResult(cacheKey, result);
       return result;
     }
@@ -138,13 +142,13 @@ export class PermissionService {
         reason: 'Write operations are not allowed for read-only users',
         appliedRule: applicableRule,
       };
-      this.audit(userContext, `access_tool:${tool}`, tool, result);
+      await this.audit(userContext, `access_tool:${tool}`, tool, result);
       this.cacheResult(cacheKey, result);
       return result;
     }
 
     const result = { allowed: true, appliedRule: applicableRule };
-    this.audit(userContext, `access_tool:${tool}`, tool, result);
+    await this.audit(userContext, `access_tool:${tool}`, tool, result);
     this.cacheResult(cacheKey, result);
     return result;
   }
@@ -167,7 +171,7 @@ export class PermissionService {
 
     if (!applicableRule) {
       const result = { allowed: false, reason: 'No applicable permission rule found' };
-      this.audit(userContext, 'access_project', projectKey, result);
+      await this.audit(userContext, 'access_project', projectKey, result);
       this.cacheResult(cacheKey, result);
       return result;
     }
@@ -191,7 +195,7 @@ export class PermissionService {
           appliedRule: applicableRule,
         };
 
-    this.audit(userContext, 'access_project', projectKey, result);
+    await this.audit(userContext, 'access_project', projectKey, result);
     this.cacheResult(cacheKey, result);
     return result;
   }
@@ -367,12 +371,12 @@ export class PermissionService {
   /**
    * Audit a permission check
    */
-  private audit(
+  private async audit(
     userContext: UserContext,
     action: string,
     resource: string,
     result: PermissionCheckResult
-  ): void {
+  ): Promise<void> {
     if (!this.config.enableAudit) return;
 
     const entry: PermissionAuditEntry = {
@@ -400,6 +404,36 @@ export class PermissionService {
       allowed: result.allowed,
       reason: result.reason,
     });
+
+    // Log to comprehensive audit system
+    try {
+      const eventType = result.allowed
+        ? AuditEventType.PERMISSION_GRANTED
+        : AuditEventType.PERMISSION_DENIED;
+
+      await auditLogger.logEvent(
+        new AuditEventBuilder()
+          .withEventType(eventType)
+          .withUserContext(userContext)
+          .withTarget('permission', resource)
+          .withAction(action, result.allowed ? 'success' : 'failure', undefined, result.reason)
+          .withSecurity({
+            permissionChecks: [
+              {
+                permission: action,
+                result: result.allowed,
+                reason: result.reason,
+              },
+            ],
+          })
+          .withCompliance({
+            dataClassification: 'internal',
+          })
+          .build()
+      );
+    } catch (error) {
+      logger.error('Failed to log permission check to audit system', { error });
+    }
   }
 
   /**
