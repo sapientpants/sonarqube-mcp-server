@@ -14,7 +14,8 @@ describe('Metrics Middleware', () => {
     metricsService = getMetricsService();
 
     app = express();
-    app.use(metricsMiddleware);
+    app.use(express.json()); // Add JSON parsing middleware
+    app.use(metricsMiddleware());
 
     // Add test routes
     app.get('/test', (req: Request, res: Response) => {
@@ -49,7 +50,9 @@ describe('Metrics Middleware', () => {
       const metrics = await metricsService.getMetrics();
 
       // Check counter
-      expect(metrics).toContain('mcp_requests_total{method="GET",endpoint="/test",status="200"} 2');
+      expect(metrics).toContain(
+        'http_requests_total{method="GET",endpoint="/test",status="200"} 2'
+      );
     });
 
     it('should count error requests', async () => {
@@ -57,7 +60,7 @@ describe('Metrics Middleware', () => {
 
       const metrics = await metricsService.getMetrics();
       expect(metrics).toContain(
-        'mcp_requests_total{method="GET",endpoint="/error",status="500"} 1'
+        'http_requests_total{method="GET",endpoint="/error",status="500"} 1'
       );
     });
 
@@ -66,9 +69,11 @@ describe('Metrics Middleware', () => {
       await request(app).post('/data').expect(201);
 
       const metrics = await metricsService.getMetrics();
-      expect(metrics).toContain('mcp_requests_total{method="GET",endpoint="/test",status="200"} 1');
       expect(metrics).toContain(
-        'mcp_requests_total{method="POST",endpoint="/data",status="201"} 1'
+        'http_requests_total{method="GET",endpoint="/test",status="200"} 1'
+      );
+      expect(metrics).toContain(
+        'http_requests_total{method="POST",endpoint="/data",status="201"} 1'
       );
     });
   });
@@ -80,9 +85,9 @@ describe('Metrics Middleware', () => {
       const metrics = await metricsService.getMetrics();
 
       // Check that histogram exists
-      expect(metrics).toContain('mcp_request_duration_seconds_bucket');
-      expect(metrics).toContain('mcp_request_duration_seconds_sum');
-      expect(metrics).toContain('mcp_request_duration_seconds_count');
+      expect(metrics).toContain('http_request_duration_seconds_bucket');
+      expect(metrics).toContain('http_request_duration_seconds_sum');
+      expect(metrics).toContain('http_request_duration_seconds_count');
     });
 
     it('should measure slow requests', async () => {
@@ -92,7 +97,7 @@ describe('Metrics Middleware', () => {
 
       // Check that the slow request was measured
       expect(metrics).toMatch(
-        /mcp_request_duration_seconds_sum\{[^}]*endpoint="\/slow"[^}]*\}\s+0\.\d+/
+        /http_request_duration_seconds_sum\{[^}]*endpoint="\/slow"[^}]*\}\s+0\.\d+/
       );
     });
   });
@@ -109,7 +114,7 @@ describe('Metrics Middleware', () => {
 
       const metrics = await metricsService.getMetrics();
       expect(metrics).toContain(
-        'mcp_requests_total{method="GET",endpoint="/no-end",status="204"} 1'
+        'http_requests_total{method="GET",endpoint="/no-end",status="204"} 1'
       );
     });
 
@@ -124,7 +129,7 @@ describe('Metrics Middleware', () => {
 
       const metrics = await metricsService.getMetrics();
       expect(metrics).toContain(
-        'mcp_requests_total{method="GET",endpoint="/custom-end",status="200"} 1'
+        'http_requests_total{method="GET",endpoint="/custom-end",status="200"} 1'
       );
     });
 
@@ -145,7 +150,7 @@ describe('Metrics Middleware', () => {
       const metrics = await metricsService.getMetrics();
       // Should only count once
       expect(metrics).toContain(
-        'mcp_requests_total{method="GET",endpoint="/double-end",status="200"} 1'
+        'http_requests_total{method="GET",endpoint="/double-end",status="200"} 1'
       );
     });
   });
@@ -162,7 +167,7 @@ describe('Metrics Middleware', () => {
       const metrics = await metricsService.getMetrics();
       // Both requests should be counted under the same endpoint
       expect(metrics).toContain(
-        'mcp_requests_total{method="GET",endpoint="/users/:id",status="200"} 2'
+        'http_requests_total{method="GET",endpoint="/users/:id",status="200"} 2'
       );
     });
 
@@ -171,7 +176,9 @@ describe('Metrics Middleware', () => {
 
       const metrics = await metricsService.getMetrics();
       // Query parameters should be stripped
-      expect(metrics).toContain('mcp_requests_total{method="GET",endpoint="/test",status="200"} 1');
+      expect(metrics).toContain(
+        'http_requests_total{method="GET",endpoint="/test",status="200"} 1'
+      );
     });
   });
 });

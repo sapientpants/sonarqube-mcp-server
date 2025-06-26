@@ -21,24 +21,41 @@ export function metricsMiddleware() {
     // Capture the original end function
     const originalEnd = res.end;
 
+    // Track if metrics have been recorded
+    let metricsRecorded = false;
+
     // Override the end function to capture metrics
     res.end = function (this: Response, ...args: Parameters<typeof originalEnd>) {
-      // Calculate duration in seconds
-      const duration = Number(process.hrtime.bigint() - start) / 1e9;
+      // Only record metrics once
+      if (!metricsRecorded) {
+        metricsRecorded = true;
 
-      // Extract tool name from request if it's an MCP request
-      if (req.path === '/mcp' && req.body?.method) {
-        const tool = req.body.method.replace('tools/', '');
-        const status = res.statusCode >= 200 && res.statusCode < 400 ? 'success' : 'error';
+        // Calculate duration in seconds
+        const duration = Number(process.hrtime.bigint() - start) / 1e9;
 
-        metrics.recordMcpRequest(tool, status, duration);
+        // Extract tool name from request if it's an MCP request
+        if (req.path === '/mcp' && req.body?.method) {
+          const tool = req.body.method.replace('tools/', '');
+          const status = res.statusCode >= 200 && res.statusCode < 400 ? 'success' : 'error';
 
-        logger.debug('MCP request metrics recorded', {
-          tool,
-          status,
-          duration,
-          statusCode: res.statusCode,
-        });
+          metrics.recordMcpRequest(tool, status, duration);
+
+          logger.debug('MCP request metrics recorded', {
+            tool,
+            status,
+            duration,
+            statusCode: res.statusCode,
+          });
+        } else {
+          // For non-MCP requests, record as generic HTTP request
+          const endpoint = req.route?.path ?? req.path;
+          const method = req.method;
+          const status = res.statusCode.toString();
+
+          // Record in the HTTP metrics
+          metrics.httpRequestsTotal.inc({ method, endpoint, status });
+          metrics.httpRequestDuration.observe({ method, endpoint }, duration);
+        }
       }
 
       // Call the original end function

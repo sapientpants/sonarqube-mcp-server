@@ -91,12 +91,25 @@ describe('Tracing', () => {
     });
 
     it('should handle initialization errors gracefully', async () => {
-      const { NodeSDK } = await import('@opentelemetry/sdk-node');
-      (NodeSDK as jest.MockedClass<typeof NodeSDK>).mockImplementationOnce(() => {
-        throw new Error('Initialization failed');
-      });
+      // Reset and re-mock modules
+      jest.resetModules();
 
-      const sdk = await initializeTracing({ enabled: true });
+      // Create mock that throws on any method
+      const errorMock = new Proxy(
+        {},
+        {
+          get: () => {
+            throw new Error('Initialization failed');
+          },
+        }
+      );
+
+      jest.doMock('@opentelemetry/sdk-node', () => ({
+        NodeSDK: jest.fn().mockImplementation(() => errorMock),
+      }));
+
+      const { initializeTracing: init } = await import('../tracing.js');
+      const sdk = await init({ enabled: true });
       expect(sdk).toBeNull();
     });
   });

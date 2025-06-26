@@ -11,6 +11,10 @@ export class MetricsService {
   public readonly mcpRequestsTotal: Counter<string>;
   public readonly mcpRequestDuration: Histogram<string>;
 
+  // HTTP metrics
+  public readonly httpRequestsTotal: Counter<string>;
+  public readonly httpRequestDuration: Histogram<string>;
+
   // Authentication metrics
   public readonly authFailuresTotal: Counter<string>;
   public readonly activeSessions: Gauge<string>;
@@ -57,6 +61,21 @@ export class MetricsService {
       name: 'mcp_request_duration_seconds',
       help: 'MCP request duration in seconds',
       labelNames: ['tool'],
+      buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+      registers: [this.registry],
+    });
+
+    this.httpRequestsTotal = new Counter({
+      name: 'http_requests_total',
+      help: 'Total number of HTTP requests',
+      labelNames: ['method', 'endpoint', 'status'],
+      registers: [this.registry],
+    });
+
+    this.httpRequestDuration = new Histogram({
+      name: 'http_request_duration_seconds',
+      help: 'HTTP request duration in seconds',
+      labelNames: ['method', 'endpoint'],
       buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
       registers: [this.registry],
     });
