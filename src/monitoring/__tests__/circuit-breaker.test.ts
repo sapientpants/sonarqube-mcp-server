@@ -71,7 +71,7 @@ describe('Circuit Breaker', () => {
       await expect(breaker.fire()).rejects.toThrow('Service unavailable');
 
       // Circuit should now be open
-      await expect(breaker.fire()).rejects.toThrow('Breaker is OPEN');
+      await expect(breaker.fire()).rejects.toThrow('Breaker is open');
 
       // Function should not be called when circuit is open
       expect(mockFn).toHaveBeenCalledTimes(2);
@@ -153,7 +153,7 @@ describe('Circuit Breaker', () => {
       await expect(breaker.fire()).rejects.toThrow('Persistent failure');
 
       // Circuit should be open again
-      await expect(breaker.fire()).rejects.toThrow('Breaker is OPEN');
+      await expect(breaker.fire()).rejects.toThrow('Breaker is open');
     });
   });
 
