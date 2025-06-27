@@ -790,14 +790,14 @@ export OTEL_SERVICE_NAME=sonarqube-mcp-server
 export OTEL_SERVICE_VERSION=1.5.1
 
 # Exporter configuration (choose one)
-export OTEL_TRACES_EXPORTER=otlp  # Options: otlp, jaeger, zipkin
+export OTEL_TRACES_EXPORTER=otlp  # Options: otlp, zipkin
 
-# OTLP exporter (default)
+# OTLP exporter (default) - Works with Jaeger, Tempo, and other OTLP-compatible backends
 export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces
 export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer token"
 
-# Jaeger exporter
-export OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14268/api/traces
+# For Jaeger: Use OTLP exporter with Jaeger's OTLP endpoint (typically port 4317 for gRPC or 4318 for HTTP)
+# Modern Jaeger versions (1.35+) support OTLP natively
 
 # Zipkin exporter
 export OTEL_EXPORTER_ZIPKIN_ENDPOINT=http://localhost:9411/api/v2/spans

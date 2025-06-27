@@ -5,7 +5,6 @@ import { resourceFromAttributes, defaultResource } from '@opentelemetry/resource
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { JaegerExporter } from '@opentelemetry/exporter-jaeger';
 import { ZipkinExporter } from '@opentelemetry/exporter-zipkin';
 import { trace, context, SpanStatusCode, SpanKind } from '@opentelemetry/api';
 import { createLogger } from '../utils/logger.js';
@@ -18,7 +17,7 @@ export interface TracingOptions {
   enabled?: boolean;
   serviceName?: string;
   serviceVersion?: string;
-  exporter?: 'otlp' | 'jaeger' | 'zipkin' | 'console';
+  exporter?: 'otlp' | 'zipkin' | 'console';
   endpoint?: string;
   headers?: Record<string, string>;
   exportIntervalMillis?: number;
@@ -124,14 +123,6 @@ function createTraceExporter(options: TracingOptions) {
   const exporterType = options.exporter ?? process.env.OTEL_TRACES_EXPORTER ?? 'otlp';
 
   switch (exporterType) {
-    case 'jaeger':
-      return new JaegerExporter({
-        endpoint:
-          options.endpoint ??
-          process.env.OTEL_EXPORTER_JAEGER_ENDPOINT ??
-          'http://localhost:14268/api/traces',
-      });
-
     case 'zipkin':
       return new ZipkinExporter({
         url:
@@ -142,6 +133,7 @@ function createTraceExporter(options: TracingOptions) {
 
     case 'otlp':
     default:
+      // Note: For Jaeger, use OTLP exporter with Jaeger's OTLP endpoint (typically port 4317 for gRPC or 4318 for HTTP)
       return new OTLPTraceExporter({
         url:
           options.endpoint ??
@@ -163,9 +155,11 @@ function parseHeaders(headersStr?: string): Record<string, string> {
   const pairs = headersStr.split(',');
 
   for (const pair of pairs) {
-    const [key, value] = pair.split('=');
-    if (key && value) {
-      headers[key.trim()] = value.trim();
+    const idx = pair.indexOf('=');
+    if (idx !== -1) {
+      const key = pair.slice(0, idx).trim();
+      const value = pair.slice(idx + 1).trim();
+      headers[key] = value;
     }
   }
 

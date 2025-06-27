@@ -148,7 +148,11 @@ export function updateServiceAccountHealthMetrics(
  */
 export function trackCacheAccess(cacheName: string, hit: boolean): void {
   const metrics = getMetricsService();
-  metrics.recordCacheAccess(cacheName, hit);
+  if (hit) {
+    metrics.recordCacheHit(cacheName);
+  } else {
+    metrics.recordCacheMiss(cacheName);
+  }
 
   logger.debug('Cache access tracked', { cacheName, hit });
 }

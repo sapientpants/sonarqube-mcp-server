@@ -453,8 +453,12 @@ export class HttpTransport implements ITransport {
         );
         const health = await healthService.checkHealth();
 
-        const statusCode =
-          health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
+        let statusCode: number;
+        if (health.status === 'healthy' || health.status === 'degraded') {
+          statusCode = 200;
+        } else {
+          statusCode = 503;
+        }
 
         res.status(statusCode).json(health);
       } catch (error) {

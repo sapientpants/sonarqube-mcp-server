@@ -59,8 +59,8 @@ export class HandlerFactory {
             if (!projectAccessResult.allowed) {
               // Track project permission denial metric
               const projectKey =
-                (params as Record<string, unknown>).project_key ||
-                (params as Record<string, unknown>).project ||
+                (params as Record<string, unknown>).project_key ??
+                (params as Record<string, unknown>).project ??
                 'unknown';
               trackPermissionDenial(userContext.userId, String(projectKey), 'project_access');
 

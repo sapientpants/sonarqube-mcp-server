@@ -8,16 +8,18 @@ import { SERVER_VERSION } from '../config/versions.js';
 
 const logger = createLogger('HealthService');
 
+export type HealthStatus = 'healthy' | 'unhealthy' | 'degraded';
+
 export interface DependencyHealth {
   name: string;
-  status: 'healthy' | 'unhealthy' | 'degraded';
+  status: HealthStatus;
   message?: string;
   latency?: number;
   lastCheck?: Date;
 }
 
 export interface HealthCheckResult {
-  status: 'healthy' | 'unhealthy' | 'degraded';
+  status: HealthStatus;
   version: string;
   uptime: number;
   timestamp: Date;
@@ -88,7 +90,7 @@ export class HealthService {
 
     // Determine overall status
     const statuses = Object.values(dependencies);
-    let overallStatus: 'healthy' | 'unhealthy' | 'degraded' = 'healthy';
+    let overallStatus: HealthStatus = 'healthy';
 
     if (statuses.some((d) => d.status === 'unhealthy')) {
       overallStatus = 'unhealthy';
@@ -249,19 +251,14 @@ export class HealthService {
    * Get metrics summary
    */
   private getMetricsSummary(): HealthCheckResult['metrics'] {
-    try {
-      // Get current metric values (this is a simplified version)
-      // In a real implementation, you'd query the actual metric values
-      // For now, we'll return static values
-      return {
-        requests: 0, // Would query mcpRequestsTotal
-        errors: 0, // Would query sonarqubeErrorsTotal + authFailuresTotal
-        activeSession: 0, // Would query activeSessions
-      };
-    } catch (error) {
-      logger.error('Failed to get metrics summary', error);
-      return undefined;
-    }
+    // Get current metric values (this is a simplified version)
+    // In a real implementation, you'd query the actual metric values
+    // For now, we'll return static values
+    return {
+      requests: 0, // Would query mcpRequestsTotal
+      errors: 0, // Would query sonarqubeErrorsTotal + authFailuresTotal
+      activeSession: 0, // Would query activeSessions
+    };
   }
 
   /**

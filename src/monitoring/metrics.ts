@@ -266,21 +266,31 @@ export class MetricsService {
   }
 
   /**
-   * Record a cache hit or miss
+   * Record a cache hit
    */
-  recordCacheAccess(cacheName: string, hit: boolean): void {
-    if (hit) {
-      this.cacheHits.inc({ cache: cacheName });
-    } else {
-      this.cacheMisses.inc({ cache: cacheName });
-    }
+  recordCacheHit(cacheName: string): void {
+    this.cacheHits.inc({ cache: cacheName });
+  }
+
+  /**
+   * Record a cache miss
+   */
+  recordCacheMiss(cacheName: string): void {
+    this.cacheMisses.inc({ cache: cacheName });
   }
 
   /**
    * Update circuit breaker state
    */
   updateCircuitBreakerState(service: string, state: 'closed' | 'open' | 'half-open'): void {
-    const stateValue = state === 'closed' ? 0 : state === 'open' ? 1 : 2;
+    let stateValue: number;
+    if (state === 'closed') {
+      stateValue = 0;
+    } else if (state === 'open') {
+      stateValue = 1;
+    } else {
+      stateValue = 2;
+    }
     this.circuitBreakerState.set({ service }, stateValue);
   }
 
@@ -325,9 +335,7 @@ let metricsService: MetricsService | null = null;
  * Get or create the metrics service instance
  */
 export function getMetricsService(): MetricsService {
-  if (!metricsService) {
-    metricsService = new MetricsService();
-  }
+  metricsService ??= new MetricsService();
   return metricsService;
 }
 

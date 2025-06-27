@@ -43,6 +43,8 @@ afterAll(() => {
   jest.dontMock('../../sonarqube.js');
 });
 
+// Skip these tests due to ES module mocking issues with Jest
+// These functionalities are covered by integration tests in health-integration.test.ts
 describe.skip('HealthService', () => {
   let mockExternalIdPManager: jest.Mocked<ExternalIdPManager>;
   let mockBuiltInAuthServer: jest.Mocked<BuiltInAuthServer>;

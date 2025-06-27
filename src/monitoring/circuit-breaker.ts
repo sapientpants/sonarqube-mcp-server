@@ -19,7 +19,7 @@ export interface CircuitBreakerOptions {
  * Circuit breaker factory for external service calls
  */
 export class CircuitBreakerFactory {
-  private static breakers = new Map<string, CircuitBreaker>();
+  private static readonly breakers = new Map<string, CircuitBreaker>();
 
   /**
    * Create or get a circuit breaker for a service

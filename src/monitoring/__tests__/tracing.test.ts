@@ -17,10 +17,6 @@ jest.mock('@opentelemetry/exporter-trace-otlp-http', () => ({
   OTLPTraceExporter: jest.fn(),
 }));
 
-jest.mock('@opentelemetry/exporter-jaeger', () => ({
-  JaegerExporter: jest.fn(),
-}));
-
 jest.mock('@opentelemetry/exporter-zipkin', () => ({
   ZipkinExporter: jest.fn(),
 }));
@@ -82,7 +78,7 @@ describe('Tracing', () => {
     });
 
     it('should support different exporters', async () => {
-      const exporters = ['otlp', 'jaeger', 'zipkin'];
+      const exporters = ['otlp', 'zipkin'];
 
       for (const exporter of exporters) {
         const sdk = await initializeTracing({ exporter });
