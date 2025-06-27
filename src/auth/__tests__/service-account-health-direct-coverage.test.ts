@@ -148,7 +148,7 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
       });
 
       // Should handle empty accounts list
-      await expect(monitor.checkAllAccounts()).resolves.not.toThrow();
+      await monitor.checkAllAccounts();
 
       // Add some accounts
       monitor.addAccount({
