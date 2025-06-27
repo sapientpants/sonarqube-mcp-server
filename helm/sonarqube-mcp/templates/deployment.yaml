@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sonarqube-mcp.fullname" . }}
+  labels:
+    {{- include "sonarqube-mcp.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sonarqube-mcp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "sonarqube-mcp.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "sonarqube-mcp.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.http.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.config.monitoring.metricsPort }}
+              protocol: TCP
+          env:
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=1024"
+            {{- if .Values.config.http.httpsEnabled }}
+            - name: MCP_HTTP_HTTPS_CERT
+              value: /tls/tls.crt
+            - name: MCP_HTTP_HTTPS_KEY
+              value: /tls/tls.key
+            {{- end }}
+            {{- if .Values.config.oauth.issuer }}
+            - name: MCP_HTTP_OAUTH_PUBLIC_KEY_PATH
+              value: /oauth/public.pem
+            {{- end }}
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "sonarqube-mcp.fullname" . }}
+            - secretRef:
+                name: {{ include "sonarqube-mcp.sonarqubeTokenSecretName" . }}
+            {{- if .Values.config.serviceAccounts.enabled }}
+            - secretRef:
+                name: {{ include "sonarqube-mcp.serviceAccountsSecretName" . }}
+            {{- end }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.config.oauth.issuer }}
+            - name: oauth-key
+              mountPath: /oauth
+              readOnly: true
+            {{- end }}
+            {{- if .Values.config.http.httpsEnabled }}
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        {{- if .Values.config.oauth.issuer }}
+        - name: oauth-key
+          secret:
+            secretName: {{ include "sonarqube-mcp.oauthSecretName" . }}
+            defaultMode: 0400
+        {{- end }}
+        {{- if .Values.config.http.httpsEnabled }}
+        - name: tls
+          secret:
+            secretName: {{ include "sonarqube-mcp.tlsSecretName" . }}
+            defaultMode: 0400
+        {{- end }}
+        - name: logs
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim | default (include "sonarqube-mcp.fullname" .) }}
+          {{- else }}
+          emptyDir:
+            sizeLimit: 1Gi
+          {{- end }}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 500Mi
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

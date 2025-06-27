@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sonarqube-mcp
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - networkpolicy.yaml
+
+commonLabels:
+  app.kubernetes.io/name: sonarqube-mcp
+  app.kubernetes.io/instance: production
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: sapientpants/sonarqube-mcp-server
+    newTag: latest

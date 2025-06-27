@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sonarqube-mcp
+  labels:
+    app.kubernetes.io/name: sonarqube-mcp
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/managed-by: kubectl

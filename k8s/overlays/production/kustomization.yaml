@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sonarqube-mcp-prod
+
+bases:
+  - ../../base
+
+namePrefix: prod-
+nameSuffix: ""
+
+commonLabels:
+  app.kubernetes.io/instance: production
+  environment: production
+
+patchesStrategicMerge:
+  - deployment-patch.yaml
+  - ingress-patch.yaml
+
+configMapGenerator:
+  - name: sonarqube-mcp-config
+    behavior: merge
+    literals:
+      - SONARQUBE_BASE_URL=https://sonarqube.company.com
+      - MCP_HTTP_OAUTH_ISSUER=https://auth.company.com
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.monitoring:4318
+
+secretGenerator:
+  - name: sonarqube-mcp-secrets
+    behavior: replace
+    envs:
+      - secrets.env
+
+replicas:
+  - name: sonarqube-mcp
+    count: 5
+
+images:
+  - name: sapientpants/sonarqube-mcp-server
+    newTag: v1.9.0
