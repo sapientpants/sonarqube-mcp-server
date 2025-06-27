@@ -24,6 +24,9 @@ import { AuditEventType } from '../audit/types.js';
 import { ExternalIdPManager } from '../auth/external-idp-manager.js';
 import { ExternalIdPProvider, ExternalIdPConfig } from '../auth/external-idp-types.js';
 import { BuiltInAuthServer } from '../auth/built-in-server/auth-server.js';
+import { getMetricsService } from '../monitoring/metrics.js';
+import { metricsMiddleware, trackAuthFailure } from '../monitoring/middleware.js';
+import { HealthService } from '../monitoring/health.js';
 
 const logger = createLogger('HttpTransport');
 const auditLogger = getAuditLogger();
@@ -424,72 +427,66 @@ export class HttpTransport implements ITransport {
     // Parse JSON bodies
     this.app.use(express.json());
 
-    // Health check endpoint
-    this.app.get('/health', (_req: Request, res: Response) => {
-      res.json({ status: 'ok' });
+    // Add metrics middleware
+    this.app.use(metricsMiddleware());
+
+    // Metrics endpoint
+    this.app.get('/metrics', async (_req: Request, res: Response) => {
+      try {
+        const metrics = getMetricsService();
+        const metricsText = await metrics.getMetrics();
+        res.set('Content-Type', metrics.getContentType());
+        res.send(metricsText);
+      } catch (error) {
+        logger.error('Failed to generate metrics', error);
+        res.status(500).json({ error: 'Failed to generate metrics' });
+      }
     });
 
-    // Ready check endpoint
-    this.app.get('/ready', (_req: Request, res: Response) => {
-      const ready =
-        !!this.server &&
-        (this.tokenValidator !== undefined || process.env.MCP_HTTP_ALLOW_NO_AUTH === 'true');
+    // Health check endpoint
+    this.app.get('/health', async (_req: Request, res: Response) => {
+      try {
+        const healthService = HealthService.getInstance(
+          this.externalIdPManager,
+          this.builtInAuthServer,
+          this.serviceAccountMapper
+        );
+        const health = await healthService.checkHealth();
 
-      if (ready) {
-        // Get service account health if available
-        let serviceAccountHealth: Record<string, unknown> | undefined;
-        if (this.serviceAccountMapper) {
-          const healthMonitor = this.serviceAccountMapper.getHealthMonitor();
-          if (healthMonitor) {
-            const healthStatuses = healthMonitor.getAllHealthStatuses();
-            serviceAccountHealth = {
-              totalAccounts: this.serviceAccountMapper.getServiceAccounts().length,
-              healthyAccounts: Array.from(healthStatuses.values()).filter((h) => h.isHealthy)
-                .length,
-              accounts: Array.from(healthStatuses.entries()).map(([id, status]) => ({
-                id,
-                healthy: status.isHealthy,
-                lastCheck: status.lastCheck,
-                error: status.error,
-              })),
-            };
-          }
+        let statusCode: number;
+        if (health.status === 'healthy' || health.status === 'degraded') {
+          statusCode = 200;
+        } else {
+          statusCode = 503;
         }
 
-        // Get external IdP health if available
-        let externalIdPHealth: Record<string, unknown> | undefined;
-        if (this.externalIdPManager) {
-          const healthStatuses = this.externalIdPManager.getHealthStatus();
-          externalIdPHealth = {
-            totalIdPs: this.externalIdPManager.getIdPs().length,
-            healthyIdPs: healthStatuses.filter((h) => h.healthy).length,
-            idps: healthStatuses.map((status) => ({
-              issuer: status.issuer,
-              healthy: status.healthy,
-              lastSuccess: status.lastSuccess,
-              lastFailure: status.lastFailure,
-              consecutiveFailures: status.consecutiveFailures,
-              error: status.error,
-            })),
-          };
-        }
-
-        res.json({
-          status: 'ready',
-          features: {
-            authentication: !!this.tokenValidator,
-            sessionManagement: !!this.sessionManager,
-            serviceAccountMapping: !!this.serviceAccountMapper,
-            externalIdPIntegration: !!this.externalIdPManager,
-            tls: this.options.tls.enabled,
-          },
-          serviceAccountHealth,
-          externalIdPHealth,
-        });
-      } else {
+        res.status(statusCode).json(health);
+      } catch (error) {
+        logger.error('Health check failed', error);
         res.status(503).json({
-          status: 'not_ready',
-          message: 'Server is initializing',
+          status: 'unhealthy',
+          error: 'Health check failed',
+        });
+      }
+    });
+
+    // Ready check endpoint (Kubernetes readiness probe)
+    this.app.get('/ready', async (_req: Request, res: Response) => {
+      try {
+        const healthService = HealthService.getInstance(
+          this.externalIdPManager,
+          this.builtInAuthServer,
+          this.serviceAccountMapper
+        );
+        const readiness = await healthService.checkReadiness();
+
+        const statusCode = readiness.ready ? 200 : 503;
+        res.status(statusCode).json(readiness);
+      } catch (error) {
+        logger.error('Readiness check failed', error);
+        res.status(503).json({
+          ready: false,
+          error: 'Readiness check failed',
         });
       }
     });
@@ -703,6 +700,7 @@ export class HttpTransport implements ITransport {
         return 'api-key'; // Special marker for API key auth
       }
 
+      trackAuthFailure('invalid_api_key');
       res.status(401).json({
         error: 'invalid_token',
         error_description: 'Invalid API key',
@@ -789,6 +787,9 @@ export class HttpTransport implements ITransport {
     } catch (error) {
       logger.error('Failed to log missing bearer token', { error });
     }
+
+    // Track authentication failure metric
+    trackAuthFailure('missing_bearer_token');
 
     // RFC6750: Include WWW-Authenticate header on 401 responses
     const wwwAuthenticate = [
@@ -1066,6 +1067,9 @@ export class HttpTransport implements ITransport {
    * Handle token validation errors
    */
   private handleTokenValidationError(res: Response, error: TokenValidationError): void {
+    // Track authentication failure metric
+    trackAuthFailure(error.code);
+
     // Build WWW-Authenticate header with error details
     const wwwAuthParams = [
       'Bearer',
@@ -1368,6 +1372,11 @@ export class HttpTransport implements ITransport {
     // Shut down session manager
     if (this.sessionManager) {
       this.sessionManager.shutdown();
+    }
+
+    // Shut down service account mapper
+    if (this.serviceAccountMapper) {
+      this.serviceAccountMapper.shutdown();
     }
 
     // Shut down external IdP manager

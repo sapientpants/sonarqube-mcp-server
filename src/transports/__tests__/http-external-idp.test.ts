@@ -1,6 +1,8 @@
 import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { HttpTransport } from '../http.js';
 import { ExternalIdPConfig } from '../../auth/external-idp-types.js';
+import { cleanupMetricsService } from '../../monitoring/metrics.js';
+import { HealthService } from '../../monitoring/health.js';
 
 // Access private methods via type casting
 interface HttpTransportPrivate {
@@ -24,6 +26,8 @@ describe('HttpTransport - External IdP Configuration', () => {
   afterEach(() => {
     // Restore original environment
     process.env = originalEnv;
+    cleanupMetricsService();
+    HealthService.resetInstance();
   });
 
   describe('parseExternalIdPsFromEnv', () => {

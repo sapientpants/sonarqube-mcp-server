@@ -4,6 +4,8 @@ import { Application } from 'express';
 import { HttpTransport } from '../http.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import jwt from 'jsonwebtoken';
+import { cleanupMetricsService } from '../../monitoring/metrics.js';
+import { HealthService } from '../../monitoring/health.js';
 
 // Mock the Server class
 jest.mock('@modelcontextprotocol/sdk/server/index.js');
@@ -37,6 +39,8 @@ describe('HttpTransport Authentication', () => {
 
   afterEach(async () => {
     await transport.shutdown();
+    cleanupMetricsService();
+    HealthService.resetInstance();
   });
 
   describe('OAuth metadata endpoints', () => {
@@ -204,8 +208,15 @@ describe('HttpTransport Authentication', () => {
     it('should not require authentication for /health', async () => {
       const response = await request(app).get('/health');
 
-      expect(response.status).toBe(200);
-      expect(response.body).toEqual({ status: 'ok' });
+      expect(response.status).toBe(503); // Unhealthy because no SonarQube configured
+      expect(response.body).toMatchObject({
+        status: 'unhealthy',
+        dependencies: expect.objectContaining({
+          sonarqube: expect.objectContaining({
+            status: 'unhealthy',
+          }),
+        }),
+      });
     });
   });
 

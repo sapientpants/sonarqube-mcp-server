@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { HttpTransport } from '../http.js';
 import { SonarQubeClient } from '../../sonarqube.js';
+import { cleanupMetricsService } from '../../monitoring/metrics.js';
+import { HealthService } from '../../monitoring/health.js';
 
 // Mock the SonarQube client
 const mockSonarQubeClient = {
@@ -17,6 +19,8 @@ describe('HttpTransport Coverage Simple', () => {
 
   afterEach(() => {
     process.env = originalEnv;
+    cleanupMetricsService();
+    HealthService.resetInstance();
   });
 
   describe('Configuration variations', () => {
