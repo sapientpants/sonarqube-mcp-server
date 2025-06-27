@@ -1,0 +1,17 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sonarqube-mcp
+  namespace: sonarqube-mcp
+  labels:
+    app.kubernetes.io/name: sonarqube-mcp
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/component: pdb
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sonarqube-mcp
+      app.kubernetes.io/instance: production
+      app.kubernetes.io/component: server
+  maxUnavailable: 33%
