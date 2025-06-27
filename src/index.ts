@@ -146,6 +146,22 @@ export {
   handleSonarQubeUpdateHotspotStatus,
 } from './handlers/index.js';
 
+// Helper function to parse JSON string arrays in parameters
+function parseArrayParameters(params: Record<string, unknown>, paramNames: string[]): void {
+  for (const key of paramNames) {
+    if (typeof params[key] === 'string') {
+      try {
+        const parsed = JSON.parse(params[key] as string);
+        if (Array.isArray(parsed)) {
+          params[key] = parsed;
+        }
+      } catch {
+        // Not valid JSON, keep as string for backward compatibility
+      }
+    }
+  }
+}
+
 // Lambda functions for the MCP tools
 /**
  * Lambda function for projects tool
@@ -166,6 +182,16 @@ export const metricsHandler = async (params: { page: number | null; page_size: n
  * Lambda function for issues tool
  */
 export const issuesHandler = async (params: Record<string, unknown>) => {
+  // Parse JSON strings to arrays for array parameters
+  parseArrayParameters(params, [
+    'projects', 'component_keys', 'components', 'directories', 'files', 
+    'scopes', 'issues', 'severities', 'statuses', 'resolutions', 'types',
+    'clean_code_attribute_categories', 'impact_severities', 'impact_software_qualities',
+    'issue_statuses', 'rules', 'tags', 'assignees', 'authors', 'cwe',
+    'owasp_top10', 'owasp_top10_v2021', 'sans_top25', 'sonarsource_security',
+    'sonarsource_security_category', 'languages', 'facets', 'additional_fields'
+  ]);
+  
   return handleSonarQubeGetIssues(mapToSonarQubeParams(params));
 };
 

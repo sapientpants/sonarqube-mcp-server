@@ -130,13 +130,11 @@ export const issuesToolSchema = {
   project_key: z.string().optional().describe('Single project key for backward compatibility'), // Made optional to support projects array
   projects: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Filter by project keys'),
   component_keys: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
@@ -144,7 +142,6 @@ export const issuesToolSchema = {
     ),
   components: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Alias for component_keys - filter by file paths, directories, or modules'),
@@ -155,26 +152,16 @@ export const issuesToolSchema = {
     .describe('Return only issues on the specified components, not on their sub-components'),
   directories: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Filter by directory paths'),
   files: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Filter by specific file paths'),
   scopes: z
     .union([z.array(z.enum(['MAIN', 'TEST', 'OVERALL'])), z.string()])
-    .transform((val) => {
-      const parsed = parseJsonStringArray(val);
-      // Validate that all values are valid scopes
-      if (parsed && Array.isArray(parsed)) {
-        return parsed.filter((v) => ['MAIN', 'TEST', 'OVERALL'].includes(v));
-      }
-      return parsed;
-    })
     .nullable()
     .optional()
     .describe('Filter by issue scopes (MAIN, TEST, OVERALL)'),
@@ -186,7 +173,6 @@ export const issuesToolSchema = {
   // Issue filters
   issues: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
   severity: severitySchema, // Deprecated single value
@@ -208,13 +194,11 @@ export const issuesToolSchema = {
   // Rules and tags
   rules: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Filter by rule keys'),
   tags: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
@@ -235,7 +219,6 @@ export const issuesToolSchema = {
     .describe('Filter to only assigned (true) or unassigned (false) issues'),
   assignees: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
@@ -244,7 +227,6 @@ export const issuesToolSchema = {
   author: z.string().nullable().optional().describe('Filter by single issue author'), // Single author
   authors: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe('Filter by multiple issue authors'), // Multiple authors
@@ -252,46 +234,38 @@ export const issuesToolSchema = {
   // Security standards
   cwe: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
   owasp_top10: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
   owasp_top10_v2021: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(), // New 2021 version
   sans_top25: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
   sonarsource_security: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
   sonarsource_security_category: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
 
   // Languages
   languages: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
 
   // Facets
   facets: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional()
     .describe(
@@ -325,7 +299,6 @@ export const issuesToolSchema = {
   // Response optimization
   additional_fields: z
     .union([z.array(z.string()), z.string()])
-    .transform(parseJsonStringArray)
     .nullable()
     .optional(),
 
