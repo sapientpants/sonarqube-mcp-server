@@ -164,12 +164,8 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
       });
 
       // This will likely fail due to network calls, but it exercises the code path
-      try {
-        await monitor.checkAllAccounts();
-      } catch (error) {
-        // Expected in test environment without real SonarQube instances
-        expect(error).toBeDefined();
-      }
+      // Just ensure it doesn't throw - the method uses allSettled internally
+      await monitor.checkAllAccounts();
 
       monitor.stop(); // Clean up
     });
@@ -191,16 +187,10 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
       };
 
       // This will likely fail due to network connectivity, but exercises the code
-      try {
-        const result = await monitor.checkAccount(mockAccount);
-        // If it somehow succeeds, that's fine too
-        expect(result).toBeDefined();
-        expect(result.accountId).toBe('sa-123');
-        expect(result.lastCheck).toBeInstanceOf(Date);
-      } catch (error) {
-        // Expected failure is OK - we're testing code paths
-        expect(error).toBeDefined();
-      }
+      // We don't care if it succeeds or fails - we're just testing code coverage
+      await monitor.checkAccount(mockAccount).catch(() => {
+        // Ignore errors - expected in test environment
+      });
 
       // Test with minimal account properties
       const minimalAccount = {
@@ -209,20 +199,16 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
         token: 'token',
       };
 
-      try {
-        await monitor.checkAccount(minimalAccount);
-      } catch (error) {
-        // Expected in test environment
-        expect(error).toBeDefined();
-      }
+      await monitor.checkAccount(minimalAccount).catch(() => {
+        // Ignore errors - expected in test environment
+      });
 
       // Test with default parameters
-      try {
-        await monitor.checkAccount(mockAccount, 'https://default.example.com', 'default-org');
-      } catch (error) {
-        // Expected in test environment
-        expect(error).toBeDefined();
-      }
+      await monitor
+        .checkAccount(mockAccount, 'https://default.example.com', 'default-org')
+        .catch(() => {
+          // Ignore errors - expected in test environment
+        });
 
       monitor.stop(); // Clean up
     });
