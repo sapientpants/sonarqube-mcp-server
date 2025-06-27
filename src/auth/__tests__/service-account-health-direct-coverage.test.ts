@@ -145,27 +145,36 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
 
       const monitor = new ServiceAccountHealthMonitor({
         autoStart: false,
+        checkTimeout: 100, // Very short timeout to fail fast
       });
 
       // Should handle empty accounts list
       await monitor.checkAllAccounts();
 
-      // Add some accounts
+      // Add some accounts with invalid URLs to ensure they fail quickly
       monitor.addAccount({
         id: 'sa-1',
         name: 'Account 1',
         token: 'token-1',
+        url: 'http://127.0.0.1:1', // Non-routable address that will fail immediately
       });
 
       monitor.addAccount({
         id: 'sa-2',
         name: 'Account 2',
         token: 'token-2',
+        url: 'http://127.0.0.1:2', // Non-routable address that will fail immediately
       });
 
-      // This will likely fail due to network calls, but it exercises the code path
-      // Just ensure it doesn't throw - the method uses allSettled internally
+      // This should complete quickly without throwing
+      // The method uses allSettled internally so it won't throw
       await monitor.checkAllAccounts();
+
+      // Verify the accounts were processed
+      const health1 = monitor.getAccountHealth('sa-1');
+      const health2 = monitor.getAccountHealth('sa-2');
+      expect(health1).toBeDefined();
+      expect(health2).toBeDefined();
 
       monitor.stop(); // Clean up
     });
@@ -175,22 +184,23 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
 
       const monitor = new ServiceAccountHealthMonitor({
         autoStart: false,
-        checkTimeout: 1000, // Short timeout for tests
+        checkTimeout: 100, // Very short timeout for tests
       });
 
       const mockAccount = {
         id: 'sa-123',
         name: 'Test Account',
         token: 'test-token',
-        url: 'https://nonexistent.sonarqube.example.com', // Use a URL that will fail
+        url: 'http://127.0.0.1:3', // Non-routable address
         organization: 'test-org',
       };
 
-      // This will likely fail due to network connectivity, but exercises the code
-      // We don't care if it succeeds or fails - we're just testing code coverage
-      await monitor.checkAccount(mockAccount).catch(() => {
-        // Ignore errors - expected in test environment
-      });
+      // Check should fail quickly due to invalid URL
+      const result1 = await monitor.checkAccount(mockAccount);
+      expect(result1.accountId).toBe('sa-123');
+      expect(result1.isHealthy).toBe(false);
+      expect(result1.error).toBeDefined();
+      expect(result1.lastCheck).toBeInstanceOf(Date);
 
       // Test with minimal account properties
       const minimalAccount = {
@@ -199,16 +209,14 @@ describe('ServiceAccountHealthMonitor - Direct Coverage Tests', () => {
         token: 'token',
       };
 
-      await monitor.checkAccount(minimalAccount).catch(() => {
-        // Ignore errors - expected in test environment
-      });
+      const result2 = await monitor.checkAccount(minimalAccount);
+      expect(result2.accountId).toBe('minimal');
+      expect(result2.isHealthy).toBe(false);
 
       // Test with default parameters
-      await monitor
-        .checkAccount(mockAccount, 'https://default.example.com', 'default-org')
-        .catch(() => {
-          // Ignore errors - expected in test environment
-        });
+      const result3 = await monitor.checkAccount(mockAccount, 'http://127.0.0.1:4', 'default-org');
+      expect(result3.accountId).toBe('sa-123');
+      expect(result3.isHealthy).toBe(false);
 
       monitor.stop(); // Clean up
     });
