@@ -39,6 +39,11 @@ RUN mkdir -p logs/audit && \
 # Switch to non-root user
 USER nodejs
 
+# Set default environment variables for HTTP transport
+ENV MCP_TRANSPORT=http
+ENV MCP_HTTP_HOST=0.0.0.0
+ENV MCP_HTTP_PORT=3000
+
 # Expose the port the app runs on
 EXPOSE 3000
 # Expose metrics port
