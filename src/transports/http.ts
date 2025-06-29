@@ -383,7 +383,9 @@ export class HttpTransport implements ITransport {
         await new Promise<void>((resolve, reject) => {
           this.server = https.createServer(tlsOptions, this.app);
           this.server.listen(this.options.port, this.options.host, () => {
-            logger.info(`HTTPS transport listening on ${this.options.host}:${this.options.port}`);
+            const message = `HTTPS transport listening on ${this.options.host}:${this.options.port}`;
+            logger.info(message);
+            console.log(`[${new Date().toISOString()}] ${message}`);
             resolve();
           });
           this.server.on('error', (error) => {
@@ -395,7 +397,9 @@ export class HttpTransport implements ITransport {
         // Create HTTP server
         await new Promise<void>((resolve, reject) => {
           this.server = this.app.listen(this.options.port, this.options.host, () => {
-            logger.info(`HTTP transport listening on ${this.options.host}:${this.options.port}`);
+            const message = `HTTP transport listening on ${this.options.host}:${this.options.port}`;
+            logger.info(message);
+            console.log(`[${new Date().toISOString()}] ${message}`);
             resolve();
           });
           this.server.on('error', (error) => {
@@ -426,6 +430,29 @@ export class HttpTransport implements ITransport {
 
     // Parse JSON bodies
     this.app.use(express.json());
+
+    // Request/Response logging middleware
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      const startTime = Date.now();
+      const requestId = req.headers['x-request-id'] || `req-${Date.now()}`;
+
+      // Log request
+      console.log(
+        `[${new Date().toISOString()}] ${req.method} ${req.path} - Request ID: ${requestId}`
+      );
+
+      // Capture response
+      const originalSend = res.send;
+      res.send = function (data: unknown) {
+        const duration = Date.now() - startTime;
+        console.log(
+          `[${new Date().toISOString()}] ${req.method} ${req.path} - Status: ${res.statusCode} - Duration: ${duration}ms - Request ID: ${requestId}`
+        );
+        return originalSend.call(this, data);
+      };
+
+      next();
+    });
 
     // Add metrics middleware
     this.app.use(metricsMiddleware());

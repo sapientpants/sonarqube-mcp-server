@@ -75,6 +75,9 @@ importers:
       zod:
         specifier: ^3.25.73
         version: 3.25.73
+      zod-to-json-schema:
+        specifier: ^3.24.6
+        version: 3.24.6(zod@3.25.73)
     devDependencies:
       '@eslint/js':
         specifier: ^9.31.0
@@ -157,9 +160,6 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.8.3
-      zod-to-json-schema:
-        specifier: ^3.24.6
-        version: 3.24.6(zod@3.25.73)
 
 packages:
 
