@@ -366,6 +366,26 @@ export class HttpTransport implements ITransport {
       }
     );
 
+    // Global error handler - must be last middleware
+    this.app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+      console.error(
+        `[${new Date().toISOString()}] Unhandled error in ${req.method} ${req.path}:`,
+        err
+      );
+      if (err instanceof Error && err.stack) {
+        console.error('Stack trace:', err.stack);
+      }
+
+      if (res.headersSent) {
+        return next(err);
+      }
+
+      res.status(500).json({
+        error: 'internal_server_error',
+        error_description: err instanceof Error ? err.message : 'An unexpected error occurred',
+      });
+    });
+
     // Start Express server (HTTP or HTTPS)
     try {
       if (this.options.tls.enabled && this.options.tls.cert && this.options.tls.key) {
@@ -451,6 +471,15 @@ export class HttpTransport implements ITransport {
         return originalSend.call(this, data);
       };
 
+      // Capture errors
+      const originalNext = next;
+      next = function (err?: unknown) {
+        if (err) {
+          console.error(`[${new Date().toISOString()}] ${req.method} ${req.path} - Error:`, err);
+        }
+        return originalNext(err);
+      } as NextFunction;
+
       next();
     });
 
@@ -485,11 +514,16 @@ export class HttpTransport implements ITransport {
           statusCode = 200;
         } else {
           statusCode = 503;
+          console.log(
+            `[${new Date().toISOString()}] Health check returned unhealthy:`,
+            JSON.stringify(health, null, 2)
+          );
         }
 
         res.status(statusCode).json(health);
       } catch (error) {
         logger.error('Health check failed', error);
+        console.error(`[${new Date().toISOString()}] Health check failed:`, error);
         res.status(503).json({
           status: 'unhealthy',
           error: 'Health check failed',
