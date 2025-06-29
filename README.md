@@ -83,6 +83,16 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 - 🏥 **Monitor system health** - Check SonarQube instance status and availability
 - 🔄 **Enhanced error handling** - Clear error messages with solutions and automatic retry for transient failures
 
+## Documentation
+
+- **[Architecture Guide](docs/architecture.md)** - System architecture, design decisions, and component overview
+- **[Deployment Guide](docs/deployment.md)** - Enterprise deployment with Docker, Kubernetes, and cloud platforms
+- **[Security Guide](docs/security.md)** - Authentication, authorization, and security best practices
+- **[IdP Integration Guide](docs/idp-integration.md)** - Integration with Azure AD, Okta, Auth0, and other identity providers
+- **[API Reference](docs/api-reference.md)** - Complete API documentation for all MCP tools
+- **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues, debugging, and solutions
+- **[Performance Tuning](docs/performance.md)** - Optimization strategies for production deployments
+
 ## Compatibility
 
 For detailed information about MCP protocol version support and SDK compatibility, see [COMPATIBILITY.md](COMPATIBILITY.md).
@@ -204,6 +214,8 @@ The simplest way to use the SonarQube MCP Server is through npx:
 ### Docker (Recommended for Production)
 
 Docker provides the most reliable deployment method by packaging all dependencies and ensuring consistent behavior across different environments.
+
+> **Enterprise Deployment**: For production deployments with Kubernetes, Helm charts, and cloud-specific configurations, see our comprehensive [Deployment Guide](docs/deployment.md).
 
 #### Quick Start with Docker
 
