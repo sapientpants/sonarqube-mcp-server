@@ -12,7 +12,7 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.9.0
+## What's New in v1.6.0
 
 ### Built-in Authorization Server
 - **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
