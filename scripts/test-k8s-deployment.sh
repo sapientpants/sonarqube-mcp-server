@@ -1,0 +1,196 @@
+#!/bin/bash
+# Test script for SonarQube MCP Server Kubernetes deployment
+# This script provides a complete, automated test of the service deployment
+
+set -e  # Exit on error
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Configuration
+CLUSTER_NAME="sonarqube-mcp-test"
+NAMESPACE="sonarqube-mcp"
+IMAGE_NAME="mcp:local"
+
+echo -e "${GREEN}🚀 SonarQube MCP Server - Kubernetes Deployment Test${NC}"
+echo "=================================================="
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Check prerequisites
+echo -e "\n${YELLOW}📋 Checking prerequisites...${NC}"
+for cmd in docker kind kubectl; do
+    if command_exists "$cmd"; then
+        echo -e "✅ $cmd is installed"
+    else
+        echo -e "${RED}❌ $cmd is not installed. Please install it first.${NC}"
+        exit 1
+    fi
+done
+
+# Step 1: Clean up existing resources
+echo -e "\n${YELLOW}🧹 Step 1: Cleaning up existing resources...${NC}"
+if kind get clusters | grep -q "$CLUSTER_NAME"; then
+    echo "Deleting existing kind cluster..."
+    kind delete cluster --name "$CLUSTER_NAME"
+fi
+
+# Try to delete namespace if connected to any cluster
+kubectl delete namespace "$NAMESPACE" --ignore-not-found=true 2>/dev/null || true
+
+# Step 2: Create kind cluster
+echo -e "\n${YELLOW}🏗️  Step 2: Creating kind cluster...${NC}"
+cat <<EOF | kind create cluster --name "$CLUSTER_NAME" --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+- role: worker
+- role: worker
+EOF
+
+# Step 3: Set kubectl context
+echo -e "\n${YELLOW}🔧 Step 3: Setting kubectl context...${NC}"
+kubectl config use-context "kind-$CLUSTER_NAME"
+kubectl cluster-info --context "kind-$CLUSTER_NAME"
+
+# Step 4: Build Docker image
+echo -e "\n${YELLOW}🐳 Step 4: Building Docker image...${NC}"
+docker build -t "$IMAGE_NAME" .
+
+# Step 5: Load image into kind
+echo -e "\n${YELLOW}📦 Step 5: Loading image into kind cluster...${NC}"
+kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"
+
+# Verify image is loaded
+echo "Verifying image is loaded on all nodes..."
+for node in $(kind get nodes --name "$CLUSTER_NAME"); do
+    echo -n "Checking node $node: "
+    if docker exec "$node" crictl images | grep -q "$IMAGE_NAME"; then
+        echo -e "${GREEN}✅ Image found${NC}"
+    else
+        echo -e "${RED}❌ Image not found${NC}"
+        exit 1
+    fi
+done
+
+# Step 6: Create namespace
+echo -e "\n${YELLOW}📁 Step 6: Creating namespace...${NC}"
+kubectl create namespace "$NAMESPACE"
+
+# Step 7: Create secrets
+echo -e "\n${YELLOW}🔐 Step 7: Creating required secrets...${NC}"
+
+# Check if SONARQUBE_TOKEN is set
+if [ -z "$SONARQUBE_TOKEN" ]; then
+    echo -e "${YELLOW}⚠️  SONARQUBE_TOKEN not set. Using dummy token for testing.${NC}"
+    echo "   Set SONARQUBE_TOKEN environment variable for real testing."
+    SONARQUBE_TOKEN="dummy-token-for-testing"
+fi
+
+kubectl create secret generic sonarqube-mcp-secrets \
+    --from-literal=SONARQUBE_TOKEN="$SONARQUBE_TOKEN" \
+    -n "$NAMESPACE"
+
+# Create placeholder TLS secret
+kubectl create secret tls sonarqube-mcp-tls \
+    --cert=/dev/null --key=/dev/null \
+    -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+# Create placeholder OAuth secret
+kubectl create secret generic sonarqube-mcp-oauth \
+    --from-literal=public.pem="" \
+    -n "$NAMESPACE"
+
+# Step 8: Deploy application
+echo -e "\n${YELLOW}🚀 Step 8: Deploying application...${NC}"
+cd k8s/base
+kubectl apply -k .
+cd ../..
+
+# Step 9: Wait for deployment
+echo -e "\n${YELLOW}⏳ Step 9: Waiting for deployment to be ready...${NC}"
+if kubectl wait --for=condition=available --timeout=120s deployment/sonarqube-mcp -n "$NAMESPACE"; then
+    echo -e "${GREEN}✅ Deployment is ready!${NC}"
+else
+    echo -e "${RED}❌ Deployment failed to become ready${NC}"
+    echo "Pod status:"
+    kubectl get pods -n "$NAMESPACE"
+    echo -e "\nPod logs:"
+    kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/name=sonarqube-mcp --tail=50
+    exit 1
+fi
+
+# Step 10: Check pod status
+echo -e "\n${YELLOW}🔍 Step 10: Checking pod status...${NC}"
+kubectl get pods -n "$NAMESPACE"
+
+# Step 11: Test service endpoints
+echo -e "\n${YELLOW}🧪 Step 11: Testing service endpoints...${NC}"
+
+# Port forward in background
+kubectl port-forward -n "$NAMESPACE" svc/sonarqube-mcp 3000:3000 > /dev/null 2>&1 &
+PF_PID=$!
+sleep 3  # Give port-forward time to establish
+
+# Function to test endpoint
+test_endpoint() {
+    local endpoint=$1
+    local port=${2:-3000}
+    echo -n "Testing $endpoint: "
+    if curl -sf "http://localhost:$port$endpoint" > /dev/null; then
+        echo -e "${GREEN}✅ OK${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ FAILED${NC}"
+        return 1
+    fi
+}
+
+# Test endpoints
+all_passed=true
+test_endpoint "/health" || all_passed=false
+test_endpoint "/ready" || all_passed=false
+test_endpoint "/metrics" 9090 || all_passed=false
+
+# Clean up port forward
+kill $PF_PID 2>/dev/null
+
+# Final status
+echo -e "\n=================================================="
+if [ "$all_passed" = true ]; then
+    echo -e "${GREEN}✅ All tests passed! The service is working correctly.${NC}"
+    echo -e "\n${YELLOW}To interact with the service:${NC}"
+    echo "  kubectl port-forward -n $NAMESPACE svc/sonarqube-mcp 3000:3000"
+    echo "  curl http://localhost:3000/health"
+    echo -e "\n${YELLOW}To view logs:${NC}"
+    echo "  kubectl logs -n $NAMESPACE -l app.kubernetes.io/name=sonarqube-mcp -f"
+    echo -e "\n${YELLOW}To clean up:${NC}"
+    echo "  kubectl delete namespace $NAMESPACE"
+    echo "  kind delete cluster --name $CLUSTER_NAME"
+else
+    echo -e "${RED}❌ Some tests failed. Check the logs above for details.${NC}"
+    echo -e "\n${YELLOW}Debug commands:${NC}"
+    echo "  kubectl describe pods -n $NAMESPACE"
+    echo "  kubectl logs -n $NAMESPACE -l app.kubernetes.io/name=sonarqube-mcp"
+    exit 1
+fi
