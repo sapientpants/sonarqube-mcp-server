@@ -13,7 +13,7 @@ This guide provides comprehensive testing procedures for the SonarQube MCP Serve
 ## Prerequisites
 
 - Docker installed and running
-- Kubernetes cluster (kind, minikube, or cloud provider)
+- kind (Kubernetes in Docker) installed
 - kubectl configured
 - Valid SonarQube/SonarCloud token
 - SonarQube instance URL (defaults to https://sonarcloud.io)
@@ -54,29 +54,28 @@ docker run --rm \
 ### Quick Start for Testing
 
 ```bash
-# 1. Build your local image
+# 1. Create kind cluster for testing
+kind create cluster --name sonarqube-mcp-test
+
+# 2. Build your local image
 docker build -t mcp:local .
 
-# 2. Load image into your test cluster
-# For kind:
-kind load docker-image mcp:local --name <your-cluster-name>
-# For minikube:
-minikube image load mcp:local
+# 3. Load image into kind cluster
+kind load docker-image mcp:local --name sonarqube-mcp-test
 
-# 3. Create test namespace
+# 4. Create test namespace
 kubectl create namespace sonarqube-mcp
 
-# 4. Create test secret
+# 5. Create test secret
 # For testing, you can use a dummy token or your personal SonarCloud token
 kubectl create secret generic sonarqube-mcp-secrets \
   --from-literal=SONARQUBE_TOKEN="your-test-token-here" \
   -n sonarqube-mcp
 
-# 5. Configure kustomization for local image
-cd k8s/base
-kustomize edit set image sapientpants/sonarqube-mcp-server=mcp:local
-
 # 6. Deploy to test cluster
+cd k8s/base
+# Note: The kustomization.yaml is already configured for local testing
+# with image mcp:local. No need to edit it.
 kubectl apply -k .
 
 # 7. Verify deployment
@@ -87,23 +86,53 @@ kubectl get pods -n sonarqube-mcp -w
 
 #### Kind Cluster Setup
 ```bash
-# Create a test cluster
-kind create cluster --name sonarqube-test
+# Create a test cluster with specific configuration
+cat <<EOF | kind create cluster --name sonarqube-mcp-test --config=-
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+- role: worker
+- role: worker
+EOF
 
 # Verify cluster is running
-kubectl cluster-info --context kind-sonarqube-test
+kubectl cluster-info --context kind-sonarqube-mcp-test
+
+# Set context to the test cluster
+kubectl config use-context kind-sonarqube-mcp-test
 ```
 
-#### Minikube Cluster Setup
+### 2.2 Loading Images into Kind
+
 ```bash
-# Start minikube with sufficient resources
-minikube start --memory=4096 --cpus=2
+# After building your image
+docker build -t mcp:local .
 
-# Enable ingress addon (optional)
-minikube addons enable ingress
+# Load the image into all nodes of the kind cluster
+kind load docker-image mcp:local --name sonarqube-mcp-test
+
+# Verify the image is available on all nodes
+for node in $(kind get nodes --name sonarqube-mcp-test); do
+  echo "Checking node: $node"
+  docker exec $node crictl images | grep mcp
+done
 ```
 
-### 2.2 Testing Different Configurations
+### 2.3 Testing Different Configurations
 
 #### Test with Custom SonarQube URL
 ```bash
@@ -133,7 +162,7 @@ kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000 &
 # Test endpoints
 curl http://localhost:3000/health
 curl http://localhost:3000/ready
-curl http://localhost:3000/metrics
+curl http://localhost:9090/metrics  # Note: metrics are on port 9090
 ```
 
 ### 2.2 Troubleshooting Deployment Issues
@@ -154,11 +183,11 @@ kubectl logs <pod-name> -n sonarqube-mcp
 
 1. **ImagePullBackOff**: Local image not loaded
    ```bash
-   # For kind
-   kind load docker-image mcp:local --name <cluster-name>
+   # Load the image into kind cluster
+   kind load docker-image mcp:local --name sonarqube-mcp-test
    
-   # For minikube
-   minikube image load mcp:local
+   # Verify image is loaded
+   docker exec -it sonarqube-mcp-test-control-plane crictl images | grep mcp
    ```
 
 2. **CrashLoopBackOff**: Check if transport is set correctly
@@ -303,14 +332,8 @@ curl http://localhost:9090/metrics | grep circuit_breaker
 # Delete test namespace
 kubectl delete namespace sonarqube-mcp
 
-# Delete production namespace
-kubectl delete namespace sonarqube-mcp-prod
-
 # Remove kind cluster
-kind delete cluster --name mcp-test
-
-# Stop minikube
-minikube stop
+kind delete cluster --name sonarqube-mcp-test
 ```
 
 ## Test Checklist
