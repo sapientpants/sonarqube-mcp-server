@@ -13,9 +13,9 @@ This guide provides comprehensive testing procedures for the SonarQube MCP Serve
 ## Prerequisites
 
 - Docker installed and running
-- kind (Kubernetes in Docker) installed
+- kind (Kubernetes in Docker) installed (install with: `brew install kind` on macOS)
 - kubectl configured
-- Valid SonarQube/SonarCloud token
+- SonarQube/SonarCloud token (optional for testing)
 - SonarQube instance URL (defaults to https://sonarcloud.io)
 
 ## 1. Local Docker Build
@@ -63,7 +63,12 @@ export SONARQUBE_TOKEN="your-sonarcloud-token-here"
 ./scripts/test-k8s-deployment.sh
 ```
 
-This script will handle all the steps below automatically and report any issues.
+This script will:
+1. Create a kind cluster with 3 nodes
+2. Build and load your local Docker image
+3. Deploy the service with testing-friendly settings
+4. Validate all endpoints are working
+5. Provide clear success/failure feedback
 
 ### Manual Testing Steps
 
@@ -117,31 +122,29 @@ done
 # Step 6: Create namespace
 kubectl create namespace sonarqube-mcp
 
-# Step 7: Create the required secrets
-# Replace 'your-sonarcloud-token-here' with an actual token
+# Step 7: Create the required token secret
+# Replace 'your-sonarcloud-token-here' with an actual token or use 'dummy-token' for testing
 kubectl create secret generic sonarqube-mcp-secrets \
   --from-literal=SONARQUBE_TOKEN="your-sonarcloud-token-here" \
   -n sonarqube-mcp
 
-# Create placeholder TLS secret (required by deployment)
-kubectl create secret tls sonarqube-mcp-tls \
-  --cert=/dev/null --key=/dev/null \
-  -n sonarqube-mcp --dry-run=client -o yaml | \
-  kubectl apply -f -
-
-# Create placeholder OAuth secret (required by deployment)
-kubectl create secret generic sonarqube-mcp-oauth \
-  --from-literal=public.pem="" \
-  -n sonarqube-mcp
+# Note: TLS and OAuth secrets are automatically created by Kustomize from k8s/base/secret.yaml
 
 # Step 8: Deploy the application
-cd k8s/base
+# Use the testing overlay for better compatibility
+cd k8s/overlays/testing
 kubectl apply -k .
+# Or use base if you need production-like settings
+# cd k8s/base && kubectl apply -k .
 
 # Step 9: Wait for deployment to be ready (with timeout)
 echo "Waiting for deployment to be ready..."
 kubectl wait --for=condition=available --timeout=120s \
-  deployment/sonarqube-mcp -n sonarqube-mcp
+  deployment/sonarqube-mcp -n sonarqube-mcp || {
+    echo "Deployment not ready, checking pod status..."
+    kubectl get pods -n sonarqube-mcp
+    kubectl describe pods -n sonarqube-mcp | grep -A 10 "Events:"
+}
 
 # Step 10: Check pod status
 kubectl get pods -n sonarqube-mcp
@@ -213,15 +216,34 @@ echo "🎉 Verification complete!"
 
 ### 2.1 Testing Different Configurations
 
+#### Using the Testing Overlay
+
+The testing overlay (`k8s/overlays/testing/`) provides:
+- Disabled service account health checks (no valid token required)
+- HTTP-only mode (no TLS required)
+- Reduced replica count (2 instead of 3)
+- Relaxed topology constraints
+
+```bash
+# Deploy with testing settings
+cd k8s/overlays/testing
+kubectl apply -k .
+```
+
 #### Test with Custom SonarQube URL
 ```bash
-# Override the default SonarCloud URL for testing
-kubectl create configmap sonarqube-mcp-config \
-  --from-literal=SONARQUBE_URL=https://your-test-sonarqube.com \
-  --from-literal=MCP_TRANSPORT=http \
-  --from-literal=MCP_HTTP_PORT=3000 \
-  -n sonarqube-mcp \
-  --dry-run=client -o yaml | kubectl apply -f -
+# Create a patch for custom URL
+cat <<EOF > custom-url-patch.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sonarqube-mcp-config
+  namespace: sonarqube-mcp
+data:
+  SONARQUBE_URL: "https://your-test-sonarqube.com"
+EOF
+
+kubectl apply -f custom-url-patch.yaml
 ```
 
 #### Test with Minimal Resources
@@ -265,19 +287,42 @@ kubectl logs <pod-name> -n sonarqube-mcp
    # Load the image into kind cluster
    kind load docker-image mcp:local --name sonarqube-mcp-test
    
-   # Verify image is loaded
-   docker exec -it sonarqube-mcp-test-control-plane crictl images | grep mcp
+   # Verify image is loaded on all nodes
+   for node in $(kind get nodes --name sonarqube-mcp-test); do
+     echo "Checking node: $node"
+     docker exec $node crictl images | grep mcp
+   done
    ```
 
-2. **CrashLoopBackOff**: Check if transport is set correctly
+2. **Pod Stuck in Pending**: Topology constraints issue
    ```bash
-   kubectl get configmap sonarqube-mcp-config -n sonarqube-mcp -o yaml | grep MCP_TRANSPORT
-   # Should show: MCP_TRANSPORT: http
+   # Check pod events
+   kubectl describe pods -n sonarqube-mcp | grep -i "topology"
+   
+   # Solution: Use the testing overlay which has relaxed constraints
+   cd k8s/overlays/testing && kubectl apply -k .
    ```
 
-3. **Health Check Failures**: Verify token is set
+3. **Health Check Failures**: Service account or token issues
    ```bash
-   kubectl get secret sonarqube-mcp-secrets -n sonarqube-mcp -o jsonpath='{.data.SONARQUBE_TOKEN}' | base64 -d
+   # Check logs for specific error
+   kubectl logs -n sonarqube-mcp -l app.kubernetes.io/name=sonarqube-mcp | grep -i "error"
+   
+   # If "No default service account configured", use testing overlay
+   # If token invalid, update the secret:
+   kubectl create secret generic sonarqube-mcp-secrets \
+     --from-literal=SONARQUBE_TOKEN="new-token" \
+     -n sonarqube-mcp --dry-run=client -o yaml | kubectl apply -f -
+   ```
+
+4. **Secret Type Conflicts**: Immutable field errors
+   ```bash
+   # Delete the conflicting secret and let Kustomize recreate it
+   kubectl delete secret sonarqube-mcp-tls -n sonarqube-mcp
+   kubectl delete secret sonarqube-mcp-oauth -n sonarqube-mcp
+   
+   # Reapply the configuration
+   cd k8s/overlays/testing && kubectl apply -k .
    ```
 
 ## 3. Functional Testing
@@ -420,20 +465,89 @@ kind delete cluster --name sonarqube-mcp-test
 - [ ] Docker image builds successfully
 - [ ] Container runs with stdio transport
 - [ ] Container runs with HTTP transport
+- [ ] Kind cluster created with 3 nodes
+- [ ] Image loaded into all kind nodes
+- [ ] Namespace created (sonarqube-mcp)
+- [ ] Secrets created successfully
 - [ ] Kubernetes deployment succeeds
-- [ ] Pods reach Running state
-- [ ] Health checks pass
-- [ ] Can connect to SonarQube/SonarCloud
-- [ ] MCP tools are accessible
-- [ ] Metrics are exposed
-- [ ] Secrets are secure
+- [ ] Pods reach Running state (2-3 pods)
+- [ ] Health endpoint responds (/health)
+- [ ] Ready endpoint responds (/ready)
+- [ ] Metrics endpoint responds (/metrics on port 9090)
+- [ ] No errors in pod logs
 - [ ] Circuit breaker activates on failure
-- [ ] HPA scales based on load
 - [ ] Logs show no sensitive data
+
+## Quick Reference
+
+### Namespaces
+- All resources use namespace: `sonarqube-mcp`
+- Test cluster name: `sonarqube-mcp-test`
+
+### Key Commands
+```bash
+# Run automated test
+./scripts/test-k8s-deployment.sh
+
+# Check deployment status
+kubectl get all -n sonarqube-mcp
+
+# View logs
+kubectl logs -n sonarqube-mcp -l app.kubernetes.io/name=sonarqube-mcp -f
+
+# Port forward for testing
+kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000
+
+# Clean up
+kubectl delete namespace sonarqube-mcp
+kind delete cluster --name sonarqube-mcp-test
+```
 
 ## Notes
 
-- Default SONARQUBE_URL is now https://sonarcloud.io
-- Secrets must be created externally (not stored in Git)
-- Use deploy.sh script for consistent deployments
-- Monitor audit logs at /app/logs/audit/
+- Default SONARQUBE_URL is https://sonarcloud.io
+- Testing overlay disables service account health checks for easier testing
+- Use testing overlay (`k8s/overlays/testing`) for local testing
+- Use base configuration (`k8s/base`) for production-like testing
+- The automated test script handles all setup complexity
+
+### Known Issues
+
+**Network Connectivity in Kind**: Kind clusters may not have external network connectivity on some systems (especially macOS with Docker Desktop). This prevents the service from connecting to SonarCloud. 
+
+#### Root Cause:
+
+The primary issue is the NetworkPolicy in the base configuration restricts egress traffic to specific ports and namespaces. External traffic doesn't belong to any Kubernetes namespace, so the policy blocks it.
+
+#### Solution (Implemented):
+
+The testing overlay now includes:
+
+1. **NetworkPolicy Override**: Patches the NetworkPolicy to allow all egress traffic (`egress: [{}]`)
+2. **DNS Policy**: Uses `dnsPolicy: "Default"` to inherit host DNS settings
+
+This combination allows pods to:
+- Resolve external domains (like sonarcloud.io)
+- Make outbound HTTPS connections
+- Access any external service needed for testing
+
+#### Additional Troubleshooting:
+
+If connectivity still fails:
+
+1. **Docker Desktop on macOS**:
+   - Restart Docker Desktop
+   - Check Docker Desktop > Preferences > Resources > Network
+   - Ensure your Mac has working DNS: `nslookup google.com`
+
+2. **Corporate Networks**:
+   - VPN may interfere with Docker networking
+   - Proxy settings might be needed
+   - Corporate firewalls may block certain traffic
+
+3. **Alternative Testing**:
+   - Use minikube instead of kind: `minikube start --driver=docker`
+   - Deploy to a real Kubernetes cluster
+   - Set up a local mock SonarQube instance
+
+The service will show as "unhealthy" if it cannot reach SonarCloud, but this doesn't indicate a deployment failure - just a lack of external connectivity.
