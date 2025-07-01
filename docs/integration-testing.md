@@ -1,10 +1,10 @@
-# Integration Testing and Deployment Guide
+# Integration Testing Guide
 
 ## Overview
 
-This guide provides step-by-step instructions for deploying and testing the SonarQube MCP Server, covering Docker deployment, Kubernetes orchestration, and end-to-end validation in both development and production environments.
+This guide provides comprehensive testing procedures for the SonarQube MCP Server in development and test environments. It covers local Docker testing, Kubernetes deployment for testing, and validation procedures.
 
-> **For Kubernetes configuration details and customization options, see [k8s/README.md](../k8s/README.md)**
+> **For production deployment instructions, see [k8s/README.md](../k8s/README.md)**
 
 ## Important: Testing with Local Images
 
@@ -49,109 +49,128 @@ docker run --rm \
   mcp:local
 ```
 
-## 2. Kubernetes Deployment
+## 2. Kubernetes Testing Deployment
 
-### Quick Start
+### Quick Start for Testing
 
 ```bash
-# 1. Build and load your local image (see section 1 above)
-# For kind: kind load docker-image mcp:local
-# For minikube: minikube image load mcp:local
+# 1. Build your local image
+docker build -t mcp:local .
 
-# 2. Create namespace
+# 2. Load image into your test cluster
+# For kind:
+kind load docker-image mcp:local --name <your-cluster-name>
+# For minikube:
+minikube image load mcp:local
+
+# 3. Create test namespace
 kubectl create namespace sonarqube-mcp
 
-# 3. Create secret with your SonarQube token
+# 4. Create test secret
+# For testing, you can use a dummy token or your personal SonarCloud token
 kubectl create secret generic sonarqube-mcp-secrets \
-  --from-literal=SONARQUBE_TOKEN="your-token-here" \
+  --from-literal=SONARQUBE_TOKEN="your-test-token-here" \
   -n sonarqube-mcp
 
-# 4. Deploy with local image
+# 5. Configure kustomization for local image
 cd k8s/base
 kustomize edit set image sapientpants/sonarqube-mcp-server=mcp:local
+
+# 6. Deploy to test cluster
 kubectl apply -k .
 
-# 5. Verify deployment
+# 7. Verify deployment
+kubectl get pods -n sonarqube-mcp -w
+```
+
+### 2.1 Setting Up Test Clusters
+
+#### Kind Cluster Setup
+```bash
+# Create a test cluster
+kind create cluster --name sonarqube-test
+
+# Verify cluster is running
+kubectl cluster-info --context kind-sonarqube-test
+```
+
+#### Minikube Cluster Setup
+```bash
+# Start minikube with sufficient resources
+minikube start --memory=4096 --cpus=2
+
+# Enable ingress addon (optional)
+minikube addons enable ingress
+```
+
+### 2.2 Testing Different Configurations
+
+#### Test with Custom SonarQube URL
+```bash
+# Override the default SonarCloud URL for testing
+kubectl create configmap sonarqube-mcp-config \
+  --from-literal=SONARQUBE_URL=https://your-test-sonarqube.com \
+  --from-literal=MCP_TRANSPORT=http \
+  --from-literal=MCP_HTTP_PORT=3000 \
+  -n sonarqube-mcp \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+#### Test with Minimal Resources
+```bash
+# For resource-constrained environments
+kubectl patch deployment sonarqube-mcp -n sonarqube-mcp --type='json' -p='[
+  {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/memory", "value": "256Mi"},
+  {"op": "replace", "path": "/spec/template/spec/containers/0/resources/requests/cpu", "value": "100m"}
+]'
+```
+
+#### Access the Service
+```bash
+# Port forward for local testing
+kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000 &
+
+# Test endpoints
+curl http://localhost:3000/health
+curl http://localhost:3000/ready
+curl http://localhost:3000/metrics
+```
+
+### 2.2 Troubleshooting Deployment Issues
+
+#### Pod Not Starting
+```bash
+# Check pod status
 kubectl get pods -n sonarqube-mcp
-```
 
-### 2.1 Local Kubernetes Setup (kind/minikube)
-
-#### Setup
-```bash
-# For kind
-kind create cluster --name mcp-test
-kind load docker-image mcp:local --name mcp-test
-
-# For minikube
-minikube start
-minikube image load mcp:local
-```
-
-#### Deploy with Local Image
-```bash
-# IMPORTANT: Always use your local image for testing
-cd k8s/base
-kustomize edit set image sapientpants/sonarqube-mcp-server=mcp:local
-kubectl apply -k .
-```
-
-#### Verify Deployment
-```bash
-# Check pods are running
-kubectl get pods -n sonarqube-mcp
+# Check pod events
+kubectl describe pod <pod-name> -n sonarqube-mcp
 
 # Check logs
-kubectl logs -n sonarqube-mcp -l app.kubernetes.io/name=sonarqube-mcp
-
-# Check service
-kubectl get svc -n sonarqube-mcp
-
-# Port forward to test locally
-kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000
+kubectl logs <pod-name> -n sonarqube-mcp
 ```
 
-### 2.2 Production Deployment
+#### Common Issues:
 
-For production deployments, use the production overlay which includes:
-- Higher replica count (5 instead of 3)
-- Production-specific configuration
-- Namespace separation
-
-```bash
-# Create production namespace
-kubectl create namespace sonarqube-mcp-prod
-
-# Create secret (typically done by CI/CD)
-kubectl create secret generic prod-sonarqube-mcp-secrets \
-  --from-literal=SONARQUBE_TOKEN="${SONARQUBE_TOKEN}" \
-  -n sonarqube-mcp-prod
-
-# Deploy with production overlay
-kubectl apply -k k8s/overlays/production/
-```
-
-#### Customizing for Your Environment
-
-1. **Override SonarQube URL** (if not using SonarCloud):
+1. **ImagePullBackOff**: Local image not loaded
    ```bash
-   cd k8s/overlays/production
-   kustomize edit set configmap sonarqube-mcp-config \
-     --from-literal=SONARQUBE_URL=https://your-sonarqube.com
+   # For kind
+   kind load docker-image mcp:local --name <cluster-name>
+   
+   # For minikube
+   minikube image load mcp:local
    ```
 
-2. **Use Your Container Registry**:
+2. **CrashLoopBackOff**: Check if transport is set correctly
    ```bash
-   kustomize edit set image \
-     sapientpants/sonarqube-mcp-server=your-registry.com/sonarqube-mcp:v1.0.0
+   kubectl get configmap sonarqube-mcp-config -n sonarqube-mcp -o yaml | grep MCP_TRANSPORT
+   # Should show: MCP_TRANSPORT: http
    ```
 
-3. **Apply Changes**:
+3. **Health Check Failures**: Verify token is set
    ```bash
-   kubectl apply -k .
+   kubectl get secret sonarqube-mcp-secrets -n sonarqube-mcp -o jsonpath='{.data.SONARQUBE_TOKEN}' | base64 -d
    ```
-
-> **Note**: See [k8s/README.md](../k8s/README.md) for more customization options and integration with Helm, ArgoCD, or Flux.
 
 ## 3. Functional Testing
 
