@@ -122,24 +122,17 @@ if [ -z "$SONARQUBE_TOKEN" ]; then
     SONARQUBE_TOKEN="dummy-token-for-testing"
 fi
 
+# Delete any existing secret first to avoid conflicts
+kubectl delete secret sonarqube-mcp-secrets -n "$NAMESPACE" --ignore-not-found=true
+
+# Create the SONARQUBE_TOKEN secret
 kubectl create secret generic sonarqube-mcp-secrets \
     --from-literal=SONARQUBE_TOKEN="$SONARQUBE_TOKEN" \
     -n "$NAMESPACE"
 
-# Create placeholder TLS secret (with dummy self-signed cert for testing)
-echo "Creating placeholder TLS secret..."
-kubectl create secret generic sonarqube-mcp-tls \
-    --from-literal=tls.crt="" \
-    --from-literal=tls.key="" \
-    -n "$NAMESPACE" \
-    --dry-run=client -o yaml | \
-    sed 's/type: Opaque/type: kubernetes.io\/tls/' | \
-    kubectl apply -f -
-
-# Create placeholder OAuth secret
-kubectl create secret generic sonarqube-mcp-oauth \
-    --from-literal=public.pem="" \
-    -n "$NAMESPACE"
+# Note: The TLS and OAuth secrets are defined in k8s/base/secret.yaml
+# Let kustomize handle them to avoid type conflicts
+echo "TLS and OAuth secrets will be created by kustomize..."
 
 # Step 8: Deploy application
 echo -e "\n${YELLOW}🚀 Step 8: Deploying application...${NC}"
