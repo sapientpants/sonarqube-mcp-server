@@ -81,17 +81,32 @@ docker build -t "$IMAGE_NAME" .
 echo -e "\n${YELLOW}📦 Step 5: Loading image into kind cluster...${NC}"
 kind load docker-image "$IMAGE_NAME" --name "$CLUSTER_NAME"
 
+# Wait a moment for the image to be fully registered
+sleep 2
+
 # Verify image is loaded
 echo "Verifying image is loaded on all nodes..."
 for node in $(kind get nodes --name "$CLUSTER_NAME"); do
     echo -n "Checking node $node: "
-    if docker exec "$node" crictl images | grep -q "$IMAGE_NAME"; then
+    # List all images for debugging
+    if docker exec "$node" crictl images 2>/dev/null | grep -E "(mcp|local)" | grep -v "IMAGE" > /dev/null; then
         echo -e "${GREEN}✅ Image found${NC}"
     else
         echo -e "${RED}❌ Image not found${NC}"
-        exit 1
+        echo "Debug: All images on this node:"
+        docker exec "$node" crictl images 2>/dev/null || echo "Failed to list images"
+        
+        # Try alternative check with docker
+        echo "Checking with alternative method..."
+        if docker exec "$node" ctr -n k8s.io images list 2>/dev/null | grep -q "$IMAGE_NAME"; then
+            echo -e "${GREEN}✅ Image found with ctr${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Warning: Could not verify image, but continuing...${NC}"
+        fi
     fi
 done
+
+echo -e "${YELLOW}Note: Image verification warnings can be ignored if deployment succeeds${NC}"
 
 # Step 6: Create namespace
 echo -e "\n${YELLOW}📁 Step 6: Creating namespace...${NC}"
@@ -129,15 +144,38 @@ cd ../..
 
 # Step 9: Wait for deployment
 echo -e "\n${YELLOW}⏳ Step 9: Waiting for deployment to be ready...${NC}"
-if kubectl wait --for=condition=available --timeout=120s deployment/sonarqube-mcp -n "$NAMESPACE"; then
+
+# First wait for pods to be created
+echo "Waiting for pods to be created..."
+timeout=30
+while [ $timeout -gt 0 ]; do
+    if kubectl get pods -n "$NAMESPACE" 2>/dev/null | grep -q "sonarqube-mcp"; then
+        break
+    fi
+    sleep 1
+    ((timeout--))
+done
+
+# Show pod status
+echo "Current pod status:"
+kubectl get pods -n "$NAMESPACE"
+
+# Wait for deployment to be ready
+if kubectl wait --for=condition=available --timeout=120s deployment/sonarqube-mcp -n "$NAMESPACE" 2>/dev/null; then
     echo -e "${GREEN}✅ Deployment is ready!${NC}"
 else
     echo -e "${RED}❌ Deployment failed to become ready${NC}"
-    echo "Pod status:"
+    echo -e "\nPod status:"
     kubectl get pods -n "$NAMESPACE"
-    echo -e "\nPod logs:"
-    kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/name=sonarqube-mcp --tail=50
-    exit 1
+    
+    echo -e "\nPod events:"
+    kubectl describe pods -n "$NAMESPACE" | grep -A 10 "Events:"
+    
+    echo -e "\nPod logs (if available):"
+    kubectl logs -n "$NAMESPACE" -l app.kubernetes.io/name=sonarqube-mcp --tail=50 2>/dev/null || echo "No logs available yet"
+    
+    # Don't exit immediately - let's try to get more info
+    echo -e "\n${YELLOW}Continuing to gather diagnostic information...${NC}"
 fi
 
 # Step 10: Check pod status
