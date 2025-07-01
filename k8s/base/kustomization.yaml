@@ -24,10 +24,11 @@ resources:
   - pdb.yaml
   - networkpolicy.yaml
 
-commonLabels:
-  app.kubernetes.io/name: sonarqube-mcp
-  app.kubernetes.io/instance: production
-  app.kubernetes.io/managed-by: kustomize
+labels:
+- pairs:
+    app.kubernetes.io/name: sonarqube-mcp
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/managed-by: kustomize
 
 images:
   - name: sapientpants/sonarqube-mcp-server

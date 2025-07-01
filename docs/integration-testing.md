@@ -33,7 +33,6 @@ Expected: Image `mcp:local` should be listed
 docker run --rm \
   -e SONARQUBE_TOKEN="your-token-here" \
   -e SONARQUBE_URL="https://sonarcloud.io" \
-  -e MCP_TRANSPORT="stdio" \
   mcp:local
 
 # Test with HTTP transport
