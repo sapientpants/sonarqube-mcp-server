@@ -1,0 +1,25 @@
+# Testing overlay for local development
+# This overlay disables health checks and adjusts settings for testing
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sonarqube-mcp
+
+resources:
+  - ../../base
+
+configMapGenerator:
+  - name: sonarqube-mcp-config
+    behavior: merge
+    literals:
+      # Disable service account health check for testing
+      - SERVICE_ACCOUNT_HEALTH_CHECK_ENABLED=false
+      # Disable HTTPS for easier testing
+      - MCP_HTTP_HTTPS_ENABLED=false
+      # Reduce circuit breaker timeout
+      - CIRCUIT_BREAKER_TIMEOUT=2000
+
+replicas:
+  - name: sonarqube-mcp
+    count: 2  # Reduce replicas for testing

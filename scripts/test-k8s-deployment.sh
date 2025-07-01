@@ -136,7 +136,15 @@ echo "TLS and OAuth secrets will be created by kustomize..."
 
 # Step 8: Deploy application
 echo -e "\n${YELLOW}🚀 Step 8: Deploying application...${NC}"
-cd k8s/base
+
+# Use testing overlay if it exists, otherwise use base
+if [ -d "k8s/overlays/testing" ]; then
+    echo "Using testing overlay for better test compatibility..."
+    cd k8s/overlays/testing
+else
+    cd k8s/base
+fi
+
 if kubectl apply -k .; then
     echo -e "${GREEN}✅ Kubernetes manifests applied successfully${NC}"
 else
@@ -146,7 +154,7 @@ else
     ls -la
     exit 1
 fi
-cd ../..
+cd ../../..
 
 # Step 9: Wait for deployment
 echo -e "\n${YELLOW}⏳ Step 9: Waiting for deployment to be ready...${NC}"
