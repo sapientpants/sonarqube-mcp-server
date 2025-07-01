@@ -126,10 +126,15 @@ kubectl create secret generic sonarqube-mcp-secrets \
     --from-literal=SONARQUBE_TOKEN="$SONARQUBE_TOKEN" \
     -n "$NAMESPACE"
 
-# Create placeholder TLS secret
-kubectl create secret tls sonarqube-mcp-tls \
-    --cert=/dev/null --key=/dev/null \
-    -n "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+# Create placeholder TLS secret (with dummy self-signed cert for testing)
+echo "Creating placeholder TLS secret..."
+kubectl create secret generic sonarqube-mcp-tls \
+    --from-literal=tls.crt="" \
+    --from-literal=tls.key="" \
+    -n "$NAMESPACE" \
+    --dry-run=client -o yaml | \
+    sed 's/type: Opaque/type: kubernetes.io\/tls/' | \
+    kubectl apply -f -
 
 # Create placeholder OAuth secret
 kubectl create secret generic sonarqube-mcp-oauth \
@@ -139,7 +144,15 @@ kubectl create secret generic sonarqube-mcp-oauth \
 # Step 8: Deploy application
 echo -e "\n${YELLOW}🚀 Step 8: Deploying application...${NC}"
 cd k8s/base
-kubectl apply -k .
+if kubectl apply -k .; then
+    echo -e "${GREEN}✅ Kubernetes manifests applied successfully${NC}"
+else
+    echo -e "${RED}❌ Failed to apply Kubernetes manifests${NC}"
+    echo "Checking current directory and files..."
+    pwd
+    ls -la
+    exit 1
+fi
 cd ../..
 
 # Step 9: Wait for deployment
