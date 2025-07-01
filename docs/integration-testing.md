@@ -6,6 +6,10 @@ This guide provides step-by-step instructions for deploying and testing the Sona
 
 > **For Kubernetes configuration details and customization options, see [k8s/README.md](../k8s/README.md)**
 
+## Important: Testing with Local Images
+
+**Always use your locally built Docker image (`mcp:local`) for testing.** This ensures you're testing your actual code changes, not an outdated published image. The published images should only be used in production deployments.
+
 ## Prerequisites
 
 - Docker installed and running
@@ -50,18 +54,24 @@ docker run --rm \
 ### Quick Start
 
 ```bash
-# 1. Create namespace
+# 1. Build and load your local image (see section 1 above)
+# For kind: kind load docker-image mcp:local
+# For minikube: minikube image load mcp:local
+
+# 2. Create namespace
 kubectl create namespace sonarqube-mcp
 
-# 2. Create secret with your SonarQube token
+# 3. Create secret with your SonarQube token
 kubectl create secret generic sonarqube-mcp-secrets \
   --from-literal=SONARQUBE_TOKEN="your-token-here" \
   -n sonarqube-mcp
 
-# 3. Deploy the application
-kubectl apply -k k8s/base/
+# 4. Deploy with local image
+cd k8s/base
+kustomize edit set image sapientpants/sonarqube-mcp-server=mcp:local
+kubectl apply -k .
 
-# 4. Verify deployment
+# 5. Verify deployment
 kubectl get pods -n sonarqube-mcp
 ```
 
@@ -80,15 +90,10 @@ minikube image load mcp:local
 
 #### Deploy with Local Image
 ```bash
-# Use the local image you built
+# IMPORTANT: Always use your local image for testing
 cd k8s/base
 kustomize edit set image sapientpants/sonarqube-mcp-server=mcp:local
 kubectl apply -k .
-
-# Or use kubectl set image after deployment
-kubectl set image deployment/sonarqube-mcp \
-  sonarqube-mcp=mcp:local \
-  -n sonarqube-mcp
 ```
 
 #### Verify Deployment

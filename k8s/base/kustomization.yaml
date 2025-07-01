@@ -13,23 +13,24 @@ kind: Kustomization
 namespace: sonarqube-mcp
 
 resources:
-  - namespace.yaml
-  - configmap.yaml
-  - secret.yaml
-  - serviceaccount.yaml
-  - deployment.yaml
-  - service.yaml
-  - ingress.yaml
-  - hpa.yaml
-  - pdb.yaml
-  - networkpolicy.yaml
+- namespace.yaml
+- configmap.yaml
+- secret.yaml
+- serviceaccount.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+- hpa.yaml
+- pdb.yaml
+- networkpolicy.yaml
 
 labels:
 - pairs:
-    app.kubernetes.io/name: sonarqube-mcp
     app.kubernetes.io/instance: production
     app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: sonarqube-mcp
 
 images:
-  - name: sapientpants/sonarqube-mcp-server
-    newTag: latest
+- name: sapientpants/sonarqube-mcp-server
+  newName: mcp
+  newTag: local
