@@ -1,8 +1,8 @@
-# Kubernetes Configuration Reference
+# Kubernetes Production Deployment Guide
 
-This directory contains Kustomize configurations for deploying the SonarQube MCP Server.
+This directory contains Kustomize configurations for deploying the SonarQube MCP Server to production environments.
 
-> **For step-by-step deployment and testing instructions, see [docs/integration-testing.md](../docs/integration-testing.md)**
+> **For development and testing instructions, see [docs/integration-testing.md](../docs/integration-testing.md)**
 
 ## Structure
 
@@ -35,6 +35,55 @@ See [configmap.yaml](base/configmap.yaml) for all available configuration option
 - Service account management
 - Performance tuning
 - Monitoring and metrics
+
+## Production Deployment
+
+### Using Production Overlay
+
+The production overlay provides:
+- Higher replica count (5 instead of 3)
+- Production-specific namespace
+- Production configuration overrides
+
+```bash
+# 1. Create production namespace
+kubectl create namespace sonarqube-mcp-prod
+
+# 2. Create secret (typically done by CI/CD)
+kubectl create secret generic prod-sonarqube-mcp-secrets \
+  --from-literal=SONARQUBE_TOKEN="${SONARQUBE_TOKEN}" \
+  -n sonarqube-mcp-prod
+
+# 3. Deploy with production overlay
+kubectl apply -k k8s/overlays/production/
+```
+
+### Customizing for Your Environment
+
+1. **Override SonarQube URL** (if not using SonarCloud):
+   ```yaml
+   # k8s/overlays/production/kustomization.yaml
+   configMapGenerator:
+     - name: sonarqube-mcp-config
+       behavior: merge
+       literals:
+         - SONARQUBE_URL=https://your-sonarqube.com
+   ```
+
+2. **Use Your Container Registry**:
+   ```yaml
+   images:
+     - name: sapientpants/sonarqube-mcp-server
+       newName: your-registry.com/sonarqube-mcp
+       newTag: v1.0.0
+   ```
+
+3. **Adjust Replica Count**:
+   ```yaml
+   replicas:
+     - name: sonarqube-mcp
+       count: 10  # Scale as needed
+   ```
 
 ## Integration with Deployment Tools
 
@@ -108,6 +157,42 @@ spec:
 ```
 </details>
 
+## Production Best Practices
+
+### High Availability
+
+1. **Multi-Zone Deployment**
+   ```yaml
+   # Ensure pods are spread across zones
+   topologySpreadConstraints:
+     - maxSkew: 1
+       topologyKey: topology.kubernetes.io/zone
+       whenUnsatisfiable: DoNotSchedule
+   ```
+
+2. **Pod Disruption Budget**
+   - Already configured in `base/pdb.yaml`
+   - Ensures minimum 2 pods during updates
+
+3. **Horizontal Pod Autoscaler**
+   - Configured in `base/hpa.yaml`
+   - Scales between 3-10 replicas based on CPU/memory
+
+### Security Hardening
+
+1. **Network Policies**
+   - Configured in `base/networkpolicy.yaml`
+   - Restricts traffic to necessary ports only
+
+2. **Security Context**
+   - Runs as non-root user (UID 1001)
+   - Read-only root filesystem
+   - No privilege escalation
+
+3. **Resource Limits**
+   - CPU and memory limits enforced
+   - Ephemeral storage limits set
+
 ## Secrets Management
 
 **Never store tokens in Git.** Use one of these approaches:
@@ -152,11 +237,26 @@ spec:
 - Ephemeral Storage: 1Gi
 
 ### Recommended Production Settings
-- Replicas: 3-5
+- Replicas: 5 (production overlay default)
 - Memory: 1-2Gi per pod
 - CPU: 500m-2000m per pod
-- Enable HPA for auto-scaling
-- Configure PodDisruptionBudget
+- HPA enabled (scales 3-10 replicas)
+- PodDisruptionBudget configured (min 2 available)
+
+### Monitoring and Observability
+
+1. **Prometheus Metrics**
+   - Exposed on port 9090 at `/metrics`
+   - Annotations already configured for autodiscovery
+
+2. **Health Endpoints**
+   - `/health` - Liveness probe
+   - `/ready` - Readiness probe
+   - `/metrics` - Prometheus metrics
+
+3. **OpenTelemetry**
+   - Configure `OTEL_EXPORTER_OTLP_ENDPOINT` in ConfigMap
+   - Traces and metrics exported automatically
 
 ## Customization
 
@@ -189,3 +289,16 @@ The `overlays/production` directory demonstrates how to:
 3. **Configure Network Policies**
    - See [networkpolicy.yaml](base/networkpolicy.yaml)
    - Adjust ingress/egress rules as needed
+
+## Production Deployment Checklist
+
+- [ ] **Secrets configured** via External Secrets Operator or CI/CD
+- [ ] **TLS certificates** created for HTTPS (or disable with `MCP_HTTP_HTTPS_ENABLED=false`)
+- [ ] **OAuth public key** configured if using OAuth authentication
+- [ ] **Container registry** accessible from cluster
+- [ ] **Resource limits** appropriate for workload
+- [ ] **Monitoring** configured (Prometheus, OpenTelemetry)
+- [ ] **Network policies** reviewed and adjusted
+- [ ] **Ingress** configured with proper domain and TLS
+- [ ] **Backup strategy** for audit logs
+- [ ] **RBAC** permissions verified
