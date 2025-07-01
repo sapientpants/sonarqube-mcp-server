@@ -42,6 +42,10 @@ spec:
         - name: sonarqube-mcp
           image: sapientpants/sonarqube-mcp-server:latest
           imagePullPolicy: IfNotPresent
+          args:
+            - node
+            - --experimental-specifier-resolution=node
+            - dist/index.js
           ports:
             - name: http
               containerPort: 3000

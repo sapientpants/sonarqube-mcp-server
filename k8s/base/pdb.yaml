@@ -14,4 +14,3 @@ spec:
       app.kubernetes.io/name: sonarqube-mcp
       app.kubernetes.io/instance: production
       app.kubernetes.io/component: server
-  maxUnavailable: 33%
