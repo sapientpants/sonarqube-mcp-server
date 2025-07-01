@@ -21,15 +21,14 @@ configMapGenerator:
   - name: sonarqube-mcp-config
     behavior: merge
     literals:
-      - SONARQUBE_BASE_URL=https://sonarqube.company.com
+      - SONARQUBE_URL=https://sonarqube.company.com
       - MCP_HTTP_OAUTH_ISSUER=https://auth.company.com
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector.monitoring:4318
 
-secretGenerator:
-  - name: sonarqube-mcp-secrets
-    behavior: replace
-    envs:
-      - secrets.env
+# Note: Secret should be created externally via CI/CD pipeline
+# kubectl create secret generic prod-sonarqube-mcp-secrets \
+#   --from-literal=SONARQUBE_TOKEN="${SONARQUBE_TOKEN}" \
+#   -n sonarqube-mcp-prod
 
 replicas:
   - name: sonarqube-mcp

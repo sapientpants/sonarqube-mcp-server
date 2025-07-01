@@ -1,3 +1,12 @@
+# Base Kustomization for SonarQube MCP Server
+# 
+# This provides the core resources needed to run the MCP server.
+# Secrets should be created separately via your preferred method:
+# - kubectl create secret
+# - External Secrets Operator  
+# - Sealed Secrets
+# - CI/CD pipeline injection
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

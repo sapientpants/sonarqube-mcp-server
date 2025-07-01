@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/component: config
 data:
   # SonarQube Configuration
-  SONARQUBE_BASE_URL: "https://sonarqube.example.com"
+  SONARQUBE_URL: "https://sonarcloud.io"
   
   # MCP Configuration
   MCP_TRANSPORT: "http"
