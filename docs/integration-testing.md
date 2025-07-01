@@ -51,42 +51,32 @@ docker run --rm \
 
 ## 2. Kubernetes Testing Deployment
 
-### Quick Start for Testing
+### Automated Testing (Recommended)
+
+For the quickest way to test the deployment, use our automated test script:
 
 ```bash
-# 1. Create kind cluster for testing
-kind create cluster --name sonarqube-mcp-test
+# Set your SonarQube token (optional, will use dummy token if not set)
+export SONARQUBE_TOKEN="your-sonarcloud-token-here"
 
-# 2. Build your local image
-docker build -t mcp:local .
-
-# 3. Load image into kind cluster
-kind load docker-image mcp:local --name sonarqube-mcp-test
-
-# 4. Create test namespace
-kubectl create namespace sonarqube-mcp
-
-# 5. Create test secret
-# For testing, you can use a dummy token or your personal SonarCloud token
-kubectl create secret generic sonarqube-mcp-secrets \
-  --from-literal=SONARQUBE_TOKEN="your-test-token-here" \
-  -n sonarqube-mcp
-
-# 6. Deploy to test cluster
-cd k8s/base
-# Note: The kustomization.yaml is already configured for local testing
-# with image mcp:local. No need to edit it.
-kubectl apply -k .
-
-# 7. Verify deployment
-kubectl get pods -n sonarqube-mcp -w
+# Run the automated test
+./scripts/test-k8s-deployment.sh
 ```
 
-### 2.1 Setting Up Test Clusters
+This script will handle all the steps below automatically and report any issues.
 
-#### Kind Cluster Setup
+### Manual Testing Steps
+
+If you prefer to run the steps manually or need to debug issues, follow these steps in order:
+
 ```bash
-# Create a test cluster with specific configuration
+# Step 1: Clean up any existing setup (start fresh)
+# Check if cluster exists and delete it
+kind get clusters | grep sonarqube-mcp-test && kind delete cluster --name sonarqube-mcp-test
+# Delete namespace if it exists from a previous cluster
+kubectl delete namespace sonarqube-mcp --ignore-not-found=true
+
+# Step 2: Create the kind cluster with proper configuration
 cat <<EOF | kind create cluster --name sonarqube-mcp-test --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -109,30 +99,119 @@ nodes:
 - role: worker
 EOF
 
-# Verify cluster is running
-kubectl cluster-info --context kind-sonarqube-mcp-test
-
-# Set context to the test cluster
+# Step 3: Set kubectl context (important!)
 kubectl config use-context kind-sonarqube-mcp-test
-```
 
-### 2.2 Loading Images into Kind
-
-```bash
-# After building your image
+# Step 4: Build the Docker image
 docker build -t mcp:local .
 
-# Load the image into all nodes of the kind cluster
+# Step 5: Load the image into ALL kind nodes
 kind load docker-image mcp:local --name sonarqube-mcp-test
 
-# Verify the image is available on all nodes
+# Verify image is loaded (should show mcp:local on all nodes)
 for node in $(kind get nodes --name sonarqube-mcp-test); do
   echo "Checking node: $node"
-  docker exec $node crictl images | grep mcp
+  docker exec $node crictl images | grep mcp || echo "WARNING: Image not found on $node"
 done
+
+# Step 6: Create namespace
+kubectl create namespace sonarqube-mcp
+
+# Step 7: Create the required secrets
+# Replace 'your-sonarcloud-token-here' with an actual token
+kubectl create secret generic sonarqube-mcp-secrets \
+  --from-literal=SONARQUBE_TOKEN="your-sonarcloud-token-here" \
+  -n sonarqube-mcp
+
+# Create placeholder TLS secret (required by deployment)
+kubectl create secret tls sonarqube-mcp-tls \
+  --cert=/dev/null --key=/dev/null \
+  -n sonarqube-mcp --dry-run=client -o yaml | \
+  kubectl apply -f -
+
+# Create placeholder OAuth secret (required by deployment)
+kubectl create secret generic sonarqube-mcp-oauth \
+  --from-literal=public.pem="" \
+  -n sonarqube-mcp
+
+# Step 8: Deploy the application
+cd k8s/base
+kubectl apply -k .
+
+# Step 9: Wait for deployment to be ready (with timeout)
+echo "Waiting for deployment to be ready..."
+kubectl wait --for=condition=available --timeout=120s \
+  deployment/sonarqube-mcp -n sonarqube-mcp
+
+# Step 10: Check pod status
+kubectl get pods -n sonarqube-mcp
+# If pods are not running, check logs:
+# kubectl describe pods -n sonarqube-mcp
+# kubectl logs -n sonarqube-mcp -l app.kubernetes.io/name=sonarqube-mcp
+
+# Step 11: Port forward to access the service
+kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000 &
+PF_PID=$!
+sleep 2  # Give port-forward time to establish
+
+# Step 12: Test the service endpoints
+echo "Testing health endpoint..."
+curl -f http://localhost:3000/health || echo "Health check failed!"
+
+echo "Testing ready endpoint..."
+curl -f http://localhost:3000/ready || echo "Ready check failed!"
+
+echo "Testing metrics endpoint..."
+curl -f http://localhost:9090/metrics > /dev/null && echo "Metrics endpoint OK" || echo "Metrics failed!"
+
+# Step 13: Clean up port forward
+kill $PF_PID 2>/dev/null
+
+echo "
+✅ Testing complete! 
+
+To interact with the service:
+- Port forward: kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000
+- View logs: kubectl logs -n sonarqube-mcp -l app.kubernetes.io/name=sonarqube-mcp -f
+- Check pods: kubectl get pods -n sonarqube-mcp -w
+
+To clean up everything:
+- kubectl delete namespace sonarqube-mcp
+- kind delete cluster --name sonarqube-mcp-test
+"
 ```
 
-### 2.3 Testing Different Configurations
+### Quick Verification Script
+
+Save this as `test-deployment.sh` for repeated testing:
+
+```bash
+#!/bin/bash
+set -e
+
+echo "🔍 Checking deployment status..."
+kubectl get all -n sonarqube-mcp
+
+echo "🔍 Checking pod logs for errors..."
+kubectl logs -n sonarqube-mcp -l app.kubernetes.io/name=sonarqube-mcp --tail=20
+
+echo "🔍 Testing service endpoints..."
+kubectl port-forward -n sonarqube-mcp svc/sonarqube-mcp 3000:3000 &
+PF_PID=$!
+sleep 2
+
+# Test endpoints
+for endpoint in health ready; do
+  echo -n "Testing /$endpoint: "
+  curl -sf http://localhost:3000/$endpoint > /dev/null && echo "✅ OK" || echo "❌ FAILED"
+done
+
+kill $PF_PID 2>/dev/null
+
+echo "🎉 Verification complete!"
+```
+
+### 2.1 Testing Different Configurations
 
 #### Test with Custom SonarQube URL
 ```bash
