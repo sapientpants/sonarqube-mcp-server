@@ -1,0 +1,46 @@
+# EKS cluster configuration
+eks_cluster_name = "my-eks-cluster"
+cluster_name     = "sonarqube-mcp"
+namespace        = "sonarqube-mcp"
+
+# SonarQube configuration
+sonarqube_base_url = "https://sonarqube.company.com"
+sonarqube_token    = "squ_xxxxxxxxxxxxx"  # Store in AWS Secrets Manager for production
+
+# Ingress configuration
+ingress_host        = "mcp.company.com"
+alb_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+alb_zone_id         = "Z35SXDOTRQ7X7K"  # us-east-1 ALB zone ID
+
+# OAuth configuration
+oauth_issuer   = "https://auth.company.com"
+oauth_audience = "sonarqube-mcp"
+
+# Route53 configuration (optional)
+enable_route53  = true
+route53_zone_id = "Z1234567890ABC"
+
+# Security and compliance
+enable_secrets_manager   = true
+enable_s3_audit_logs    = true
+audit_logs_bucket       = "company-audit-logs"
+enable_cloudwatch_logs  = true
+audit_log_retention_days = 90
+
+# Monitoring
+enable_monitoring = true
+enable_audit     = true
+
+# Additional Helm values (optional)
+helm_values = {
+  "replicaCount" = "5"
+  "resources.requests.memory" = "2Gi"
+}
+
+# Resource tags
+tags = {
+  Environment = "Production"
+  Team        = "Platform"
+  CostCenter  = "Engineering"
+  Compliance  = "SOC2"
+}

@@ -1,0 +1,36 @@
+# Base Kustomization for SonarQube MCP Server
+# 
+# This provides the core resources needed to run the MCP server.
+# Secrets should be created separately via your preferred method:
+# - kubectl create secret
+# - External Secrets Operator  
+# - Sealed Secrets
+# - CI/CD pipeline injection
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sonarqube-mcp
+
+resources:
+- namespace.yaml
+- configmap.yaml
+- secret.yaml
+- serviceaccount.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+- hpa.yaml
+- pdb.yaml
+- networkpolicy.yaml
+
+labels:
+- pairs:
+    app.kubernetes.io/instance: production
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: sonarqube-mcp
+
+images:
+- name: sapientpants/sonarqube-mcp-server
+  newName: mcp
+  newTag: local
