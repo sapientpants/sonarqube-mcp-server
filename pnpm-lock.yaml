@@ -105,7 +105,7 @@ importers:
         version: 24.0.10
       '@types/opossum':
         specifier: ^8.1.8
-        version: 8.1.8
+        version: 8.1.9
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
@@ -1180,8 +1180,8 @@ packages:
   '@types/node@24.0.10':
     resolution: {integrity: sha512-ENHwaH+JIRTDIEEbDK6QSQntAYGtbvdDXnMXnZaZ6k13Du1dPMmprkEHIL7ok2Wl2aZevetwTAb5S+7yIF+enA==}
 
-  '@types/opossum@8.1.8':
-    resolution: {integrity: sha512-FTpWfHcpMgdLIdaTpL1D/nTlIH03T62RIQfzmwdEDAndYJwHDdUTkBvgXhaVp/zN74woiWEyb6DSNuZHPt1gmA==}
+  '@types/opossum@8.1.9':
+    resolution: {integrity: sha512-Jm/tYxuJFefiwRYs+/EOsUP3ktk0c8siMgAHPLnA4PXF4wKghzcjqf88dY+Xii5jId5Txw4JV0FMKTpjbd7KJA==}
 
   '@types/oracledb@6.5.2':
     resolution: {integrity: sha512-kK1eBS/Adeyis+3OlBDMeQQuasIDLUYXsi2T15ccNJ0iyUpQ4xDF7svFu3+bGVrI0CMBUclPciz+lsQR3JX3TQ==}
@@ -4711,7 +4711,7 @@ snapshots:
     dependencies:
       undici-types: 7.8.0
 
-  '@types/opossum@8.1.8':
+  '@types/opossum@8.1.9':
     dependencies:
       '@types/node': 24.0.10
 
