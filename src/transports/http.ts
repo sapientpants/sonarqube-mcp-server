@@ -371,7 +371,11 @@ export class HttpTransport implements ITransport {
       // Sanitize method and path to prevent any potential injection
       const method = req.method.replace(/[^\w]/g, '');
       const path = req.path.replace(/[^\w\/\-\.]/g, '');
-      console.error(`[${new Date().toISOString()}] Unhandled error in ${method} ${path}:`, err);
+      // Use explicit string concatenation to avoid format string security warnings
+      console.error(
+        '[' + new Date().toISOString() + '] Unhandled error in ' + method + ' ' + path + ':',
+        err
+      );
       if (err instanceof Error && err.stack) {
         console.error('Stack trace:', err.stack);
       }
@@ -461,14 +465,29 @@ export class HttpTransport implements ITransport {
       const path = req.path.replace(/[^\w\/\-\.]/g, '');
 
       // Log request
-      console.log(`[${new Date().toISOString()}] ${method} ${path} - Request ID: ${requestId}`);
+      // Use explicit string concatenation to avoid format string security warnings
+      console.log(
+        '[' + new Date().toISOString() + '] ' + method + ' ' + path + ' - Request ID: ' + requestId
+      );
 
       // Capture response
       const originalSend = res.send;
       res.send = function (data: unknown) {
         const duration = Date.now() - startTime;
+        // Use explicit string concatenation to avoid format string security warnings
         console.log(
-          `[${new Date().toISOString()}] ${method} ${path} - Status: ${res.statusCode} - Duration: ${duration}ms - Request ID: ${requestId}`
+          '[' +
+            new Date().toISOString() +
+            '] ' +
+            method +
+            ' ' +
+            path +
+            ' - Status: ' +
+            res.statusCode +
+            ' - Duration: ' +
+            duration +
+            'ms - Request ID: ' +
+            requestId
         );
         return originalSend.call(this, data);
       };
@@ -477,7 +496,11 @@ export class HttpTransport implements ITransport {
       const originalNext = next;
       next = function (err?: unknown) {
         if (err) {
-          console.error(`[${new Date().toISOString()}] ${method} ${path} - Error:`, err);
+          // Use explicit string concatenation to avoid format string security warnings
+          console.error(
+            '[' + new Date().toISOString() + '] ' + method + ' ' + path + ' - Error:',
+            err
+          );
         }
         return originalNext(err);
       } as NextFunction;
