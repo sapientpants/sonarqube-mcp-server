@@ -1,0 +1,97 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "sonarqube-mcp.fullname" . }}
+  labels:
+    {{- include "sonarqube-mcp.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "sonarqube-mcp.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    {{- if .Values.networkPolicy.ingress.enabled }}
+    - Ingress
+    {{- end }}
+    {{- if .Values.networkPolicy.egress.enabled }}
+    - Egress
+    {{- end }}
+  {{- if .Values.networkPolicy.ingress.enabled }}
+  ingress:
+    # Allow traffic from Ingress controller
+    - from:
+        {{- if .Values.networkPolicy.ingress.namespaceSelector }}
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.ingress.namespaceSelector | nindent 12 }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.config.http.port }}
+    
+    {{- if .Values.config.monitoring.metrics }}
+    # Allow traffic from monitoring namespace for metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: {{ .Values.config.monitoring.metricsPort }}
+    {{- end }}
+    
+    # Allow traffic between pods
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "sonarqube-mcp.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.config.http.port }}
+        {{- if .Values.config.monitoring.metrics }}
+        - protocol: TCP
+          port: {{ .Values.config.monitoring.metricsPort }}
+        {{- end }}
+  {{- end }}
+  
+  {{- if .Values.networkPolicy.egress.enabled }}
+  egress:
+    {{- if .Values.networkPolicy.egress.dns.enabled }}
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- end }}
+    
+    {{- if .Values.networkPolicy.egress.https.enabled }}
+    # Allow HTTPS traffic to external services
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    {{- end }}
+    
+    {{- if .Values.config.monitoring.tracing }}
+    # Allow traffic to OpenTelemetry collector
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 4318
+    {{- end }}
+    
+    {{- with .Values.networkPolicy.egress.custom }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- end }}

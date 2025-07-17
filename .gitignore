@@ -26,3 +26,19 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db 
 **/.claude/settings.local.json
+
+# Terraform
+terraform/.terraform/
+terraform/**/.terraform/
+terraform/**/terraform.tfstate
+terraform/**/terraform.tfstate.*
+terraform/**/*.tfvars
+!terraform/**/*.tfvars.example
+terraform/**/.terraform.lock.hcl
+
+# Kubernetes secrets
+k8s/overlays/production/secrets.env
+
+# Helm
+helm/**/charts/
+helm/**/Chart.lock

@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "sonarqube-mcp.fullname" . }}-test"
+  labels:
+    {{- include "sonarqube-mcp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  serviceAccountName: {{ include "sonarqube-mcp.serviceAccountName" . }}
+  restartPolicy: Never
+  containers:
+    - name: test-endpoints
+      image: busybox:1.36
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Running Helm tests for {{ include "sonarqube-mcp.fullname" . }}"
+          
+          # Test health endpoint
+          echo "Testing health endpoint..."
+          wget -q -O- http://{{ include "sonarqube-mcp.fullname" . }}:{{ .Values.service.port }}/health || exit 1
+          echo "✓ Health endpoint is responding"
+          
+          # Test ready endpoint
+          echo "Testing ready endpoint..."
+          wget -q -O- http://{{ include "sonarqube-mcp.fullname" . }}:{{ .Values.service.port }}/ready || exit 1
+          echo "✓ Ready endpoint is responding"
+          
+          # Test metrics endpoint
+          echo "Testing metrics endpoint..."
+          wget -q -O- http://{{ include "sonarqube-mcp.fullname" . }}:{{ .Values.service.port }}/metrics || exit 1
+          echo "✓ Metrics endpoint is responding"
+          
+          echo "All tests passed!"
