@@ -368,10 +368,10 @@ export class HttpTransport implements ITransport {
 
     // Global error handler - must be last middleware
     this.app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
-      console.error(
-        `[${new Date().toISOString()}] Unhandled error in ${req.method} ${req.path}:`,
-        err
-      );
+      // Sanitize method and path to prevent any potential injection
+      const method = req.method.replace(/[^\w]/g, '');
+      const path = req.path.replace(/[^\w\/\-\.]/g, '');
+      console.error(`[${new Date().toISOString()}] Unhandled error in ${method} ${path}:`, err);
       if (err instanceof Error && err.stack) {
         console.error('Stack trace:', err.stack);
       }
@@ -456,17 +456,19 @@ export class HttpTransport implements ITransport {
       const startTime = Date.now();
       const requestId = req.headers['x-request-id'] || `req-${Date.now()}`;
 
+      // Sanitize method and path to prevent any potential injection
+      const method = req.method.replace(/[^\w]/g, '');
+      const path = req.path.replace(/[^\w\/\-\.]/g, '');
+
       // Log request
-      console.log(
-        `[${new Date().toISOString()}] ${req.method} ${req.path} - Request ID: ${requestId}`
-      );
+      console.log(`[${new Date().toISOString()}] ${method} ${path} - Request ID: ${requestId}`);
 
       // Capture response
       const originalSend = res.send;
       res.send = function (data: unknown) {
         const duration = Date.now() - startTime;
         console.log(
-          `[${new Date().toISOString()}] ${req.method} ${req.path} - Status: ${res.statusCode} - Duration: ${duration}ms - Request ID: ${requestId}`
+          `[${new Date().toISOString()}] ${method} ${path} - Status: ${res.statusCode} - Duration: ${duration}ms - Request ID: ${requestId}`
         );
         return originalSend.call(this, data);
       };
@@ -475,7 +477,7 @@ export class HttpTransport implements ITransport {
       const originalNext = next;
       next = function (err?: unknown) {
         if (err) {
-          console.error(`[${new Date().toISOString()}] ${req.method} ${req.path} - Error:`, err);
+          console.error(`[${new Date().toISOString()}] ${method} ${path} - Error:`, err);
         }
         return originalNext(err);
       } as NextFunction;
