@@ -498,7 +498,10 @@ export class HttpTransport implements ITransport {
         if (err) {
           // Use explicit string concatenation to avoid format string security warnings
           console.error(
-            '[' + new Date().toISOString() + '] ' + method + ' ' + path + ' - Error:',
+            '[%s] %s %s - Error:',
+            new Date().toISOString(),
+            method,
+            path,
             err
           );
         }
