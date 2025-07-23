@@ -370,7 +370,7 @@ export class HttpTransport implements ITransport {
     this.app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
       // Sanitize method and path to prevent any potential injection
       const method = req.method.replace(/[^\w]/g, '');
-      const path = req.path.replace(/[^\w\/\-\.]/g, '');
+      const path = req.path.replace(/[^\w/\-.]/g, '');
       // Use explicit string concatenation to avoid format string security warnings
       console.error(
         '[' + new Date().toISOString() + '] Unhandled error in ' + method + ' ' + path + ':',
@@ -462,7 +462,7 @@ export class HttpTransport implements ITransport {
 
       // Sanitize method and path to prevent any potential injection
       const method = req.method.replace(/[^\w]/g, '');
-      const path = req.path.replace(/[^\w\/\-\.]/g, '');
+      const path = req.path.replace(/[^\w/\-.]/g, '');
 
       // Log request
       // Use explicit string concatenation to avoid format string security warnings
