@@ -980,7 +980,6 @@ describe('HttpTransport', () => {
 
       // Add a test route that throws a non-Error BEFORE connecting
       app.get('/test-non-error', () => {
-         
         throw 'String error';
       });
 
