@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "sonarqube-mcp.fullname" . }}-service-test"
+  labels:
+    {{- include "sonarqube-mcp.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  serviceAccountName: {{ include "sonarqube-mcp.serviceAccountName" . }}
+  restartPolicy: Never
+  containers:
+    - name: test-service
+      image: nicolaka/netshoot:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Running service connectivity tests for {{ include "sonarqube-mcp.fullname" . }}"
+          
+          # Test DNS resolution
+          echo "Testing DNS resolution..."
+          nslookup {{ include "sonarqube-mcp.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local || exit 1
+          echo "✓ DNS resolution successful"
+          
+          # Test port connectivity
+          echo "Testing port connectivity..."
+          nc -zv {{ include "sonarqube-mcp.fullname" . }} {{ .Values.service.port }} || exit 1
+          echo "✓ Service port is accessible"
+          
+          # Test service endpoints
+          echo "Checking service endpoints..."
+          if [ "$(curl -s -o /dev/null -w '%{http_code}' http://{{ include "sonarqube-mcp.fullname" . }}:{{ .Values.service.port }}/health)" = "200" ] || [ "$(curl -s -o /dev/null -w '%{http_code}' http://{{ include "sonarqube-mcp.fullname" . }}:{{ .Values.service.port }}/health)" = "503" ]; then
+            echo "✓ Service is responding to HTTP requests"
+          else
+            echo "✗ Service is not responding correctly"
+            exit 1
+          fi
+          
+          echo "All service tests passed!"

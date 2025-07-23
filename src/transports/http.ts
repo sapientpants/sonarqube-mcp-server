@@ -366,6 +366,30 @@ export class HttpTransport implements ITransport {
       }
     );
 
+    // Global error handler - must be last middleware
+    this.app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+      // Sanitize method and path to prevent any potential injection
+      const method = req.method.replace(/[^\w]/g, '');
+      const path = req.path.replace(/[^\w/\-.]/g, '');
+      // Use explicit string concatenation to avoid format string security warnings
+      console.error(
+        '[' + new Date().toISOString() + '] Unhandled error in ' + method + ' ' + path + ':',
+        err
+      );
+      if (err instanceof Error && err.stack) {
+        console.error('Stack trace:', err.stack);
+      }
+
+      if (res.headersSent) {
+        return next(err);
+      }
+
+      res.status(500).json({
+        error: 'internal_server_error',
+        error_description: err instanceof Error ? err.message : 'An unexpected error occurred',
+      });
+    });
+
     // Start Express server (HTTP or HTTPS)
     try {
       if (this.options.tls.enabled && this.options.tls.cert && this.options.tls.key) {
@@ -383,7 +407,9 @@ export class HttpTransport implements ITransport {
         await new Promise<void>((resolve, reject) => {
           this.server = https.createServer(tlsOptions, this.app);
           this.server.listen(this.options.port, this.options.host, () => {
-            logger.info(`HTTPS transport listening on ${this.options.host}:${this.options.port}`);
+            const message = `HTTPS transport listening on ${this.options.host}:${this.options.port}`;
+            logger.info(message);
+            console.log(`[${new Date().toISOString()}] ${message}`);
             resolve();
           });
           this.server.on('error', (error) => {
@@ -395,7 +421,9 @@ export class HttpTransport implements ITransport {
         // Create HTTP server
         await new Promise<void>((resolve, reject) => {
           this.server = this.app.listen(this.options.port, this.options.host, () => {
-            logger.info(`HTTP transport listening on ${this.options.host}:${this.options.port}`);
+            const message = `HTTP transport listening on ${this.options.host}:${this.options.port}`;
+            logger.info(message);
+            console.log(`[${new Date().toISOString()}] ${message}`);
             resolve();
           });
           this.server.on('error', (error) => {
@@ -426,6 +454,59 @@ export class HttpTransport implements ITransport {
 
     // Parse JSON bodies
     this.app.use(express.json());
+
+    // Request/Response logging middleware
+    this.app.use((req: Request, res: Response, next: NextFunction) => {
+      const startTime = Date.now();
+      const requestId = req.headers['x-request-id'] || `req-${Date.now()}`;
+
+      // Sanitize method and path to prevent any potential injection
+      const method = req.method.replace(/[^\w]/g, '');
+      const path = req.path.replace(/[^\w/\-.]/g, '');
+
+      // Log request
+      // Use explicit string concatenation to avoid format string security warnings
+      console.log(
+        '[' + new Date().toISOString() + '] ' + method + ' ' + path + ' - Request ID: ' + requestId
+      );
+
+      // Capture response
+      const originalSend = res.send;
+      res.send = function (data: unknown) {
+        const duration = Date.now() - startTime;
+        // Use explicit string concatenation to avoid format string security warnings
+        console.log(
+          '[' +
+            new Date().toISOString() +
+            '] ' +
+            method +
+            ' ' +
+            path +
+            ' - Status: ' +
+            res.statusCode +
+            ' - Duration: ' +
+            duration +
+            'ms - Request ID: ' +
+            requestId
+        );
+        return originalSend.call(this, data);
+      };
+
+      // Capture errors
+      const originalNext = next;
+      next = function (err?: unknown) {
+        if (err) {
+          // Use explicit string concatenation to avoid format string security warnings
+          console.error(
+            '[' + new Date().toISOString() + '] ' + method + ' ' + path + ' - Error:',
+            err
+          );
+        }
+        return originalNext(err);
+      } as NextFunction;
+
+      next();
+    });
 
     // Add metrics middleware
     this.app.use(metricsMiddleware());
@@ -458,11 +539,16 @@ export class HttpTransport implements ITransport {
           statusCode = 200;
         } else {
           statusCode = 503;
+          console.log(
+            `[${new Date().toISOString()}] Health check returned unhealthy:`,
+            JSON.stringify(health, null, 2)
+          );
         }
 
         res.status(statusCode).json(health);
       } catch (error) {
         logger.error('Health check failed', error);
+        console.error(`[${new Date().toISOString()}] Health check failed:`, error);
         res.status(503).json({
           status: 'unhealthy',
           error: 'Health check failed',
