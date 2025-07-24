@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2025-07-24
+
+### Added
+- Kubernetes deployment support with Helm charts for easy deployment (#183)
+- Comprehensive monitoring and observability features (#182)
+- Built-in authorization server for standalone authentication (#181)
+- External IdP integration support (OAuth2/OIDC) (#180)
+- Comprehensive audit logging system (#179)
+- Service account management system (#178)
+- JSON string array support for MCP parameters
+
+### Changed
+- Updated dependencies to latest versions:
+  - @modelcontextprotocol/sdk: 1.15.1 → 1.16.0
+  - @jest/globals: 30.0.4 → 30.0.5
+  - @types/bcrypt: 5.0.2 → 6.0.0
+  - @types/node: 24.0.14 → 24.1.0
+  - @typescript-eslint/eslint-plugin: 8.37.0 → 8.38.0
+  - @typescript-eslint/parser: 8.37.0 → 8.38.0
+  - eslint-config-prettier: 10.1.5 → 10.1.8
+  - eslint-plugin-prettier: 5.5.1 → 5.5.3
+  - jest: 30.0.4 → 30.0.5
+  - nock: 14.0.5 → 14.0.6
+  - supertest: 7.1.3 → 7.1.4
+
+### Fixed
+- Code duplication issues identified by SonarQube
+- Various security and code quality improvements
+
 ## [1.5.1] - 2025-06-19
 
 ### Changed
