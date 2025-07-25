@@ -89,6 +89,11 @@ function formatError(error: unknown): string {
     return JSON.stringify(error, null, 2);
   } catch {
     // Fallback to string representation if JSON.stringify fails
+    if (error === null) return 'null';
+    if (error === undefined) return 'undefined';
+    if (typeof error === 'object') {
+      return `[object ${error.constructor?.name || 'Object'}]`;
+    }
     return String(error);
   }
 }
