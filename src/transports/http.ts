@@ -497,10 +497,7 @@ export class HttpTransport implements ITransport {
       next = function (err?: unknown) {
         if (err) {
           // Use explicit string concatenation to avoid format string security warnings
-          console.error(
-            '[' + new Date().toISOString() + '] ' + method + ' ' + path + ' - Error:',
-            err
-          );
+          console.error('[%s] %s %s - Error: %s', new Date().toISOString(), method, path, err);
         }
         return originalNext(err);
       } as NextFunction;
