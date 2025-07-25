@@ -71,6 +71,24 @@ function initializeLogFile(): void {
 }
 
 /**
+ * Formats non-JSON-serializable values to string
+ * @param value The value to format
+ * @returns String representation of the value
+ */
+function formatNonSerializable(value: unknown): string {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+
+  if (typeof value === 'object') {
+    const constructorName =
+      'constructor' in value && value.constructor?.name ? value.constructor.name : 'Object';
+    return `[object ${constructorName}]`;
+  }
+
+  return Object.prototype.toString.call(value);
+}
+
+/**
  * Formats an error for logging
  * @param error The error to format
  * @returns Formatted error string
@@ -89,7 +107,7 @@ function formatError(error: unknown): string {
     return JSON.stringify(error, null, 2);
   } catch {
     // Fallback to string representation if JSON.stringify fails
-    return String(error);
+    return formatNonSerializable(error);
   }
 }
 

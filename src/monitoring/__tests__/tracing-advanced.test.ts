@@ -227,8 +227,8 @@ describe('Tracing Advanced Tests', () => {
         stringAttr: 'value',
         numberAttr: 42,
         booleanAttr: true,
-        objectAttr: '[object Object]', // String() converts objects this way
-        arrayAttr: '1,2,3', // String() converts arrays this way
+        objectAttr: '{"nested":"object"}', // JSON.stringify converts objects this way
+        arrayAttr: '[1,2,3]', // JSON.stringify converts arrays this way
       });
     });
 

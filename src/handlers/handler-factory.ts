@@ -62,7 +62,11 @@ export class HandlerFactory {
                 (params as Record<string, unknown>).project_key ??
                 (params as Record<string, unknown>).project ??
                 'unknown';
-              trackPermissionDenial(userContext.userId, String(projectKey), 'project_access');
+              trackPermissionDenial(
+                userContext.userId,
+                typeof projectKey === 'string' ? projectKey : JSON.stringify(projectKey),
+                'project_access'
+              );
 
               throw new Error(`Access denied: ${projectAccessResult.reason}`);
             }

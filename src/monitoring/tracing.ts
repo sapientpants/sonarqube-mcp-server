@@ -261,7 +261,7 @@ export function addSpanAttributes(attributes: Record<string, unknown>): void {
       if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
         cleanedAttributes[key] = value;
       } else if (value != null) {
-        cleanedAttributes[key] = String(value);
+        cleanedAttributes[key] = JSON.stringify(value);
       }
     }
     span.setAttributes(cleanedAttributes);
