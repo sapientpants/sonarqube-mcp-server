@@ -91,10 +91,12 @@ function formatError(error: unknown): string {
     // Fallback to string representation if JSON.stringify fails
     if (error === null) return 'null';
     if (error === undefined) return 'undefined';
-    if (typeof error === 'object') {
-      return `[object ${error.constructor?.name || 'Object'}]`;
+    if (typeof error === 'object' && error !== null) {
+      const constructorName =
+        'constructor' in error && error.constructor?.name ? error.constructor.name : 'Object';
+      return `[object ${constructorName}]`;
     }
-    return String(error);
+    return Object.prototype.toString.call(error);
   }
 }
 
