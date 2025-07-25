@@ -12,55 +12,33 @@
 
 A Model Context Protocol (MCP) server that integrates with SonarQube to provide AI assistants with access to code quality metrics, issues, and analysis results.
 
-## What's New in v1.6.0
+## Table of Contents
 
-### Built-in Authorization Server (Experimental)
-- **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
-- **Authorization Code Flow**: Full support for OAuth 2.0 authorization code flow with PKCE
-- **Dynamic Client Registration**: Register OAuth clients dynamically via API (RFC7591)
-- **User Management**: Built-in user store with secure password hashing (bcrypt)
-- **API Key Support**: Generate API keys for automation and CI/CD workflows
-- **Token Management**: JWT token issuance with RS256 signing and automatic key rotation
-- **Refresh Token Rotation**: Secure refresh token support with automatic rotation
-- **Admin Interface**: RESTful API for user and client management
-- **Zero Configuration**: Automatically creates default admin user on first start
-
-### External Identity Provider (IdP) Integration (Experimental)
-- **OIDC/OAuth 2.0 Support**: Full integration with external identity providers
-- **JWKS Endpoint Discovery**: Automatic discovery and caching of JSON Web Key Sets
-- **Provider Support**: Pre-configured support for Azure AD, Okta, Auth0, and Keycloak
-- **Group Claim Mapping**: Automatic transformation of provider-specific group formats
-- **Multi-tenant Support**: Handle multiple tenants with tenant-specific configurations
-- **IdP Health Monitoring**: Continuous monitoring of IdP availability with failover
-- **Fallback Authentication**: Graceful fallback to static keys when IdPs are unavailable
-
-### HTTP Transport with OAuth 2.0 Metadata (Experimental)
-- **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
-- **OAuth Metadata Endpoints**: Implements RFC9728 (Protected Resource Metadata) and RFC8414 (Authorization Server Metadata)
-- **WWW-Authenticate Headers**: Proper Bearer token authentication with metadata discovery
-- **CORS Support**: Built-in CORS handling for cross-origin requests
-- **Extensible Architecture**: Prepared for future OAuth 2.0 flow implementation
-
-### Elicitation Support (Experimental)
-- **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
-- **Bulk Operation Safety**: Confirmation prompts before marking multiple issues as false positive or won't fix
-- **Context Collection**: Optional comment collection when resolving issues
-- **Authentication Assistance**: Interactive setup when credentials are missing
-- **Opt-in Feature**: Enable with `SONARQUBE_MCP_ELICITATION=true` environment variable
-
-### Previous Updates (v1.5.0)
-
-### Component Navigation Enhancement
-- **Components Tool**: Added comprehensive search and navigation for SonarQube components (projects, directories, files)
-- **Text Search**: Find components by name with free text search
-- **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
-- **Tree Navigation**: Navigate component hierarchies with different traversal strategies
-- **Language Filtering**: Find components by programming language
-
-### Documentation Updates
-- **Admin Permission Clarification**: Clarified that the `projects` tool requires admin permissions
-- **Alternative for Non-Admins**: Added guidance to use `components` tool with project qualifier for listing accessible projects
-
+- [Overview](#overview)
+- [What's New in v1.6.0](#whats-new-in-v160)
+  - [Stable Features](#stable-features)
+  - [Experimental Features](#experimental-features)
+- [Documentation](#documentation)
+- [Compatibility](#compatibility)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+  - [NPX](#npx-recommended)
+  - [Docker](#docker-recommended-for-production)
+  - [Local Development](#local-development)
+- [Configuration](#configuration)
+  - [Environment Variables](#environment-variables)
+  - [Authentication Methods](#authentication-methods)
+  - [External IdP Configuration](#external-identity-provider-idp-configuration)
+  - [Built-in Authorization Server](#built-in-authorization-server)
+  - [Monitoring and Observability](#monitoring-and-observability)
+- [Available Tools](#available-tools)
+- [Usage Examples](#usage-examples)
+- [Architecture](#architecture)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [License](#license)
+- [External Resources](#external-resources)
 
 ## Overview
 
@@ -77,15 +55,80 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 - 🏥 **Monitor system health** - Check SonarQube instance status and availability
 - 🔄 **Enhanced error handling** - Clear error messages with solutions and automatic retry for transient failures
 
+## What's New in v1.6.0
+
+### Stable Features
+
+#### Component Navigation Enhancement
+- **Components Tool**: Added comprehensive search and navigation for SonarQube components (projects, directories, files)
+- **Text Search**: Find components by name with free text search
+- **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
+- **Tree Navigation**: Navigate component hierarchies with different traversal strategies
+- **Language Filtering**: Find components by programming language
+
+#### Documentation Updates
+- **Admin Permission Clarification**: Clarified that the `projects` tool requires admin permissions
+- **Alternative for Non-Admins**: Added guidance to use `components` tool with project qualifier for listing accessible projects
+
+### Experimental Features
+
+> **Note:** Experimental features are fully functional but may undergo API changes in future releases. Use them in production with caution and be prepared for potential breaking changes.
+
+#### Built-in Authorization Server
+- **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
+- **Authorization Code Flow**: Full support for OAuth 2.0 authorization code flow with PKCE
+- **Dynamic Client Registration**: Register OAuth clients dynamically via API (RFC7591)
+- **User Management**: Built-in user store with secure password hashing (bcrypt)
+- **API Key Support**: Generate API keys for automation and CI/CD workflows
+- **Token Management**: JWT token issuance with RS256 signing and automatic key rotation
+- **Refresh Token Rotation**: Secure refresh token support with automatic rotation
+- **Admin Interface**: RESTful API for user and client management
+- **Zero Configuration**: Automatically creates default admin user on first start
+
+#### External Identity Provider (IdP) Integration
+- **OIDC/OAuth 2.0 Support**: Full integration with external identity providers
+- **JWKS Endpoint Discovery**: Automatic discovery and caching of JSON Web Key Sets
+- **Provider Support**: Pre-configured support for Azure AD, Okta, Auth0, and Keycloak
+- **Group Claim Mapping**: Automatic transformation of provider-specific group formats
+- **Multi-tenant Support**: Handle multiple tenants with tenant-specific configurations
+- **IdP Health Monitoring**: Continuous monitoring of IdP availability with failover
+- **Fallback Authentication**: Graceful fallback to static keys when IdPs are unavailable
+
+#### HTTP Transport with OAuth 2.0 Metadata
+- **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
+- **OAuth Metadata Endpoints**: Implements RFC9728 (Protected Resource Metadata) and RFC8414 (Authorization Server Metadata)
+- **WWW-Authenticate Headers**: Proper Bearer token authentication with metadata discovery
+- **CORS Support**: Built-in CORS handling for cross-origin requests
+- **Extensible Architecture**: Prepared for future OAuth 2.0 flow implementation
+
+#### Elicitation Support
+- **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
+- **Bulk Operation Safety**: Confirmation prompts before marking multiple issues as false positive or won't fix
+- **Context Collection**: Optional comment collection when resolving issues
+- **Authentication Assistance**: Interactive setup when credentials are missing
+- **Opt-in Feature**: Enable with `SONARQUBE_MCP_ELICITATION=true` environment variable
+
 ## Documentation
 
+### Core Guides
 - **[Architecture Guide](docs/architecture.md)** - System architecture, design decisions, and component overview
-- **[Deployment Guide](docs/deployment.md)** - Enterprise deployment with Docker, Kubernetes, and cloud platforms
-- **[Security Guide](docs/security.md)** - Authentication, authorization, and security best practices
-- **[IdP Integration Guide](docs/idp-integration.md)** - Integration with Azure AD, Okta, Auth0, and other identity providers
 - **[API Reference](docs/api-reference.md)** - Complete API documentation for all MCP tools
 - **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues, debugging, and solutions
+
+### Deployment & Operations
+- **[Deployment Guide](docs/deployment.md)** - Enterprise deployment with Docker, Kubernetes, and cloud platforms
 - **[Performance Tuning](docs/performance.md)** - Optimization strategies for production deployments
+- **[Integration Testing](docs/integration-testing.md)** - Testing strategies and best practices
+
+### Security & Authentication
+- **[Security Guide](docs/security.md)** - Authentication, authorization, and security best practices
+- **[IdP Integration Guide](docs/idp-integration.md)** - Integration with Azure AD, Okta, Auth0, and other identity providers
+- **[Permission System](docs/permission-system.md)** - Role-based access control and permission management
+- **[Service Account Management](docs/service-account-management.md)** - Managing service accounts and API access
+
+### Experimental Features
+- **[HTTP Transport Guide](docs/http-transport.md)** - HTTP transport configuration and usage
+- **[OAuth Token Validation](docs/oauth-token-validation.md)** - OAuth 2.0 token validation implementation details
 
 ## Compatibility
 
@@ -168,6 +211,45 @@ Using System Passcode:
 }
 ```
 
+**HTTP Transport with External IdP (Experimental):**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "https://your-sonarqube.com",
+        "SONARQUBE_TOKEN": "your-token",
+        "MCP_TRANSPORT": "http",
+        "MCP_HTTP_PORT": "3000",
+        "MCP_HTTP_PUBLIC_URL": "https://mcp.example.com",
+        "MCP_EXTERNAL_IDP_1": "provider:azure-ad,issuer:https://login.microsoftonline.com/{tenant}/v2.0,audience:api://your-app-id"
+      }
+    }
+  }
+}
+```
+
+**Built-in Authorization Server (Experimental):**
+```json
+{
+  "mcpServers": {
+    "sonarqube": {
+      "command": "npx",
+      "args": ["-y", "sonarqube-mcp-server@latest"],
+      "env": {
+        "SONARQUBE_URL": "https://your-sonarqube.com",
+        "SONARQUBE_TOKEN": "your-token",
+        "MCP_TRANSPORT": "http",
+        "MCP_HTTP_PORT": "3000",
+        "MCP_BUILT_IN_AUTH_SERVER": "true"
+      }
+    }
+  }
+}
+```
+
 4. Restart Claude Desktop
 
 ### 3. Start Using
@@ -210,6 +292,8 @@ The simplest way to use the SonarQube MCP Server is through npx:
 Docker provides the most reliable deployment method by packaging all dependencies and ensuring consistent behavior across different environments.
 
 > **Enterprise Deployment**: For production deployments with Kubernetes, Helm charts, and cloud-specific configurations, see our comprehensive [Deployment Guide](docs/deployment.md).
+
+> **Experimental Features**: For HTTP transport, external IdP integration, and built-in authorization server configurations, see the specialized guides in the [Documentation](#documentation) section.
 
 #### Quick Start with Docker
 
@@ -256,8 +340,8 @@ Official images are available on Docker Hub: [`sapientpants/sonarqube-mcp-server
 
 **Available tags:**
 - `latest` - Latest stable release
-- `1.3.2` - Specific version (recommended for production)
-- `1.3` - Latest patch version of 1.3.x
+- `1.6.0` - Specific version (recommended for production)
+- `1.6` - Latest patch version of 1.6.x
 - `1` - Latest minor version of 1.x.x
 
 **Pull the image:**
@@ -336,7 +420,7 @@ docker run -i --rm \
 
 1. **Version Pinning**: Always use specific version tags in production:
    ```bash
-   sapientpants/sonarqube-mcp-server:1.3.2
+   sapientpants/sonarqube-mcp-server:1.6.0
    ```
 
 2. **Resource Limits**: Set appropriate resource limits:
@@ -344,14 +428,14 @@ docker run -i --rm \
    docker run -i --rm \
      --memory="256m" \
      --cpus="0.5" \
-     sapientpants/sonarqube-mcp-server:1.3.2
+     sapientpants/sonarqube-mcp-server:1.6.0
    ```
 
 3. **Security**: Run as non-root user (default in our image):
    ```bash
    docker run -i --rm \
      --user node \
-     sapientpants/sonarqube-mcp-server:1.3.2
+     sapientpants/sonarqube-mcp-server:1.6.0
    ```
 
 4. **Health Checks**: The container includes a health check that verifies the Node.js process is running
