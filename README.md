@@ -14,7 +14,7 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 
 ## What's New in v1.6.0
 
-### Built-in Authorization Server
+### Built-in Authorization Server (Experimental)
 - **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
 - **Authorization Code Flow**: Full support for OAuth 2.0 authorization code flow with PKCE
 - **Dynamic Client Registration**: Register OAuth clients dynamically via API (RFC7591)
