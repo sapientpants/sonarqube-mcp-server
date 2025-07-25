@@ -14,7 +14,7 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 
 ## What's New in v1.6.0
 
-### Built-in Authorization Server
+### Built-in Authorization Server (Experimental)
 - **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
 - **Authorization Code Flow**: Full support for OAuth 2.0 authorization code flow with PKCE
 - **Dynamic Client Registration**: Register OAuth clients dynamically via API (RFC7591)
@@ -25,9 +25,7 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 - **Admin Interface**: RESTful API for user and client management
 - **Zero Configuration**: Automatically creates default admin user on first start
 
-## Previous Updates
-
-### v1.8.0 - External Identity Provider (IdP) Integration
+### External Identity Provider (IdP) Integration (Experimental)
 - **OIDC/OAuth 2.0 Support**: Full integration with external identity providers
 - **JWKS Endpoint Discovery**: Automatic discovery and caching of JSON Web Key Sets
 - **Provider Support**: Pre-configured support for Azure AD, Okta, Auth0, and Keycloak
@@ -36,16 +34,12 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 - **IdP Health Monitoring**: Continuous monitoring of IdP availability with failover
 - **Fallback Authentication**: Graceful fallback to static keys when IdPs are unavailable
 
-### Previous Updates (v1.7.0)
-
-### HTTP Transport with OAuth 2.0 Metadata
+### HTTP Transport with OAuth 2.0 Metadata (Experimental)
 - **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
 - **OAuth Metadata Endpoints**: Implements RFC9728 (Protected Resource Metadata) and RFC8414 (Authorization Server Metadata)
 - **WWW-Authenticate Headers**: Proper Bearer token authentication with metadata discovery
 - **CORS Support**: Built-in CORS handling for cross-origin requests
 - **Extensible Architecture**: Prepared for future OAuth 2.0 flow implementation
-
-### Previous Updates (v1.6.0)
 
 ### Elicitation Support (Experimental)
 - **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
