@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2025-07-27
+
+### Fixed
+- Resolved SonarQube issue S6551 in tracing.ts - replaced deprecated url.parse() with WHATWG URL API
+- Fixed object stringification issues to prevent "[object Object]" in logs
+- Improved error formatting in logger for better debugging
+- Fixed externally-controlled format string security issue
+
+### Changed
+- Updated README.md documentation and organization
+
 ## [1.6.0] - 2025-07-24
 
 ### Added
