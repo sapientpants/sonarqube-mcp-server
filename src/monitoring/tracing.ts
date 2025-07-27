@@ -281,7 +281,7 @@ export function addSpanEvent(name: string, attributes?: Record<string, unknown>)
         if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
           cleanedAttributes[key] = value;
         } else if (value != null) {
-          cleanedAttributes[key] = String(value);
+          cleanedAttributes[key] = JSON.stringify(value);
         }
       }
       span.addEvent(name, cleanedAttributes);
