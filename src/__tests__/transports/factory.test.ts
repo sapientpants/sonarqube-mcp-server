@@ -1,80 +1,90 @@
+import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
 import { TransportFactory } from '../../transports/factory.js';
 import { StdioTransport } from '../../transports/stdio.js';
-import { HttpTransport } from '../../transports/http.js';
-import { cleanupMetricsService } from '../../monitoring/metrics.js';
-import { HealthService } from '../../monitoring/health.js';
+import type { ITransportConfig } from '../../transports/base.js';
 
 describe('TransportFactory', () => {
-  const originalEnv = process.env;
+  let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
+    // Save original environment
+    originalEnv = { ...process.env };
   });
 
   afterEach(() => {
+    // Restore original environment
     process.env = originalEnv;
-    cleanupMetricsService();
-    HealthService.resetInstance();
   });
 
   describe('create', () => {
-    it('should create STDIO transport', () => {
-      const transport = TransportFactory.create({ type: 'stdio' });
+    it('should create a stdio transport', () => {
+      const config: ITransportConfig = { type: 'stdio' };
+      const transport = TransportFactory.create(config);
+
       expect(transport).toBeInstanceOf(StdioTransport);
       expect(transport.getName()).toBe('stdio');
     });
 
-    it('should create HTTP transport', () => {
-      const transport = TransportFactory.create({ type: 'http' });
-      expect(transport).toBeInstanceOf(HttpTransport);
-      expect(transport.getName()).toBe('http');
+    it('should throw error for unsupported transport type', () => {
+      const config = { type: 'unsupported' } as ITransportConfig;
+
+      expect(() => TransportFactory.create(config)).toThrow(
+        'Unsupported transport type: unsupported'
+      );
     });
 
-    it('should throw error for unsupported transport type', () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      expect(() => TransportFactory.create({ type: 'websocket' as any })).toThrow(
-        'Unsupported transport type: websocket'
+    it('should throw error for undefined transport type', () => {
+      const config = {} as ITransportConfig;
+
+      expect(() => TransportFactory.create(config)).toThrow(
+        'Unsupported transport type: undefined'
       );
+    });
+
+    it('should throw error for null transport type', () => {
+      const config = { type: null } as unknown as ITransportConfig;
+
+      expect(() => TransportFactory.create(config)).toThrow('Unsupported transport type: null');
     });
   });
 
   describe('createFromEnvironment', () => {
-    it('should create STDIO transport by default', () => {
-      delete process.env.MCP_TRANSPORT;
+    it('should always create stdio transport', () => {
       const transport = TransportFactory.createFromEnvironment();
+
       expect(transport).toBeInstanceOf(StdioTransport);
       expect(transport.getName()).toBe('stdio');
     });
 
-    it('should create STDIO transport when explicitly specified', () => {
-      process.env.MCP_TRANSPORT = 'stdio';
+    it('should create stdio transport regardless of environment variables', () => {
+      // Set some random environment variables
+      process.env.TRANSPORT_TYPE = 'http';
+      process.env.MCP_TRANSPORT = 'websocket';
+
       const transport = TransportFactory.createFromEnvironment();
+
       expect(transport).toBeInstanceOf(StdioTransport);
       expect(transport.getName()).toBe('stdio');
     });
 
-    it('should handle uppercase environment variable', () => {
-      process.env.MCP_TRANSPORT = 'STDIO';
-      const transport = TransportFactory.createFromEnvironment();
-      expect(transport).toBeInstanceOf(StdioTransport);
-      expect(transport.getName()).toBe('stdio');
+    it('should create different instances on multiple calls', () => {
+      const transport1 = TransportFactory.createFromEnvironment();
+      const transport2 = TransportFactory.createFromEnvironment();
+
+      expect(transport1).toBeInstanceOf(StdioTransport);
+      expect(transport2).toBeInstanceOf(StdioTransport);
+      expect(transport1).not.toBe(transport2); // Different instances
     });
+  });
 
-    it('should create HTTP transport from environment', () => {
-      process.env.MCP_TRANSPORT = 'http';
-      const transport = TransportFactory.createFromEnvironment();
-      expect(transport).toBeInstanceOf(HttpTransport);
-      expect(transport.getName()).toBe('http');
-    });
+  describe('integration', () => {
+    it('should create equivalent transports using both methods', () => {
+      const configTransport = TransportFactory.create({ type: 'stdio' });
+      const envTransport = TransportFactory.createFromEnvironment();
 
-    it('should set HTTP options from environment', () => {
-      process.env.MCP_TRANSPORT = 'http';
-      process.env.MCP_HTTP_PORT = '8080';
-      process.env.MCP_HTTP_HOST = '0.0.0.0';
-
-      const transport = TransportFactory.createFromEnvironment();
-      expect(transport).toBeInstanceOf(HttpTransport);
-      expect(transport.getName()).toBe('http');
+      expect(configTransport.getName()).toBe(envTransport.getName());
+      expect(configTransport).toBeInstanceOf(StdioTransport);
+      expect(envTransport).toBeInstanceOf(StdioTransport);
     });
   });
 });

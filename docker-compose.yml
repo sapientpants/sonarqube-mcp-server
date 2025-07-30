@@ -1,0 +1,74 @@
+# Docker Compose for SonarQube MCP Server (stdio-only)
+# Suitable for development and testing with MCP gateways
+
+services:
+  sonarqube-mcp-server:
+    build: .
+    image: sonarqube-mcp-server:1.7.0-stdio
+    container_name: sonarqube-mcp-stdio
+    
+    # Environment configuration
+    environment:
+      # SonarQube connection
+      SONARQUBE_URL: ${SONARQUBE_URL:-https://sonarcloud.io}
+      SONARQUBE_TOKEN: ${SONARQUBE_TOKEN}
+      SONARQUBE_ORGANIZATION: ${SONARQUBE_ORGANIZATION}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      NODE_ENV: production
+    
+    # Stdio transport - no ports needed
+    # Network mode can be none for maximum isolation
+    network_mode: none
+    
+    # Resource limits for stdio operation
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    # Health check using command execution (no HTTP endpoint)
+    healthcheck:
+      test: ["CMD", "node", "-e", "process.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Security context
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,noexec,nosuid,nodev
+    
+    # Volume for logs (optional)
+    volumes:
+      - ./logs:/app/logs
+    
+    # Labels for container management
+    labels:
+      - "com.sonarqube.mcp.transport=stdio"
+      - "com.sonarqube.mcp.version=1.7.0-stdio"
+      - "com.sonarqube.mcp.description=SonarQube MCP Server - stdio transport only"
+
+  # Example: MCP Gateway integration (commented out - requires actual gateway)
+  # mcp-gateway:
+  #   image: docker/mcp-gateway:latest  # Hypothetical gateway
+  #   container_name: mcp-gateway
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - MCP_SERVERS=sonarqube-mcp-stdio
+  #   depends_on:
+  #     - sonarqube-mcp-server
+  #   volumes:
+  #     - ./gateway-config:/config

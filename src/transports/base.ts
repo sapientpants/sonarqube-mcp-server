@@ -30,7 +30,7 @@ export interface ITransportConfig {
   /**
    * The type of transport to use.
    */
-  type: 'stdio' | 'http';
+  type: 'stdio';
 
   /**
    * Optional configuration specific to the transport type.

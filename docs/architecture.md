@@ -8,84 +8,52 @@ The SonarQube MCP Server is designed as a Model Context Protocol (MCP) server th
 
 ```mermaid
 graph TB
-    subgraph "AI Assistant"
-        Claude[Claude/Other AI]
+    subgraph "MCP Client"
+        Claude[Claude Desktop/AI Assistant]
     end
     
     subgraph "MCP Server"
-        Transport[Transport Layer]
-        Auth[Authentication Layer]
+        Transport[STDIO Transport]
         Handlers[Tool Handlers]
         Domains[Domain Services]
-        Monitoring[Monitoring Services]
+        Client[SonarQube Client]
+        Circuit[Circuit Breaker]
     end
     
     subgraph "External Services"
         SQ[SonarQube API]
-        IdP[Identity Provider]
-        AuthServer[Built-in Auth Server]
     end
     
     Claude <--> Transport
-    Transport --> Auth
-    Auth --> Handlers
+    Transport --> Handlers
     Handlers --> Domains
-    Domains --> SQ
-    Auth <--> IdP
-    Auth <--> AuthServer
-    Monitoring --> Handlers
+    Domains --> Client
+    Client --> Circuit
+    Circuit --> SQ
     
     style Transport fill:#f9f,stroke:#333,stroke-width:2px
-    style Auth fill:#bbf,stroke:#333,stroke-width:2px
     style Domains fill:#bfb,stroke:#333,stroke-width:2px
+    style Circuit fill:#fbb,stroke:#333,stroke-width:2px
 ```
 
 ## Core Components
 
 ### 1. Transport Layer
 
-The transport layer provides flexible communication mechanisms between AI assistants and the MCP server:
+The server uses **STDIO Transport** exclusively, providing:
+- Simple, reliable communication via standard input/output
+- No network configuration required
+- Perfect for local usage and MCP gateway deployments
+- Minimal resource overhead
 
-- **STDIO Transport**: Default for local, single-user scenarios
-- **HTTP Transport**: Enterprise-grade transport with OAuth 2.0 support
-  - Streamable HTTP endpoints for MCP protocol
-  - Health check endpoints (`/health`, `/ready`)
-  - OAuth 2.0 metadata discovery endpoints
-  - Session management for concurrent users
+### 2. Tool Handlers
 
-### 2. Authentication & Authorization
+MCP tools are the primary interface for AI assistants to interact with SonarQube:
 
-#### Multi-layered Security Architecture
-
-```mermaid
-graph LR
-    subgraph "OAuth Layer"
-        JWT[JWT Validation]
-        JWKS[JWKS Client]
-    end
-    
-    subgraph "Service Account Layer"
-        SAM[Service Account Mapper]
-        SAH[Health Monitor]
-    end
-    
-    subgraph "Permission Layer"
-        PM[Permission Manager]
-        Filter[Permission Filter]
-    end
-    
-    JWT --> SAM
-    SAM --> PM
-    SAH --> SAM
-    PM --> Filter
-```
-
-#### Components:
-
-1. **Token Validator**: Validates JWT tokens with signature verification
-2. **Service Account Mapper**: Maps OAuth identities to SonarQube service accounts
-3. **Permission Manager**: Group-based access control with regex project filtering
-4. **Built-in Authorization Server**: OAuth 2.0 server for local development/testing
+- Each tool maps to specific SonarQube API endpoints
+- Input validation and parameter transformation
+- Error handling with user-friendly messages
+- Response formatting for AI consumption
 
 ### 3. Domain Services
 
@@ -98,161 +66,136 @@ Following Domain-Driven Design (DDD), functionality is organized into cohesive d
 - **Quality Gates Domain**: Quality gate definitions and status
 - **Hotspots Domain**: Security hotspots management
 - **Source Code Domain**: Source viewing with SCM blame info
+- **System Domain**: Health and status monitoring
 - **Components Domain**: File and directory navigation
-- **System Domain**: System health and status
 
-### 4. Tool Handlers
+### 4. SonarQube Client
 
-Each SonarQube operation is exposed as a discrete MCP tool:
+The client layer handles all communication with SonarQube:
+
+- **Authentication**: Supports token, basic auth, and system passcode
+- **Error Handling**: Comprehensive error messages with solutions
+- **Circuit Breaker**: Prevents cascading failures
+- **Response Caching**: Reduces API calls for repeated requests
+
+### 5. Circuit Breaker Pattern
+
+Protects against SonarQube API failures:
 
 ```typescript
-interface MCPTool {
-  name: string;
-  description: string;
-  inputSchema: z.ZodSchema;
-  handler: (params: any) => Promise<any>;
+interface CircuitBreakerConfig {
+  timeout: 30000,           // 30 second timeout
+  errorThreshold: 0.5,      // 50% error rate triggers open
+  volumeThreshold: 5,       // Minimum 5 requests
+  resetTimeout: 60000,      // 60 seconds before retry
 }
 ```
 
-Tools are automatically discovered and registered by the MCP SDK.
-
-### 5. Monitoring & Observability
-
-Comprehensive monitoring stack for production deployments:
-
-- **Metrics Service**: Prometheus-compatible metrics
-- **Tracing Service**: OpenTelemetry distributed tracing
-- **Health Service**: Liveness and readiness probes
-- **Circuit Breaker**: Fault tolerance for external services
-- **Audit Logger**: Compliance-ready audit trail
-
 ## Data Flow
 
-### Request Processing Pipeline
+1. **Request Flow**:
+   ```
+   AI Assistant → STDIO → Tool Handler → Domain Service → SonarQube Client → Circuit Breaker → SonarQube API
+   ```
 
-```mermaid
-sequenceDiagram
-    participant AI as AI Assistant
-    participant T as Transport
-    participant A as Auth
-    participant H as Handler
-    participant D as Domain
-    participant SQ as SonarQube
-    
-    AI->>T: MCP Request
-    T->>A: Authenticate
-    A->>A: Validate Token
-    A->>A: Map Service Account
-    A->>H: Authorized Request
-    H->>D: Domain Operation
-    D->>SQ: API Call
-    SQ-->>D: Response
-    D-->>H: Processed Data
-    H-->>A: Result
-    A-->>T: Filtered Response
-    T-->>AI: MCP Response
+2. **Response Flow**:
+   ```
+   SonarQube API → Circuit Breaker → SonarQube Client → Domain Service → Tool Handler → STDIO → AI Assistant
+   ```
+
+## Authentication
+
+The server supports multiple authentication methods for SonarQube:
+
+1. **Token Authentication** (Recommended)
+   - Bearer tokens for SonarQube 10.0+
+   - Token as username for older versions
+   
+2. **Basic Authentication**
+   - Username/password combination
+   - Suitable for self-hosted instances
+   
+3. **System Passcode**
+   - For automated deployment scenarios
+
+## Error Handling
+
+Multi-level error handling ensures reliability:
+
+1. **Transport Level**: Connection and protocol errors
+2. **Tool Level**: Parameter validation and tool-specific errors
+3. **Domain Level**: Business logic validation
+4. **Client Level**: API communication errors
+5. **Circuit Breaker**: Failure prevention and recovery
+
+## Logging
+
+File-based logging to avoid stdio conflicts:
+
+```typescript
+interface LogConfig {
+  file?: string;           // Log file path
+  level: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
+  format: 'json' | 'text';
+}
 ```
 
-## Security Architecture
+## Performance Optimizations
 
-### Defense in Depth
-
-1. **Transport Security**: TLS/HTTPS for all external communications
-2. **Authentication**: JWT validation with signature verification
-3. **Authorization**: Fine-grained permissions based on groups/roles
-4. **Service Accounts**: Isolated credentials per team/environment
-5. **Audit Trail**: Comprehensive logging of all operations
-6. **Data Filtering**: Redaction of sensitive information
-
-### Permission Model
-
-```yaml
-permissions:
-  - group: "developers"
-    projects: ["^project-.*"]
-    tools:
-      allow: ["*"]
-      deny: ["system_*"]
-    issues:
-      severities: ["MAJOR", "CRITICAL", "BLOCKER"]
-      redactPersonalData: false
-    
-  - group: "external-contractors"  
-    projects: ["^public-.*"]
-    tools:
-      allow: ["issues", "metrics"]
-    issues:
-      redactPersonalData: true
-```
-
-## Scalability & Performance
-
-### Caching Strategy
-
-- **Token Cache**: Validated tokens cached for performance
-- **Permission Cache**: Computed permissions cached per session
-- **JWKS Cache**: Public keys cached with TTL
-- **Service Account Health**: Periodic health checks with caching
-
-### Connection Pooling
-
-- HTTP keep-alive for SonarQube API connections
-- Connection pool per service account
-- Automatic failover for failed accounts
+1. **Minimal Dependencies**: Reduced package size
+2. **Lazy Loading**: Components loaded on demand
+3. **Response Caching**: Reduces API calls
+4. **Circuit Breaker**: Prevents unnecessary failed requests
+5. **Efficient Data Structures**: Optimized for common operations
 
 ## Deployment Architecture
 
-### Kubernetes Deployment
+### Local Deployment
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-spec:
-  replicas: 3
-  template:
-    spec:
-      containers:
-      - name: sonarqube-mcp
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
+│ Claude Desktop  │────▶│  MCP Server  │────▶│ SonarQube   │
+│  (MCP Client)   │◀────│   (stdio)    │◀────│    API      │
+└─────────────────┘     └──────────────┘     └─────────────┘
 ```
 
-### High Availability
+### Gateway Deployment
 
-- Stateless design enables horizontal scaling
-- Health checks for automatic restarts
-- Circuit breakers prevent cascade failures
-- Service account failover for resilience
+```
+┌─────────────────┐     ┌──────────────┐     ┌──────────────┐     ┌─────────────┐
+│   AI Client     │────▶│ MCP Gateway  │────▶│  MCP Server  │────▶│ SonarQube   │
+│                 │◀────│              │◀────│   (stdio)    │◀────│    API      │
+└─────────────────┘     └──────────────┘     └──────────────┘     └─────────────┘
+                              │
+                              ├── Authentication
+                              ├── Multi-tenancy
+                              ├── Load Balancing
+                              └── Monitoring
+```
 
-## Technology Stack
+## Design Principles
 
-- **Runtime**: Node.js 20+ with TypeScript
-- **MCP SDK**: @modelcontextprotocol/sdk
-- **HTTP Server**: Express.js
-- **Authentication**: jsonwebtoken, jose
-- **Monitoring**: Prometheus, OpenTelemetry
-- **Testing**: Jest with 80%+ coverage
-- **Container**: Docker with multi-stage builds
-
-## Architecture Decision Records
-
-Key architectural decisions are documented in ADRs:
-
-- [ADR-003](architecture/decisions/0003-adopt-model-context-protocol-for-sonarqube-integration.md): Adopt MCP
-- [ADR-005](architecture/decisions/0005-domain-driven-design-of-sonarqube-modules.md): Domain-Driven Design
-- [ADR-015](architecture/decisions/0015-transport-architecture-refactoring.md): Transport Architecture
-- [ADR-016](architecture/decisions/0016-http-transport-with-oauth-2-0-metadata-endpoints.md): HTTP Transport
-- [ADR-017](architecture/decisions/0017-comprehensive-audit-logging-system.md): Audit Logging
+1. **Simplicity**: stdio-only transport reduces complexity
+2. **Reliability**: Circuit breakers and comprehensive error handling
+3. **Performance**: Minimal resource usage and efficient operations
+4. **Flexibility**: Works with various MCP gateways
+5. **Maintainability**: Clean domain separation and clear interfaces
 
 ## Future Considerations
 
-1. **WebSocket Transport**: Real-time bidirectional communication
-2. **Distributed Caching**: Redis for shared cache across instances
-3. **Message Queue Integration**: Async processing for long operations
-4. **Multi-Region Deployment**: Geographic distribution for latency
-5. **Advanced Analytics**: Usage patterns and optimization insights
+While the current stdio-only design is optimal for most use cases, the architecture allows for:
+
+1. **Gateway Extensions**: Enhanced features via MCP gateways
+2. **Performance Improvements**: Further optimizations as needed
+3. **Additional Tools**: New SonarQube features as they become available
+4. **Enhanced Caching**: Smarter caching strategies
+
+## Architecture Decision Records
+
+All significant architectural decisions are documented in ADRs located in `/docs/architecture/decisions/`. Key decisions include:
+
+- ADR-0003: Adopt Model Context Protocol
+- ADR-0004: Use SonarQube Web API Client
+- ADR-0005: Domain-Driven Design approach
+- ADR-0010: Use stdio transport for MCP communication
+- ADR-0011: Docker containerization for deployment

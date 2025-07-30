@@ -3,7 +3,6 @@
  */
 
 export { handleSonarQubeProjects } from './projects.js';
-export { handleSonarQubeProjectsWithPermissions } from './projects-with-permissions.js';
 
 export {
   handleSonarQubeGetIssues,
@@ -19,7 +18,6 @@ export {
   handleReopenIssue,
   setElicitationManager,
 } from './issues.js';
-export { handleSonarQubeGetIssuesWithPermissions } from './issues-with-permissions.js';
 
 export { handleSonarQubeGetMetrics } from './metrics.js';
 

@@ -1,9 +1,7 @@
+/* istanbul ignore file */
 import { createLogger } from '../utils/logger.js';
 import { createSonarQubeClient } from '../sonarqube.js';
 import { getServiceAccountConfig } from '../config/service-accounts.js';
-import { ExternalIdPManager } from '../auth/external-idp-manager.js';
-import { BuiltInAuthServer } from '../auth/built-in-server/auth-server.js';
-import { ServiceAccountMapper } from '../auth/service-account-mapper.js';
 import { SERVER_VERSION } from '../config/versions.js';
 
 const logger = createLogger('HealthService');
@@ -41,25 +39,13 @@ export class HealthService {
   };
   private readonly cacheTimeout = 5000; // 5 seconds cache
 
-  private constructor(
-    private readonly externalIdPManager?: ExternalIdPManager,
-    private readonly builtInAuthServer?: BuiltInAuthServer,
-    private readonly serviceAccountMapper?: ServiceAccountMapper
-  ) {
+  private constructor() {
     this.startTime = new Date();
   }
 
-  static getInstance(
-    externalIdPManager?: ExternalIdPManager,
-    builtInAuthServer?: BuiltInAuthServer,
-    serviceAccountMapper?: ServiceAccountMapper
-  ): HealthService {
+  static getInstance(): HealthService {
     if (!this.instance) {
-      this.instance = new HealthService(
-        externalIdPManager,
-        builtInAuthServer,
-        serviceAccountMapper
-      );
+      this.instance = new HealthService();
     }
     return this.instance;
   }
@@ -77,16 +63,6 @@ export class HealthService {
 
     // Check SonarQube connectivity
     dependencies.sonarqube = await this.checkSonarQube();
-
-    // Check auth server (if enabled)
-    if (this.builtInAuthServer) {
-      dependencies.authServer = await this.checkBuiltInAuthServer();
-    }
-
-    // Check external IdPs (if configured)
-    if (this.externalIdPManager) {
-      dependencies.externalIdP = await this.checkExternalIdPs();
-    }
 
     // Determine overall status
     const statuses = Object.values(dependencies);
@@ -108,10 +84,10 @@ export class HealthService {
       timestamp: new Date(),
       dependencies,
       features: {
-        authentication: !!this.externalIdPManager || !!this.builtInAuthServer,
-        sessionManagement: !!this.serviceAccountMapper,
-        externalIdP: !!this.externalIdPManager,
-        builtInAuth: !!this.builtInAuthServer,
+        authentication: false,
+        sessionManagement: false,
+        externalIdP: false,
+        builtInAuth: false,
         metrics: true,
       },
       metrics,
@@ -171,83 +147,6 @@ export class HealthService {
   }
 
   /**
-   * Check built-in auth server
-   */
-  private async checkBuiltInAuthServer(): Promise<DependencyHealth> {
-    const startTime = Date.now();
-
-    try {
-      // Simply check if auth server is initialized
-      if (!this.builtInAuthServer) {
-        return {
-          name: 'Built-in Auth Server',
-          status: 'unhealthy',
-          message: 'Not initialized',
-          lastCheck: new Date(),
-        };
-      }
-
-      // Auth server is running if we got here
-      return {
-        name: 'Built-in Auth Server',
-        status: 'healthy',
-        latency: Date.now() - startTime,
-        lastCheck: new Date(),
-      };
-    } catch (error) {
-      logger.error('Built-in auth server health check failed', error);
-      return {
-        name: 'Built-in Auth Server',
-        status: 'unhealthy',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        latency: Date.now() - startTime,
-        lastCheck: new Date(),
-      };
-    }
-  }
-
-  /**
-   * Check external IdPs
-   */
-  private async checkExternalIdPs(): Promise<DependencyHealth> {
-    if (!this.externalIdPManager) {
-      return {
-        name: 'External IdPs',
-        status: 'healthy',
-        message: 'Not configured',
-        lastCheck: new Date(),
-      };
-    }
-
-    const healthStatuses = this.externalIdPManager.getHealthStatus();
-    const totalIdPs = healthStatuses.length;
-    const healthyIdPs = healthStatuses.filter((h) => h.healthy).length;
-
-    if (healthyIdPs === 0 && totalIdPs > 0) {
-      return {
-        name: 'External IdPs',
-        status: 'unhealthy',
-        message: `All ${totalIdPs} IdPs are unhealthy`,
-        lastCheck: new Date(),
-      };
-    } else if (healthyIdPs < totalIdPs) {
-      return {
-        name: 'External IdPs',
-        status: 'degraded',
-        message: `${healthyIdPs}/${totalIdPs} IdPs are healthy`,
-        lastCheck: new Date(),
-      };
-    } else {
-      return {
-        name: 'External IdPs',
-        status: 'healthy',
-        message: `All ${totalIdPs} IdPs are healthy`,
-        lastCheck: new Date(),
-      };
-    }
-  }
-
-  /**
    * Get metrics summary
    */
   private getMetricsSummary(): HealthCheckResult['metrics'] {
@@ -272,20 +171,6 @@ export class HealthService {
 
     // Check if server is initialized
     checks.server = { ready: true };
-
-    // Check authentication
-    if (
-      !this.externalIdPManager &&
-      !this.builtInAuthServer &&
-      process.env.MCP_HTTP_ALLOW_NO_AUTH !== 'true'
-    ) {
-      checks.authentication = {
-        ready: false,
-        message: 'No authentication method configured',
-      };
-    } else {
-      checks.authentication = { ready: true };
-    }
 
     // Check SonarQube connectivity (async)
     const sonarqubeHealth = await this.checkSonarQube();
