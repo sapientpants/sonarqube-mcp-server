@@ -28,8 +28,7 @@ RUN pnpm run build
 # Production stage
 FROM node:20-alpine
 
-# Install required packages for health checks
-RUN apk add --no-cache curl
+# No additional packages needed for stdio transport
 
 # Create non-root user
 RUN addgroup -g 1001 nodejs && \
@@ -57,25 +56,13 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=builder /app/dist ./dist
 
 # Create logs directory and set permissions
-RUN mkdir -p logs/audit && \
+RUN mkdir -p logs && \
     chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs
 
-# Set default environment variables for HTTP transport
-ENV MCP_TRANSPORT=http
-ENV MCP_HTTP_HOST=0.0.0.0
-ENV MCP_HTTP_PORT=3000
-
-# Expose the port the app runs on
-EXPOSE 3000
-# Expose metrics port
-EXPOSE 9090
-
-# Health check configuration
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
+# stdio transport - no ports or HTTP configuration needed
 
 # Start the server
 CMD ["node", "--experimental-specifier-resolution=node", "dist/index.js"] 

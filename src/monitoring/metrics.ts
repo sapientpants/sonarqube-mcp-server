@@ -348,3 +348,38 @@ export function cleanupMetricsService(): void {
     metricsService = null;
   }
 }
+
+/**
+ * Track a SonarQube API request
+ */
+export function trackSonarQubeRequest(
+  endpoint: string,
+  success: boolean,
+  duration: number,
+  errorType?: string
+): void {
+  const metrics = getMetricsService();
+  metrics.recordSonarQubeRequest(endpoint, success ? 'success' : 'error', duration);
+  if (!success && errorType) {
+    metrics.recordSonarQubeError(errorType, endpoint);
+  }
+}
+
+/**
+ * Update circuit breaker metrics
+ */
+export function updateCircuitBreakerMetrics(
+  service: string,
+  state: 'closed' | 'open' | 'half-open'
+): void {
+  const metrics = getMetricsService();
+  metrics.updateCircuitBreakerState(service, state);
+}
+
+/**
+ * Track circuit breaker failure
+ */
+export function trackCircuitBreakerFailure(service: string): void {
+  const metrics = getMetricsService();
+  metrics.recordCircuitBreakerFailure(service);
+}

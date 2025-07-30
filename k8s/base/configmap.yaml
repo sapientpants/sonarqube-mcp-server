@@ -11,44 +11,14 @@ data:
   # SonarQube Configuration
   SONARQUBE_URL: "https://sonarcloud.io"
   
-  # MCP Configuration
-  MCP_TRANSPORT: "http"
-  MCP_HTTP_PORT: "3000"
-  MCP_HTTP_HTTPS_ENABLED: "true"
+  # Logging Configuration
+  LOG_LEVEL: "INFO"
   
-  # OAuth Configuration
-  MCP_HTTP_OAUTH_ISSUER: "https://auth.example.com"
-  MCP_HTTP_OAUTH_AUDIENCE: "sonarqube-mcp"
-  
-  # Service Account Configuration
-  SERVICE_ACCOUNT_ENABLE: "true"
-  SERVICE_ACCOUNT_HEALTH_CHECK_ENABLED: "true"
-  SERVICE_ACCOUNT_HEALTH_CHECK_INTERVAL: "300000"
-  SERVICE_ACCOUNT_FAILOVER_ENABLED: "true"
-  
-  # Monitoring Configuration
-  METRICS_ENABLED: "true"
-  METRICS_PORT: "9090"
+  # OpenTelemetry Monitoring (Optional)
   OTEL_TRACES_ENABLED: "true"
   OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+  OTEL_SERVICE_NAME: "sonarqube-mcp"
   
-  # Audit Configuration
-  AUDIT_LOG_ENABLED: "true"
-  AUDIT_LOG_PII_REDACTION: "true"
-  AUDIT_LOG_RETENTION_DAYS: "90"
-  
-  # Performance Configuration
-  HTTP_AGENT_MAX_SOCKETS: "100"
-  HTTP_AGENT_MAX_FREE_SOCKETS: "10"
-  HTTP_AGENT_TIMEOUT: "60000"
-  
-  # Circuit Breaker
-  CIRCUIT_BREAKER_ENABLED: "true"
-  CIRCUIT_BREAKER_TIMEOUT: "5000"
-  CIRCUIT_BREAKER_THRESHOLD: "50"
-  
-  # Cache Configuration
-  PERMISSION_CACHE_TTL: "300000"
-  PERMISSION_CACHE_MAX_SIZE: "1000"
-  TOKEN_CACHE_TTL: "3600000"
-  TOKEN_CACHE_MAX_SIZE: "10000"
+  # MCP Features (Optional)
+  SONARQUBE_MCP_ELICITATION: "true"
+  SONARQUBE_MCP_BULK_THRESHOLD: "5"

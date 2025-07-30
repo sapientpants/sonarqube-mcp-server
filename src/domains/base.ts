@@ -1,7 +1,7 @@
 import { SonarQubeClient as WebApiClient } from 'sonarqube-web-api-client';
 import { createLogger } from '../utils/logger.js';
 import { traceSonarQubeApi } from '../monitoring/tracing.js';
-import { trackSonarQubeRequest } from '../monitoring/middleware.js';
+import { trackSonarQubeRequest } from '../monitoring/metrics.js';
 import { wrapWithCircuitBreaker } from '../monitoring/circuit-breaker.js';
 
 /**

@@ -1,6 +1,6 @@
 import CircuitBreaker from 'opossum';
 import { createLogger } from '../utils/logger.js';
-import { updateCircuitBreakerMetrics, trackCircuitBreakerFailure } from './middleware.js';
+import { updateCircuitBreakerMetrics, trackCircuitBreakerFailure } from './metrics.js';
 
 const logger = createLogger('CircuitBreaker');
 

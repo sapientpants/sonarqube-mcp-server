@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/component: server
     app.kubernetes.io/version: "1.9.0"
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: sonarqube-mcp
@@ -27,10 +27,7 @@ spec:
         app.kubernetes.io/instance: production
         app.kubernetes.io/component: server
         app.kubernetes.io/version: "1.9.0"
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9090"
-        prometheus.io/path: "/metrics"
+      annotations: {}
     spec:
       serviceAccountName: sonarqube-mcp
       securityContext:
@@ -46,39 +43,19 @@ spec:
             - node
             - --experimental-specifier-resolution=node
             - dist/index.js
-          ports:
-            - name: http
-              containerPort: 3000
-              protocol: TCP
-            - name: metrics
-              containerPort: 9090
-              protocol: TCP
+          # stdio transport - no ports needed
           env:
             # Node.js optimization
             - name: NODE_OPTIONS
               value: "--max-old-space-size=1024"
             - name: UV_THREADPOOL_SIZE
               value: "8"
-            # OAuth public key path
-            - name: MCP_HTTP_OAUTH_PUBLIC_KEY_PATH
-              value: /oauth/public.pem
-            # TLS paths
-            - name: MCP_HTTP_HTTPS_CERT
-              value: /tls/tls.crt
-            - name: MCP_HTTP_HTTPS_KEY
-              value: /tls/tls.key
           envFrom:
             - configMapRef:
                 name: sonarqube-mcp-config
             - secretRef:
                 name: sonarqube-mcp-secrets
           volumeMounts:
-            - name: oauth-key
-              mountPath: /oauth
-              readOnly: true
-            - name: tls
-              mountPath: /tls
-              readOnly: true
             - name: logs
               mountPath: /app/logs
             - name: tmp
@@ -92,36 +69,29 @@ spec:
               memory: "2Gi"
               cpu: "2000m"
               ephemeral-storage: "5Gi"
+          # stdio transport - using exec probes instead of HTTP
           livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-              scheme: HTTP
+            exec:
+              command:
+                - node
+                - -e
+                - "process.exit(0)"
             initialDelaySeconds: 30
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
           readinessProbe:
-            httpGet:
-              path: /ready
-              port: http
-              scheme: HTTP
+            exec:
+              command:
+                - node
+                - -e
+                - "process.exit(0)"
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
             successThreshold: 1
             failureThreshold: 3
-          startupProbe:
-            httpGet:
-              path: /ready
-              port: http
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 5
-            successThreshold: 1
-            failureThreshold: 30
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -131,37 +101,9 @@ spec:
               drop:
                 - ALL
       volumes:
-        - name: oauth-key
-          secret:
-            secretName: sonarqube-mcp-oauth
-            defaultMode: 0400
-        - name: tls
-          secret:
-            secretName: sonarqube-mcp-tls
-            defaultMode: 0400
         - name: logs
           emptyDir:
             sizeLimit: 1Gi
         - name: tmp
           emptyDir:
             sizeLimit: 500Mi
-      affinity:
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchExpressions:
-                    - key: app.kubernetes.io/name
-                      operator: In
-                      values:
-                        - sonarqube-mcp
-                topologyKey: kubernetes.io/hostname
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app.kubernetes.io/name: sonarqube-mcp
-              app.kubernetes.io/instance: production
