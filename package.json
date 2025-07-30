@@ -56,7 +56,7 @@
   "license": "MIT",
   "packageManager": "pnpm@10.7.1",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.16.0",
+    "@modelcontextprotocol/sdk": "^1.17.0",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.62.0",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.203.0",
@@ -80,7 +80,7 @@
     "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
-    "@eslint/js": "^9.31.0",
+    "@eslint/js": "^9.32.0",
     "@jest/globals": "^30.0.5",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
@@ -94,13 +94,13 @@
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.38.0",
     "@typescript-eslint/parser": "^8.38.0",
-    "eslint": "^9.31.0",
+    "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.3",
     "husky": "^9.1.7",
     "jest": "^30.0.5",
     "lint-staged": "^16.1.2",
-    "nock": "^14.0.6",
+    "nock": "^14.0.7",
     "prettier": "^3.6.2",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.0",
