@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --skip-cleanup     Don't clean up test resources after completion"
             echo "  --only <test>      Run only specific test suite:"
-            echo "                     docs, terraform, helm, k8s, security, monitoring, load"
+            echo "                     docs, security, monitoring, load"
             echo "  --help             Show this help message"
             exit 0
             ;;
@@ -122,18 +122,6 @@ if [ ! -d "docs" ]; then
     echo -e "${YELLOW}⚠️  Documentation directory not found${NC}"
 fi
 
-if [ ! -d "helm/sonarqube-mcp" ]; then
-    echo -e "${YELLOW}⚠️  Helm chart directory not found${NC}"
-fi
-
-if [ ! -d "terraform" ]; then
-    echo -e "${YELLOW}⚠️  Terraform directory not found${NC}"
-fi
-
-if [ ! -d "k8s" ]; then
-    echo -e "${YELLOW}⚠️  Kubernetes manifests directory not found${NC}"
-fi
-
 # Start test execution
 echo -e "\n${GREEN}🚀 Starting test execution...${NC}"
 START_TIME=$(date +%s)
@@ -145,19 +133,6 @@ if should_run_test "docs"; then
         "Validates all documentation for broken links and code examples" || true
 fi
 
-# 2. Terraform Validation
-if should_run_test "terraform"; then
-    run_test_suite "Terraform" \
-        "$SCRIPT_DIR/validate-terraform.sh" \
-        "Validates all Terraform modules and configurations" || true
-fi
-
-# 3. Helm Chart Validation
-if should_run_test "helm"; then
-    run_test_suite "Helm Values" \
-        "$SCRIPT_DIR/test-helm-values.sh" \
-        "Tests Helm chart with various values configurations" || true
-fi
 
 # 4. Security Scanning
 if should_run_test "security"; then
@@ -181,20 +156,6 @@ if should_run_test "monitoring"; then
     fi
 fi
 
-# 6. Kubernetes Deployment Tests (optional - requires kind)
-if should_run_test "k8s"; then
-    echo -e "\n${YELLOW}☸️  Kubernetes tests require Docker and kind${NC}"
-    echo -n "Do you want to run Kubernetes deployment tests? (y/N): "
-    read -r response
-    
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        run_test_suite "Kubernetes Deployment" \
-            "$SCRIPT_DIR/test-k8s-helm-deployment.sh" \
-            "Tests both Kustomize and Helm deployments in kind cluster" || true
-    else
-        echo "Skipping Kubernetes tests"
-    fi
-fi
 
 # 7. Load Testing (optional - requires deployed service)
 if should_run_test "load"; then
@@ -254,9 +215,6 @@ if [ $FAILED_TESTS -gt 0 ]; then
         echo "  - Fix documentation issues (broken links, invalid code examples)"
     fi
     
-    if [[ "${TEST_RESULTS[Terraform]}" == "FAILED" ]]; then
-        echo "  - Review and fix Terraform configuration issues"
-    fi
     
     if [[ "${TEST_RESULTS[Security]}" == "FAILED" ]]; then
         echo "  - Address security vulnerabilities and misconfigurations"
