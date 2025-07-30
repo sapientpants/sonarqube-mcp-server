@@ -5,7 +5,7 @@
 /**
  * Server version - the version of the SonarQube MCP Server itself
  */
-export const SERVER_VERSION = '1.7.0-stdio';
+export const SERVER_VERSION = '1.7.0';
 
 /**
  * MCP SDK version currently in use
