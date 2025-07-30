@@ -1,12 +1,5 @@
 #!/usr/bin/env node
 
-import { initializeTracing } from './monitoring/tracing.js';
-
-// Initialize OpenTelemetry tracing before other imports
-initializeTracing({
-  enabled: process.env.OTEL_ENABLED === 'true' || process.env.OTEL_TRACES_EXPORTER !== undefined,
-});
-
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
@@ -494,7 +487,7 @@ export const componentsMcpHandler = (params: Record<string, unknown>) => compone
 // Register SonarQube tools
 mcpServer.tool(
   'projects',
-  'List all SonarQube projects with metadata (requires admin permissions)',
+  'List all SonarQube projects with metadata. Essential for project discovery, inventory management, and accessing project-specific analysis data (requires admin permissions)',
   projectsToolSchema,
   {
     title: 'List Projects',
@@ -507,7 +500,7 @@ mcpServer.tool(
 
 mcpServer.tool(
   'metrics',
-  'Get available metrics from SonarQube',
+  'Get available metrics from SonarQube. Use this to discover all measurable code quality dimensions (lines of code, complexity, coverage, duplications, etc.) for reports and dashboards',
   metricsToolSchema,
   {
     title: 'Get Metrics',
@@ -674,7 +667,7 @@ mcpServer.tool(
 // Register system API tools
 mcpServer.tool(
   'system_health',
-  'Get the health status of the SonarQube instance',
+  'Get the health status of the SonarQube instance. Monitor system components, database connectivity, and overall service availability for operational insights',
   systemHealthToolSchema,
   {
     title: 'Get System Health',
@@ -714,7 +707,7 @@ mcpServer.tool(
 // Register measures API tools
 mcpServer.tool(
   'measures_component',
-  'Get measures for a specific component',
+  'Get measures for a specific component (project, directory, or file). Essential for tracking code quality metrics, technical debt, and trends over time',
   componentMeasuresToolSchema,
   {
     title: 'Get Component Measures',
@@ -876,27 +869,32 @@ mcpServer.tool(
 // Only start the server if not in test mode
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
-  logger.info('Starting SonarQube MCP server', {
-    ...VERSION_INFO,
-    logFile: process.env.LOG_FILE ?? 'not configured',
-    logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
-    elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
-  });
+  (async () => {
+    logger.info('Starting SonarQube MCP server', {
+      ...VERSION_INFO,
+      logFile: process.env.LOG_FILE ?? 'not configured',
+      logLevel: process.env.LOG_LEVEL ?? 'DEBUG',
+      elicitation: elicitationManager.isEnabled() ? 'enabled' : 'disabled',
+    });
 
-  // Create transport using the factory
-  const transport = TransportFactory.createFromEnvironment();
-  logger.info(`Using ${transport.getName()} transport`);
+    // Create transport using the factory
+    const transport = TransportFactory.createFromEnvironment();
+    logger.info(`Using ${transport.getName()} transport`);
 
-  // Set the underlying Server instance on the elicitation manager
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  elicitationManager.setServer((mcpServer as any).server as Server);
+    // Set the underlying Server instance on the elicitation manager
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    elicitationManager.setServer((mcpServer as any).server as Server);
 
-  // Connect the transport to the MCP server
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await transport.connect((mcpServer as any).server as Server);
+    // Connect the transport to the MCP server
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await transport.connect((mcpServer as any).server as Server);
 
-  logger.info('SonarQube MCP server started successfully', {
-    mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',
+    logger.info('SonarQube MCP server started successfully', {
+      mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',
+    });
+  })().catch((error) => {
+    logger.error('Failed to start server', error);
+    process.exit(1);
   });
 }
 

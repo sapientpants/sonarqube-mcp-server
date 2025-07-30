@@ -3,66 +3,56 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm
-RUN npm install -g pnpm@10.7.1
+# Install pnpm and configure for production build
+RUN npm install -g pnpm@10.7.1 && \
+    echo "enable-pre-post-scripts=false" > .npmrc
 
-# Create .npmrc to ensure pnpm uses the overrides
-RUN echo "enable-pre-post-scripts=false" > .npmrc
-
-# Disable Husky during Docker build
+# Set environment for production build
 ENV SKIP_HUSKY=1
 ENV NODE_ENV=production
 
-# Install all dependencies (including dev)
+# Install dependencies (including dev for build)
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Copy source code
-COPY . .
-
-# Build TypeScript code
+# Copy source code and build
+COPY src/ ./src/
+COPY tsconfig.json ./
 RUN pnpm run build
 
-# Production stage
+# Install production dependencies separately for clean copy
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+
+# Production stage - minimal stdio-only runtime
 FROM node:20-alpine
 
-# No additional packages needed for stdio transport
-
-# Create non-root user
+# Create non-root user upfront
 RUN addgroup -g 1001 nodejs && \
     adduser -S -u 1001 -G nodejs nodejs
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Copy production dependencies from build stage
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
 
-# Install pnpm
-RUN npm install -g pnpm@10.7.1
-
-# Create .npmrc to ensure pnpm uses the overrides
-RUN echo "enable-pre-post-scripts=false" > .npmrc
-
-# Disable Husky during Docker build
-ENV SKIP_HUSKY=1
-ENV NODE_ENV=production
-
-# Install only production dependencies
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
-
-# Copy built application from builder stage
+# Copy built application
 COPY --from=builder /app/dist ./dist
 
-# Create logs directory and set permissions
+# Set environment for stdio-only operation
+ENV NODE_ENV=production
+ENV LOG_LEVEL=INFO
+
+# Create logs directory with proper permissions
 RUN mkdir -p logs && \
     chown -R nodejs:nodejs /app
 
 # Switch to non-root user
 USER nodejs
 
-# stdio transport - no ports or HTTP configuration needed
+# Stdio transport - no ports exposed, no health checks needed
 
-# Start the server
-CMD ["node", "--experimental-specifier-resolution=node", "dist/index.js"] 
+# Start the server with optimized flags for stdio
+CMD ["node", "--experimental-specifier-resolution=node", "--max-old-space-size=512", "dist/index.js"] 

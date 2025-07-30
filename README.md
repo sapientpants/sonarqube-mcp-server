@@ -489,20 +489,6 @@ For development or customization:
 
 **Required when using SonarCloud
 
-#### Transport Settings
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `MCP_TRANSPORT` | Transport type (stdio, http) | ❌ No | `stdio` |
-| **HTTP Transport** | | | |
-| `MCP_HTTP_PORT` | Port for HTTP transport | ❌ No | `3000` |
-| `MCP_HTTP_HOST` | Host for HTTP transport | ❌ No | `localhost` |
-| `MCP_HTTP_PUBLIC_URL` | Public URL for metadata endpoints | ❌ No | `http://localhost:3000` |
-| `MCP_OAUTH_AUTH_SERVERS` | Comma-separated list of OAuth authorization servers | ❌ No | - |
-| `MCP_OAUTH_BUILTIN` | Enable built-in OAuth authorization server metadata | ❌ No | `false` |
-| **External IdP Settings** | | | |
-| `MCP_EXTERNAL_IDP_1` | External IdP configuration (see format below) | ❌ No | - |
-| `MCP_EXTERNAL_IDP_2` | Additional IdP configurations (up to 10) | ❌ No | - |
 
 ### Authentication Methods
 
@@ -831,7 +817,7 @@ When using the HTTP transport with authentication enabled, the server provides c
 
 ### Monitoring and Observability
 
-The SonarQube MCP Server provides comprehensive monitoring and observability features for production deployments, including Prometheus metrics, OpenTelemetry tracing, health checks, and circuit breakers.
+The SonarQube MCP Server provides monitoring features through logging and error tracking. When deployed via MCP gateways, monitoring is typically handled at the gateway level.
 
 #### Prometheus Metrics
 
@@ -865,98 +851,6 @@ scrape_configs:
     metrics_path: '/metrics'
 ```
 
-#### OpenTelemetry Tracing
-
-The server supports distributed tracing via OpenTelemetry with multiple exporters.
-
-**Environment Variables:**
-
-```bash
-# Enable tracing
-export OTEL_ENABLED=true
-
-# Service configuration
-export OTEL_SERVICE_NAME=sonarqube-mcp-server
-export OTEL_SERVICE_VERSION=1.5.1
-
-# Exporter configuration (choose one)
-export OTEL_TRACES_EXPORTER=otlp  # Options: otlp, zipkin
-
-# OTLP exporter (default) - Works with Jaeger, Tempo, and other OTLP-compatible backends
-export OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4318/v1/traces
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer token"
-
-# For Jaeger: Use OTLP exporter with Jaeger's OTLP endpoint (typically port 4317 for gRPC or 4318 for HTTP)
-# Modern Jaeger versions (1.35+) support OTLP natively
-
-# Zipkin exporter
-export OTEL_EXPORTER_ZIPKIN_ENDPOINT=http://localhost:9411/api/v2/spans
-```
-
-**Traced Operations:**
-- All MCP tool invocations
-- SonarQube API calls
-- HTTP requests (Express middleware)
-- Database operations (if applicable)
-
-#### Health Checks
-
-**Endpoints:**
-
-1. **`/health`** - Comprehensive health check
-   ```json
-   {
-     "status": "healthy",
-     "version": "1.5.1",
-     "uptime": 86400000,
-     "timestamp": "2024-01-15T10:30:00Z",
-     "dependencies": {
-       "sonarqube": {
-         "status": "healthy",
-         "latency": 45
-       },
-       "authServer": {
-         "status": "healthy",
-         "latency": 12
-       }
-     },
-     "features": {
-       "authentication": true,
-       "metrics": true,
-       "tracing": true
-     }
-   }
-   ```
-
-2. **`/ready`** - Kubernetes readiness probe
-   ```json
-   {
-     "ready": true,
-     "checks": {
-       "server": { "ready": true },
-       "authentication": { "ready": true },
-       "sonarqube": { "ready": true }
-     }
-   }
-   ```
-
-**Kubernetes Configuration Example:**
-
-```yaml
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 3000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-
-readinessProbe:
-  httpGet:
-    path: /ready
-    port: 3000
-  initialDelaySeconds: 5
-  periodSeconds: 5
-```
 
 #### Circuit Breakers
 
