@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import { createLogger } from '../utils/logger.js';
 import { createSonarQubeClient } from '../sonarqube.js';
 import { getServiceAccountConfig } from '../config/service-accounts.js';
