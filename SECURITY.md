@@ -79,14 +79,14 @@ The SonarQube MCP Server operates with the following security model:
 - **Direct authentication**: Uses SonarQube's native authentication mechanisms
 - **No credential storage**: The server itself doesn't store credentials
 
-## Future Security Considerations
+## Enterprise Security Considerations
 
-While the current model is appropriate for local usage, future HTTP transport support would require:
+While the current model is appropriate for local usage, enterprise deployments using MCP gateways provide:
 
-- OAuth 2.1 resource server implementation
+- OAuth 2.1 resource server implementation at the gateway layer
 - Token validation and scoping per RFC8707
 - Multi-client authorization mechanisms
-- Backward compatibility with current auth methods
+- Enterprise authentication and authorization
 
 ## Reporting a Vulnerability
 

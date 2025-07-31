@@ -84,10 +84,6 @@ export class HealthService {
       timestamp: new Date(),
       dependencies,
       features: {
-        authentication: false,
-        sessionManagement: false,
-        externalIdP: false,
-        builtInAuth: false,
         metrics: true,
       },
       metrics,
