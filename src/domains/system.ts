@@ -6,28 +6,50 @@ import { BaseDomain } from './base.js';
  */
 export class SystemDomain extends BaseDomain {
   /**
-   * Gets the health status of the SonarQube instance
-   * @returns Promise with the health status
+   * Gets the health status of the SonarQube instance using V2 API
+   *
+   * The V2 API response structure differs from V1:
+   * - V2 returns `status` field instead of `health`
+   * - V2 includes optional `nodes` array for clustered setups
+   * - Each node can have its own `causes` array for health issues
+   *
+   * This method transforms the V2 response to maintain backward compatibility
+   * with the existing SonarQubeHealthStatus interface.
+   *
+   * @returns Promise with the health status containing aggregated causes from all nodes
    */
   async getHealth(): Promise<SonarQubeHealthStatus> {
     return this.tracedApiCall('system/health', async () => {
       const response = await this.webApiClient.system.getHealthV2();
-
-      // Collect causes from all nodes in clustered setups, or empty array for single node
-      const causes: string[] = [];
-      if (response.nodes) {
-        response.nodes.forEach((node) => {
-          if (node.causes) {
-            causes.push(...node.causes);
-          }
-        });
-      }
+      const causes = this.extractCausesFromNodes(response.nodes);
 
       return {
         health: response.status,
         causes,
       };
     });
+  }
+
+  /**
+   * Extracts and aggregates causes from all nodes in a clustered SonarQube setup
+   *
+   * @param nodes - Optional array of nodes from V2 health API response
+   * @returns Array of all causes from all nodes, or empty array if no nodes/causes
+   * @private
+   */
+  private extractCausesFromNodes(nodes?: Array<{ causes?: string[] }>): string[] {
+    if (!nodes) {
+      return [];
+    }
+
+    const causes: string[] = [];
+    nodes.forEach((node) => {
+      if (node.causes) {
+        causes.push(...node.causes);
+      }
+    });
+
+    return causes;
   }
 
   /**
