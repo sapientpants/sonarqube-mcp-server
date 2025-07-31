@@ -15,9 +15,10 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 ## Table of Contents
 
 - [Overview](#overview)
-- [What's New in v1.6.0](#whats-new-in-v160)
-  - [Stable Features](#stable-features)
-  - [Experimental Features](#experimental-features)
+- [What's New in v1.7.0](#whats-new-in-v170)
+  - [Changed](#changed)
+  - [Removed](#removed)
+- [Previous Updates](#previous-updates)
 - [Documentation](#documentation)
 - [Compatibility](#compatibility)
 - [Quick Start](#quick-start)
@@ -28,9 +29,6 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 - [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
   - [Authentication Methods](#authentication-methods)
-  - [External IdP Configuration](#external-identity-provider-idp-configuration)
-  - [Built-in Authorization Server](#built-in-authorization-server)
-  - [Monitoring and Observability](#monitoring-and-observability)
 - [Available Tools](#available-tools)
 - [Usage Examples](#usage-examples)
 - [Architecture](#architecture)
@@ -55,53 +53,64 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 - 🏥 **Monitor system health** - Check SonarQube instance status and availability
 - 🔄 **Enhanced error handling** - Clear error messages with solutions and automatic retry for transient failures
 
-## What's New in v1.6.0
+## What's New in v1.7.0
 
-### Stable Features
+### Changed
+- **Simplified to stdio-only transport** for MCP gateway deployment (#244)
+- **Removed HTTP transport and OAuth2 endpoints** to focus on stdio transport
+- **Updated dependencies** to latest versions:
+  - @modelcontextprotocol/sdk: 1.16.0 → 1.17.0
+  - @eslint/js: 9.31.0 → 9.32.0
+  - eslint: 9.31.0 → 9.32.0
+  - nock: 14.0.6 → 14.0.7
 
-#### Component Navigation Enhancement
+### Removed
+- HTTP transport implementation
+- OAuth2 metadata endpoints
+- Built-in authorization server
+- External IdP integration features
+
+## Previous Updates
+
+### v1.6.1
+- Fixed deprecated url.parse() usage with WHATWG URL API
+- Improved error formatting and object stringification in logs
+- Fixed externally-controlled format string security issue
+- Updated README.md documentation and organization
+
+### v1.6.0
+
+#### Stable Features
+
+##### Component Navigation Enhancement
 - **Components Tool**: Added comprehensive search and navigation for SonarQube components (projects, directories, files)
 - **Text Search**: Find components by name with free text search
 - **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
 - **Tree Navigation**: Navigate component hierarchies with different traversal strategies
 - **Language Filtering**: Find components by programming language
 
-#### Documentation Updates
+##### Documentation Updates
 - **Admin Permission Clarification**: Clarified that the `projects` tool requires admin permissions
 - **Alternative for Non-Admins**: Added guidance to use `components` tool with project qualifier for listing accessible projects
 
-### Experimental Features
+#### Features Removed in v1.7.0
+The following experimental features were removed in v1.7.0 to simplify the server for MCP gateway deployment:
 
-> **Note:** Experimental features are fully functional but may undergo API changes in future releases. Use them in production with caution and be prepared for potential breaking changes.
+- Built-in OAuth 2.0 authorization server
+- External Identity Provider (IdP) integration
+- HTTP transport with OAuth 2.0 metadata
 
-#### Built-in Authorization Server
-- **OAuth 2.0 Server**: Complete built-in OAuth 2.0 authorization server for self-contained authentication
-- **Authorization Code Flow**: Full support for OAuth 2.0 authorization code flow with PKCE
-- **Dynamic Client Registration**: Register OAuth clients dynamically via API (RFC7591)
-- **User Management**: Built-in user store with secure password hashing (bcrypt)
-- **API Key Support**: Generate API keys for automation and CI/CD workflows
-- **Token Management**: JWT token issuance with RS256 signing and automatic key rotation
-- **Refresh Token Rotation**: Secure refresh token support with automatic rotation
-- **Admin Interface**: RESTful API for user and client management
-- **Zero Configuration**: Automatically creates default admin user on first start
+### v1.5.1
+- Updated README.md to properly document v1.5.0 release changes
+- Moved v1.4.0 updates to "Previous Updates" section
 
-#### External Identity Provider (IdP) Integration
-- **OIDC/OAuth 2.0 Support**: Full integration with external identity providers
-- **JWKS Endpoint Discovery**: Automatic discovery and caching of JSON Web Key Sets
-- **Provider Support**: Pre-configured support for Azure AD, Okta, Auth0, and Keycloak
-- **Group Claim Mapping**: Automatic transformation of provider-specific group formats
-- **Multi-tenant Support**: Handle multiple tenants with tenant-specific configurations
-- **IdP Health Monitoring**: Continuous monitoring of IdP availability with failover
-- **Fallback Authentication**: Graceful fallback to static keys when IdPs are unavailable
+### v1.5.0
+- Added `components` action for searching and navigating SonarQube components
+- Added documentation section explaining permission requirements for different tools
+- Added examples showing how to list projects for both admin and non-admin users
+- Enhanced error message for `projects` tool to suggest using `components` tool when permission is denied
 
-#### HTTP Transport with OAuth 2.0 Metadata
-- **HTTP Transport**: Added HTTP transport support as an alternative to STDIO
-- **OAuth Metadata Endpoints**: Implements RFC9728 (Protected Resource Metadata) and RFC8414 (Authorization Server Metadata)
-- **WWW-Authenticate Headers**: Proper Bearer token authentication with metadata discovery
-- **CORS Support**: Built-in CORS handling for cross-origin requests
-- **Extensible Architecture**: Prepared for future OAuth 2.0 flow implementation
-
-#### Elicitation Support
+#### Elicitation Support (v1.4.0)
 - **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
 - **Bulk Operation Safety**: Confirmation prompts before marking multiple issues as false positive or won't fix
 - **Context Collection**: Optional comment collection when resolving issues
@@ -122,13 +131,6 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 
 ### Security & Authentication
 - **[Security Guide](docs/security.md)** - Authentication, authorization, and security best practices
-- **[IdP Integration Guide](docs/idp-integration.md)** - Integration with Azure AD, Okta, Auth0, and other identity providers
-- **[Permission System](docs/permission-system.md)** - Role-based access control and permission management
-- **[Service Account Management](docs/service-account-management.md)** - Managing service accounts and API access
-
-### Experimental Features
-- **[HTTP Transport Guide](docs/http-transport.md)** - HTTP transport configuration and usage
-- **[OAuth Token Validation](docs/oauth-token-validation.md)** - OAuth 2.0 token validation implementation details
 
 ## Compatibility
 
@@ -292,8 +294,6 @@ The simplest way to use the SonarQube MCP Server is through npx:
 Docker provides the most reliable deployment method by packaging all dependencies and ensuring consistent behavior across different environments.
 
 > **Enterprise Deployment**: For production deployments with Kubernetes, Helm charts, and cloud-specific configurations, see our comprehensive [Deployment Guide](docs/deployment.md).
-
-> **Experimental Features**: For HTTP transport, external IdP integration, and built-in authorization server configurations, see the specialized guides in the [Documentation](#documentation) section.
 
 #### Quick Start with Docker
 
@@ -562,91 +562,6 @@ The server supports three authentication methods, with important differences bet
 - `SONARQUBE_ORGANIZATION` is typically not needed
 - All authentication methods are supported
 
-### External Identity Provider (IdP) Configuration
-
-When using HTTP transport, you can configure external identity providers for enhanced authentication with JWKS endpoint discovery and automatic token validation.
-
-**Configuration Format:**
-```
-MCP_EXTERNAL_IDP_1=provider:azure-ad,issuer:https://login.microsoftonline.com/{tenant}/v2.0,audience:api://your-app-id,tenantId:your-tenant-id
-MCP_EXTERNAL_IDP_2=provider:okta,issuer:https://your-domain.okta.com,audience:api://default
-MCP_EXTERNAL_IDP_3=provider:auth0,issuer:https://your-domain.auth0.com/,audience:https://your-api
-MCP_EXTERNAL_IDP_4=provider:keycloak,issuer:https://keycloak.example.com/realms/your-realm,audience:account
-```
-
-**Supported Providers:**
-- `azure-ad` - Microsoft Azure Active Directory
-- `okta` - Okta Identity Platform
-- `auth0` - Auth0 Identity Platform
-- `keycloak` - Keycloak/Red Hat SSO
-- `generic` - Any OIDC-compliant provider
-
-**Configuration Options:**
-- `provider` - Provider type (required)
-- `issuer` - OIDC issuer URL (required)
-- `audience` - Expected audience (required, use `|` for multiple)
-- `jwksUri` - JWKS endpoint (optional, auto-discovered via OIDC)
-- `groupsClaim` - JWT claim containing groups (optional, provider defaults apply)
-- `groupsTransform` - Transform groups: `none`, `extract_name`, `extract_id` (optional)
-- `enableHealthMonitoring` - Enable health checks: `true`/`false` (optional)
-- `tenantId` - Tenant ID for multi-tenant providers (optional)
-
-**Example with Full Options:**
-```bash
-MCP_EXTERNAL_IDP_1=provider:azure-ad,issuer:https://login.microsoftonline.com/12345678-1234-1234-1234-123456789012/v2.0,audience:api://my-app-id|api://another-app,groupsClaim:groups,groupsTransform:extract_id,enableHealthMonitoring:true,tenantId:12345678-1234-1234-1234-123456789012
-```
-
-**Provider-Specific Defaults:**
-- **Azure AD**: `groupsClaim=groups`, `groupsTransform=extract_id`
-- **Okta**: `groupsClaim=groups`, `groupsTransform=none`
-- **Auth0**: `groupsClaim=https://auth0.com/groups`, `groupsTransform=none`
-- **Keycloak**: `groupsClaim=groups`, `groupsTransform=extract_name`
-
-### Built-in Authorization Server
-
-For environments that cannot use external IdPs, the server includes a minimal built-in OAuth 2.0 authorization server.
-
-**Enabling the Built-in Auth Server:**
-```bash
-MCP_BUILT_IN_AUTH_SERVER=true
-```
-
-**Features:**
-- OAuth 2.0 authorization code flow with PKCE
-- Dynamic client registration (POST `/auth/register`)
-- User authentication with secure password storage
-- API key generation for automation
-- JWT token issuance with automatic key rotation
-- Refresh token support with rotation
-
-**Default Admin User:**
-On first start, a default admin user is created:
-- Email: `admin@example.com`
-- Password: Randomly generated and logged to console
-- **Important**: Change this password immediately via the admin API
-
-**Endpoints:**
-- `GET /.well-known/oauth-authorization-server` - OAuth 2.0 metadata
-- `POST /auth/register` - Register new OAuth client
-- `GET /auth/authorize` - Authorization endpoint
-- `POST /auth/token` - Token endpoint
-- `POST /auth/revoke` - Token revocation
-- `GET /auth/jwks` - JSON Web Key Set
-- `POST /auth/admin/users` - Create users (admin only)
-- `GET /auth/admin/users` - List users (admin only)
-- `POST /auth/admin/users/:id/api-keys` - Generate API keys
-
-**API Key Authentication:**
-For automation and CI/CD, use API keys instead of OAuth flow:
-```bash
-curl -H "Authorization: ApiKey YOUR_API_KEY" http://localhost:3000/mcp
-```
-
-**Security Notes:**
-- This is a minimal implementation for development/testing
-- For production, use external IdPs when possible
-- Always use HTTPS in production (configure TLS)
-- Regularly rotate API keys
 
 ### Elicitation Configuration (Experimental)
 
@@ -724,244 +639,6 @@ The server supports file-based logging for debugging and monitoring. Since MCP s
 2024-01-15T10:30:50.567Z INFO [index] Successfully retrieved projects {"count": 5}
 ```
 
-### Audit Logging (Enterprise HTTP Transport)
-
-When using the HTTP transport with authentication enabled, the server provides comprehensive audit logging for compliance with SOC 2, ISO 27001, and other enterprise security requirements.
-
-**Features:**
-- **Structured JSON audit logs** with all security-relevant fields
-- **Authentication tracking**: All login attempts, token validations, and failures
-- **Tool invocation logging**: Complete audit trail of all MCP tool calls with parameters
-- **Permission checks**: Log of all authorization decisions and denials  
-- **Data access tracking**: Records of data queries and filtering operations
-- **PII redaction**: Automatic redaction of sensitive data (emails, IPs, SSNs, etc.)
-- **Log integrity**: SHA-256 checksums for tamper detection
-- **Configurable retention**: Automatic pruning based on retention policies
-
-**Configuration:**
-```json
-{
-  "mcpServers": {
-    "sonarqube": {
-      "command": "npx",
-      "args": ["-y", "sonarqube-mcp-server@latest"],
-      "transport": ["http"],
-      "transportOptions": {
-        "port": 3000,
-        "publicUrl": "https://mcp.example.com"
-      },
-      "env": {
-        "SONARQUBE_URL": "https://sonarqube.example.com",
-        "MCP_OAUTH_AUTH_SERVERS": "https://auth.example.com",
-        "AUDIT_LOG_PATH": "/var/log/sonarqube-mcp/audit",
-        "AUDIT_RETENTION_DAYS": "90",
-        "AUDIT_REDACT_PII": "true"
-      }
-    }
-  }
-}
-```
-
-**Audit Event Example:**
-```json
-{
-  "timestamp": "2024-01-20T10:30:00.123Z",
-  "eventId": "550e8400-e29b-41d4-a716-446655440000",
-  "eventType": "TOOL_COMPLETED",
-  "eventCategory": "tool_access",
-  "actor": {
-    "userId": "user@company.com",
-    "userGroups": ["engineering"],
-    "ipAddress": "192.168.1.100"
-  },
-  "target": {
-    "type": "tool",
-    "id": "issues"
-  },
-  "action": {
-    "type": "execute",
-    "result": "success",
-    "parameters": {
-      "project": "frontend",
-      "severities": ["CRITICAL", "BLOCKER"]
-    },
-    "duration": 245
-  },
-  "context": {
-    "sessionId": "session-123",
-    "traceId": "trace-456"
-  },
-  "security": {
-    "tokenAud": "https://mcp.example.com",
-    "tokenIss": "https://auth.example.com",
-    "tlsVersion": "1.3"
-  },
-  "compliance": {
-    "dataClassification": "internal",
-    "piiRedacted": true
-  },
-  "checksum": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
-}
-```
-
-**Environment Variables:**
-- `AUDIT_LOG_PATH`: Directory for audit log files (default: `./logs/audit`)
-- `AUDIT_RETENTION_DAYS`: Days to retain audit logs (default: 90)
-- `AUDIT_REDACT_PII`: Enable PII redaction (default: true)
-- `AUDIT_REDACT_IP_ADDRESSES`: Redact IP addresses (default: false)
-- `AUDIT_LOG_MAX_SIZE_MB`: Max size per log file (default: 100)
-- `AUDIT_ENABLE_HMAC`: Enable HMAC signing for integrity (default: false)
-- `AUDIT_HMAC_SECRET`: Secret key for HMAC signing
-
-**Note:** Audit logging is only available when using HTTP transport with OAuth authentication enabled. It is not available in stdio mode.
-
-### Monitoring and Observability
-
-The SonarQube MCP Server provides monitoring features through logging and error tracking. When deployed via MCP gateways, monitoring is typically handled at the gateway level.
-
-#### Prometheus Metrics
-
-**Endpoint:** `/metrics` (HTTP transport only)
-
-**Available Metrics:**
-
-| Metric | Type | Description | Labels |
-|--------|------|-------------|--------|
-| `mcp_requests_total` | Counter | Total number of MCP requests | `tool`, `status` |
-| `mcp_request_duration_seconds` | Histogram | MCP request duration | `tool` |
-| `mcp_auth_failures_total` | Counter | Authentication failures | `reason` |
-| `mcp_active_sessions` | Gauge | Number of active sessions | `transport` |
-| `mcp_sonarqube_requests_total` | Counter | SonarQube API requests | `endpoint`, `status` |
-| `mcp_sonarqube_request_duration_seconds` | Histogram | SonarQube API request duration | `endpoint` |
-| `mcp_sonarqube_errors_total` | Counter | SonarQube API errors | `type`, `endpoint` |
-| `mcp_permission_denials_total` | Counter | Permission denials | `user`, `resource`, `action` |
-| `mcp_service_account_health_status` | Gauge | Service account health (1=healthy, 0=unhealthy) | `service_account` |
-| `mcp_cache_hits_total` | Counter | Cache hits | `cache` |
-| `mcp_cache_misses_total` | Counter | Cache misses | `cache` |
-| `mcp_circuit_breaker_state` | Gauge | Circuit breaker state (0=closed, 1=open, 2=half-open) | `service` |
-| `mcp_event_loop_lag_seconds` | Histogram | Node.js event loop lag | - |
-
-**Example Prometheus Configuration:**
-
-```yaml
-scrape_configs:
-  - job_name: 'sonarqube-mcp'
-    static_configs:
-      - targets: ['localhost:3000']
-    metrics_path: '/metrics'
-```
-
-
-#### Circuit Breakers
-
-All SonarQube API calls are protected by circuit breakers to prevent cascading failures.
-
-**Configuration:**
-- **Timeout:** 30 seconds per request
-- **Error Threshold:** 50% failure rate
-- **Volume Threshold:** 5 requests minimum
-- **Reset Timeout:** 60 seconds
-- **Excluded Errors:** 4xx errors (except 429)
-
-**Behavior:**
-1. **Closed State:** Normal operation
-2. **Open State:** Requests fail fast without calling SonarQube
-3. **Half-Open State:** Limited requests to test recovery
-
-#### Performance Monitoring
-
-**Event Loop Monitoring:**
-- Tracks Node.js event loop lag
-- Measured every 5 seconds
-- Alerts on high lag (>100ms)
-
-**Resource Monitoring:**
-- CPU usage (via default Prometheus metrics)
-- Memory usage (heap, RSS, external)
-- Active handles and requests
-- Garbage collection metrics
-
-#### Integration Examples
-
-**Grafana Dashboard:**
-
-Create a dashboard with these key panels:
-1. Request Rate: `rate(mcp_requests_total[5m])`
-2. Error Rate: `rate(mcp_sonarqube_errors_total[5m])`
-3. Latency P95: `histogram_quantile(0.95, mcp_request_duration_seconds)`
-4. Circuit Breaker Status: `mcp_circuit_breaker_state`
-5. Active Sessions: `mcp_active_sessions`
-
-**Alerting Rules (Prometheus):**
-
-```yaml
-groups:
-  - name: sonarqube-mcp
-    rules:
-      - alert: HighErrorRate
-        expr: rate(mcp_sonarqube_errors_total[5m]) > 0.05
-        for: 5m
-        annotations:
-          summary: "High SonarQube API error rate"
-          
-      - alert: CircuitBreakerOpen
-        expr: mcp_circuit_breaker_state == 1
-        for: 1m
-        annotations:
-          summary: "Circuit breaker is open"
-          
-      - alert: ServiceAccountUnhealthy
-        expr: mcp_service_account_health_status == 0
-        for: 5m
-        annotations:
-          summary: "Service account is unhealthy"
-```
-
-## Security Model and Authentication
-
-### Current Security Model
-
-The SonarQube MCP Server is designed as a **single-user local tool** that runs on your local machine. Authentication credentials are managed through environment variables, which is appropriate for desktop/local usage scenarios.
-
-**Key characteristics:**
-- **Single-user design**: One MCP server instance per user
-- **Local execution**: Runs on the user's machine with their credentials
-- **Direct authentication**: Uses SonarQube's existing authentication mechanisms
-- **No OAuth flow**: As a stdio-based local tool, no OAuth is needed
-
-### Authentication Security Considerations
-
-1. **Token Authentication (Recommended)**
-   - Most secure option for API access
-   - Tokens can be scoped with limited permissions
-   - Can be revoked without changing passwords
-   - Recommended for both SonarCloud and SonarQube
-
-2. **Credential Storage**
-   - Credentials are stored in Claude Desktop's configuration file
-   - Ensure your system's file permissions protect this configuration
-   - Consider using a password manager to generate and store tokens
-
-3. **Permission Scoping**
-   - Create tokens with minimal required permissions
-   - Use read-only tokens when write access isn't needed
-   - Regularly review and rotate tokens
-
-### Future OAuth2 Considerations
-
-While the current implementation is well-suited for local single-user scenarios, the MCP specification positions MCP servers as OAuth 2.1 resource servers for future HTTP-based transport:
-
-**If HTTP transport is added in the future:**
-- The server would need to validate OAuth access tokens
-- Support for RFC8707 resource indicators would be required
-- Multi-client scenarios would need proper token scoping
-- The current environment variable approach would remain for backward compatibility
-
-**Current approach benefits:**
-- Simple setup without complex OAuth flows
-- Direct integration with existing SonarQube auth
-- Appropriate security for local single-user tools
-- No additional authentication infrastructure needed
 
 ## Available Tools
 
