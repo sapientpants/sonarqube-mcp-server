@@ -15,10 +15,6 @@ A Model Context Protocol (MCP) server that integrates with SonarQube to provide 
 ## Table of Contents
 
 - [Overview](#overview)
-- [What's New in v1.7.0](#whats-new-in-v170)
-  - [Changed](#changed)
-  - [Removed](#removed)
-- [Previous Updates](#previous-updates)
 - [Documentation](#documentation)
 - [Compatibility](#compatibility)
 - [Quick Start](#quick-start)
@@ -53,81 +49,12 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 - 🏥 **Monitor system health** - Check SonarQube instance status and availability
 - 🔄 **Enhanced error handling** - Clear error messages with solutions and automatic retry for transient failures
 
-## What's New in v1.7.0
-
-### Changed
-- **Simplified to stdio-only transport** for MCP gateway deployment (#244)
-- **Removed HTTP transport and OAuth2 endpoints** to focus on stdio transport
-- **Updated dependencies** to latest versions:
-  - @modelcontextprotocol/sdk: 1.16.0 → 1.17.0
-  - @eslint/js: 9.31.0 → 9.32.0
-  - eslint: 9.31.0 → 9.32.0
-  - nock: 14.0.6 → 14.0.7
-
-### Removed
-- HTTP transport implementation
-- OAuth2 metadata endpoints
-- Built-in authorization server
-- External IdP integration features
-
-## Previous Updates
-
-### v1.6.1
-- Fixed deprecated url.parse() usage with WHATWG URL API
-- Improved error formatting and object stringification in logs
-- Fixed externally-controlled format string security issue
-- Updated README.md documentation and organization
-
-### v1.6.0
-
-#### Stable Features
-
-##### Component Navigation Enhancement
-- **Components Tool**: Added comprehensive search and navigation for SonarQube components (projects, directories, files)
-- **Text Search**: Find components by name with free text search
-- **Type Filtering**: Filter by component types (project, directory, file, test, etc.)
-- **Tree Navigation**: Navigate component hierarchies with different traversal strategies
-- **Language Filtering**: Find components by programming language
-
-##### Documentation Updates
-- **Admin Permission Clarification**: Clarified that the `projects` tool requires admin permissions
-- **Alternative for Non-Admins**: Added guidance to use `components` tool with project qualifier for listing accessible projects
-
-#### Features Removed in v1.7.0
-The following experimental features were removed in v1.7.0 to simplify the server for MCP gateway deployment:
-
-- Built-in OAuth 2.0 authorization server
-- External Identity Provider (IdP) integration
-- HTTP transport with OAuth 2.0 metadata
-
-### v1.5.1
-- Updated README.md to properly document v1.5.0 release changes
-- Moved v1.4.0 updates to "Previous Updates" section
-
-### v1.5.0
-- Added `components` action for searching and navigating SonarQube components
-- Added documentation section explaining permission requirements for different tools
-- Added examples showing how to list projects for both admin and non-admin users
-- Enhanced error message for `projects` tool to suggest using `components` tool when permission is denied
-
-#### Elicitation Support (v1.4.0)
-- **Interactive User Input**: Added support for MCP elicitation capability (requires MCP SDK v1.13.0+)
-- **Bulk Operation Safety**: Confirmation prompts before marking multiple issues as false positive or won't fix
-- **Context Collection**: Optional comment collection when resolving issues
-- **Authentication Assistance**: Interactive setup when credentials are missing
-- **Opt-in Feature**: Enable with `SONARQUBE_MCP_ELICITATION=true` environment variable
-
 ## Documentation
 
 ### Core Guides
 - **[Architecture Guide](docs/architecture.md)** - System architecture, design decisions, and component overview
 - **[API Reference](docs/api-reference.md)** - Complete API documentation for all MCP tools
 - **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues, debugging, and solutions
-
-### Deployment & Operations
-- **[Deployment Guide](docs/deployment.md)** - Enterprise deployment with Docker, Kubernetes, and cloud platforms
-- **[Performance Tuning](docs/performance.md)** - Optimization strategies for production deployments
-- **[Integration Testing](docs/integration-testing.md)** - Testing strategies and best practices
 
 ### Security & Authentication
 - **[Security Guide](docs/security.md)** - Authentication, authorization, and security best practices
