@@ -140,44 +140,6 @@ Using System Passcode:
 }
 ```
 
-**HTTP Transport with External IdP (Experimental):**
-```json
-{
-  "mcpServers": {
-    "sonarqube": {
-      "command": "npx",
-      "args": ["-y", "sonarqube-mcp-server@latest"],
-      "env": {
-        "SONARQUBE_URL": "https://your-sonarqube.com",
-        "SONARQUBE_TOKEN": "your-token",
-        "MCP_TRANSPORT": "http",
-        "MCP_HTTP_PORT": "3000",
-        "MCP_HTTP_PUBLIC_URL": "https://mcp.example.com",
-        "MCP_EXTERNAL_IDP_1": "provider:azure-ad,issuer:https://login.microsoftonline.com/{tenant}/v2.0,audience:api://your-app-id"
-      }
-    }
-  }
-}
-```
-
-**Built-in Authorization Server (Experimental):**
-```json
-{
-  "mcpServers": {
-    "sonarqube": {
-      "command": "npx",
-      "args": ["-y", "sonarqube-mcp-server@latest"],
-      "env": {
-        "SONARQUBE_URL": "https://your-sonarqube.com",
-        "SONARQUBE_TOKEN": "your-token",
-        "MCP_TRANSPORT": "http",
-        "MCP_HTTP_PORT": "3000",
-        "MCP_BUILT_IN_AUTH_SERVER": "true"
-      }
-    }
-  }
-}
-```
 
 4. Restart Claude Desktop
 
@@ -249,17 +211,6 @@ Docker provides the most reliable deployment method by packaging all dependencie
 }
 ```
 
-**For SSE transport (Web applications):**
-```bash
-docker run -d \
-  --name sonarqube-mcp \
-  -p 3000:3000 \
-  -e SONARQUBE_URL="https://sonarqube.example.com" \
-  -e SONARQUBE_TOKEN="your-token" \
-  -e SONARQUBE_ORGANIZATION="your-org" \
-  -e TRANSPORT="sse" \
-  sapientpants/sonarqube-mcp-server:latest
-```
 
 #### Docker Hub Images
 
@@ -398,8 +349,8 @@ For development or customization:
 | **Token Authentication** | | | |
 | `SONARQUBE_TOKEN` | Authentication token for SonarQube API access | ✅ Yes* | - |
 | **Basic Authentication** | | | |
-| `SONARQUBE_USERNAME` | Username for HTTP Basic authentication | ✅ Yes* | - |
-| `SONARQUBE_PASSWORD` | Password for HTTP Basic authentication | ✅ Yes* | - |
+| `SONARQUBE_USERNAME` | Username for Basic authentication | ✅ Yes* | - |
+| `SONARQUBE_PASSWORD` | Password for Basic authentication | ✅ Yes* | - |
 | **System Passcode** | | | |
 | `SONARQUBE_PASSCODE` | System passcode for SonarQube authentication | ✅ Yes* | - |
 
@@ -437,7 +388,7 @@ The server supports three authentication methods, with important differences bet
   ```
 
 **SonarQube < 10.0 (Token as Username)**
-- For versions before 10.0, tokens must be sent as the username in HTTP Basic authentication
+- For versions before 10.0, tokens must be sent as the username in Basic authentication
 - No password is required when using a token as username
 - The server automatically handles this based on your SonarQube version
 - Configuration remains the same - just use `SONARQUBE_USERNAME` with the token value:
@@ -449,7 +400,7 @@ The server supports three authentication methods, with important differences bet
   }
   ```
 
-#### 2. HTTP Basic Authentication
+#### 2. Basic Authentication
 - Traditional username and password authentication
 - Suitable for self-hosted SonarQube instances
 - May not work with SonarCloud if 2FA is enabled

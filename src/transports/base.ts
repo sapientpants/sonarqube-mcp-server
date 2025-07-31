@@ -18,7 +18,7 @@ export interface ITransport {
   /**
    * Get the name of the transport for logging and debugging purposes.
    *
-   * @returns The transport name (e.g., 'stdio', 'http')
+   * @returns The transport name (e.g., 'stdio')
    */
   getName(): string;
 }

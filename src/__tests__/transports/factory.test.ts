@@ -58,8 +58,8 @@ describe('TransportFactory', () => {
 
     it('should create stdio transport regardless of environment variables', () => {
       // Set some random environment variables
-      process.env.TRANSPORT_TYPE = 'http';
-      process.env.MCP_TRANSPORT = 'websocket';
+      process.env.TRANSPORT_TYPE = 'other';
+      process.env.MCP_TRANSPORT = 'unused';
 
       const transport = TransportFactory.createFromEnvironment();
 
