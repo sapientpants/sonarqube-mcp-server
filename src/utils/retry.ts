@@ -61,7 +61,7 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions =
     }
   }
 
-  throw new Error('Max retry attempts reached');
+  throw new Error(`Max retry attempts reached: ${lastError?.message}`);
 }
 
 /**
