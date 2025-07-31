@@ -11,10 +11,21 @@ export class SystemDomain extends BaseDomain {
    */
   async getHealth(): Promise<SonarQubeHealthStatus> {
     return this.tracedApiCall('system/health', async () => {
-      const response = await this.webApiClient.system.health();
+      const response = await this.webApiClient.system.getHealthV2();
+
+      // Collect causes from all nodes in clustered setups, or empty array for single node
+      const causes: string[] = [];
+      if (response.nodes) {
+        response.nodes.forEach((node) => {
+          if (node.causes) {
+            causes.push(...node.causes);
+          }
+        });
+      }
+
       return {
-        health: response.health,
-        causes: response.causes ?? [],
+        health: response.status,
+        causes,
       };
     });
   }

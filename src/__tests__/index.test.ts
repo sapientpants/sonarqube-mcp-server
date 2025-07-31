@@ -805,9 +805,9 @@ describe('MCP Server', () => {
 
   describe('handleSonarQubeGetHealth', () => {
     it('should fetch and return health status', async () => {
-      nock('http://localhost:9000').get('/api/system/health').reply(200, {
-        health: 'GREEN',
-        causes: [],
+      nock('http://localhost:9000').get('/api/v2/system/health').reply(200, {
+        status: 'GREEN',
+        checkedAt: '2023-12-01T10:00:00Z',
       });
 
       const response = await handleSonarQubeGetHealth();
@@ -3124,9 +3124,9 @@ describe('MCP Server', () => {
         });
 
       nock('http://localhost:9000')
-        .get('/api/system/health')
+        .get('/api/v2/system/health')
         .times(2)
-        .reply(200, { health: 'GREEN', causes: [] });
+        .reply(200, { status: 'GREEN', checkedAt: '2023-12-01T10:00:00Z' });
 
       nock('http://localhost:9000')
         .get('/api/system/status')
@@ -3274,7 +3274,9 @@ describe('MCP Server', () => {
         .query(true)
         .reply(200, { issues: [], total: 0, paging: { pageIndex: 1, pageSize: 100, total: 0 } });
 
-      nock('http://localhost:9000').get('/api/system/health').reply(200, { health: 'GREEN' });
+      nock('http://localhost:9000')
+        .get('/api/v2/system/health')
+        .reply(200, { status: 'GREEN', checkedAt: '2023-12-01T10:00:00Z' });
 
       nock('http://localhost:9000')
         .get('/api/system/status')
