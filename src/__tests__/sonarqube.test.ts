@@ -454,35 +454,52 @@ describe('SonarQubeClient', () => {
 
   describe('getHealth', () => {
     it('should fetch health status successfully', async () => {
-      const mockResponse = {
+      const mockV2Response = {
+        status: 'GREEN',
+        checkedAt: '2023-12-01T10:00:00Z',
+      };
+
+      const expectedResponse = {
         health: 'GREEN',
         causes: [],
       };
 
       nock(baseUrl)
-        .get('/api/system/health')
+        .get('/api/v2/system/health')
         .matchHeader('authorization', 'Bearer test-token')
-        .reply(200, mockResponse);
+        .reply(200, mockV2Response);
 
       const result = await client.getHealth();
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(expectedResponse);
       expect(result.health).toBe('GREEN');
       expect(result.causes).toEqual([]);
     });
 
     it('should handle warning health status', async () => {
-      const mockResponse = {
+      const mockV2Response = {
+        status: 'YELLOW',
+        checkedAt: '2023-12-01T10:00:00Z',
+        nodes: [
+          {
+            name: 'node1',
+            status: 'YELLOW',
+            causes: ['Disk space low'],
+          },
+        ],
+      };
+
+      const expectedResponse = {
         health: 'YELLOW',
         causes: ['Disk space low'],
       };
 
       nock(baseUrl)
-        .get('/api/system/health')
+        .get('/api/v2/system/health')
         .matchHeader('authorization', 'Bearer test-token')
-        .reply(200, mockResponse);
+        .reply(200, mockV2Response);
 
       const result = await client.getHealth();
-      expect(result).toEqual(mockResponse);
+      expect(result).toEqual(expectedResponse);
       expect(result.health).toBe('YELLOW');
       expect(result.causes).toContain('Disk space low');
     });
