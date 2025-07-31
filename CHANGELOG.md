@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.3] - 2025-07-31
+
+### Fixed
+- Upgraded system health API from deprecated V1 to V2 to eliminate deprecation warnings
+- Enhanced JSDoc documentation explaining V2 API response structure and transformation logic
+- Extracted causes aggregation logic to private helper method for improved code readability and testability
+- Maintained full backward compatibility while using modern SonarQube health API
+
+### Changed
+- System health endpoint now uses `/api/v2/system/health` instead of deprecated `/api/system/health`
+- Improved error handling for clustered SonarQube setups with proper causes aggregation from all nodes
+
 ## [1.7.2] - 2025-07-31
 
 ### Changed
