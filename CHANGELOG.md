@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.2] - 2025-07-31
+
+### Changed
+- Cleaned up remaining HTTP/SSE transport references in documentation and code comments
+- Updated security documentation to reflect enterprise features handled by MCP gateways
+- Removed obsolete API reference documentation that was specific to HTTP transport
+
+### Removed
+- Removed `docs/api-reference.md` as it contained HTTP-specific content no longer relevant for stdio-only server
+
 ## [1.7.1] - 2025-07-30
 
 ### Changed
