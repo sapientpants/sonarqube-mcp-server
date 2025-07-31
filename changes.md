@@ -24,7 +24,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Performance Tuning**: Node.js and connection pool optimization
 
 ### 3. Security Configuration Guide (`docs/security.md`)
-- **OAuth 2.0 Setup**: JWT validation, token requirements, and IdP integration
+- **Authentication Methods**: Token, Basic, and Passcode authentication for SonarQube
 - **Service Account Management**: Multi-tenant configuration with health monitoring
 - **Permission System**: Fine-grained access control with regex project filtering
 - **Data Protection**: PII redaction, encryption at rest, and response filtering
