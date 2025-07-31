@@ -53,7 +53,6 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 
 ### Core Guides
 - **[Architecture Guide](docs/architecture.md)** - System architecture, design decisions, and component overview
-- **[API Reference](docs/api-reference.md)** - Complete API documentation for all MCP tools
 - **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues, debugging, and solutions
 
 ### Security & Authentication

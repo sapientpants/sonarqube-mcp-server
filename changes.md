@@ -14,14 +14,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Technology Stack**: Comprehensive list of technologies and their purposes
 - **Architecture Decision Records**: Links to all relevant ADRs
 
-### 2. API Reference (`docs/api-reference.md`)
-- **Complete Tool Documentation**: All 38 MCP tools with parameters, responses, and examples
-- **SDK Integration**: Code examples for TypeScript/JavaScript and Python
-- **Authentication Methods**: Detailed setup for each auth type
-- **Error Handling**: Common errors and solutions
-- **Best Practices**: Rate limiting, pagination, and performance tips
-
-### 3. Enterprise Deployment Guide (`docs/deployment.md`)
+### 2. Enterprise Deployment Guide (`docs/deployment.md`)
 - **Docker Deployment**: Production configurations with docker-compose
 - **Kubernetes Deployment**: Full manifest set with best practices
 - **Helm Chart Usage**: Comprehensive values.yaml with all options
@@ -30,7 +23,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Backup & Recovery**: Audit log backup strategies
 - **Performance Tuning**: Node.js and connection pool optimization
 
-### 4. Security Configuration Guide (`docs/security.md`)
+### 3. Security Configuration Guide (`docs/security.md`)
 - **OAuth 2.0 Setup**: JWT validation, token requirements, and IdP integration
 - **Service Account Management**: Multi-tenant configuration with health monitoring
 - **Permission System**: Fine-grained access control with regex project filtering
