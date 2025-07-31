@@ -14,13 +14,11 @@ export class TransportFactory {
    * @throws Error if the transport type is not supported
    */
   static create(config: ITransportConfig): ITransport {
-    switch (config.type) {
-      case 'stdio':
-        return new StdioTransport();
-
-      default:
-        throw new Error(`Unsupported transport type: ${config.type}`);
+    if (config.type === 'stdio') {
+      return new StdioTransport();
     }
+
+    throw new Error(`Unsupported transport type: ${config.type}`);
   }
 
   /**

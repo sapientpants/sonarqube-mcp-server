@@ -37,7 +37,14 @@ export class MetricsService {
    * Update circuit breaker state
    */
   updateCircuitBreakerState(service: string, state: 'closed' | 'open' | 'half-open'): void {
-    const stateValue = state === 'open' ? 1 : state === 'half-open' ? 0.5 : 0;
+    let stateValue: number;
+    if (state === 'open') {
+      stateValue = 1;
+    } else if (state === 'half-open') {
+      stateValue = 0.5;
+    } else {
+      stateValue = 0;
+    }
     this.metrics.set(`circuit-breaker.state.${service}`, stateValue);
     logger.info(`Circuit breaker ${service}: ${state}`);
   }
