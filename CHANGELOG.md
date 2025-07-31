@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2025-07-31
+
+### Changed
+- Simplified to stdio-only transport for MCP gateway deployment (#244)
+- Removed HTTP transport and OAuth2 endpoints to focus on stdio transport
+- Updated dependencies to latest versions:
+  - @modelcontextprotocol/sdk: 1.16.0 → 1.17.0
+  - @eslint/js: 9.31.0 → 9.32.0
+  - eslint: 9.31.0 → 9.32.0
+  - nock: 14.0.6 → 14.0.7
+
+### Removed
+- HTTP transport implementation
+- OAuth2 metadata endpoints
+- Built-in authorization server
+- External IdP integration features
+
 ## [1.6.1] - 2025-07-27
 
 ### Fixed
