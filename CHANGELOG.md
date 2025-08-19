@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.5] - 2025-08-18
+
+### Changed
+- Updated dependencies to latest versions:
+  - @modelcontextprotocol/sdk: 1.17.2 → 1.17.3
+  - @types/node: 24.2.1 → 24.3.0
+  - @typescript-eslint/eslint-plugin: 8.39.0 → 8.39.1
+  - @typescript-eslint/parser: 8.39.0 → 8.39.1
+  - nock: 14.0.9 → 14.0.10
+
 ## [1.7.4] - 2025-08-11
 
 ### Changed
