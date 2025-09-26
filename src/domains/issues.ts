@@ -329,10 +329,10 @@ export class IssuesDomain extends BaseDomain {
   async markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
     return Promise.all(
       params.issueKeys.map((issueKey) => {
-        const requestParams: MarkIssueFalsePositiveParams = { issueKey };
-        if (params.comment !== undefined) {
-          (requestParams as any).comment = params.comment;
-        }
+        const requestParams: MarkIssueFalsePositiveParams = {
+          issueKey,
+          ...(params.comment && { comment: params.comment }),
+        };
         return this.markIssueFalsePositive(requestParams);
       })
     );
@@ -347,10 +347,10 @@ export class IssuesDomain extends BaseDomain {
     const results: DoTransitionResponse[] = [];
 
     for (const issueKey of params.issueKeys) {
-      const requestParams: MarkIssueWontFixParams = { issueKey };
-      if (params.comment !== undefined) {
-        (requestParams as any).comment = params.comment;
-      }
+      const requestParams: MarkIssueWontFixParams = {
+        issueKey,
+        ...(params.comment && { comment: params.comment }),
+      };
       const result = await this.markIssueWontFix(requestParams);
       results.push(result);
     }
@@ -392,10 +392,13 @@ export class IssuesDomain extends BaseDomain {
    */
   async assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue> {
     // Call the assign API
-    const assignRequest = { issue: params.issueKey };
-    if (params.assignee !== undefined) {
-      (assignRequest as any).assignee = params.assignee;
-    }
+    const assignRequest: {
+      issue: string;
+      assignee?: string;
+    } = {
+      issue: params.issueKey,
+      ...(params.assignee && { assignee: params.assignee }),
+    };
     await this.webApiClient.issues.assign(assignRequest);
 
     // Fetch and return the updated issue using the same search as getIssues

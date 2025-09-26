@@ -1,18 +1,18 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 import { withMCPErrorHandling } from '../utils/error-handler.js';
 import { SonarQubeAPIError, SonarQubeErrorType } from '../errors.js';
 
 // Mock the logger
-jest.unstable_mockModule('../utils/logger.js', () => ({
+vi.mock('../utils/logger.js', () => ({
   createLogger: () => ({
-    error: jest.fn(),
+    error: vi.fn(),
   }),
 }));
 
 describe('Error Handler Utilities', () => {
   describe('withMCPErrorHandling', () => {
     it('should return result on success', async () => {
-      const fn = jest
+      const fn = vi
         .fn<(arg1: string, arg2: string) => Promise<{ content: string }>>()
         .mockResolvedValue({ content: 'success' });
       const wrapped = withMCPErrorHandling(fn);
@@ -34,7 +34,7 @@ describe('Error Handler Utilities', () => {
           solution: 'Test solution',
         }
       );
-      const fn = jest.fn<() => Promise<any>>().mockRejectedValue(apiError);
+      const fn = vi.fn<() => Promise<any>>().mockRejectedValue(apiError);
       const wrapped = withMCPErrorHandling(fn);
 
       await expect(wrapped()).rejects.toEqual({
@@ -45,14 +45,14 @@ describe('Error Handler Utilities', () => {
 
     it('should re-throw non-SonarQubeAPIError', async () => {
       const error = new Error('Generic error');
-      const fn = jest.fn<() => Promise<any>>().mockRejectedValue(error);
+      const fn = vi.fn<() => Promise<any>>().mockRejectedValue(error);
       const wrapped = withMCPErrorHandling(fn);
 
       await expect(wrapped()).rejects.toThrow(error);
     });
 
     it('should preserve function signature', async () => {
-      const fn = jest.fn(async (a: string, b: number) => ({ result: a + b }));
+      const fn = vi.fn((a: string, b: number) => Promise.resolve({ result: a + b }));
       const wrapped = withMCPErrorHandling(fn);
 
       const result = await wrapped('test', 123);
@@ -76,7 +76,7 @@ describe('Error Handler Utilities', () => {
 
       for (const { type, code } of errorTypes) {
         const error = new SonarQubeAPIError(`${type} error`, type);
-        const fn = jest.fn<() => Promise<any>>().mockRejectedValue(error);
+        const fn = vi.fn<() => Promise<any>>().mockRejectedValue(error);
         const wrapped = withMCPErrorHandling(fn);
 
         await expect(wrapped()).rejects.toEqual({

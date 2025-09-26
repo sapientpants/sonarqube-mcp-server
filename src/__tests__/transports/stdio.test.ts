@@ -1,4 +1,4 @@
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioTransport } from '../../transports/stdio.js';
 
@@ -19,7 +19,7 @@ describe('StdioTransport', () => {
   it('should connect to server', async () => {
     const transport = new StdioTransport();
     const mockServer = {
-      connect: jest.fn().mockResolvedValue(undefined),
+      connect: vi.fn<() => Promise<any>>().mockResolvedValue(undefined as never),
     } as unknown as Server;
 
     await transport.connect(mockServer);

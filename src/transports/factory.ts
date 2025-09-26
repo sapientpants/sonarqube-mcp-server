@@ -18,7 +18,7 @@ export class TransportFactory {
       return new StdioTransport();
     }
 
-    throw new Error(`Unsupported transport type: ${config.type}`);
+    throw new Error(`Unsupported transport type: ${config.type as string}`);
   }
 
   /**

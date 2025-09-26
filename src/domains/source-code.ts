@@ -4,6 +4,7 @@ import type {
   SonarQubeSourceResult,
   SonarQubeScmBlameResult,
   SonarQubeSourceLine,
+  IssuesParams,
 } from '../types/index.js';
 import type { SonarQubeClient as WebApiClient } from 'sonarqube-web-api-client';
 import type { IssuesDomain } from './issues.js';
@@ -66,15 +67,17 @@ export class SourceCodeDomain extends BaseDomain {
     // Get issues for this component to annotate the source
     if (key && this.issuesDomain) {
       try {
-        const issuesParams: any = {
+        const issuesParams: IssuesParams = {
           projects: [key],
           onComponentOnly: true,
+          page: 1,
+          pageSize: 100,
         };
-        if (branch !== undefined) {
-          issuesParams.branch = branch;
+        if (params.branch) {
+          issuesParams.branch = params.branch;
         }
-        if (pullRequest !== undefined) {
-          issuesParams.pullRequest = pullRequest;
+        if (params.pullRequest) {
+          issuesParams.pullRequest = params.pullRequest;
         }
 
         const issues = await this.issuesDomain.getIssues(issuesParams);
@@ -85,15 +88,15 @@ export class SourceCodeDomain extends BaseDomain {
           return {
             line: line.line,
             code: line.code,
-            scmAuthor: (line as any).scmAuthor,
-            scmDate: (line as any).scmDate,
-            scmRevision: (line as any).scmRevision,
-            duplicated: (line as any).duplicated,
-            isNew: (line as any).isNew,
-            lineHits: (line as any).lineHits,
-            conditions: (line as any).conditions,
-            coveredConditions: (line as any).coveredConditions,
-            highlightedText: (line as any).highlightedText,
+            scmAuthor: (line as { scmAuthor?: string }).scmAuthor,
+            scmDate: (line as { scmDate?: string }).scmDate,
+            scmRevision: (line as { scmRevision?: string }).scmRevision,
+            duplicated: (line as { duplicated?: boolean }).duplicated,
+            isNew: (line as { isNew?: boolean }).isNew,
+            lineHits: (line as { lineHits?: number }).lineHits,
+            conditions: (line as { conditions?: number }).conditions,
+            coveredConditions: (line as { coveredConditions?: number }).coveredConditions,
+            highlightedText: (line as { highlightedText?: string }).highlightedText,
             issues: lineIssues.length > 0 ? lineIssues : undefined,
           };
         });
@@ -101,11 +104,11 @@ export class SourceCodeDomain extends BaseDomain {
         return {
           component: {
             key: sources.component.key,
-            path: (sources.component as any).path,
+            path: (sources.component as { path?: string }).path,
             qualifier: sources.component.qualifier,
             name: sources.component.name,
             longName: sources.component.longName,
-            language: (sources.component as any).language,
+            language: (sources.component as { language?: string }).language,
           },
           sources: sourceLines,
         };
@@ -120,8 +123,30 @@ export class SourceCodeDomain extends BaseDomain {
     return this.mapSourceToResult(sources);
   }
 
-  private mapSourceToResult(sources: any): SonarQubeSourceResult {
-    const mappedSources: SonarQubeSourceLine[] = sources.sources.map((line: any) => ({
+  private mapSourceToResult(sources: {
+    sources: Array<{
+      line: number;
+      code: string;
+      scmAuthor?: string;
+      scmDate?: string;
+      scmRevision?: string;
+      duplicated?: boolean;
+      isNew?: boolean;
+      lineHits?: number;
+      conditions?: number;
+      coveredConditions?: number;
+      highlightedText?: string;
+    }>;
+    component: {
+      key: string;
+      path?: string;
+      qualifier: string;
+      name: string;
+      longName?: string;
+      language?: string;
+    };
+  }): SonarQubeSourceResult {
+    const mappedSources: SonarQubeSourceLine[] = sources.sources.map((line) => ({
       line: line.line,
       code: line.code,
       scmAuthor: line.scmAuthor,

@@ -173,30 +173,71 @@ export class SonarQubeClient implements ISonarQubeClient {
   /**
    * Initializes all domain modules for a client instance
    */
-  private static initializeDomains(client: {
-    webApiClient: WebApiClient;
-    organization: OptionalOrganization;
-    projectsDomain?: ProjectsDomain;
-    issuesDomain?: IssuesDomain;
-    metricsDomain?: MetricsDomain;
-    measuresDomain?: MeasuresDomain;
-    systemDomain?: SystemDomain;
-    qualityGatesDomain?: QualityGatesDomain;
-    sourceCodeDomain?: SourceCodeDomain;
-    hotspotsDomain?: HotspotsDomain;
-  }): void {
-    client.projectsDomain = new ProjectsDomain(client.webApiClient, client.organization);
-    client.issuesDomain = new IssuesDomain(client.webApiClient, client.organization);
-    client.metricsDomain = new MetricsDomain(client.webApiClient, client.organization);
-    client.measuresDomain = new MeasuresDomain(client.webApiClient, client.organization);
-    client.systemDomain = new SystemDomain(client.webApiClient, client.organization);
-    client.qualityGatesDomain = new QualityGatesDomain(client.webApiClient, client.organization);
-    client.sourceCodeDomain = new SourceCodeDomain(
-      client.webApiClient,
-      client.organization,
-      client.issuesDomain
-    );
-    client.hotspotsDomain = new HotspotsDomain(client.webApiClient, client.organization);
+  private static initializeDomains(client: SonarQubeClient): void {
+    // Access private properties through type-safe interface
+    const typedClient = client as unknown as {
+      webApiClient: WebApiClient;
+      organization: OptionalOrganization;
+      projectsDomain?: ProjectsDomain;
+      issuesDomain?: IssuesDomain;
+      metricsDomain?: MetricsDomain;
+      measuresDomain?: MeasuresDomain;
+      systemDomain?: SystemDomain;
+      qualityGatesDomain?: QualityGatesDomain;
+      sourceCodeDomain?: SourceCodeDomain;
+      hotspotsDomain?: HotspotsDomain;
+    };
+    const organization = typedClient.organization;
+
+    Object.defineProperty(typedClient, 'projectsDomain', {
+      value: new ProjectsDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    Object.defineProperty(typedClient, 'issuesDomain', {
+      value: new IssuesDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    Object.defineProperty(typedClient, 'metricsDomain', {
+      value: new MetricsDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    Object.defineProperty(typedClient, 'measuresDomain', {
+      value: new MeasuresDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    Object.defineProperty(typedClient, 'systemDomain', {
+      value: new SystemDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    Object.defineProperty(typedClient, 'qualityGatesDomain', {
+      value: new QualityGatesDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    const issuesDomain = typedClient.issuesDomain;
+    Object.defineProperty(typedClient, 'sourceCodeDomain', {
+      value: new SourceCodeDomain(client.webApiClient, organization, issuesDomain),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
+    Object.defineProperty(typedClient, 'hotspotsDomain', {
+      value: new HotspotsDomain(client.webApiClient, organization),
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
   }
 
   /**
@@ -213,14 +254,24 @@ export class SonarQubeClient implements ISonarQubeClient {
     baseUrl = DEFAULT_SONARQUBE_URL,
     organization?: OptionalOrganization
   ): SonarQubeClient {
-    const client = Object.create(SonarQubeClient.prototype);
-    client.webApiClient = WebApiClient.withBasicAuth(
-      baseUrl,
-      username,
-      password,
-      organization ? { organization } : undefined
-    );
-    client.organization = organization ?? null;
+    const client = Object.create(SonarQubeClient.prototype) as SonarQubeClient;
+    Object.defineProperty(client, 'webApiClient', {
+      value: WebApiClient.withBasicAuth(
+        baseUrl,
+        username,
+        password,
+        organization ? { organization } : undefined
+      ),
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
+    Object.defineProperty(client, 'organization', {
+      value: organization ?? null,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
     SonarQubeClient.initializeDomains(client);
     return client;
   }
@@ -237,13 +288,23 @@ export class SonarQubeClient implements ISonarQubeClient {
     baseUrl = DEFAULT_SONARQUBE_URL,
     organization?: OptionalOrganization
   ): SonarQubeClient {
-    const client = Object.create(SonarQubeClient.prototype);
-    client.webApiClient = WebApiClient.withPasscode(
-      baseUrl,
-      passcode,
-      organization ? { organization } : undefined
-    );
-    client.organization = organization ?? null;
+    const client = Object.create(SonarQubeClient.prototype) as SonarQubeClient;
+    Object.defineProperty(client, 'webApiClient', {
+      value: WebApiClient.withPasscode(
+        baseUrl,
+        passcode,
+        organization ? { organization } : undefined
+      ),
+      writable: false,
+      enumerable: true,
+      configurable: false,
+    });
+    Object.defineProperty(client, 'organization', {
+      value: organization ?? null,
+      writable: false,
+      enumerable: false,
+      configurable: false,
+    });
     SonarQubeClient.initializeDomains(client);
     return client;
   }
@@ -427,13 +488,23 @@ export class SonarQubeClient implements ISonarQubeClient {
     const result: SonarQubeHotspotSearchResult = {
       hotspots: response.hotspots as SonarQubeHotspot[],
       components: response.components
-        ? response.components.map((c: any) => ({
-            key: c.key,
-            qualifier: c.qualifier,
-            name: c.name,
-            longName: c.longName,
-            path: c.path,
-          }))
+        ? response.components.map(
+            (c: {
+              key: string;
+              qualifier: string;
+              name: string;
+              longName?: string;
+              path?: string;
+              enabled?: boolean;
+            }) => ({
+              key: c.key,
+              enabled: c.enabled,
+              qualifier: c.qualifier,
+              name: c.name,
+              longName: c.longName,
+              path: c.path,
+            })
+          )
         : undefined,
       paging: response.paging ?? {
         pageIndex: page ?? 1,

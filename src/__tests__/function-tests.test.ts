@@ -1,20 +1,11 @@
-/// <reference types="jest" />
-
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 import { nullToUndefined, mapToSonarQubeParams } from '../index.js';
-
-jest.mock('../sonarqube.js');
-
+vi.mock('../sonarqube.js');
 describe('Utility Function Tests', () => {
   describe('nullToUndefined function', () => {
     it('should convert null to undefined but preserve other values', () => {
       expect(nullToUndefined(null)).toBeUndefined();
       expect(nullToUndefined(undefined)).toBeUndefined();
-
       // Other values should remain the same
       expect(nullToUndefined(0)).toBe(0);
       expect(nullToUndefined('')).toBe('');
@@ -22,7 +13,6 @@ describe('Utility Function Tests', () => {
       expect(nullToUndefined(123)).toBe(123);
       expect(nullToUndefined(false)).toBe(false);
       expect(nullToUndefined(true)).toBe(true);
-
       // Objects and arrays should be passed through
       const obj = { test: 'value' };
       const arr = [1, 2, 3];
@@ -30,7 +20,6 @@ describe('Utility Function Tests', () => {
       expect(nullToUndefined(arr)).toBe(arr);
     });
   });
-
   describe('mapToSonarQubeParams function', () => {
     it('should map MCP tool parameters to SonarQube client parameters', () => {
       const result = mapToSonarQubeParams({
@@ -60,7 +49,6 @@ describe('Utility Function Tests', () => {
         since_leak_period: 'true',
         in_new_code_period: 'true',
       });
-
       // Check key mappings
       expect(result.projectKey).toBe('my-project');
       expect(result.severity).toBe('MAJOR');
@@ -88,7 +76,6 @@ describe('Utility Function Tests', () => {
       expect(result.sinceLeakPeriod).toBe('true');
       expect(result.inNewCodePeriod).toBe('true');
     });
-
     it('should handle null and undefined values correctly', () => {
       const result = mapToSonarQubeParams({
         project_key: 'my-project',
@@ -96,7 +83,6 @@ describe('Utility Function Tests', () => {
         statuses: null,
         resolved: null,
       });
-
       expect(result.projectKey).toBe('my-project');
       expect(result.severity).toBeUndefined();
       expect(result.statuses).toBeUndefined();

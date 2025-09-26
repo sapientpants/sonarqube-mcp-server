@@ -1,10 +1,4 @@
-/// <reference types="jest" />
-
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import nock from 'nock';
 
 // Mock environment variables
@@ -13,7 +7,7 @@ process.env.SONARQUBE_URL = 'http://localhost:9000';
 
 describe('Lambda Handlers Coverage Tests', () => {
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     // Setup nock to mock SonarQube API responses
     nock('http://localhost:9000')

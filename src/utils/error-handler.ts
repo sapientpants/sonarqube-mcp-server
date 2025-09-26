@@ -12,13 +12,18 @@ const logger = createLogger('utils/error-handler');
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function withMCPErrorHandling<T extends (...args: any[]) => Promise<any>>(fn: T): T {
-  return (async (...args: Parameters<T>) => {
+  return (async (
+    ...args: Parameters<T>
+  ): Promise<ReturnType<T> extends Promise<infer U> ? U : never> => {
     try {
-      return await fn(...args);
+      return (await fn(...args)) as ReturnType<T> extends Promise<infer U> ? U : never;
     } catch (error) {
       if (error instanceof SonarQubeAPIError) {
         logger.error('SonarQube API error occurred', error);
-        throw formatErrorForMCP(error);
+        const mcpError = formatErrorForMCP(error);
+        const errorObj = new Error(mcpError.message);
+        (errorObj as Error & { code: number }).code = mcpError.code;
+        throw errorObj;
       }
       // Re-throw non-SonarQubeAPIError errors as-is
       throw error;

@@ -1,10 +1,4 @@
-/// <reference types="jest" />
-
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { nullToUndefined } from '../index.js';
 
@@ -16,76 +10,81 @@ process.env.SONARQUBE_TOKEN = 'test-token';
 process.env.SONARQUBE_URL = 'http://localhost:9000';
 
 // Mock the required modules
-jest.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
+vi.mock('@modelcontextprotocol/sdk/server/mcp.js', () => {
   return {
-    McpServer: jest.fn().mockImplementation(() => ({
+    McpServer: vi.fn<() => any>().mockImplementation(() => ({
       name: 'sonarqube-mcp-server',
       version: '1.1.0',
-      tool: jest.fn(),
-      connect: jest.fn(),
-      server: { use: jest.fn() },
+      tool: vi.fn(),
+      connect: vi.fn(),
+      server: { use: vi.fn() },
     })),
   };
 });
 
-jest.mock('../sonarqube.js', () => {
+vi.mock('../sonarqube.js', () => {
   return {
-    SonarQubeClient: jest.fn().mockImplementation(() => ({
-      listProjects: jest.fn().mockResolvedValue({
+    SonarQubeClient: vi.fn<() => any>().mockImplementation(() => ({
+      listProjects: vi.fn<() => Promise<any>>().mockResolvedValue({
         projects: [{ key: 'test-project', name: 'Test Project' }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getIssues: jest.fn().mockResolvedValue({
+      } as any),
+      getIssues: vi.fn<() => Promise<any>>().mockResolvedValue({
         issues: [{ key: 'test-issue', rule: 'test-rule', severity: 'MAJOR' }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getMetrics: jest.fn().mockResolvedValue({
+      } as any),
+      getMetrics: vi.fn<() => Promise<any>>().mockResolvedValue({
         metrics: [{ key: 'test-metric', name: 'Test Metric' }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getHealth: jest.fn().mockResolvedValue({ health: 'GREEN', causes: [] }),
-      getStatus: jest.fn().mockResolvedValue({ id: 'test-id', version: '1.0.0', status: 'UP' }),
-      ping: jest.fn().mockResolvedValue('pong'),
-      getComponentMeasures: jest.fn().mockResolvedValue({
+      } as any),
+      getHealth: vi
+        .fn<() => Promise<any>>()
+        .mockResolvedValue({ health: 'GREEN', causes: [] } as any),
+      getStatus: vi
+        .fn<() => Promise<any>>()
+        .mockResolvedValue({ id: 'test-id', version: '1.0.0', status: 'UP' } as any),
+      ping: vi.fn<() => Promise<any>>().mockResolvedValue('pong' as any),
+      getComponentMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
         component: { key: 'test-component', measures: [{ metric: 'coverage', value: '85.4' }] },
         metrics: [{ key: 'coverage', name: 'Coverage' }],
-      }),
-      getComponentsMeasures: jest.fn().mockResolvedValue({
+      } as any),
+      getComponentsMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
         components: [{ key: 'test-component', measures: [{ metric: 'coverage', value: '85.4' }] }],
         metrics: [{ key: 'coverage', name: 'Coverage' }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getMeasuresHistory: jest.fn().mockResolvedValue({
+      } as any),
+      getMeasuresHistory: vi.fn<() => Promise<any>>().mockResolvedValue({
         measures: [{ metric: 'coverage', history: [{ date: '2023-01-01', value: '85.4' }] }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
+      } as any),
     })),
   };
 });
 
-jest.mock('@modelcontextprotocol/sdk/server/stdio.js', () => {
+vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => {
   return {
-    StdioServerTransport: jest.fn().mockImplementation(() => ({
-      connect: jest.fn().mockResolvedValue(undefined),
+    StdioServerTransport: vi.fn<() => any>().mockImplementation(() => ({
+      connect: vi.fn<() => Promise<any>>().mockResolvedValue(undefined as any),
     })),
   };
 });
 
 describe('Lambda Functions in index.ts', () => {
-  let mcpServer;
+  let mcpServer: any;
+  // let index: any;
 
   beforeEach(async () => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
 
     const module = await import('../index.js');
-    index = module;
+    // index = module;
     mcpServer = module.mcpServer;
   });
 
   afterEach(() => {
     process.env = originalEnv;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Utility Functions', () => {
@@ -109,7 +108,7 @@ describe('Lambda Functions in index.ts', () => {
       const pageSchema = z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) || null : null));
+        .transform((val: any) => (val ? parseInt(val, 10) || null : null));
 
       expect(pageSchema.parse('10')).toBe(10);
       expect(pageSchema.parse('invalid')).toBe(null);
@@ -119,7 +118,7 @@ describe('Lambda Functions in index.ts', () => {
 
     it('should test boolean schema transformation', () => {
       const booleanSchema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
 
@@ -251,9 +250,9 @@ describe('Lambda Functions in index.ts', () => {
 
     it('should verify metrics tool schema and lambda', () => {
       // Find the metrics tool registration - 2nd argument position
-      const metricsCall = mcpServer.tool.mock.calls.find((call) => call[0] === 'metrics');
-      const metricsSchema = metricsCall[2];
-      const metricsLambda = metricsCall[3];
+      const metricsCall = mcpServer.tool.mock.calls.find((call: any) => call[0] === 'metrics');
+      const metricsSchema = metricsCall![2];
+      const metricsLambda = metricsCall![3];
 
       // Test schema transformations
       expect(metricsSchema.page.parse('10')).toBe(10);
@@ -261,18 +260,18 @@ describe('Lambda Functions in index.ts', () => {
       expect(metricsSchema.page_size.parse('20')).toBe(20);
 
       // Test lambda function execution
-      return metricsLambda({ page: '1', page_size: '10' }).then((result) => {
+      return metricsLambda({ page: '1', page_size: '10' }).then((result: any) => {
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe('text');
+        expect(result.content[0]?.type).toBe('text');
       });
     });
 
     it('should verify issues tool schema and lambda', () => {
       // Find the issues tool registration
-      const issuesCall = mcpServer.tool.mock.calls.find((call) => call[0] === 'issues');
-      const issuesSchema = issuesCall[2];
-      const issuesLambda = issuesCall[3];
+      const issuesCall = mcpServer.tool.mock.calls.find((call: any) => call[0] === 'issues');
+      const issuesSchema = issuesCall![2];
+      const issuesLambda = issuesCall![3];
 
       // Test schema transformations
       expect(issuesSchema.project_key.parse('my-project')).toBe('my-project');
@@ -280,20 +279,22 @@ describe('Lambda Functions in index.ts', () => {
       expect(issuesSchema.statuses.parse(['OPEN', 'CONFIRMED'])).toEqual(['OPEN', 'CONFIRMED']);
 
       // Test lambda function execution
-      return issuesLambda({ project_key: 'test-project', severity: 'MAJOR' }).then((result) => {
-        expect(result).toBeDefined();
-        expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe('text');
-      });
+      return issuesLambda({ project_key: 'test-project', severity: 'MAJOR' }).then(
+        (result: any) => {
+          expect(result).toBeDefined();
+          expect(result.content).toBeDefined();
+          expect(result.content[0]?.type).toBe('text');
+        }
+      );
     });
 
     it('should verify measures_component tool schema and lambda', () => {
       // Find the measures_component tool registration
       const measuresCall = mcpServer.tool.mock.calls.find(
-        (call) => call[0] === 'measures_component'
+        (call: any) => call[0] === 'measures_component'
       );
-      const measuresSchema = measuresCall[2];
-      const measuresLambda = measuresCall[3];
+      const measuresSchema = measuresCall![2];
+      const measuresLambda = measuresCall![3];
 
       // Test schema transformations
       expect(measuresSchema.component.parse('my-component')).toBe('my-component');
@@ -305,19 +306,19 @@ describe('Lambda Functions in index.ts', () => {
         component: 'test-component',
         metric_keys: 'coverage',
         branch: 'main',
-      }).then((result) => {
+      }).then((result: any) => {
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe('text');
+        expect(result.content[0]?.type).toBe('text');
       });
     });
 
     it('should verify measures_component tool with array metrics', () => {
       // Find the measures_component tool registration
       const measuresCall = mcpServer.tool.mock.calls.find(
-        (call) => call[0] === 'measures_component'
+        (call: any) => call[0] === 'measures_component'
       );
-      const measuresLambda = measuresCall[3];
+      const measuresLambda = measuresCall![3];
 
       // Test lambda function execution with array metrics
       return measuresLambda({
@@ -326,20 +327,20 @@ describe('Lambda Functions in index.ts', () => {
         additional_fields: ['periods'],
         pull_request: 'pr-123',
         period: '1',
-      }).then((result) => {
+      }).then((result: any) => {
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe('text');
+        expect(result.content[0]?.type).toBe('text');
       });
     });
 
     it('should verify measures_components tool schema and lambda', () => {
       // Find the measures_components tool registration
       const measuresCall = mcpServer.tool.mock.calls.find(
-        (call) => call[0] === 'measures_components'
+        (call: any) => call[0] === 'measures_components'
       );
-      const measuresSchema = measuresCall[2];
-      const measuresLambda = measuresCall[3];
+      const measuresSchema = measuresCall![2];
+      const measuresLambda = measuresCall![3];
 
       // Test schema transformations
       expect(measuresSchema.component_keys.parse('my-component')).toBe('my-component');
@@ -353,18 +354,20 @@ describe('Lambda Functions in index.ts', () => {
         metric_keys: 'coverage',
         page: '1',
         page_size: '10',
-      }).then((result) => {
+      }).then((result: any) => {
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe('text');
+        expect(result.content[0]?.type).toBe('text');
       });
     });
 
     it('should verify measures_history tool schema and lambda', () => {
       // Find the measures_history tool registration
-      const measuresCall = mcpServer.tool.mock.calls.find((call) => call[0] === 'measures_history');
-      const measuresSchema = measuresCall[2];
-      const measuresLambda = measuresCall[3];
+      const measuresCall = mcpServer.tool.mock.calls.find(
+        (call: any) => call[0] === 'measures_history'
+      );
+      const measuresSchema = measuresCall![2];
+      const measuresLambda = measuresCall![3];
 
       // Test schema transformations
       expect(measuresSchema.component.parse('my-component')).toBe('my-component');
@@ -377,10 +380,10 @@ describe('Lambda Functions in index.ts', () => {
         metrics: 'coverage',
         from: '2023-01-01',
         to: '2023-12-31',
-      }).then((result) => {
+      }).then((result: any) => {
         expect(result).toBeDefined();
         expect(result.content).toBeDefined();
-        expect(result.content[0].type).toBe('text');
+        expect(result.content[0]?.type).toBe('text');
       });
     });
   });

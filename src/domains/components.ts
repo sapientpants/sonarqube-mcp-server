@@ -180,7 +180,7 @@ export class ComponentsDomain extends BaseDomain {
 
       return {
         component: this.transformComponent(response.component),
-        ancestors: response.ancestors?.map(this.transformComponent) ?? [],
+        ancestors: response.ancestors?.map((comp) => this.transformComponent(comp)) ?? [],
       };
     } catch (error) {
       this.logger.error('Failed to show component', error);

@@ -1,30 +1,24 @@
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect, jest } from '@jest/globals';
+import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import * as indexModule from '../index.js';
 import { ISonarQubeClient } from '../sonarqube.js';
-
 // Create a custom mock implementation of the handlers
 const nullToUndefined = indexModule.nullToUndefined;
-
 // Create a mock client
 const mockClient: Partial<ISonarQubeClient> = {
-  getMetrics: jest.fn().mockResolvedValue({
+  getMetrics: vi.fn<() => Promise<any>>().mockResolvedValue({
     metrics: [{ id: '1', key: 'test', name: 'Test Metric' }],
     paging: { pageIndex: 2, pageSize: 5, total: 10 },
   }),
-  getIssues: jest.fn().mockResolvedValue({
+  getIssues: vi.fn<() => Promise<any>>().mockResolvedValue({
     issues: [{ key: 'issue-1', rule: 'rule-1', severity: 'MAJOR' }],
     paging: { pageIndex: 1, pageSize: 10, total: 1 },
   }),
-  getComponentMeasures: jest.fn().mockResolvedValue({
+  getComponentMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
     component: { key: 'comp-1', measures: [{ metric: 'coverage', value: '75.0' }] },
     metrics: [{ key: 'coverage', name: 'Coverage' }],
   }),
-  getComponentsMeasures: jest.fn().mockResolvedValue({
+  getComponentsMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
     components: [
       { key: 'comp-1', measures: [{ metric: 'coverage', value: '75.0' }] },
       { key: 'comp-2', measures: [{ metric: 'coverage', value: '85.0' }] },
@@ -32,7 +26,7 @@ const mockClient: Partial<ISonarQubeClient> = {
     metrics: [{ key: 'coverage', name: 'Coverage' }],
     paging: { pageIndex: 1, pageSize: 10, total: 2 },
   }),
-  getMeasuresHistory: jest.fn().mockResolvedValue({
+  getMeasuresHistory: vi.fn<() => Promise<any>>().mockResolvedValue({
     measures: [
       {
         metric: 'coverage',
@@ -46,14 +40,12 @@ const mockClient: Partial<ISonarQubeClient> = {
     paging: { pageIndex: 1, pageSize: 10, total: 1 },
   }),
 };
-
 // Mock handlers that don't actually call the HTTP methods
 const mockMetricsHandler = async (params: { page: number | null; page_size: number | null }) => {
   const mockResult = await (mockClient as ISonarQubeClient).getMetrics({
     page: nullToUndefined(params.page),
     pageSize: nullToUndefined(params.page_size),
   });
-
   return {
     content: [
       {
@@ -63,10 +55,8 @@ const mockMetricsHandler = async (params: { page: number | null; page_size: numb
     ],
   };
 };
-
 const mockIssuesHandler = async (params: Record<string, unknown>) => {
   const mockResult = await (mockClient as ISonarQubeClient).getIssues(params as any);
-
   return {
     content: [
       {
@@ -76,10 +66,8 @@ const mockIssuesHandler = async (params: Record<string, unknown>) => {
     ],
   };
 };
-
 const mockComponentMeasuresHandler = async (params: Record<string, unknown>) => {
   const mockResult = await (mockClient as ISonarQubeClient).getComponentMeasures(params as any);
-
   return {
     content: [
       {
@@ -89,10 +77,8 @@ const mockComponentMeasuresHandler = async (params: Record<string, unknown>) => 
     ],
   };
 };
-
 const mockComponentsMeasuresHandler = async (params: Record<string, unknown>) => {
   const mockResult = await (mockClient as ISonarQubeClient).getComponentsMeasures(params as any);
-
   return {
     content: [
       {
@@ -102,10 +88,8 @@ const mockComponentsMeasuresHandler = async (params: Record<string, unknown>) =>
     ],
   };
 };
-
 const mockMeasuresHistoryHandler = async (params: Record<string, unknown>) => {
   const mockResult = await (mockClient as ISonarQubeClient).getMeasuresHistory(params as any);
-
   return {
     content: [
       {
@@ -115,23 +99,18 @@ const mockMeasuresHistoryHandler = async (params: Record<string, unknown>) => {
     ],
   };
 };
-
 // Helper function to test string to number parameter transformations (not used directly)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function testNumberTransform(transformFn: (val: string | undefined) => number | null | undefined) {
   // Valid number
   expect(transformFn('10')).toBe(10);
-
   // Empty string should return null
   expect(transformFn('')).toBe(null);
-
   // Invalid number should return null
   expect(transformFn('abc')).toBe(null);
-
   // Undefined should return undefined
   expect(transformFn(undefined)).toBe(undefined);
 }
-
 describe('Schema Parameter Transformations', () => {
   describe('Number Transformations', () => {
     it('should transform string numbers to integers or null', () => {
@@ -139,8 +118,7 @@ describe('Schema Parameter Transformations', () => {
       const schema = z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) || null : null));
-
+        .transform((val: any) => (val ? parseInt(val, 10) || null : null));
       // Test the transformation
       expect(schema.parse('10')).toBe(10);
       expect(schema.parse('')).toBe(null);
@@ -148,15 +126,13 @@ describe('Schema Parameter Transformations', () => {
       expect(schema.parse(undefined)).toBe(null);
     });
   });
-
   describe('Boolean Transformations', () => {
     it('should transform string booleans to boolean values', () => {
       // Create a schema with boolean transformation
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test the transformation
       expect(schema.parse('true')).toBe(true);
       expect(schema.parse('false')).toBe(false);
@@ -166,7 +142,6 @@ describe('Schema Parameter Transformations', () => {
       expect(schema.parse(undefined)).toBe(undefined);
     });
   });
-
   describe('Parameter Transformations for Lambda Functions', () => {
     it('should handle nullToUndefined utility function', () => {
       expect(nullToUndefined(null)).toBeUndefined();
@@ -178,21 +153,17 @@ describe('Schema Parameter Transformations', () => {
       expect(nullToUndefined(false)).toBe(false);
       expect(nullToUndefined(true)).toBe(true);
     });
-
     it('should handle metrics handler with string parameters', async () => {
       const result = await mockMetricsHandler({ page: null, page_size: null });
-
       // Verify the result structure
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
       expect(result.content[0]).toHaveProperty('text');
-
       // Verify the result content
-      const data = JSON.parse(result.content[0].text);
+      const data = JSON.parse(result.content[0]?.text as string);
       expect(data).toHaveProperty('metrics');
-      expect(data.metrics[0]).toHaveProperty('key', 'test');
+      expect(data.metrics?.[0]).toHaveProperty('key', 'test');
     });
-
     it('should handle issues with complex parameters', async () => {
       const result = await mockIssuesHandler({
         project_key: 'test-project',
@@ -209,18 +180,15 @@ describe('Schema Parameter Transformations', () => {
         since_leak_period: 'true',
         in_new_code_period: 'true',
       });
-
       // Verify the result structure
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
       expect(result.content[0]).toHaveProperty('text');
-
       // Verify the result content
-      const data = JSON.parse(result.content[0].text);
+      const data = JSON.parse(result.content[0]?.text as string);
       expect(data).toHaveProperty('issues');
-      expect(data.issues[0]).toHaveProperty('key', 'issue-1');
+      expect(data.issues?.[0]).toHaveProperty('key', 'issue-1');
     });
-
     it('should handle component measures with parameters', async () => {
       const result = await mockComponentMeasuresHandler({
         component: 'comp-1',
@@ -229,18 +197,15 @@ describe('Schema Parameter Transformations', () => {
         period: '1',
         additional_fields: ['metrics'],
       });
-
       // Verify the result structure
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
       expect(result.content[0]).toHaveProperty('text');
-
       // Verify the result content
-      const data = JSON.parse(result.content[0].text);
+      const data = JSON.parse(result.content[0]?.text as string);
       expect(data).toHaveProperty('component');
       expect(data.component).toHaveProperty('key', 'comp-1');
     });
-
     it('should handle components measures with parameters', async () => {
       const result = await mockComponentsMeasuresHandler({
         component_keys: ['comp-1', 'comp-2'],
@@ -250,19 +215,16 @@ describe('Schema Parameter Transformations', () => {
         page_size: '10',
         additional_fields: ['metrics'],
       });
-
       // Verify the result structure
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
       expect(result.content[0]).toHaveProperty('text');
-
       // Verify the result content
-      const data = JSON.parse(result.content[0].text);
+      const data = JSON.parse(result.content[0]?.text as string);
       expect(data).toHaveProperty('components');
       expect(data.components).toHaveLength(2);
-      expect(data.components[0]).toHaveProperty('key', 'comp-1');
+      expect(data.components?.[0]).toHaveProperty('key', 'comp-1');
     });
-
     it('should handle measures history with parameters', async () => {
       const result = await mockMeasuresHistoryHandler({
         component: 'comp-1',
@@ -272,17 +234,15 @@ describe('Schema Parameter Transformations', () => {
         page: '1',
         page_size: '10',
       });
-
       // Verify the result structure
       expect(result).toHaveProperty('content');
       expect(result.content[0]).toHaveProperty('type', 'text');
       expect(result.content[0]).toHaveProperty('text');
-
       // Verify the result content
-      const data = JSON.parse(result.content[0].text);
+      const data = JSON.parse(result.content[0]?.text as string);
       expect(data).toHaveProperty('measures');
-      expect(data.measures[0]).toHaveProperty('metric', 'coverage');
-      expect(data.measures[0].history).toHaveLength(3);
+      expect(data.measures?.[0]).toHaveProperty('metric', 'coverage');
+      expect(data.measures?.[0]?.history).toHaveLength(3);
     });
   });
 });

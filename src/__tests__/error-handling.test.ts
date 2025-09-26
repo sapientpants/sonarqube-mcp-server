@@ -1,64 +1,45 @@
-/// <reference types="jest" />
-
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect, beforeEach, afterEach, beforeAll, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import nock from 'nock';
-
 // Mock environment variables
 process.env.SONARQUBE_TOKEN = 'test-token';
 process.env.SONARQUBE_URL = 'http://localhost:9000';
-
 // Save environment variables
 const originalEnv = process.env;
-
 beforeAll(() => {
   nock.cleanAll();
 });
-
 afterAll(() => {
   nock.cleanAll();
 });
-
 let nullToUndefined: any;
-
 // No need to mock axios anymore since we're using sonarqube-web-api-client
-
 describe('Error Handling', () => {
   beforeAll(async () => {
     const module = await import('../index.js');
     nullToUndefined = module.nullToUndefined;
   });
-
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
     nock.cleanAll();
   });
-
   afterEach(() => {
     process.env = originalEnv;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     nock.cleanAll();
   });
-
   describe('nullToUndefined function', () => {
     it('should handle various input types correctly', () => {
       // Test nulls
       expect(nullToUndefined(null)).toBeUndefined();
-
       // Test undefined
       expect(nullToUndefined(undefined)).toBeUndefined();
-
       // Test various other types
       expect(nullToUndefined(0)).toBe(0);
       expect(nullToUndefined('')).toBe('');
       expect(nullToUndefined('test')).toBe('test');
       expect(nullToUndefined(false)).toBe(false);
       expect(nullToUndefined(true)).toBe(true);
-
       // Test objects and arrays
       const obj = { test: 1 };
       const arr = [1, 2, 3];
@@ -66,12 +47,10 @@ describe('Error Handling', () => {
       expect(nullToUndefined(arr)).toBe(arr);
     });
   });
-
   describe('mapToSonarQubeParams', () => {
     it('should handle all parameters', async () => {
       const module = await import('../index.js');
       const mapToSonarQubeParams = module.mapToSonarQubeParams;
-
       const params = mapToSonarQubeParams({
         project_key: 'test-project',
         severity: 'MAJOR',
@@ -99,7 +78,6 @@ describe('Error Handling', () => {
         since_leak_period: true,
         in_new_code_period: true,
       });
-
       expect(params.projectKey).toBe('test-project');
       expect(params.severity).toBe('MAJOR');
       expect(params.page).toBe(1);
@@ -126,13 +104,10 @@ describe('Error Handling', () => {
       expect(params.sinceLeakPeriod).toBe(true);
       expect(params.inNewCodePeriod).toBe(true);
     });
-
     it('should handle empty parameters', async () => {
       const module = await import('../index.js');
       const mapToSonarQubeParams = module.mapToSonarQubeParams;
-
       const params = mapToSonarQubeParams({ project_key: 'test-project' });
-
       expect(params.projectKey).toBe('test-project');
       expect(params.severity).toBeUndefined();
       expect(params.statuses).toBeUndefined();
@@ -142,12 +117,10 @@ describe('Error Handling', () => {
       expect(params.rules).toBeUndefined();
     });
   });
-
   describe('Error handling utility functions', () => {
     it('should properly handle null parameters', () => {
       expect(nullToUndefined(null)).toBeUndefined();
     });
-
     it('should pass through non-null values', () => {
       expect(nullToUndefined('value')).toBe('value');
       expect(nullToUndefined(123)).toBe(123);
@@ -156,7 +129,6 @@ describe('Error Handling', () => {
       expect(nullToUndefined([])).toEqual([]);
       expect(nullToUndefined({})).toEqual({});
     });
-
     it('should handle undefined parameters', () => {
       expect(nullToUndefined(undefined)).toBeUndefined();
     });

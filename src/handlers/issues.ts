@@ -275,7 +275,9 @@ export async function handleMarkIssueFalsePositive(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    const finalParams = elicitationResult.params;
+    const finalParams = (
+      elicitationResult as { params: MarkIssueFalsePositiveParams; cancelled: false }
+    ).params;
 
     const result = await client.markIssueFalsePositive(finalParams);
     logger.info('Successfully marked issue as false positive', {
@@ -311,7 +313,8 @@ export async function handleMarkIssueWontFix(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    const finalParams = elicitationResult.params;
+    const finalParams = (elicitationResult as { params: MarkIssueWontFixParams; cancelled: false })
+      .params;
 
     const result = await client.markIssueWontFix(finalParams);
     logger.info("Successfully marked issue as won't fix", {
@@ -349,7 +352,8 @@ export async function handleMarkIssuesFalsePositive(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    const finalParams = elicitationResult.params;
+    const finalParams = (elicitationResult as { params: BulkIssueMarkParams; cancelled: false })
+      .params;
 
     const results = await client.markIssuesFalsePositive(finalParams);
     logger.info('Successfully marked issues as false positive', {
@@ -387,7 +391,8 @@ export async function handleMarkIssuesWontFix(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    const finalParams = elicitationResult.params;
+    const finalParams = (elicitationResult as { params: BulkIssueMarkParams; cancelled: false })
+      .params;
 
     const results = await client.markIssuesWontFix(finalParams);
     logger.info("Successfully marked issues as won't fix", {
@@ -463,7 +468,7 @@ export async function handleAssignIssue(
       issueKey: params.issueKey,
     };
     if (normalizedAssignee !== undefined) {
-      (assignParams as any).assignee = normalizedAssignee;
+      assignParams.assignee = normalizedAssignee;
     }
 
     const updatedIssue = await sonarQubeClient.assignIssue(assignParams);

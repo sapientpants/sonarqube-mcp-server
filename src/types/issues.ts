@@ -74,6 +74,7 @@ export interface SonarQubeIssue {
   effort?: string;
   debt?: string;
   author?: string;
+  assignee?: string;
   severity?: string;
   tags: string[];
   creationDate: string;

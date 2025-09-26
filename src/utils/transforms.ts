@@ -80,9 +80,9 @@ export function parseJsonStringArray(
   // If it's a string, try to parse it as JSON
   if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(value);
+      const parsed: unknown = JSON.parse(value);
       if (Array.isArray(parsed)) {
-        return parsed;
+        return parsed.map(String);
       }
       // If parsed but not an array, wrap it
       return [String(parsed)];

@@ -186,7 +186,7 @@ export const markIssueFalsePositiveHandler = async (params: Record<string, unkno
     issueKey: params.issue_key as string,
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleMarkIssueFalsePositive(handleParams);
 };
@@ -199,7 +199,7 @@ export const markIssueWontFixHandler = async (params: Record<string, unknown>) =
     issueKey: params.issue_key as string,
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleMarkIssueWontFix(handleParams);
 };
@@ -212,7 +212,7 @@ export const markIssuesFalsePositiveHandler = async (params: Record<string, unkn
     issueKeys: params.issue_keys as string[],
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleMarkIssuesFalsePositive(handleParams);
 };
@@ -225,7 +225,7 @@ export const markIssuesWontFixHandler = async (params: Record<string, unknown>) 
     issueKeys: params.issue_keys as string[],
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleMarkIssuesWontFix(handleParams);
 };
@@ -248,7 +248,7 @@ export const assignIssueHandler = async (params: Record<string, unknown>) => {
     issueKey: params.issueKey as string,
   };
   if (params.assignee !== undefined) {
-    (handleParams as any).assignee = params.assignee as string;
+    handleParams.assignee = params.assignee as string;
   }
   return handleAssignIssue(handleParams);
 };
@@ -261,7 +261,7 @@ export const confirmIssueHandler = async (params: Record<string, unknown>) => {
     issueKey: params.issue_key as string,
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleConfirmIssue(handleParams);
 };
@@ -274,7 +274,7 @@ export const unconfirmIssueHandler = async (params: Record<string, unknown>) => 
     issueKey: params.issue_key as string,
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleUnconfirmIssue(handleParams);
 };
@@ -287,7 +287,7 @@ export const resolveIssueHandler = async (params: Record<string, unknown>) => {
     issueKey: params.issue_key as string,
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleResolveIssue(handleParams);
 };
@@ -300,7 +300,7 @@ export const reopenIssueHandler = async (params: Record<string, unknown>) => {
     issueKey: params.issue_key as string,
   };
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
   return handleReopenIssue(handleParams);
 };
@@ -530,31 +530,37 @@ export const hotspotsHandler = async (params: Record<string, unknown>) => {
   };
 
   if (params.project_key !== undefined) {
-    (handleParams as any).projectKey = params.project_key as string;
+    handleParams.projectKey = params.project_key as string;
   }
   if (params.branch !== undefined) {
-    (handleParams as any).branch = params.branch as string;
+    handleParams.branch = params.branch as string;
   }
   if (params.pull_request !== undefined) {
-    (handleParams as any).pullRequest = params.pull_request as string;
+    handleParams.pullRequest = params.pull_request as string;
   }
   if (params.status !== undefined) {
-    (handleParams as any).status = params.status as HotspotSearchParams['status'];
+    const status = params.status as HotspotSearchParams['status'];
+    if (status !== undefined) {
+      handleParams.status = status;
+    }
   }
   if (params.resolution !== undefined) {
-    (handleParams as any).resolution = params.resolution as HotspotSearchParams['resolution'];
+    const resolution = params.resolution as HotspotSearchParams['resolution'];
+    if (resolution !== undefined) {
+      handleParams.resolution = resolution;
+    }
   }
   if (params.files !== undefined) {
-    (handleParams as any).files = nullToUndefined(params.files) as string[];
+    handleParams.files = nullToUndefined(params.files) as string[];
   }
   if (params.assigned_to_me !== undefined) {
-    (handleParams as any).assignedToMe = nullToUndefined(params.assigned_to_me) as boolean;
+    handleParams.assignedToMe = nullToUndefined(params.assigned_to_me) as boolean;
   }
   if (params.since_leak_period !== undefined) {
-    (handleParams as any).sinceLeakPeriod = nullToUndefined(params.since_leak_period) as boolean;
+    handleParams.sinceLeakPeriod = nullToUndefined(params.since_leak_period) as boolean;
   }
   if (params.in_new_code_period !== undefined) {
-    (handleParams as any).inNewCodePeriod = nullToUndefined(params.in_new_code_period) as boolean;
+    handleParams.inNewCodePeriod = nullToUndefined(params.in_new_code_period) as boolean;
   }
 
   return handleSonarQubeHotspots(handleParams);
@@ -577,10 +583,13 @@ export const updateHotspotStatusHandler = async (params: Record<string, unknown>
   };
 
   if (params.resolution !== undefined) {
-    (handleParams as any).resolution = params.resolution as HotspotStatusUpdateParams['resolution'];
+    const resolution = params.resolution as HotspotStatusUpdateParams['resolution'];
+    if (resolution !== undefined) {
+      handleParams.resolution = resolution;
+    }
   }
   if (params.comment !== undefined) {
-    (handleParams as any).comment = params.comment as string;
+    handleParams.comment = params.comment as string;
   }
 
   return handleSonarQubeUpdateHotspotStatus(handleParams);
@@ -1086,12 +1095,10 @@ if (process.env.NODE_ENV !== 'test') {
     logger.info(`Using ${transport.getName()} transport`);
 
     // Set the underlying Server instance on the elicitation manager
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    elicitationManager.setServer((mcpServer as any).server as Server);
+    elicitationManager.setServer((mcpServer as { server: Server }).server);
 
     // Connect the transport to the MCP server
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await transport.connect((mcpServer as any).server as Server);
+    await transport.connect((mcpServer as { server: Server }).server);
 
     logger.info('SonarQube MCP server started successfully', {
       mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',

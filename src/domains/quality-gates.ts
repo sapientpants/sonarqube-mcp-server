@@ -72,13 +72,15 @@ export class QualityGatesDomain extends BaseDomain {
   ): Promise<SonarQubeQualityGateStatus> {
     const { projectKey, branch, pullRequest } = params;
 
-    const request = { projectKey };
-    if (branch !== undefined) {
-      (request as any).branch = branch;
-    }
-    if (pullRequest !== undefined) {
-      (request as any).pullRequest = pullRequest;
-    }
+    const request: {
+      projectKey: string;
+      branch?: string;
+      pullRequest?: string;
+    } = {
+      projectKey,
+      ...(branch && { branch }),
+      ...(pullRequest && { pullRequest }),
+    };
 
     const response = await this.webApiClient.qualityGates.getProjectStatus(request);
 

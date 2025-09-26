@@ -83,17 +83,32 @@ export class HotspotsDomain extends BaseDomain {
       securityCategory: response.rule.securityCategory,
       vulnerabilityProbability: response.rule.vulnerabilityProbability as SeverityLevel,
       status: response.status,
-      resolution: response.resolution,
+      ...(response.resolution && { resolution: response.resolution }),
       line: response.line ?? 0,
       message: response.message,
-      assignee: response.assignee?.login,
-      author: response.author?.login,
+      ...(response.assignee?.login && { assignee: response.assignee.login }),
+      ...(response.author?.login && { author: response.author.login }),
       creationDate: response.creationDate,
       updateDate: response.updateDate,
-      rule: response.rule,
-      changelog: response.changelog,
+      rule: {
+        key: response.rule.key,
+        name: response.rule.name,
+        securityCategory: response.rule.securityCategory,
+        vulnerabilityProbability: response.rule.vulnerabilityProbability as SeverityLevel,
+      },
+      changelog: response.changelog?.map((change) => ({
+        user: change.user.login,
+        userName: change.user.name,
+        creationDate: change.creationDate,
+        diffs: change.diffs.map((diff) => ({
+          key: diff.key,
+          oldValue: diff.oldValue,
+          newValue: diff.newValue,
+        })),
+      })),
       comment: response.comment,
-    } as SonarQubeHotspotDetails;
+      users: (response as { users?: SonarQubeHotspotDetails['users'] }).users,
+    };
   }
 
   /**
@@ -102,16 +117,21 @@ export class HotspotsDomain extends BaseDomain {
    * @returns Promise that resolves when the update is complete
    */
   async updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void> {
-    const request = {
+    const request: {
+      hotspot: string;
+      status: 'TO_REVIEW' | 'REVIEWED';
+      resolution?: 'FIXED' | 'SAFE';
+      comment?: string;
+    } = {
       hotspot: params.hotspot,
       status: params.status,
     };
 
     if (params.resolution !== undefined) {
-      (request as any).resolution = params.resolution;
+      request.resolution = params.resolution;
     }
     if (params.comment !== undefined) {
-      (request as any).comment = params.comment;
+      request.comment = params.comment;
     }
 
     await this.webApiClient.hotspots.changeStatus(request);

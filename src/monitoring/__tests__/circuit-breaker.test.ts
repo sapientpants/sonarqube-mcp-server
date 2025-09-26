@@ -1,9 +1,9 @@
-import { describe, expect, it, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { CircuitBreakerFactory } from '../circuit-breaker.js';
 import { getMetricsService, cleanupMetricsService } from '../metrics.js';
 
 describe('Circuit Breaker', () => {
-  let mockFn: jest.Mock;
+  let mockFn: ReturnType<typeof vi.fn<(...args: unknown[]) => Promise<unknown>>>;
   let metricsService: ReturnType<typeof getMetricsService>;
 
   beforeEach(() => {
@@ -12,7 +12,7 @@ describe('Circuit Breaker', () => {
     cleanupMetricsService();
     metricsService = getMetricsService();
 
-    mockFn = jest.fn();
+    mockFn = vi.fn<(...args: unknown[]) => Promise<unknown>>();
   });
 
   afterEach(() => {
@@ -32,7 +32,7 @@ describe('Circuit Breaker', () => {
     });
 
     it('should pass arguments to the wrapped function', async () => {
-      mockFn.mockImplementation(async (a: string, b: number) => `${a}-${b}`);
+      mockFn.mockImplementation((...args: unknown[]) => Promise.resolve(`${args[0]}-${args[1]}`));
 
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn);
       const result = await breaker.fire('test', 123);
@@ -79,12 +79,12 @@ describe('Circuit Breaker', () => {
 
     it('should not open circuit if failures are below threshold', async () => {
       let callCount = 0;
-      mockFn.mockImplementation(async () => {
+      mockFn.mockImplementation(() => {
         callCount++;
         if (callCount === 1) {
-          throw new Error('Temporary failure');
+          return Promise.reject(new Error('Temporary failure'));
         }
-        return 'success';
+        return Promise.resolve('success');
       });
 
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
@@ -105,10 +105,9 @@ describe('Circuit Breaker', () => {
 
   describe('Circuit recovery behavior', () => {
     it('should move to half-open state after timeout', async () => {
-      mockFn
-        .mockRejectedValueOnce(new Error('Failure 1'))
-        .mockRejectedValueOnce(new Error('Failure 2'))
-        .mockResolvedValue('recovered');
+      mockFn.mockRejectedValueOnce(new Error('Failure 1'));
+      mockFn.mockRejectedValueOnce(new Error('Failure 2'));
+      mockFn.mockResolvedValue('recovered');
 
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,
@@ -159,10 +158,9 @@ describe('Circuit Breaker', () => {
 
   describe('Metrics integration', () => {
     it('should track circuit breaker metrics', async () => {
-      mockFn
-        .mockResolvedValueOnce('success')
-        .mockRejectedValueOnce(new Error('failure'))
-        .mockResolvedValueOnce('success');
+      mockFn.mockResolvedValueOnce('success');
+      mockFn.mockRejectedValueOnce(new Error('failure'));
+      mockFn.mockResolvedValueOnce('success');
 
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn);
 
@@ -170,7 +168,7 @@ describe('Circuit Breaker', () => {
       await expect(breaker.fire()).rejects.toThrow('failure');
       await breaker.fire();
 
-      const metrics = await metricsService.getMetrics();
+      const metrics = metricsService.getMetrics();
 
       // Check for circuit breaker metrics - the breaker tracks failures
       expect(metrics).toContain('mcp_circuit_breaker_failures_total{service="test-breaker"} 1');
@@ -190,7 +188,7 @@ describe('Circuit Breaker', () => {
       await expect(breaker.fire()).rejects.toThrow();
 
       // Check metrics for open state
-      const metrics = await metricsService.getMetrics();
+      const metrics = metricsService.getMetrics();
       expect(metrics).toContain('mcp_circuit_breaker_state{service="test-breaker"} 1');
     });
   });
@@ -220,10 +218,9 @@ describe('Circuit Breaker', () => {
 
     it('should respect custom error filter', async () => {
       // The errorFilter should return true for errors that should be counted
-      mockFn
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockRejectedValueOnce(new Error('Timeout error'))
-        .mockResolvedValue('success');
+      mockFn.mockRejectedValueOnce(new Error('Network error'));
+      mockFn.mockRejectedValueOnce(new Error('Timeout error'));
+      mockFn.mockResolvedValue('success');
 
       const breaker = CircuitBreakerFactory.getBreaker('test-breaker', mockFn, {
         errorThresholdPercentage: 50,

@@ -138,7 +138,7 @@ export class CircuitBreakerFactory {
       count: this.breakers.size,
     });
 
-    for (const [name, breaker] of this.breakers) {
+    for (const [name, breaker] of Array.from(this.breakers.entries())) {
       breaker.shutdown();
       logger.debug('Circuit breaker shut down', { name });
     }
@@ -159,12 +159,12 @@ export class CircuitBreakerFactory {
  */
 export function withCircuitBreaker(name: string, options?: CircuitBreakerOptions): MethodDecorator {
   return function (target: unknown, propertyKey: string | symbol, descriptor: PropertyDescriptor) {
-    const originalMethod = descriptor.value;
+    const originalMethod = descriptor.value as (...args: unknown[]) => Promise<unknown>;
 
     descriptor.value = async function (...args: unknown[]) {
       const breaker = CircuitBreakerFactory.getBreaker(
         `${name}.${String(propertyKey)}`,
-        originalMethod.bind(this),
+        originalMethod.bind(this) as (...args: unknown[]) => Promise<unknown>,
         options
       );
 

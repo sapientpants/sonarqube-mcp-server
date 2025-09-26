@@ -1,4 +1,5 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { Mocked } from 'vitest';
 import {
   createSonarQubeClientFromEnvWithElicitation,
   setSonarQubeElicitationManager,
@@ -7,10 +8,10 @@ import { ElicitationManager } from '../utils/elicitation.js';
 
 describe('SonarQube Client with Elicitation', () => {
   const originalEnv = process.env;
-  let mockElicitationManager: jest.Mocked<ElicitationManager>;
+  let mockElicitationManager: Mocked<ElicitationManager>;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
 
     // Clear any existing auth
@@ -21,15 +22,15 @@ describe('SonarQube Client with Elicitation', () => {
 
     // Create mock elicitation manager
     mockElicitationManager = {
-      isEnabled: jest.fn(),
-      collectAuthentication: jest.fn(),
-      setServer: jest.fn(),
-      getOptions: jest.fn(),
-      updateOptions: jest.fn(),
-      confirmBulkOperation: jest.fn(),
-      collectResolutionComment: jest.fn(),
-      disambiguateSelection: jest.fn(),
-    } as unknown as jest.Mocked<ElicitationManager>;
+      isEnabled: vi.fn(),
+      collectAuthentication: vi.fn(),
+      setServer: vi.fn(),
+      getOptions: vi.fn(),
+      updateOptions: vi.fn(),
+      confirmBulkOperation: vi.fn(),
+      collectResolutionComment: vi.fn(),
+      disambiguateSelection: vi.fn(),
+    } as unknown as Mocked<ElicitationManager>;
 
     // Set the mock manager
     setSonarQubeElicitationManager(mockElicitationManager);

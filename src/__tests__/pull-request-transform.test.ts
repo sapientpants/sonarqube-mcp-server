@@ -1,15 +1,15 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect } from 'vitest';
 import { z } from 'zod';
-import { issuesToolSchema } from '../schemas/issues';
+import { issuesToolSchema } from '../schemas/issues.js';
 import {
   componentMeasuresToolSchema,
   componentsMeasuresToolSchema,
   measuresHistoryToolSchema,
-} from '../schemas/measures';
-import { hotspotsToolSchema } from '../schemas/hotspots-tools';
-import { sourceCodeToolSchema, scmBlameToolSchema } from '../schemas/source-code';
-import { qualityGateStatusToolSchema } from '../schemas/quality-gates';
-import { componentsToolSchema } from '../schemas/components';
+} from '../schemas/measures.js';
+import { hotspotsToolSchema } from '../schemas/hotspots-tools.js';
+import { sourceCodeToolSchema, scmBlameToolSchema } from '../schemas/source-code.js';
+import { qualityGateStatusToolSchema } from '../schemas/quality-gates.js';
+import { componentsToolSchema } from '../schemas/components.js';
 
 describe('pull_request parameter transform', () => {
   describe('issues schema', () => {

@@ -1,4 +1,4 @@
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { IssuesDomain } from '../domains/issues.js';
 import { handleAssignIssue } from '../handlers/issues.js';
 import type { SonarQubeIssue } from '../types/issues.js';
@@ -14,7 +14,7 @@ describe('Assign Issue Functionality', () => {
   const organization = 'test-org';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('IssuesDomain.assignIssue', () => {
@@ -23,9 +23,9 @@ describe('Assign Issue Functionality', () => {
       const assignee = 'jane.doe';
 
       const mockSearchBuilder = {
-        withIssues: jest.fn().mockReturnThis(),
-        withAdditionalFields: jest.fn().mockReturnThis(),
-        execute: jest.fn<() => Promise<any>>().mockResolvedValue({
+        withIssues: vi.fn().mockReturnThis(),
+        withAdditionalFields: vi.fn().mockReturnThis(),
+        execute: vi.fn<() => Promise<any>>().mockResolvedValue({
           issues: [
             {
               key: issueKey,
@@ -41,7 +41,7 @@ describe('Assign Issue Functionality', () => {
               tags: [],
               creationDate: '2023-01-01T00:00:00.000Z',
               updateDate: '2023-01-01T00:00:00.000Z',
-            } as SonarQubeIssueWithAssignee,
+            } as unknown as SonarQubeIssueWithAssignee,
           ],
           total: 1,
         }),
@@ -49,8 +49,8 @@ describe('Assign Issue Functionality', () => {
 
       const mockWebApiClient = {
         issues: {
-          assign: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
-          search: jest.fn().mockReturnValue(mockSearchBuilder),
+          assign: vi.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
+          search: vi.fn().mockReturnValue(mockSearchBuilder),
         },
       };
 
@@ -78,9 +78,9 @@ describe('Assign Issue Functionality', () => {
       const issueKey = 'ISSUE-456';
 
       const mockSearchBuilder = {
-        withIssues: jest.fn().mockReturnThis(),
-        withAdditionalFields: jest.fn().mockReturnThis(),
-        execute: jest.fn<() => Promise<any>>().mockResolvedValue({
+        withIssues: vi.fn().mockReturnThis(),
+        withAdditionalFields: vi.fn().mockReturnThis(),
+        execute: vi.fn<() => Promise<any>>().mockResolvedValue({
           issues: [
             {
               key: issueKey,
@@ -88,7 +88,7 @@ describe('Assign Issue Functionality', () => {
               component: 'test-component',
               project: 'test-project',
               message: 'Test issue',
-              assignee: null,
+              assignee: undefined,
               assigneeName: null,
               severity: 'INFO',
               type: 'CODE_SMELL',
@@ -96,7 +96,7 @@ describe('Assign Issue Functionality', () => {
               tags: [],
               creationDate: '2023-01-01T00:00:00.000Z',
               updateDate: '2023-01-01T00:00:00.000Z',
-            } as SonarQubeIssueWithAssignee,
+            } as unknown as SonarQubeIssueWithAssignee,
           ],
           total: 1,
         }),
@@ -104,8 +104,8 @@ describe('Assign Issue Functionality', () => {
 
       const mockWebApiClient = {
         issues: {
-          assign: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
-          search: jest.fn().mockReturnValue(mockSearchBuilder),
+          assign: vi.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
+          search: vi.fn().mockReturnValue(mockSearchBuilder),
         },
       };
 
@@ -126,9 +126,9 @@ describe('Assign Issue Functionality', () => {
       const issueKey = 'ISSUE-999';
 
       const mockSearchBuilder = {
-        withIssues: jest.fn().mockReturnThis(),
-        withAdditionalFields: jest.fn().mockReturnThis(),
-        execute: jest.fn<() => Promise<any>>().mockResolvedValue({
+        withIssues: vi.fn().mockReturnThis(),
+        withAdditionalFields: vi.fn().mockReturnThis(),
+        execute: vi.fn<() => Promise<any>>().mockResolvedValue({
           issues: [],
           total: 0,
         }),
@@ -136,8 +136,8 @@ describe('Assign Issue Functionality', () => {
 
       const mockWebApiClient = {
         issues: {
-          assign: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
-          search: jest.fn().mockReturnValue(mockSearchBuilder),
+          assign: vi.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
+          search: vi.fn().mockReturnValue(mockSearchBuilder),
         },
       };
 
@@ -154,7 +154,7 @@ describe('Assign Issue Functionality', () => {
   describe('handleAssignIssue', () => {
     it('should handle issue assignment and return formatted response', async () => {
       const mockClient = {
-        assignIssue: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({
+        assignIssue: vi.fn<(params: any) => Promise<any>>().mockResolvedValue({
           key: 'ISSUE-123',
           rule: 'test-rule',
           component: 'src/main.js',
@@ -169,7 +169,7 @@ describe('Assign Issue Functionality', () => {
           tags: [],
           creationDate: '2023-01-01T00:00:00.000Z',
           updateDate: '2023-01-01T00:00:00.000Z',
-        } as SonarQubeIssueWithAssignee),
+        } as unknown as SonarQubeIssueWithAssignee),
       };
 
       const result = await handleAssignIssue(
@@ -207,13 +207,13 @@ describe('Assign Issue Functionality', () => {
 
     it('should handle issue unassignment', async () => {
       const mockClient = {
-        assignIssue: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({
+        assignIssue: vi.fn<(params: any) => Promise<any>>().mockResolvedValue({
           key: 'ISSUE-456',
           rule: 'test-rule',
           component: 'src/utils.js',
           project: 'test-project',
           message: 'Another test issue',
-          assignee: null,
+          assignee: undefined,
           assigneeName: null,
           severity: 'MINOR',
           type: 'CODE_SMELL',
@@ -222,7 +222,7 @@ describe('Assign Issue Functionality', () => {
           tags: [],
           creationDate: '2023-01-01T00:00:00.000Z',
           updateDate: '2023-01-01T00:00:00.000Z',
-        } as SonarQubeIssueWithAssignee),
+        } as unknown as SonarQubeIssueWithAssignee),
       };
 
       const result = await handleAssignIssue(
@@ -259,7 +259,7 @@ describe('Assign Issue Functionality', () => {
 
     it('should handle errors gracefully', async () => {
       const mockClient = {
-        assignIssue: jest
+        assignIssue: vi
           .fn<(params: any) => Promise<any>>()
           .mockRejectedValue(new Error('API Error')),
       };

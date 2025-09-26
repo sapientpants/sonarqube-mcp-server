@@ -1,6 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { createLogger } from './logger.js';
 
 export interface ElicitationOptions {
   enabled: boolean;
@@ -42,6 +43,7 @@ export const authSchema = z
 export class ElicitationManager {
   private server: Server | null = null;
   private options: ElicitationOptions;
+  private logger = createLogger('ElicitationManager');
 
   constructor(options: Partial<ElicitationOptions> = {}) {
     this.options = {
@@ -96,8 +98,12 @@ export class ElicitationManager {
 
       const result = await this.server.elicitInput({
         message: `You are about to ${operation} ${itemCount} items${itemsDisplay}. This action cannot be undone.`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(confirmationSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(confirmationSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(confirmationSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
@@ -113,7 +119,7 @@ export class ElicitationManager {
         content: result.content as z.infer<typeof confirmationSchema>,
       };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -137,8 +143,12 @@ Available methods:
 3. System passcode - For SonarQube instances with system authentication
 
 Which method would you like to use?`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(authSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(authSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(authSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
@@ -151,7 +161,7 @@ Which method would you like to use?`,
         content: result.content as z.infer<typeof authSchema>,
       };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -175,8 +185,12 @@ Which method would you like to use?`,
     try {
       const result = await this.server.elicitInput({
         message: `Please provide a comment explaining why issue ${issueKey} is being marked as ${resolution}:`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(commentSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(commentSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(commentSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
@@ -186,7 +200,7 @@ Which method would you like to use?`,
 
       return { action: result.action };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -220,8 +234,12 @@ Which method would you like to use?`,
     try {
       const result = await this.server.elicitInput({
         message: `Multiple ${itemType}s found. Please select one:\n\n${itemsList}`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(selectionSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(selectionSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(selectionSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
@@ -231,7 +249,7 @@ Which method would you like to use?`,
 
       return { action: result.action };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }

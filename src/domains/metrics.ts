@@ -15,13 +15,13 @@ export class MetricsDomain extends BaseDomain {
   ): Promise<SonarQubeMetricsResult> {
     const { page, pageSize } = params;
 
-    const request = {};
-    if (page !== undefined) {
-      (request as any).p = page;
-    }
-    if (pageSize !== undefined) {
-      (request as any).ps = pageSize;
-    }
+    const request: {
+      p?: number;
+      ps?: number;
+    } = {
+      ...(page && { p: page }),
+      ...(pageSize && { ps: pageSize }),
+    };
 
     const response = await this.webApiClient.metrics.search(request);
 

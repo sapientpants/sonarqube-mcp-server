@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   SonarQubeAPIError,
   SonarQubeErrorType,
@@ -18,12 +18,12 @@ import {
 } from 'sonarqube-web-api-client';
 
 // Mock the logger
-jest.unstable_mockModule('../utils/logger.js', () => ({
+vi.mock('../utils/logger.js', () => ({
   createLogger: () => ({
-    info: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
   }),
 }));
 
@@ -166,16 +166,16 @@ describe('Error Handling', () => {
 
   describe('withErrorHandling', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
-      jest.useFakeTimers();
+      vi.clearAllMocks();
+      vi.useFakeTimers();
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it('should return successful result without retry', async () => {
-      const apiCall = jest.fn<() => Promise<string>>().mockResolvedValue('success');
+      const apiCall = vi.fn<() => Promise<string>>().mockResolvedValue('success');
       const result = await withErrorHandling('test-operation', apiCall);
 
       expect(result).toBe('success');
@@ -183,7 +183,7 @@ describe('Error Handling', () => {
     });
 
     it('should retry on rate limit error', async () => {
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValueOnce(new RateLimitError('Rate limited'))
         .mockRejectedValueOnce(new RateLimitError('Rate limited'))
@@ -192,8 +192,8 @@ describe('Error Handling', () => {
       const promise = withErrorHandling('test-operation', apiCall);
 
       // Fast-forward through retry delays
-      await jest.advanceTimersByTimeAsync(1000);
-      await jest.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
 
       const result = await promise;
 
@@ -202,14 +202,14 @@ describe('Error Handling', () => {
     });
 
     it('should retry on network error', async () => {
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValueOnce(new NetworkError('Network error'))
         .mockResolvedValue('success');
 
       const promise = withErrorHandling('test-operation', apiCall);
 
-      await jest.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(1000);
 
       const result = await promise;
 
@@ -218,14 +218,14 @@ describe('Error Handling', () => {
     });
 
     it('should retry on server error', async () => {
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValueOnce(new ServerError('Server error', 500))
         .mockResolvedValue('success');
 
       const promise = withErrorHandling('test-operation', apiCall);
 
-      await jest.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(1000);
 
       const result = await promise;
 
@@ -234,7 +234,7 @@ describe('Error Handling', () => {
     });
 
     it('should not retry on authentication error', async () => {
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValue(new AuthenticationError('Auth failed'));
 
@@ -244,12 +244,12 @@ describe('Error Handling', () => {
     });
 
     it('should respect max retries', async () => {
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValue(new RateLimitError('Rate limited'));
 
       // Run the test with real timers since fake timers are problematic with async/await
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       const promise = withErrorHandling('test-operation', apiCall, {
         maxRetries: 3,
@@ -261,23 +261,23 @@ describe('Error Handling', () => {
       expect(apiCall).toHaveBeenCalledTimes(4); // Initial + 3 retries
 
       // Restore fake timers for other tests
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     it('should use exponential backoff', async () => {
       // Track delays used
       let delays: number[] = [];
 
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       // Mock setTimeout to capture delays
       const originalSetTimeout = global.setTimeout;
-      global.setTimeout = jest.fn((fn: () => void, delay?: number) => {
+      global.setTimeout = vi.fn((fn: () => void, delay?: number) => {
         if (delay !== undefined) delays.push(delay);
         return originalSetTimeout(fn, 0); // Execute immediately
       }) as unknown as typeof global.setTimeout;
 
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValue(new RateLimitError('Rate limited'));
 
@@ -295,23 +295,23 @@ describe('Error Handling', () => {
 
       // Restore
       global.setTimeout = originalSetTimeout;
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     it('should respect max delay', async () => {
       // Track delays used
       let delays: number[] = [];
 
-      jest.useRealTimers();
+      vi.useRealTimers();
 
       // Mock setTimeout to capture delays
       const originalSetTimeout = global.setTimeout;
-      global.setTimeout = jest.fn((fn: () => void, delay?: number) => {
+      global.setTimeout = vi.fn((fn: () => void, delay?: number) => {
         if (delay !== undefined) delays.push(delay);
         return originalSetTimeout(fn, 0); // Execute immediately
       }) as unknown as typeof global.setTimeout;
 
-      const apiCall = jest
+      const apiCall = vi
         .fn<() => Promise<string>>()
         .mockRejectedValue(new RateLimitError('Rate limited'));
 
@@ -329,12 +329,12 @@ describe('Error Handling', () => {
 
       // Restore
       global.setTimeout = originalSetTimeout;
-      jest.useFakeTimers();
+      vi.useFakeTimers();
     });
 
     it('should pass through non-SonarQubeClientError unchanged', async () => {
       const customError = new Error('Custom error');
-      const apiCall = jest.fn<() => Promise<string>>().mockRejectedValue(customError);
+      const apiCall = vi.fn<() => Promise<string>>().mockRejectedValue(customError);
 
       await expect(withErrorHandling('test-operation', apiCall)).rejects.toThrow(customError);
       expect(apiCall).toHaveBeenCalledTimes(1);

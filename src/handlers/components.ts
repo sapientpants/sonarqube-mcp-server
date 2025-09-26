@@ -32,16 +32,11 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
     const isSearchOperation =
       !isShowOperation && !isTreeOperation && (params.query || params.qualifiers);
 
-    const webApiClient = (
-      client as unknown as { webApiClient: unknown; organization: string | null }
-    ).webApiClient;
-    const organization = (
-      client as unknown as { webApiClient: unknown; organization: string | null }
-    ).organization;
-    const domain = new ComponentsDomain(
-      webApiClient as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-      organization
-    );
+    const webApiClient = client.webApiClient;
+    // Get organization from client if it has one, otherwise null
+    const organization =
+      (client as ISonarQubeClient & { organization?: string | null }).organization ?? null;
+    const domain = new ComponentsDomain(webApiClient, organization);
 
     let result;
 
@@ -64,25 +59,25 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       };
 
       if (nullToUndefined(params.strategy) !== undefined) {
-        (treeParams as any).strategy = nullToUndefined(params.strategy);
+        treeParams.strategy = nullToUndefined(params.strategy) as 'all' | 'children' | 'leaves';
       }
       if (params.qualifiers !== undefined) {
-        (treeParams as any).qualifiers = params.qualifiers;
+        treeParams.qualifiers = params.qualifiers;
       }
       if (nullToUndefined(params.asc) !== undefined) {
-        (treeParams as any).asc = nullToUndefined(params.asc);
+        treeParams.asc = nullToUndefined(params.asc) as boolean;
       }
       if (nullToUndefined(params.p) !== undefined) {
-        (treeParams as any).page = nullToUndefined(params.p);
+        treeParams.page = nullToUndefined(params.p) as number;
       }
       if (nullToUndefined(params.ps) !== undefined) {
-        (treeParams as any).pageSize = nullToUndefined(params.ps);
+        treeParams.pageSize = nullToUndefined(params.ps) as number;
       }
       if (nullToUndefined(params.branch) !== undefined) {
-        (treeParams as any).branch = nullToUndefined(params.branch);
+        treeParams.branch = nullToUndefined(params.branch) as string;
       }
       if (nullToUndefined(params.pullRequest) !== undefined) {
-        (treeParams as any).pullRequest = nullToUndefined(params.pullRequest);
+        treeParams.pullRequest = nullToUndefined(params.pullRequest) as string;
       }
 
       result = await withErrorHandling('Get component tree', () =>
@@ -97,19 +92,19 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       const searchParams: ComponentsSearchParams = {};
 
       if (nullToUndefined(params.query) !== undefined) {
-        (searchParams as any).query = nullToUndefined(params.query);
+        searchParams.query = nullToUndefined(params.query) as string;
       }
       if (params.qualifiers !== undefined) {
-        (searchParams as any).qualifiers = params.qualifiers;
+        searchParams.qualifiers = params.qualifiers;
       }
       if (nullToUndefined(params.language) !== undefined) {
-        (searchParams as any).language = nullToUndefined(params.language);
+        searchParams.language = nullToUndefined(params.language) as string;
       }
       if (nullToUndefined(params.p) !== undefined) {
-        (searchParams as any).page = nullToUndefined(params.p);
+        searchParams.page = nullToUndefined(params.p) as number;
       }
       if (nullToUndefined(params.ps) !== undefined) {
-        (searchParams as any).pageSize = nullToUndefined(params.ps);
+        searchParams.pageSize = nullToUndefined(params.ps) as number;
       }
 
       result = await withErrorHandling('Search components', () =>
@@ -126,10 +121,10 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       };
 
       if (nullToUndefined(params.p) !== undefined) {
-        (searchParams as any).page = nullToUndefined(params.p);
+        searchParams.page = nullToUndefined(params.p) as number;
       }
       if (nullToUndefined(params.ps) !== undefined) {
-        (searchParams as any).pageSize = nullToUndefined(params.ps);
+        searchParams.pageSize = nullToUndefined(params.ps) as number;
       }
 
       result = await withErrorHandling('List all projects', () =>

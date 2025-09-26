@@ -194,7 +194,8 @@ export class HealthService {
    * Reset the singleton instance (for testing)
    */
   static resetInstance(): void {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    this.instance = undefined as any;
+    // Reset the singleton instance for testing purposes
+    // @ts-expect-error - Intentionally setting to undefined for testing
+    this.instance = undefined;
   }
 }
