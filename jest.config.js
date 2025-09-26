@@ -13,16 +13,14 @@ export default {
       {
         useESM: true,
         tsconfig: {
-          moduleResolution: "NodeNext"
-        }
+          moduleResolution: 'NodeNext',
+        },
       },
     ],
   },
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  transformIgnorePatterns: [
-    'node_modules/(?!(@modelcontextprotocol)/)'
-  ],
+  transformIgnorePatterns: ['node_modules/(?!(@modelcontextprotocol)/)'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -36,22 +34,22 @@ export default {
     '/src/__tests__/handlers.test.ts',
     '/src/__tests__/tool-handlers.test.ts',
     '/src/__tests__/mocked-environment.test.ts',
-    '/src/__tests__/direct-lambdas.test.ts'
+    '/src/__tests__/direct-lambdas.test.ts',
   ],
   // Focusing on total coverage, with sonarqube.ts at 100%
   coverageThreshold: {
-    "src/sonarqube.ts": {
+    'src/sonarqube.ts': {
       statements: 81,
       branches: 60,
       functions: 100,
-      lines: 81
+      lines: 81,
     },
     global: {
       statements: 68,
       branches: 8,
       functions: 40,
-      lines: 68
-    }
+      lines: 68,
+    },
   },
-  bail: 0 // Run all tests regardless of failures
-}; 
+  bail: 0, // Run all tests regardless of failures
+};

@@ -159,7 +159,7 @@ function formatLogMessage(level: LogLevel, message: string, context?: string): s
  * Logger service for consistent logging throughout the application
  */
 export class Logger {
-  private readonly context?: string;
+  private readonly context: string | undefined;
 
   /**
    * Create a new logger instance, optionally with a context

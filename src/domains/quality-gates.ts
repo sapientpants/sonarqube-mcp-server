@@ -30,7 +30,11 @@ export class QualityGatesDomain extends BaseDomain {
         })),
       })),
       default: response.default ?? '',
-      actions: (response as { actions?: { create?: boolean } }).actions, // actions might not be in the type definition
+      actions: (response as { actions?: { create?: boolean } }).actions
+        ? {
+            create: (response as { actions?: { create?: boolean } }).actions?.create,
+          }
+        : undefined, // actions might not be in the type definition
     };
   }
 
@@ -68,11 +72,15 @@ export class QualityGatesDomain extends BaseDomain {
   ): Promise<SonarQubeQualityGateStatus> {
     const { projectKey, branch, pullRequest } = params;
 
-    const response = await this.webApiClient.qualityGates.getProjectStatus({
-      projectKey,
-      branch,
-      pullRequest,
-    });
+    const request = { projectKey };
+    if (branch !== undefined) {
+      (request as any).branch = branch;
+    }
+    if (pullRequest !== undefined) {
+      (request as any).pullRequest = pullRequest;
+    }
+
+    const response = await this.webApiClient.qualityGates.getProjectStatus(request);
 
     return response as unknown as SonarQubeQualityGateStatus;
   }

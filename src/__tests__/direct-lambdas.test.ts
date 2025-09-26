@@ -14,33 +14,35 @@ const originalEnv = process.env;
 jest.mock('../sonarqube.js', () => {
   return {
     SonarQubeClient: jest.fn().mockImplementation(() => ({
-      listProjects: jest.fn().mockResolvedValue({
+      listProjects: jest.fn<() => Promise<any>>().mockResolvedValue({
         projects: [{ key: 'test-project', name: 'Test Project' }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       }),
-      getIssues: jest.fn().mockResolvedValue({
+      getIssues: jest.fn<() => Promise<any>>().mockResolvedValue({
         issues: [{ key: 'test-issue', rule: 'test-rule' }],
         components: [],
         rules: [],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       }),
-      getMetrics: jest.fn().mockResolvedValue({
+      getMetrics: jest.fn<() => Promise<any>>().mockResolvedValue({
         metrics: [{ key: 'test-metric', name: 'Test Metric' }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       }),
-      getHealth: jest.fn().mockResolvedValue({ health: 'GREEN', causes: [] }),
-      getStatus: jest.fn().mockResolvedValue({ id: 'id', version: '1.0', status: 'UP' }),
-      ping: jest.fn().mockResolvedValue('pong'),
-      getComponentMeasures: jest.fn().mockResolvedValue({
+      getHealth: jest.fn<() => Promise<any>>().mockResolvedValue({ health: 'GREEN', causes: [] }),
+      getStatus: jest
+        .fn<() => Promise<any>>()
+        .mockResolvedValue({ id: 'id', version: '1.0', status: 'UP' }),
+      ping: jest.fn<() => Promise<any>>().mockResolvedValue('pong'),
+      getComponentMeasures: jest.fn<() => Promise<any>>().mockResolvedValue({
         component: { key: 'test-component', measures: [] },
         metrics: [],
       }),
-      getComponentsMeasures: jest.fn().mockResolvedValue({
+      getComponentsMeasures: jest.fn<() => Promise<any>>().mockResolvedValue({
         components: [{ key: 'test-component', measures: [] }],
         metrics: [],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       }),
-      getMeasuresHistory: jest.fn().mockResolvedValue({
+      getMeasuresHistory: jest.fn<() => Promise<any>>().mockResolvedValue({
         measures: [{ metric: 'coverage', history: [] }],
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       }),
@@ -49,7 +51,7 @@ jest.mock('../sonarqube.js', () => {
 });
 
 describe('Direct Lambda Testing', () => {
-  let index;
+  let index: typeof import('../index.js');
 
   beforeEach(async () => {
     jest.resetModules();
@@ -71,10 +73,11 @@ describe('Direct Lambda Testing', () => {
     it('should execute metrics lambda function', async () => {
       // Get the metrics lambda function (simulating how it's registered)
       const metricsLambda = async (params: Record<string, unknown>) => {
-        const result = await index.handleSonarQubeGetMetrics({
-          page: index.nullToUndefined(params.page) as number | undefined,
-          pageSize: index.nullToUndefined(params.page_size) as number | undefined,
-        });
+        const page = index.nullToUndefined(params.page) as number | undefined;
+        const pageSize = index.nullToUndefined(params.page_size) as number | undefined;
+        const metricsParams = { page, pageSize };
+
+        const result = await index.handleSonarQubeGetMetrics(metricsParams);
 
         return {
           content: [
@@ -92,12 +95,12 @@ describe('Direct Lambda Testing', () => {
       // Verify the result structure
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toBeDefined();
+      expect(result.content[0]?.type).toBe('text');
+      expect(result.content[0]?.text).toBeDefined();
 
       // Parse the content to verify data structure
-      const data = JSON.parse(result.content[0].text);
-      expect(data.content[0].type).toBe('text');
+      const data = JSON.parse(result.content[0]!.text);
+      expect(data.content[0]!.type).toBe('text');
     });
 
     it('should execute issues lambda function', async () => {
@@ -112,22 +115,33 @@ describe('Direct Lambda Testing', () => {
       // Verify the result structure
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]!.type).toBe('text');
     });
 
     it('should execute measures_component lambda function with string metrics', async () => {
       // Simulate the measures_component lambda function
       const measuresLambda = async (params: Record<string, unknown>) => {
-        return index.handleSonarQubeComponentMeasures({
+        const componentParams: {
+          component: string;
+          metricKeys: string[];
+          additionalFields?: string[];
+          branch?: string;
+          pullRequest?: string;
+          period?: string;
+        } = {
           component: params.component as string,
           metricKeys: Array.isArray(params.metric_keys)
             ? (params.metric_keys as string[])
             : [params.metric_keys as string],
-          additionalFields: params.additional_fields as string[] | undefined,
-          branch: params.branch as string | undefined,
-          pullRequest: params.pull_request as string | undefined,
-          period: params.period as string | undefined,
-        });
+        };
+
+        if (params.additional_fields)
+          componentParams.additionalFields = params.additional_fields as string[];
+        if (params.branch) componentParams.branch = params.branch as string;
+        if (params.pull_request) componentParams.pullRequest = params.pull_request as string;
+        if (params.period) componentParams.period = params.period as string;
+
+        return index.handleSonarQubeComponentMeasures(componentParams);
       };
 
       // Execute the lambda function with string metric
@@ -139,22 +153,33 @@ describe('Direct Lambda Testing', () => {
       // Verify the result structure
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]!.type).toBe('text');
     });
 
     it('should execute measures_component lambda function with array metrics', async () => {
       // Simulate the measures_component lambda function
       const measuresLambda = async (params: Record<string, unknown>) => {
-        return index.handleSonarQubeComponentMeasures({
+        const componentParams: {
+          component: string;
+          metricKeys: string[];
+          additionalFields?: string[];
+          branch?: string;
+          pullRequest?: string;
+          period?: string;
+        } = {
           component: params.component as string,
           metricKeys: Array.isArray(params.metric_keys)
             ? (params.metric_keys as string[])
             : [params.metric_keys as string],
-          additionalFields: params.additional_fields as string[] | undefined,
-          branch: params.branch as string | undefined,
-          pullRequest: params.pull_request as string | undefined,
-          period: params.period as string | undefined,
-        });
+        };
+
+        if (params.additional_fields)
+          componentParams.additionalFields = params.additional_fields as string[];
+        if (params.branch) componentParams.branch = params.branch as string;
+        if (params.pull_request) componentParams.pullRequest = params.pull_request as string;
+        if (params.period) componentParams.period = params.period as string;
+
+        return index.handleSonarQubeComponentMeasures(componentParams);
       };
 
       // Execute the lambda function with array metrics
@@ -170,26 +195,42 @@ describe('Direct Lambda Testing', () => {
       // Verify the result structure
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]!.type).toBe('text');
     });
 
     it('should execute measures_components lambda function', async () => {
       // Simulate the measures_components lambda function
       const componentsLambda = async (params: Record<string, unknown>) => {
-        return index.handleSonarQubeComponentsMeasures({
+        const page = index.nullToUndefined(params.page) as number | undefined;
+        const pageSize = index.nullToUndefined(params.page_size) as number | undefined;
+
+        const componentsParams: {
+          componentKeys: string[];
+          metricKeys: string[];
+          additionalFields?: string[];
+          branch?: string;
+          pullRequest?: string;
+          period?: string;
+          page: number | undefined;
+          pageSize: number | undefined;
+        } = {
           componentKeys: Array.isArray(params.component_keys)
             ? (params.component_keys as string[])
             : [params.component_keys as string],
           metricKeys: Array.isArray(params.metric_keys)
             ? (params.metric_keys as string[])
             : [params.metric_keys as string],
-          additionalFields: params.additional_fields as string[] | undefined,
-          branch: params.branch as string | undefined,
-          pullRequest: params.pull_request as string | undefined,
-          period: params.period as string | undefined,
-          page: index.nullToUndefined(params.page) as number | undefined,
-          pageSize: index.nullToUndefined(params.page_size) as number | undefined,
-        });
+          page,
+          pageSize,
+        };
+
+        if (params.additional_fields)
+          componentsParams.additionalFields = params.additional_fields as string[];
+        if (params.branch) componentsParams.branch = params.branch as string;
+        if (params.pull_request) componentsParams.pullRequest = params.pull_request as string;
+        if (params.period) componentsParams.period = params.period as string;
+
+        return index.handleSonarQubeComponentsMeasures(componentsParams);
       };
 
       // Execute the lambda function
@@ -205,24 +246,39 @@ describe('Direct Lambda Testing', () => {
       // Verify the result structure
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]!.type).toBe('text');
     });
 
     it('should execute measures_history lambda function', async () => {
       // Simulate the measures_history lambda function
       const historyLambda = async (params: Record<string, unknown>) => {
-        return index.handleSonarQubeMeasuresHistory({
+        const page = index.nullToUndefined(params.page) as number | undefined;
+        const pageSize = index.nullToUndefined(params.page_size) as number | undefined;
+
+        const historyParams: {
+          component: string;
+          metrics: string[];
+          from?: string;
+          to?: string;
+          branch?: string;
+          pullRequest?: string;
+          page: number | undefined;
+          pageSize: number | undefined;
+        } = {
           component: params.component as string,
           metrics: Array.isArray(params.metrics)
             ? (params.metrics as string[])
             : [params.metrics as string],
-          from: params.from as string | undefined,
-          to: params.to as string | undefined,
-          branch: params.branch as string | undefined,
-          pullRequest: params.pull_request as string | undefined,
-          page: index.nullToUndefined(params.page) as number | undefined,
-          pageSize: index.nullToUndefined(params.page_size) as number | undefined,
-        });
+          page,
+          pageSize,
+        };
+
+        if (params.from) historyParams.from = params.from as string;
+        if (params.to) historyParams.to = params.to as string;
+        if (params.branch) historyParams.branch = params.branch as string;
+        if (params.pull_request) historyParams.pullRequest = params.pull_request as string;
+
+        return index.handleSonarQubeMeasuresHistory(historyParams);
       };
 
       // Execute the lambda function
@@ -239,7 +295,7 @@ describe('Direct Lambda Testing', () => {
       // Verify the result structure
       expect(result).toBeDefined();
       expect(result.content).toBeDefined();
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]!.type).toBe('text');
     });
   });
 

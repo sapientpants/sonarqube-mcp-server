@@ -1,39 +1,39 @@
 import { describe, it, expect, jest } from '@jest/globals';
-import { handleSonarQubeProjects } from '../../handlers/projects';
+import { handleSonarQubeProjects } from '../../handlers/projects.js';
 import type { ISonarQubeClient } from '../../types/index.js';
 
 describe('Projects Handler Authorization Error', () => {
   // Mock client
   const mockClient: ISonarQubeClient = {
-    listProjects: jest.fn(),
-    getIssues: jest.fn(),
-    getMetrics: jest.fn(),
-    getHealth: jest.fn(),
-    getStatus: jest.fn(),
-    ping: jest.fn(),
-    getComponentMeasures: jest.fn(),
-    getComponentsMeasures: jest.fn(),
-    getMeasuresHistory: jest.fn(),
-    listQualityGates: jest.fn(),
-    getQualityGate: jest.fn(),
-    getQualityGateStatus: jest.fn(),
-    getSourceCode: jest.fn(),
-    getScmBlame: jest.fn(),
-    searchHotspots: jest.fn(),
-    getHotspot: jest.fn(),
-    updateHotspotStatus: jest.fn(),
-    markIssueAsFalsePositive: jest.fn(),
-    markIssueAsWontFix: jest.fn(),
-    bulkMarkIssuesAsFalsePositive: jest.fn(),
-    bulkMarkIssuesAsWontFix: jest.fn(),
-    addCommentToIssue: jest.fn(),
-    assignIssue: jest.fn(),
-    confirmIssue: jest.fn(),
-    unconfirmIssue: jest.fn(),
-    resolveIssue: jest.fn(),
-    reopenIssue: jest.fn(),
-    searchComponents: jest.fn(),
-  } as ISonarQubeClient;
+    webApiClient: {} as any,
+    listProjects: jest.fn() as any,
+    getIssues: jest.fn() as any,
+    getMetrics: jest.fn() as any,
+    getHealth: jest.fn() as any,
+    getStatus: jest.fn() as any,
+    ping: jest.fn() as any,
+    getComponentMeasures: jest.fn() as any,
+    getComponentsMeasures: jest.fn() as any,
+    getMeasuresHistory: jest.fn() as any,
+    listQualityGates: jest.fn() as any,
+    getQualityGate: jest.fn() as any,
+    getProjectQualityGateStatus: jest.fn() as any,
+    getSourceCode: jest.fn() as any,
+    getScmBlame: jest.fn() as any,
+    hotspots: jest.fn() as any,
+    hotspot: jest.fn() as any,
+    updateHotspotStatus: jest.fn() as any,
+    markIssueFalsePositive: jest.fn() as any,
+    markIssueWontFix: jest.fn() as any,
+    markIssuesFalsePositive: jest.fn() as any,
+    markIssuesWontFix: jest.fn() as any,
+    addCommentToIssue: jest.fn() as any,
+    assignIssue: jest.fn() as any,
+    confirmIssue: jest.fn() as any,
+    unconfirmIssue: jest.fn() as any,
+    resolveIssue: jest.fn() as any,
+    reopenIssue: jest.fn() as any,
+  };
 
   it('should provide helpful error message when authorization fails', async () => {
     // Mock the listProjects method to throw an authorization error
@@ -109,9 +109,13 @@ describe('Projects Handler Authorization Error', () => {
     ).mockResolvedValue(mockResponse);
 
     const result = await handleSonarQubeProjects({}, mockClient);
-    const data = JSON.parse(result.content[0].text);
-
-    expect(data.projects).toHaveLength(1);
-    expect(data.projects[0].key).toBe('test-project');
+    const firstContent = result.content[0]!;
+    if ('text' in firstContent && typeof firstContent.text === 'string') {
+      const data = JSON.parse(firstContent.text);
+      expect(data.projects).toHaveLength(1);
+      expect(data.projects[0].key).toBe('test-project');
+    } else {
+      throw new Error('Expected text content');
+    }
   });
 });

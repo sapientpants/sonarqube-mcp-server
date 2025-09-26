@@ -9,6 +9,7 @@ Accepted
 ## Context
 
 The SonarQube MCP server needs to be implemented in a technology stack that provides:
+
 - Strong type safety to prevent runtime errors
 - Rich ecosystem for HTTP clients and server frameworks
 - Easy distribution mechanism for end users
@@ -23,6 +24,7 @@ Alternative languages like Rust were considered but would introduce longer compi
 We will implement the server using Node.js with TypeScript, managed by pnpm.
 
 Key aspects of this decision:
+
 - **Runtime**: Node.js provides a stable, well-supported JavaScript runtime
 - **Language**: TypeScript adds static typing, improving code reliability and developer experience
 - **Package Manager**: pnpm for efficient dependency management

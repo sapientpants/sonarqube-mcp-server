@@ -45,16 +45,16 @@ export interface SonarQubeScmAuthor {
 export interface SonarQubeSourceLine {
   line: number;
   code: string;
-  scmAuthor?: string;
-  scmDate?: string;
-  scmRevision?: string;
-  duplicated?: boolean;
-  isNew?: boolean;
-  lineHits?: number;
-  conditions?: number;
-  coveredConditions?: number;
-  highlightedText?: string;
-  issues?: SonarQubeIssue[];
+  scmAuthor: string | undefined;
+  scmDate: string | undefined;
+  scmRevision: string | undefined;
+  duplicated: boolean | undefined;
+  isNew: boolean | undefined;
+  lineHits: number | undefined;
+  conditions: number | undefined;
+  coveredConditions: number | undefined;
+  highlightedText: string | undefined;
+  issues: SonarQubeIssue[] | undefined;
 }
 
 /**
@@ -63,11 +63,11 @@ export interface SonarQubeSourceLine {
 export interface SonarQubeSourceResult {
   component: {
     key: string;
-    path?: string;
+    path: string | undefined;
     qualifier: string;
     name: string;
-    longName?: string;
-    language?: string;
+    longName: string | undefined;
+    language: string | undefined;
   };
   sources: SonarQubeSourceLine[];
 }

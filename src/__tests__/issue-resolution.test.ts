@@ -54,7 +54,6 @@ describe('IssuesDomain - Issue Resolution', () => {
   };
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     domain = new IssuesDomain(mockWebApiClient as any, 'test-org');
     jest.clearAllMocks();
   });
@@ -356,7 +355,7 @@ describe('Issue Resolution Handlers', () => {
 
       const result = await handleMarkIssueFalsePositive(
         { issueKey: 'ISSUE-123', comment: 'Test comment' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -377,7 +376,6 @@ describe('Issue Resolution Handlers', () => {
       mockClient.markIssueFalsePositive.mockRejectedValue(error);
 
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handleMarkIssueFalsePositive({ issueKey: 'ISSUE-123' }, mockClient as any)
       ).rejects.toThrow('API Error');
     });
@@ -395,7 +393,7 @@ describe('Issue Resolution Handlers', () => {
 
       const result = await handleMarkIssueWontFix(
         { issueKey: 'ISSUE-456', comment: 'Test comment' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -416,7 +414,6 @@ describe('Issue Resolution Handlers', () => {
       mockClient.markIssueWontFix.mockRejectedValue(error);
 
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handleMarkIssueWontFix({ issueKey: 'ISSUE-456' }, mockClient as any)
       ).rejects.toThrow('API Error');
     });
@@ -432,7 +429,7 @@ describe('Issue Resolution Handlers', () => {
 
       const result = await handleMarkIssuesFalsePositive(
         { issueKeys: ['ISSUE-123', 'ISSUE-124'], comment: 'Bulk comment' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -453,7 +450,6 @@ describe('Issue Resolution Handlers', () => {
       mockClient.markIssuesFalsePositive.mockRejectedValue(error);
 
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handleMarkIssuesFalsePositive({ issueKeys: ['ISSUE-123'] }, mockClient as any)
       ).rejects.toThrow('API Error');
     });
@@ -469,7 +465,7 @@ describe('Issue Resolution Handlers', () => {
 
       const result = await handleMarkIssuesWontFix(
         { issueKeys: ['ISSUE-456', 'ISSUE-457'], comment: 'Bulk comment' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -490,7 +486,6 @@ describe('Issue Resolution Handlers', () => {
       mockClient.markIssuesWontFix.mockRejectedValue(error);
 
       await expect(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         handleMarkIssuesWontFix({ issueKeys: ['ISSUE-456'] }, mockClient as any)
       ).rejects.toThrow('API Error');
     });
@@ -510,7 +505,7 @@ describe('Issue Resolution Handlers', () => {
 
       const result = await handleAddCommentToIssue(
         { issueKey: 'ISSUE-789', text: 'Test comment with **markdown** support' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -546,7 +541,7 @@ describe('Issue Resolution Handlers', () => {
 
       const result = await handleAddCommentToIssue(
         { issueKey: 'ISSUE-100', text: 'Plain text comment' },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -567,7 +562,7 @@ describe('Issue Resolution Handlers', () => {
       await expect(
         handleAddCommentToIssue(
           { issueKey: 'ISSUE-789', text: 'Test comment' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('API Error');
@@ -580,7 +575,7 @@ describe('Issue Resolution Handlers', () => {
       await expect(
         handleAddCommentToIssue(
           { issueKey: 'ISSUE-789', text: '' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('Comment text cannot be empty');

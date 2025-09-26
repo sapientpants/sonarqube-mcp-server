@@ -220,7 +220,7 @@ afterAll(() => {
 
 // Mock the handlers
 const mockHandlers = {
-  handleSonarQubeProjects: jest.fn().mockResolvedValue({
+  handleSonarQubeProjects: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -245,7 +245,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeGetMetrics: jest.fn().mockResolvedValue({
+  handleSonarQubeGetMetrics: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -268,7 +268,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeGetIssues: jest.fn().mockResolvedValue({
+  handleSonarQubeGetIssues: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -298,7 +298,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeGetHealth: jest.fn().mockResolvedValue({
+  handleSonarQubeGetHealth: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -309,7 +309,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeGetStatus: jest.fn().mockResolvedValue({
+  handleSonarQubeGetStatus: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -321,7 +321,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubePing: jest.fn().mockResolvedValue({
+  handleSonarQubePing: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -329,7 +329,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeComponentMeasures: jest.fn().mockResolvedValue({
+  handleSonarQubeComponentMeasures: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -369,7 +369,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeComponentsMeasures: jest.fn().mockResolvedValue({
+  handleSonarQubeComponentsMeasures: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -416,7 +416,7 @@ const mockHandlers = {
       },
     ],
   }),
-  handleSonarQubeMeasuresHistory: jest.fn().mockResolvedValue({
+  handleSonarQubeMeasuresHistory: (jest.fn() as any).mockResolvedValue({
     content: [
       {
         type: 'text' as const,
@@ -465,7 +465,7 @@ jest.mock('../index.js', () => {
 
 // Save environment variables
 // Using the originalEnv declared at the top of the file
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 let mcpServer: any;
 let nullToUndefined: any;
 let handleSonarQubeProjects: any;
@@ -485,7 +485,6 @@ let qualityGateHandler: any;
 let qualityGateStatusHandler: any;
 let hotspotHandler: any;
 let updateHotspotStatusHandler: any;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 describe('MCP Server', () => {
   beforeAll(async () => {
@@ -532,15 +531,12 @@ describe('MCP Server', () => {
   });
 
   describe('Tool registration', () => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     let testServer: any;
     let registeredTools: Map<string, any>;
-    /* eslint-enable @typescript-eslint/no-explicit-any */
 
     beforeEach(() => {
       registeredTools = new Map();
       testServer = {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tool: jest.fn((name: string, description: string, schema: any, handler: any) => {
           registeredTools.set(name, { description, schema, handler });
         }),
@@ -1639,7 +1635,7 @@ describe('MCP Server', () => {
         };
 
         // Mock the handleSonarQubeComponentMeasures function
-        const mockHandler = jest.fn().mockResolvedValue({
+        const mockHandler = (jest.fn() as any).mockResolvedValue({
           content: [{ type: 'text', text: '{"component":{}}' }],
         });
 
@@ -1711,7 +1707,7 @@ describe('MCP Server', () => {
         };
 
         // Mock the handler function
-        const mockHandler = jest.fn().mockResolvedValue({
+        const mockHandler = (jest.fn() as any).mockResolvedValue({
           content: [{ type: 'text', text: '{"components":[]}' }],
         });
 
@@ -1805,7 +1801,7 @@ describe('MCP Server', () => {
         };
 
         // Mock the handler function
-        const mockHandler = jest.fn().mockResolvedValue({
+        const mockHandler = (jest.fn() as any).mockResolvedValue({
           content: [{ type: 'text', text: '{"measures":[]}' }],
         });
 
@@ -2207,7 +2203,7 @@ describe('MCP Server', () => {
 
     it('should test the metrics tool lambda', async () => {
       // Mock the handleSonarQubeGetMetrics function to track calls
-      const mockGetMetrics = jest.fn().mockResolvedValue({
+      const mockGetMetrics = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"metrics":[]}' }],
       });
 
@@ -2246,7 +2242,7 @@ describe('MCP Server', () => {
 
     it('should test the issues tool lambda', async () => {
       // Mock the handleSonarQubeGetIssues function to track calls
-      const mockGetIssues = jest.fn().mockResolvedValue({
+      const mockGetIssues = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"issues":[]}' }],
       });
 
@@ -2255,7 +2251,7 @@ describe('MCP Server', () => {
 
       // Mock mapToSonarQubeParams to return expected output
       const originalMapFunction = mapToSonarQubeParams;
-      const mockMapFunction = jest.fn().mockReturnValue({
+      const mockMapFunction = (jest.fn() as any).mockReturnValue({
         projectKey: 'test-project',
         severity: 'MAJOR',
       });
@@ -2291,7 +2287,7 @@ describe('MCP Server', () => {
 
     it('should test the hotspot search tool lambda', async () => {
       // Mock the handleSonarQubeSearchHotspots function to track calls
-      const mockSearchHotspots = jest.fn().mockResolvedValue({
+      const mockSearchHotspots = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"hotspots":[]}' }],
       });
 
@@ -2300,7 +2296,7 @@ describe('MCP Server', () => {
 
       // Mock mapToSonarQubeParams to return expected output
       const originalMapFunction = mapToSonarQubeParams;
-      const mockMapFunction = jest.fn().mockReturnValue({
+      const mockMapFunction = (jest.fn() as any).mockReturnValue({
         projectKey: 'test-project',
         status: 'TO_REVIEW',
         assignedToMe: true,
@@ -2634,19 +2630,19 @@ describe('MCP Server', () => {
       };
 
       // Mock all the handler functions to test the lambda functions
-      const mockGetMetrics = jest.fn().mockResolvedValue({
+      const mockGetMetrics = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"metrics":[]}' }],
       });
 
-      const mockGetIssues = jest.fn().mockResolvedValue({
+      const mockGetIssues = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"issues":[]}' }],
       });
 
-      const mockComponentsMeasures = jest.fn().mockResolvedValue({
+      const mockComponentsMeasures = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"components":[]}' }],
       });
 
-      const mockMeasuresHistory = jest.fn().mockResolvedValue({
+      const mockMeasuresHistory = (jest.fn() as any).mockResolvedValue({
         content: [{ type: 'text', text: '{"measures":[]}' }],
       });
 
@@ -3020,7 +3016,7 @@ describe('MCP Server', () => {
         .reply(500, 'Internal Server Error');
 
       // Test error handling
-      await expect(index.handleSonarQubeProjects()).rejects.toThrow();
+      await expect(index.handleSonarQubeProjects({})).rejects.toThrow();
     });
 
     it('should test parameter mapping with null values', async () => {

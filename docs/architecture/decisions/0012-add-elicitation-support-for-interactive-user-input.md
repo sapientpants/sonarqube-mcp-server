@@ -19,6 +19,7 @@ The SonarQube MCP server currently operates in a non-interactive mode, requiring
 4. **No Context Collection**: Operations like marking issues as false positive or won't fix lack the ability to collect explanatory comments interactively.
 
 MCP SDK v1.13.0 introduced the elicitation capability, which allows servers to request structured input from users through clients during operation. This feature enables:
+
 - Interactive data collection with JSON schema validation
 - Multi-attempt collection with confirmation
 - Type-safe input handling
@@ -33,21 +34,25 @@ We will add elicitation support to the SonarQube MCP server to enable interactiv
 ### 1. Elicitation Use Cases
 
 #### Critical Safety Confirmations
+
 - **Bulk False Positive**: Confirm before marking >5 issues as false positive
 - **Bulk Won't Fix**: Confirm before marking >5 issues as won't fix
 - **Bulk Assignment**: Confirm before assigning >10 issues to a user
 
 #### Configuration Assistance
+
 - **Missing Authentication**: Guide users through auth setup when not configured
 - **Invalid Credentials**: Help users correct authentication issues
 - **Organization Selection**: List available organizations for SonarCloud users
 
 #### Context Collection
+
 - **False Positive Justification**: Collect explanation when marking issues
 - **Won't Fix Reasoning**: Document why issues won't be addressed
 - **Resolution Comments**: Gather details about how issues were resolved
 
 #### Search Refinement
+
 - **Component Disambiguation**: When multiple components match a query
 - **Project Selection**: When multiple projects are available
 - **Filter Refinement**: When initial search returns too many results
@@ -55,72 +60,74 @@ We will add elicitation support to the SonarQube MCP server to enable interactiv
 ### 2. Technical Implementation
 
 #### Schema Definitions
+
 ```typescript
 // Confirmation schema
 const confirmationSchema = {
-  type: "object",
+  type: 'object',
   properties: {
-    confirm: { 
-      type: "boolean", 
-      description: "Confirm the operation" 
+    confirm: {
+      type: 'boolean',
+      description: 'Confirm the operation',
     },
-    comment: { 
-      type: "string", 
-      description: "Optional comment",
-      maxLength: 500 
-    }
+    comment: {
+      type: 'string',
+      description: 'Optional comment',
+      maxLength: 500,
+    },
   },
-  required: ["confirm"]
+  required: ['confirm'],
 };
 
 // Authentication schema
 const authSchema = {
-  type: "object",
+  type: 'object',
   properties: {
-    method: { 
-      type: "string", 
-      enum: ["token", "basic", "passcode"],
-      description: "Authentication method"
+    method: {
+      type: 'string',
+      enum: ['token', 'basic', 'passcode'],
+      description: 'Authentication method',
     },
-    token: { 
-      type: "string",
-      description: "SonarQube token (for token auth)"
+    token: {
+      type: 'string',
+      description: 'SonarQube token (for token auth)',
     },
     username: {
-      type: "string",
-      description: "Username (for basic auth)"
+      type: 'string',
+      description: 'Username (for basic auth)',
     },
     password: {
-      type: "string",
-      description: "Password (for basic auth)"
+      type: 'string',
+      description: 'Password (for basic auth)',
     },
     passcode: {
-      type: "string", 
-      description: "System passcode"
-    }
+      type: 'string',
+      description: 'System passcode',
+    },
   },
   dependencies: {
     method: {
       oneOf: [
         {
-          properties: { method: { const: "token" } },
-          required: ["token"]
+          properties: { method: { const: 'token' } },
+          required: ['token'],
         },
         {
-          properties: { method: { const: "basic" } },
-          required: ["username", "password"]
+          properties: { method: { const: 'basic' } },
+          required: ['username', 'password'],
         },
         {
-          properties: { method: { const: "passcode" } },
-          required: ["passcode"]
-        }
-      ]
-    }
-  }
+          properties: { method: { const: 'passcode' } },
+          required: ['passcode'],
+        },
+      ],
+    },
+  },
 };
 ```
 
 #### Integration Points
+
 1. **Bulk Operations**: Add threshold checks and confirmation elicitation
 2. **Authentication**: Detect missing/invalid auth and offer setup assistance
 3. **Tool Enhancement**: Update existing tools to use elicitation when beneficial
@@ -129,12 +136,13 @@ const authSchema = {
 ### 3. Configuration Options
 
 Add server options to control elicitation behavior:
+
 ```typescript
 interface ElicitationOptions {
-  enabled: boolean;              // Master switch for elicitation
+  enabled: boolean; // Master switch for elicitation
   bulkOperationThreshold: number; // Items before confirmation (default: 5)
-  requireComments: boolean;       // Require comments for resolutions
-  interactiveSearch: boolean;     // Enable search refinement
+  requireComments: boolean; // Require comments for resolutions
+  interactiveSearch: boolean; // Enable search refinement
 }
 ```
 
@@ -148,6 +156,7 @@ interface ElicitationOptions {
 ## Consequences
 
 ### Positive
+
 1. **Improved Safety**: Prevents accidental bulk modifications
 2. **Better UX**: Interactive guidance for complex operations
 3. **Higher Data Quality**: Collects context and justifications
@@ -156,6 +165,7 @@ interface ElicitationOptions {
 6. **Enhanced Discoverability**: Users learn available options interactively
 
 ### Negative
+
 1. **SDK Dependency**: Requires upgrade to MCP SDK v1.13.0+
 2. **Increased Complexity**: More code paths to maintain
 3. **Workflow Interruption**: May slow down automated workflows
@@ -163,6 +173,7 @@ interface ElicitationOptions {
 5. **Client Compatibility**: Only works with clients that support elicitation
 
 ### Neutral
+
 1. **Optional Feature**: Can be disabled for automation scenarios
 2. **Gradual Adoption**: Can be implemented incrementally
 3. **Learning Curve**: Users need to understand when elicitation occurs
@@ -170,21 +181,25 @@ interface ElicitationOptions {
 ## Migration Strategy
 
 ### Phase 1: Foundation (Week 1)
+
 - Upgrade MCP SDK to v1.13.0+
 - Add elicitation configuration system
 - Create base elicitation utilities
 
 ### Phase 2: Critical Safety (Week 2)
+
 - Implement bulk operation confirmations
 - Add tests for confirmation flows
 - Document safety features
 
 ### Phase 3: Enhanced UX (Week 3-4)
+
 - Add authentication setup assistance
 - Implement search refinement
 - Add context collection for resolutions
 
 ### Phase 4: Polish (Week 5)
+
 - Performance optimization
 - Extended documentation
 - User feedback incorporation

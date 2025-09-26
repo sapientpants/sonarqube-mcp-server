@@ -103,10 +103,10 @@ describe('SourceCodeDomain', () => {
         code: 'public class Example {',
         issues: undefined,
       });
-      expect(result.sources[1].issues).toHaveLength(1);
-      expect(result.sources[1].issues?.[0].key).toBe('issue1');
-      expect(result.sources[2].issues).toHaveLength(1);
-      expect(result.sources[2].issues?.[0].key).toBe('issue2');
+      expect(result.sources[1]!.issues).toHaveLength(1);
+      expect(result.sources[1]!.issues?.[0]!.key).toBe('issue1');
+      expect(result.sources[2]!.issues).toHaveLength(1);
+      expect(result.sources[2]!.issues?.[0]!.key).toBe('issue2');
     });
 
     it('should get source code with line range and branch', async () => {
@@ -137,8 +137,8 @@ describe('SourceCodeDomain', () => {
       });
 
       expect(result.sources).toHaveLength(3);
-      expect(result.sources[0].line).toBe(2);
-      expect(result.sources[2].line).toBe(4);
+      expect(result.sources[0]!.line).toBe(2);
+      expect(result.sources[2]!.line).toBe(4);
     });
 
     it('should get source code for pull request', async () => {
@@ -185,7 +185,7 @@ describe('SourceCodeDomain', () => {
       });
 
       expect(result.sources).toHaveLength(5);
-      expect(result.sources[0].issues).toBeUndefined();
+      expect(result.sources[0]!.issues).toBeUndefined();
     });
 
     it('should handle error when fetching issues', async () => {
@@ -212,7 +212,7 @@ describe('SourceCodeDomain', () => {
 
       // Should still return source code without issues
       expect(result.sources).toHaveLength(5);
-      expect(result.sources[0].issues).toBeUndefined();
+      expect(result.sources[0]!.issues).toBeUndefined();
     });
   });
 

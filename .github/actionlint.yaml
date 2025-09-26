@@ -1,0 +1,22 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+
+# Self-hosted runner labels used in this project
+# Add any custom runner labels here if using self-hosted runners
+self-hosted-runner:
+  labels: []
+
+# Configuration variables used in workflows
+# This helps actionlint validate variable references
+config-variables:
+  - ENABLE_DOCKER_RELEASE
+  - ENABLE_NPM_RELEASE
+  - ENABLE_GITHUB_PACKAGES
+
+# Ignore specific shellcheck warnings
+# SC2086: Double quote to prevent globbing and word splitting
+# These are often false positives in GitHub Actions contexts
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      - 'shellcheck reported issue in this script: SC2086:.+'

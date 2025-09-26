@@ -1,0 +1,122 @@
+# =============================================================================
+# REUSABLE WORKFLOW: Code Validation Suite
+# PURPOSE: Run all quality checks (audit, typecheck, lint, format, test)
+# USAGE: Called by PR and main workflows for consistent validation
+# OUTPUTS: Coverage reports when requested
+# =============================================================================
+
+name: Reusable Validate
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: 'Node.js version (should match package.json engines.node)'
+        type: string
+        default: '22' # UPDATE: When upgrading Node.js
+      pnpm-version:
+        description: 'pnpm version (should match package.json packageManager)'
+        type: string
+        default: '10.15.0' # UPDATE: When upgrading pnpm
+    secrets:
+      SONAR_TOKEN:
+        description: 'SonarCloud authentication token'
+        required: false
+
+# EXAMPLE USAGE:
+# jobs:
+#   validate:
+#     uses: ./.github/workflows/reusable-validate.yml
+#     with:
+#       upload-coverage: true  # For PRs to show coverage
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for accurate analysis
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ inputs.pnpm-version }}
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm # Cache dependencies for speed
+
+      - name: Install dependencies
+        # Ensures exact versions from lock file
+        # FAILS IF: Lock file out of sync with package.json
+        run: pnpm install --frozen-lockfile
+
+      # =============================================================================
+      # VALIDATION CHECKS
+      # All checks run in sequence to provide clear failure messages
+      # =============================================================================
+
+      - name: Security audit
+        # Check for known vulnerabilities in dependencies
+        # FAILS IF: Critical vulnerabilities found
+        # To fix: Run 'pnpm update' or add overrides in package.json
+        run: pnpm audit --audit-level critical
+
+      - name: Type checking
+        # Validate TypeScript types without emitting files
+        # FAILS IF: Type errors in any .ts file
+        # To debug: Run 'pnpm typecheck' locally for detailed errors
+        run: pnpm typecheck
+
+      - name: Linting
+        # Run ESLint with type-aware rules
+        # FAILS IF: Linting errors (not warnings)
+        # To fix: Run 'pnpm lint:fix' for auto-fixable issues
+        run: pnpm lint
+
+      - name: Format checking
+        # Verify code follows Prettier formatting
+        # FAILS IF: Any file not formatted
+        # To fix: Run 'pnpm format:fix' to auto-format
+        run: pnpm format
+
+      - name: Install actionlint
+        # Install actionlint for workflow validation
+        # Uses the official installer script from rhysd/actionlint
+        run: |
+          echo "Installing actionlint..."
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          echo "${PWD}" >> $GITHUB_PATH
+
+      - name: Workflow linting
+        # Validate GitHub Actions workflow files
+        # FAILS IF: Workflow syntax errors or issues found
+        # To debug: Run 'pnpm lint:workflows' locally
+        run: pnpm lint:workflows
+
+      - name: Tests with coverage
+        # Run test suite with coverage
+        # Coverage enforces 80% minimum threshold for all metrics
+        # FAILS IF: Tests fail or coverage below 80% (when coverage enabled)
+        # To debug: Check test output and coverage/index.html
+        run: pnpm test:coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Upload coverage
+        # Make coverage reports available for review
+        # Download from Actions tab to view detailed HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.sha }}
+          path: coverage/
+          retention-days: 7 # Keep for a week for PR reviews

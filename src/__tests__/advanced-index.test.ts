@@ -44,10 +44,8 @@ afterAll(() => {
   nock.cleanAll();
 });
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 let nullToUndefined: any;
 let mapToSonarQubeParams: any;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // No need to mock axios anymore since we're using sonarqube-web-api-client
 

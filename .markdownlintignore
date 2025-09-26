@@ -1,0 +1,11 @@
+# Ignore CHANGELOG as it's auto-generated
+CHANGELOG.md
+
+# Ignore node_modules
+node_modules/
+
+# Ignore coverage reports
+coverage/
+
+# Ignore build output
+dist/

@@ -10,13 +10,20 @@ export class MetricsDomain extends BaseDomain {
    * @param params Parameters including pagination
    * @returns Promise with the list of metrics
    */
-  async getMetrics(params: PaginationParams = {}): Promise<SonarQubeMetricsResult> {
+  async getMetrics(
+    params: PaginationParams = { page: undefined, pageSize: undefined }
+  ): Promise<SonarQubeMetricsResult> {
     const { page, pageSize } = params;
 
-    const response = await this.webApiClient.metrics.search({
-      p: page,
-      ps: pageSize,
-    });
+    const request = {};
+    if (page !== undefined) {
+      (request as any).p = page;
+    }
+    if (pageSize !== undefined) {
+      (request as any).ps = pageSize;
+    }
+
+    const response = await this.webApiClient.metrics.search(request);
 
     // The API might return paging info
     const paging = (

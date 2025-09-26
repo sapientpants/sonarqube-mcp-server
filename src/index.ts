@@ -10,6 +10,16 @@ import {
   HotspotStatusUpdateParams,
 } from './sonarqube.js';
 import type { ComponentQualifier } from './types/components.js';
+import type {
+  MarkIssueFalsePositiveParams,
+  MarkIssueWontFixParams,
+  BulkIssueMarkParams,
+  AssignIssueParams,
+  ConfirmIssueParams,
+  UnconfirmIssueParams,
+  ResolveIssueParams,
+  ReopenIssueParams,
+} from './types/issues.js';
 import { createLogger } from './utils/logger.js';
 import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
@@ -172,40 +182,52 @@ export const issuesHandler = async (params: Record<string, unknown>) => {
  * Lambda function for mark issue false positive tool
  */
 export const markIssueFalsePositiveHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssueFalsePositive({
+  const handleParams: MarkIssueFalsePositiveParams = {
     issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleMarkIssueFalsePositive(handleParams);
 };
 
 /**
  * Lambda function for mark issue won't fix tool
  */
 export const markIssueWontFixHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssueWontFix({
+  const handleParams: MarkIssueWontFixParams = {
     issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleMarkIssueWontFix(handleParams);
 };
 
 /**
  * Lambda function for mark issues false positive (bulk) tool
  */
 export const markIssuesFalsePositiveHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssuesFalsePositive({
+  const handleParams: BulkIssueMarkParams = {
     issueKeys: params.issue_keys as string[],
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleMarkIssuesFalsePositive(handleParams);
 };
 
 /**
  * Lambda function for mark issues won't fix (bulk) tool
  */
 export const markIssuesWontFixHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssuesWontFix({
+  const handleParams: BulkIssueMarkParams = {
     issueKeys: params.issue_keys as string[],
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleMarkIssuesWontFix(handleParams);
 };
 
 /**
@@ -222,50 +244,65 @@ export const addCommentToIssueHandler = async (params: Record<string, unknown>) 
  * Lambda function for assign issue tool
  */
 export const assignIssueHandler = async (params: Record<string, unknown>) => {
-  return handleAssignIssue({
+  const handleParams: AssignIssueParams = {
     issueKey: params.issueKey as string,
-    assignee: params.assignee as string | undefined,
-  });
+  };
+  if (params.assignee !== undefined) {
+    (handleParams as any).assignee = params.assignee as string;
+  }
+  return handleAssignIssue(handleParams);
 };
 
 /**
  * Lambda function for confirm issue tool
  */
 export const confirmIssueHandler = async (params: Record<string, unknown>) => {
-  return handleConfirmIssue({
+  const handleParams: ConfirmIssueParams = {
     issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleConfirmIssue(handleParams);
 };
 
 /**
  * Lambda function for unconfirm issue tool
  */
 export const unconfirmIssueHandler = async (params: Record<string, unknown>) => {
-  return handleUnconfirmIssue({
+  const handleParams: UnconfirmIssueParams = {
     issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleUnconfirmIssue(handleParams);
 };
 
 /**
  * Lambda function for resolve issue tool
  */
 export const resolveIssueHandler = async (params: Record<string, unknown>) => {
-  return handleResolveIssue({
+  const handleParams: ResolveIssueParams = {
     issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleResolveIssue(handleParams);
 };
 
 /**
  * Lambda function for reopen issue tool
  */
 export const reopenIssueHandler = async (params: Record<string, unknown>) => {
-  return handleReopenIssue({
+  const handleParams: ReopenIssueParams = {
     issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+  };
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+  return handleReopenIssue(handleParams);
 };
 
 /**
@@ -287,46 +324,104 @@ export const pingHandler = handleSonarQubePing;
  * Lambda function for measures_component tool
  */
 export const componentMeasuresHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeComponentMeasures({
+  const handleParams: {
+    component: string;
+    metricKeys: string[];
+    additionalFields?: string[];
+    branch?: string;
+    pullRequest?: string;
+    period?: string;
+  } = {
     component: params.component as string,
     metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
-    additionalFields: params.additional_fields as string[] | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-    period: params.period as string | undefined,
-  });
+  };
+
+  if (params.additional_fields !== undefined) {
+    handleParams.additionalFields = params.additional_fields as string[];
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+  if (params.period !== undefined) {
+    handleParams.period = params.period as string;
+  }
+
+  return handleSonarQubeComponentMeasures(handleParams);
 };
 
 /**
  * Lambda function for measures_components tool
  */
 export const componentsMeasuresHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeComponentsMeasures({
+  const handleParams: {
+    componentKeys: string[];
+    metricKeys: string[];
+    additionalFields?: string[];
+    branch?: string;
+    pullRequest?: string;
+    period?: string;
+    page: number | undefined;
+    pageSize: number | undefined;
+  } = {
     componentKeys: ensureStringArray(params.component_keys as StringOrArrayParam),
     metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
-    additionalFields: params.additional_fields as string[] | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-    period: params.period as string | undefined,
     page: nullToUndefined(params.page) as number | undefined,
     pageSize: nullToUndefined(params.page_size) as number | undefined,
-  });
+  };
+
+  if (params.additional_fields !== undefined) {
+    handleParams.additionalFields = params.additional_fields as string[];
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+  if (params.period !== undefined) {
+    handleParams.period = params.period as string;
+  }
+
+  return handleSonarQubeComponentsMeasures(handleParams);
 };
 
 /**
  * Lambda function for measures_history tool
  */
 export const measuresHistoryHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeMeasuresHistory({
+  const handleParams: {
+    component: string;
+    metrics: string[];
+    from?: string;
+    to?: string;
+    branch?: string;
+    pullRequest?: string;
+    page: number | undefined;
+    pageSize: number | undefined;
+  } = {
     component: params.component as string,
     metrics: ensureStringArray(params.metrics as StringOrArrayParam),
-    from: params.from as string | undefined,
-    to: params.to as string | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
     page: nullToUndefined(params.page) as number | undefined,
     pageSize: nullToUndefined(params.page_size) as number | undefined,
-  });
+  };
+
+  if (params.from !== undefined) {
+    handleParams.from = params.from as string;
+  }
+  if (params.to !== undefined) {
+    handleParams.to = params.to as string;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeMeasuresHistory(handleParams);
 };
 
 /**
@@ -347,56 +442,122 @@ export const qualityGateHandler = async (params: Record<string, unknown>) => {
  * Lambda function for quality_gate_status tool
  */
 export const qualityGateStatusHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeQualityGateStatus({
+  const handleParams: {
+    projectKey: string;
+    branch?: string;
+    pullRequest?: string;
+  } = {
     projectKey: params.project_key as string,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-  });
+  };
+
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeQualityGateStatus(handleParams);
 };
 
 /**
  * Lambda function for source_code tool
  */
 export const sourceCodeHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeGetSourceCode({
+  const handleParams: {
+    key: string;
+    from?: number;
+    to?: number;
+    branch?: string;
+    pullRequest?: string;
+  } = {
     key: params.key as string,
-    from: nullToUndefined(params.from) as number | undefined,
-    to: nullToUndefined(params.to) as number | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-  });
+  };
+
+  if (params.from !== undefined) {
+    handleParams.from = nullToUndefined(params.from) as number;
+  }
+  if (params.to !== undefined) {
+    handleParams.to = nullToUndefined(params.to) as number;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeGetSourceCode(handleParams);
 };
 
 /**
  * Lambda function for scm_blame tool
  */
 export const scmBlameHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeGetScmBlame({
+  const handleParams: {
+    key: string;
+    from?: number;
+    to?: number;
+    branch?: string;
+    pullRequest?: string;
+  } = {
     key: params.key as string,
-    from: nullToUndefined(params.from) as number | undefined,
-    to: nullToUndefined(params.to) as number | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-  });
+  };
+
+  if (params.from !== undefined) {
+    handleParams.from = nullToUndefined(params.from) as number;
+  }
+  if (params.to !== undefined) {
+    handleParams.to = nullToUndefined(params.to) as number;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeGetScmBlame(handleParams);
 };
 
 /**
  * Lambda function for search_hotspots tool
  */
 export const hotspotsHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeHotspots({
-    projectKey: params.project_key as string | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-    status: params.status as HotspotSearchParams['status'],
-    resolution: params.resolution as HotspotSearchParams['resolution'],
-    files: nullToUndefined(params.files) as string[] | undefined,
-    assignedToMe: nullToUndefined(params.assigned_to_me) as boolean | undefined,
-    sinceLeakPeriod: nullToUndefined(params.since_leak_period) as boolean | undefined,
-    inNewCodePeriod: nullToUndefined(params.in_new_code_period) as boolean | undefined,
+  const handleParams: HotspotSearchParams = {
     page: nullToUndefined(params.page) as number | undefined,
     pageSize: nullToUndefined(params.page_size) as number | undefined,
-  });
+  };
+
+  if (params.project_key !== undefined) {
+    (handleParams as any).projectKey = params.project_key as string;
+  }
+  if (params.branch !== undefined) {
+    (handleParams as any).branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    (handleParams as any).pullRequest = params.pull_request as string;
+  }
+  if (params.status !== undefined) {
+    (handleParams as any).status = params.status as HotspotSearchParams['status'];
+  }
+  if (params.resolution !== undefined) {
+    (handleParams as any).resolution = params.resolution as HotspotSearchParams['resolution'];
+  }
+  if (params.files !== undefined) {
+    (handleParams as any).files = nullToUndefined(params.files) as string[];
+  }
+  if (params.assigned_to_me !== undefined) {
+    (handleParams as any).assignedToMe = nullToUndefined(params.assigned_to_me) as boolean;
+  }
+  if (params.since_leak_period !== undefined) {
+    (handleParams as any).sinceLeakPeriod = nullToUndefined(params.since_leak_period) as boolean;
+  }
+  if (params.in_new_code_period !== undefined) {
+    (handleParams as any).inNewCodePeriod = nullToUndefined(params.in_new_code_period) as boolean;
+  }
+
+  return handleSonarQubeHotspots(handleParams);
 };
 
 /**
@@ -410,31 +571,74 @@ export const hotspotHandler = async (params: Record<string, unknown>) => {
  * Lambda function for update_hotspot_status tool
  */
 export const updateHotspotStatusHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeUpdateHotspotStatus({
+  const handleParams: HotspotStatusUpdateParams = {
     hotspot: params.hotspot_key as string,
     status: params.status as HotspotStatusUpdateParams['status'],
-    resolution: params.resolution as HotspotStatusUpdateParams['resolution'],
-    comment: params.comment as string | undefined,
-  });
+  };
+
+  if (params.resolution !== undefined) {
+    (handleParams as any).resolution = params.resolution as HotspotStatusUpdateParams['resolution'];
+  }
+  if (params.comment !== undefined) {
+    (handleParams as any).comment = params.comment as string;
+  }
+
+  return handleSonarQubeUpdateHotspotStatus(handleParams);
 };
 
 /**
  * Lambda function for components tool
  */
 export const componentsHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeComponents({
-    query: params.query as string | undefined,
-    qualifiers: params.qualifiers as ComponentQualifier[] | undefined,
-    language: params.language as string | undefined,
-    component: params.component as string | undefined,
-    strategy: params.strategy as 'all' | 'children' | 'leaves' | undefined,
-    key: params.key as string | undefined,
-    asc: params.asc as boolean | undefined,
-    ps: params.ps as number | undefined,
-    p: params.p as number | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pullRequest as string | undefined,
-  });
+  const handleParams: {
+    query?: string;
+    qualifiers?: ComponentQualifier[];
+    language?: string;
+    component?: string;
+    strategy?: 'all' | 'children' | 'leaves';
+    key?: string;
+    asc?: boolean;
+    ps?: number;
+    p?: number;
+    branch?: string;
+    pullRequest?: string;
+  } = {};
+
+  if (params.query !== undefined) {
+    handleParams.query = params.query as string;
+  }
+  if (params.qualifiers !== undefined) {
+    handleParams.qualifiers = params.qualifiers as ComponentQualifier[];
+  }
+  if (params.language !== undefined) {
+    handleParams.language = params.language as string;
+  }
+  if (params.component !== undefined) {
+    handleParams.component = params.component as string;
+  }
+  if (params.strategy !== undefined) {
+    handleParams.strategy = params.strategy as 'all' | 'children' | 'leaves';
+  }
+  if (params.key !== undefined) {
+    handleParams.key = params.key as string;
+  }
+  if (params.asc !== undefined) {
+    handleParams.asc = params.asc as boolean;
+  }
+  if (params.ps !== undefined) {
+    handleParams.ps = params.ps as number;
+  }
+  if (params.p !== undefined) {
+    handleParams.p = params.p as number;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pullRequest !== undefined) {
+    handleParams.pullRequest = params.pullRequest as string;
+  }
+
+  return handleSonarQubeComponents(handleParams);
 };
 
 // Wrapper functions for MCP registration that don't expose the client parameter

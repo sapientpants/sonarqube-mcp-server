@@ -1,0 +1,346 @@
+# =============================================================================
+# WORKFLOW: Multi-Channel Package Publishing
+# PURPOSE: Distribute releases to NPM, GitHub Packages, and Docker Hub
+# TRIGGERS: GitHub release publication or manual dispatch
+# OUTPUTS: Published packages to configured registries
+# =============================================================================
+
+name: Publish
+
+on:
+  release:
+    types: [published] # Triggered when a GitHub release is published
+  workflow_dispatch: # Manual trigger for re-publishing or testing
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g., v1.2.3)'
+        required: true
+        type: string
+
+# Global environment variables for consistency
+env:
+  PNPM_VERSION: 10.15.0 # Pinned: Must match packageManager in package.json
+  NODE_VERSION: 22 # Pinned: Must match engines.node in package.json
+
+# SECURITY: Minimal required permissions
+# contents: read - Checkout code at release tag
+# packages: write - Publish to GitHub Packages
+# id-token: write - Generate provenance for npm
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  # =============================================================================
+  # NPM PUBLISHING
+  # Publishes package to npm registry with provenance
+  # =============================================================================
+
+  npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    # Only runs if ENABLE_NPM_RELEASE variable is set to 'true'
+    # Configure in Settings > Secrets and variables > Variables
+    if: vars.ENABLE_NPM_RELEASE == 'true'
+    steps:
+      - name: Determine version
+        id: version
+        # Extract version from release tag or manual input
+        # Strips 'v' prefix to get semver (v1.2.3 -> 1.2.3)
+        run: |
+          VERSION="${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}"
+          VERSION="${VERSION#v}"  # Remove 'v' prefix
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Publishing to NPM: $VERSION"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # IMPORTANT: Checkout the exact release tag, not latest main
+          # This ensures we publish exactly what was released
+          ref: ${{ steps.version.outputs.tag }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          # Configure npm registry for authentication
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        # frozen-lockfile ensures exact versions from release
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        # Build from source to ensure latest code
+        # FAILS IF: TypeScript errors, build configuration issues
+        run: pnpm build
+
+      - name: Check NPM token
+        id: check-npm
+        # Gracefully handle missing NPM_TOKEN
+        # Allows workflow to succeed even without npm publishing
+        run: |
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+            echo "✅ NPM_TOKEN is configured"
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+            echo "⚠️ NPM_TOKEN is not configured, skipping publish"
+            # To fix: Add NPM_TOKEN secret in Settings > Secrets
+          fi
+
+      - name: Publish to NPM
+        if: steps.check-npm.outputs.has_token == 'true'
+        run: |
+          # Remove private flag to allow public publishing
+          jq 'del(.private)' package.json > tmp.json && mv tmp.json package.json
+          # Publish with provenance for supply chain security
+          # --provenance creates a signed attestation of the build
+          npm publish --provenance --access public
+        env:
+          # SECURITY: NPM_TOKEN required for authentication
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # =============================================================================
+  # GITHUB PACKAGES PUBLISHING
+  # Publishes package to GitHub's npm registry
+  # =============================================================================
+
+  github-packages:
+    name: Publish to GitHub Packages
+    runs-on: ubuntu-latest
+    # Only runs if ENABLE_GITHUB_PACKAGES variable is set
+    # Useful for private packages within organization
+    if: vars.ENABLE_GITHUB_PACKAGES == 'true'
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          VERSION="${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Publishing to GitHub Packages: $VERSION"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          # GitHub Packages npm registry URL
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Publish to GitHub Packages
+        run: |
+          # Scope package name to organization (required for GitHub Packages)
+          # Changes 'my-package' to '@org/my-package'
+          jq '.name = "@${{ github.repository_owner }}/" + .name | del(.private)' package.json > tmp.json && mv tmp.json package.json
+          npm publish --access public
+        env:
+          # SECURITY: Uses GITHUB_TOKEN for authentication
+          # Automatically available, no configuration needed
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =============================================================================
+  # DOCKER HUB PUBLISHING
+  # Builds and publishes multi-platform Docker images
+  # =============================================================================
+
+  docker:
+    name: Publish to Docker Hub
+    runs-on: ubuntu-latest
+    # Only runs if ENABLE_DOCKER_RELEASE variable is set
+    # Requires DOCKERHUB_USERNAME and DOCKERHUB_TOKEN secrets
+    if: vars.ENABLE_DOCKER_RELEASE == 'true'
+    permissions:
+      contents: read
+      packages: write # Push to GitHub Container Registry if needed
+      security-events: write # Upload vulnerability scan results
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          VERSION="${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🐳 Building Docker image: $VERSION"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ steps.version.outputs.version }}
+
+      - name: Check Docker credentials
+        id: check-docker
+        # Validate Docker Hub credentials exist
+        # Allows workflow to succeed without Docker publishing
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "has_credentials=true" >> $GITHUB_OUTPUT
+            echo "✅ Docker Hub credentials are configured"
+          else
+            echo "has_credentials=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Docker Hub credentials are not configured, skipping publish"
+            # To fix: Add DOCKERHUB_USERNAME and DOCKERHUB_TOKEN in Settings > Secrets
+            exit 0
+          fi
+
+      - name: Set up QEMU
+        # Required for multi-platform builds (arm64)
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        # Advanced Docker builder with cache support
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        # SECURITY: Authenticate with Docker Hub
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
+            type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
+            type=raw,value=latest
+
+      - name: Build Docker image
+        # Initial build for vulnerability scanning (amd64 only)
+        # Multi-platform build happens after security scan passes
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64 # Single platform for scanning
+          push: false # Don't push yet, scan first
+          load: true # Load into Docker for scanning
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha # Use GitHub Actions cache
+          cache-to: type=gha,mode=max # Maximum cache retention
+          build-args: VERSION=${{ steps.version.outputs.version }}
+
+      - name: Scan Docker image for vulnerabilities
+        # SECURITY: Scan image before publishing
+        # FAILS IF: Critical or high vulnerabilities found
+        # To debug: Check trivy-results.sarif in Security tab
+        # To allow: Add CVEs to .trivyignore with justification
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ steps.version.outputs.version }}
+          format: 'sarif' # GitHub Security format
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH' # Fail on serious issues
+          ignore-unfixed: false # Don't ignore unfixed CVEs
+          exit-code: '1' # Fail workflow if vulnerabilities found
+
+      - name: Upload Trivy results to GitHub Security
+        if: always() && steps.check-docker.outputs.has_credentials == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'container-scan'
+
+      - name: Push Docker image to Docker Hub
+        # Multi-platform build and push after security scan passes
+        # Builds for both amd64 (Intel/AMD) and arm64 (Apple Silicon, AWS Graviton)
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64 # Multi-platform support
+          push: true # Push to registry
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha # Reuse cache from scan build
+          cache-to: type=gha,mode=max
+          build-args: VERSION=${{ steps.version.outputs.version }}
+
+  # =============================================================================
+  # NOTIFICATION
+  # Send status updates to team communication channels
+  # =============================================================================
+
+  notify:
+    name: Notify
+    if: always() # Run even if publishing jobs fail
+    needs: [npm, docker, github-packages]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Slack webhook
+        id: check-slack
+        # Gracefully handle missing Slack configuration
+        run: |
+          if [ -n "${{ secrets.SLACK_WEBHOOK }}" ]; then
+            echo "has_webhook=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_webhook=false" >> $GITHUB_OUTPUT
+            # Optional: Configure SLACK_WEBHOOK in Settings > Secrets
+          fi
+
+      - name: Send Slack notification
+        # Send release status to Slack channel
+        # Shows success/skip/failure for each distribution channel
+        if: steps.check-slack.outputs.has_webhook == 'true'
+        uses: slackapi/slack-github-action@v2
+        with:
+          payload: |
+            {
+              "text": "🚀 Release ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "fields": [
+                    {"type": "mrkdwn", "text": "*Repo:*\n${{ github.repository }}"},
+                    {"type": "mrkdwn", "text": "*NPM:*\n${{ needs.npm.result == 'success' && '✅' || needs.npm.result == 'skipped' && '⏭️' || '❌' }}"},
+                    {"type": "mrkdwn", "text": "*Docker:*\n${{ needs.docker.result == 'success' && '✅' || needs.docker.result == 'skipped' && '⏭️' || '❌' }}"},
+                    {"type": "mrkdwn", "text": "*GitHub:*\n${{ needs.github-packages.result == 'success' && '✅' || needs.github-packages.result == 'skipped' && '⏭️' || '❌' }}"}
+                  ]
+                }
+              ]
+            }
+        env:
+          # SECURITY: Webhook URL for Slack integration
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

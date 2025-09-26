@@ -57,7 +57,13 @@ export class HotspotsDomain extends BaseDomain {
 
     return {
       hotspots: response.hotspots as SonarQubeHotspot[],
-      components: response.components,
+      components: response.components?.map((comp) => ({
+        key: comp.key,
+        qualifier: comp.qualifier,
+        name: comp.name,
+        longName: comp.longName,
+        path: comp.path,
+      })),
       paging: response.paging ?? { pageIndex: 1, pageSize: 100, total: 0 },
     };
   }
@@ -96,11 +102,18 @@ export class HotspotsDomain extends BaseDomain {
    * @returns Promise that resolves when the update is complete
    */
   async updateHotspotStatus(params: HotspotStatusUpdateParams): Promise<void> {
-    await this.webApiClient.hotspots.changeStatus({
+    const request = {
       hotspot: params.hotspot,
       status: params.status,
-      resolution: params.resolution,
-      comment: params.comment,
-    });
+    };
+
+    if (params.resolution !== undefined) {
+      (request as any).resolution = params.resolution;
+    }
+    if (params.comment !== undefined) {
+      (request as any).comment = params.comment;
+    }
+
+    await this.webApiClient.hotspots.changeStatus(request);
   }
 }

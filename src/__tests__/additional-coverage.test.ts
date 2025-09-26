@@ -131,10 +131,10 @@ describe('Lambda Handlers Coverage Tests', () => {
   // Import the module directly in each test to ensure it's available
   it('should call metricsHandler', async () => {
     const module = await import('../index.js');
-    const result = await module.metricsHandler({ page: '1', page_size: '10' });
+    const result = await module.metricsHandler({ page: 1, page_size: 10 });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 
   it('should call componentMeasuresHandler', async () => {
@@ -149,7 +149,7 @@ describe('Lambda Handlers Coverage Tests', () => {
     });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 
   it('should call componentsMeasuresHandler', async () => {
@@ -166,7 +166,7 @@ describe('Lambda Handlers Coverage Tests', () => {
     });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 
   it('should call measuresHistoryHandler', async () => {
@@ -183,6 +183,6 @@ describe('Lambda Handlers Coverage Tests', () => {
     });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 });

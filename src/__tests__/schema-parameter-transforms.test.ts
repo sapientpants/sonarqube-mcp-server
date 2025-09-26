@@ -65,7 +65,6 @@ const mockMetricsHandler = async (params: { page: number | null; page_size: numb
 };
 
 const mockIssuesHandler = async (params: Record<string, unknown>) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockResult = await (mockClient as ISonarQubeClient).getIssues(params as any);
 
   return {
@@ -79,7 +78,6 @@ const mockIssuesHandler = async (params: Record<string, unknown>) => {
 };
 
 const mockComponentMeasuresHandler = async (params: Record<string, unknown>) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockResult = await (mockClient as ISonarQubeClient).getComponentMeasures(params as any);
 
   return {
@@ -93,7 +91,6 @@ const mockComponentMeasuresHandler = async (params: Record<string, unknown>) => 
 };
 
 const mockComponentsMeasuresHandler = async (params: Record<string, unknown>) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockResult = await (mockClient as ISonarQubeClient).getComponentsMeasures(params as any);
 
   return {
@@ -107,7 +104,6 @@ const mockComponentsMeasuresHandler = async (params: Record<string, unknown>) =>
 };
 
 const mockMeasuresHistoryHandler = async (params: Record<string, unknown>) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mockResult = await (mockClient as ISonarQubeClient).getMeasuresHistory(params as any);
 
   return {

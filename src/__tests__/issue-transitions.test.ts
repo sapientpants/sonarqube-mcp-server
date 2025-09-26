@@ -53,7 +53,6 @@ describe('IssuesDomain - Issue Transitions', () => {
   };
 
   beforeEach(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     domain = new IssuesDomain(mockWebApiClient as any, 'test-org');
     jest.clearAllMocks();
   });
@@ -269,7 +268,7 @@ describe('Issue Transition Handlers', () => {
           issueKey: 'ISSUE-123',
           comment: 'Confirmed',
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -291,7 +290,7 @@ describe('Issue Transition Handlers', () => {
       await expect(
         handleConfirmIssue(
           { issueKey: 'ISSUE-123' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('Transition not allowed');
@@ -314,7 +313,7 @@ describe('Issue Transition Handlers', () => {
         {
           issueKey: 'ISSUE-123',
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -335,7 +334,7 @@ describe('Issue Transition Handlers', () => {
       await expect(
         handleUnconfirmIssue(
           { issueKey: 'ISSUE-123' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('Transition not allowed');
@@ -359,7 +358,7 @@ describe('Issue Transition Handlers', () => {
           issueKey: 'ISSUE-123',
           comment: 'Fixed',
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -381,7 +380,7 @@ describe('Issue Transition Handlers', () => {
       await expect(
         handleResolveIssue(
           { issueKey: 'ISSUE-123' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('Transition not allowed');
@@ -404,7 +403,7 @@ describe('Issue Transition Handlers', () => {
         {
           issueKey: 'ISSUE-123',
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -425,7 +424,7 @@ describe('Issue Transition Handlers', () => {
       await expect(
         handleReopenIssue(
           { issueKey: 'ISSUE-123' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('Transition not allowed');

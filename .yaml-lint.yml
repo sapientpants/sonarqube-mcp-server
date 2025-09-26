@@ -1,0 +1,15 @@
+# yaml-lint configuration
+# https://github.com/rasshofer/yaml-lint
+
+# Schema to use for validation
+schema: 'FAILSAFE_SCHEMA'
+
+# Ignore certain paths
+ignore:
+  - node_modules/**
+  - .github/workflows/**
+  - dist/**
+  - coverage/**
+  - pnpm-lock.yaml
+  - yarn.lock
+  - package-lock.json

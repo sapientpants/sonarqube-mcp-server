@@ -1,6 +1,14 @@
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { IssuesDomain } from '../domains/issues.js';
 import { handleAssignIssue } from '../handlers/issues.js';
+import type { SonarQubeIssue } from '../types/issues.js';
+
+// Extended issue type for testing with assignee fields
+type SonarQubeIssueWithAssignee = SonarQubeIssue & {
+  assignee?: string | null;
+  assigneeName?: string | null;
+  resolution?: string | null;
+};
 
 describe('Assign Issue Functionality', () => {
   const organization = 'test-org';
@@ -17,17 +25,23 @@ describe('Assign Issue Functionality', () => {
       const mockSearchBuilder = {
         withIssues: jest.fn().mockReturnThis(),
         withAdditionalFields: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({
+        execute: jest.fn<() => Promise<any>>().mockResolvedValue({
           issues: [
             {
               key: issueKey,
+              rule: 'test-rule',
+              component: 'test-component',
+              project: 'test-project',
               message: 'Test issue',
               assignee: assignee,
               assigneeName: 'Jane Doe',
               severity: 'CRITICAL',
               type: 'VULNERABILITY',
               status: 'OPEN',
-            },
+              tags: [],
+              creationDate: '2023-01-01T00:00:00.000Z',
+              updateDate: '2023-01-01T00:00:00.000Z',
+            } as SonarQubeIssueWithAssignee,
           ],
           total: 1,
         }),
@@ -35,12 +49,11 @@ describe('Assign Issue Functionality', () => {
 
       const mockWebApiClient = {
         issues: {
-          assign: jest.fn().mockResolvedValue({}),
+          assign: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
           search: jest.fn().mockReturnValue(mockSearchBuilder),
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const issuesDomain = new IssuesDomain(mockWebApiClient as any, organization);
       const result = await issuesDomain.assignIssue({
         issueKey,
@@ -58,7 +71,7 @@ describe('Assign Issue Functionality', () => {
       expect(mockSearchBuilder.execute).toHaveBeenCalled();
 
       expect(result.key).toBe(issueKey);
-      expect(result.assignee).toBe(assignee);
+      expect((result as SonarQubeIssueWithAssignee).assignee).toBe(assignee);
     });
 
     it('should handle unassignment', async () => {
@@ -67,17 +80,23 @@ describe('Assign Issue Functionality', () => {
       const mockSearchBuilder = {
         withIssues: jest.fn().mockReturnThis(),
         withAdditionalFields: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({
+        execute: jest.fn<() => Promise<any>>().mockResolvedValue({
           issues: [
             {
               key: issueKey,
+              rule: 'test-rule',
+              component: 'test-component',
+              project: 'test-project',
               message: 'Test issue',
               assignee: null,
               assigneeName: null,
               severity: 'INFO',
               type: 'CODE_SMELL',
               status: 'OPEN',
-            },
+              tags: [],
+              creationDate: '2023-01-01T00:00:00.000Z',
+              updateDate: '2023-01-01T00:00:00.000Z',
+            } as SonarQubeIssueWithAssignee,
           ],
           total: 1,
         }),
@@ -85,12 +104,11 @@ describe('Assign Issue Functionality', () => {
 
       const mockWebApiClient = {
         issues: {
-          assign: jest.fn().mockResolvedValue({}),
+          assign: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
           search: jest.fn().mockReturnValue(mockSearchBuilder),
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const issuesDomain = new IssuesDomain(mockWebApiClient as any, organization);
       const result = await issuesDomain.assignIssue({
         issueKey,
@@ -101,7 +119,7 @@ describe('Assign Issue Functionality', () => {
         assignee: undefined,
       });
 
-      expect(result.assignee).toBeNull();
+      expect((result as SonarQubeIssueWithAssignee).assignee).toBeNull();
     });
 
     it('should throw error if issue not found after assignment', async () => {
@@ -110,7 +128,7 @@ describe('Assign Issue Functionality', () => {
       const mockSearchBuilder = {
         withIssues: jest.fn().mockReturnThis(),
         withAdditionalFields: jest.fn().mockReturnThis(),
-        execute: jest.fn().mockResolvedValue({
+        execute: jest.fn<() => Promise<any>>().mockResolvedValue({
           issues: [],
           total: 0,
         }),
@@ -118,12 +136,11 @@ describe('Assign Issue Functionality', () => {
 
       const mockWebApiClient = {
         issues: {
-          assign: jest.fn().mockResolvedValue({}),
+          assign: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({}),
           search: jest.fn().mockReturnValue(mockSearchBuilder),
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const issuesDomain = new IssuesDomain(mockWebApiClient as any, organization);
 
       await expect(
@@ -137,17 +154,22 @@ describe('Assign Issue Functionality', () => {
   describe('handleAssignIssue', () => {
     it('should handle issue assignment and return formatted response', async () => {
       const mockClient = {
-        assignIssue: jest.fn().mockResolvedValue({
+        assignIssue: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({
           key: 'ISSUE-123',
-          message: 'Test issue message',
+          rule: 'test-rule',
           component: 'src/main.js',
+          project: 'test-project',
+          message: 'Test issue message',
           assignee: 'john.doe',
           assigneeName: 'John Doe',
           severity: 'MAJOR',
           type: 'BUG',
           status: 'OPEN',
           resolution: null,
-        }),
+          tags: [],
+          creationDate: '2023-01-01T00:00:00.000Z',
+          updateDate: '2023-01-01T00:00:00.000Z',
+        } as SonarQubeIssueWithAssignee),
       };
 
       const result = await handleAssignIssue(
@@ -155,7 +177,7 @@ describe('Assign Issue Functionality', () => {
           issueKey: 'ISSUE-123',
           assignee: 'john.doe',
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -165,9 +187,18 @@ describe('Assign Issue Functionality', () => {
       });
 
       expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(result.content[0].text);
+      const contentText = result.content[0]?.text;
+      expect(contentText).toBeDefined();
+      const parsedContent = JSON.parse(contentText as string) as {
+        message: string;
+        issue: {
+          key: string;
+          assignee: string | null;
+          severity: string;
+        };
+      };
       expect(parsedContent.message).toContain('Assigned to: John Doe');
       expect(parsedContent.issue.key).toBe('ISSUE-123');
       expect(parsedContent.issue.assignee).toBe('john.doe');
@@ -176,24 +207,29 @@ describe('Assign Issue Functionality', () => {
 
     it('should handle issue unassignment', async () => {
       const mockClient = {
-        assignIssue: jest.fn().mockResolvedValue({
+        assignIssue: jest.fn<(params: any) => Promise<any>>().mockResolvedValue({
           key: 'ISSUE-456',
-          message: 'Another test issue',
+          rule: 'test-rule',
           component: 'src/utils.js',
+          project: 'test-project',
+          message: 'Another test issue',
           assignee: null,
           assigneeName: null,
           severity: 'MINOR',
           type: 'CODE_SMELL',
           status: 'CONFIRMED',
           resolution: null,
-        }),
+          tags: [],
+          creationDate: '2023-01-01T00:00:00.000Z',
+          updateDate: '2023-01-01T00:00:00.000Z',
+        } as SonarQubeIssueWithAssignee),
       };
 
       const result = await handleAssignIssue(
         {
           issueKey: 'ISSUE-456',
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         mockClient as any
       );
 
@@ -203,9 +239,18 @@ describe('Assign Issue Functionality', () => {
       });
 
       expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('text');
+      expect(result.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(result.content[0].text);
+      const contentText = result.content[0]?.text;
+      expect(contentText).toBeDefined();
+      const parsedContent = JSON.parse(contentText as string) as {
+        message: string;
+        issue: {
+          key: string;
+          assignee: string | null;
+          severity: string;
+        };
+      };
       expect(parsedContent.message).toContain('Issue unassigned');
       expect(parsedContent.issue.key).toBe('ISSUE-456');
       expect(parsedContent.issue.assignee).toBeNull();
@@ -214,7 +259,9 @@ describe('Assign Issue Functionality', () => {
 
     it('should handle errors gracefully', async () => {
       const mockClient = {
-        assignIssue: jest.fn().mockRejectedValue(new Error('API Error')),
+        assignIssue: jest
+          .fn<(params: any) => Promise<any>>()
+          .mockRejectedValue(new Error('API Error')),
       };
 
       await expect(
@@ -223,7 +270,7 @@ describe('Assign Issue Functionality', () => {
             issueKey: 'ISSUE-789',
             assignee: 'invalid.user',
           },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           mockClient as any
         )
       ).rejects.toThrow('API Error');

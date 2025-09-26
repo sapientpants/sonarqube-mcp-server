@@ -1,4 +1,9 @@
-import type { ComponentsParams, ISonarQubeClient } from '../types/index.js';
+import type {
+  ComponentsParams,
+  ISonarQubeClient,
+  ComponentsTreeParams,
+  ComponentsSearchParams,
+} from '../types/index.js';
 import type { ComponentQualifier } from '../types/components.js';
 import { getDefaultClient } from '../utils/client-factory.js';
 import { nullToUndefined } from '../utils/transforms.js';
@@ -54,16 +59,31 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     } else if (isTreeOperation) {
       // Component tree navigation
-      const treeParams = {
+      const treeParams: ComponentsTreeParams = {
         component: params.component!,
-        strategy: nullToUndefined(params.strategy),
-        qualifiers: params.qualifiers,
-        asc: nullToUndefined(params.asc),
-        page: nullToUndefined(params.p),
-        pageSize: nullToUndefined(params.ps),
-        branch: nullToUndefined(params.branch),
-        pullRequest: nullToUndefined(params.pullRequest),
       };
+
+      if (nullToUndefined(params.strategy) !== undefined) {
+        (treeParams as any).strategy = nullToUndefined(params.strategy);
+      }
+      if (params.qualifiers !== undefined) {
+        (treeParams as any).qualifiers = params.qualifiers;
+      }
+      if (nullToUndefined(params.asc) !== undefined) {
+        (treeParams as any).asc = nullToUndefined(params.asc);
+      }
+      if (nullToUndefined(params.p) !== undefined) {
+        (treeParams as any).page = nullToUndefined(params.p);
+      }
+      if (nullToUndefined(params.ps) !== undefined) {
+        (treeParams as any).pageSize = nullToUndefined(params.ps);
+      }
+      if (nullToUndefined(params.branch) !== undefined) {
+        (treeParams as any).branch = nullToUndefined(params.branch);
+      }
+      if (nullToUndefined(params.pullRequest) !== undefined) {
+        (treeParams as any).pullRequest = nullToUndefined(params.pullRequest);
+      }
 
       result = await withErrorHandling('Get component tree', () =>
         domain.getComponentTree(treeParams)
@@ -74,13 +94,23 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     } else if (isSearchOperation) {
       // Component search
-      const searchParams = {
-        query: nullToUndefined(params.query),
-        qualifiers: params.qualifiers,
-        language: nullToUndefined(params.language),
-        page: nullToUndefined(params.p),
-        pageSize: nullToUndefined(params.ps),
-      };
+      const searchParams: ComponentsSearchParams = {};
+
+      if (nullToUndefined(params.query) !== undefined) {
+        (searchParams as any).query = nullToUndefined(params.query);
+      }
+      if (params.qualifiers !== undefined) {
+        (searchParams as any).qualifiers = params.qualifiers;
+      }
+      if (nullToUndefined(params.language) !== undefined) {
+        (searchParams as any).language = nullToUndefined(params.language);
+      }
+      if (nullToUndefined(params.p) !== undefined) {
+        (searchParams as any).page = nullToUndefined(params.p);
+      }
+      if (nullToUndefined(params.ps) !== undefined) {
+        (searchParams as any).pageSize = nullToUndefined(params.ps);
+      }
 
       result = await withErrorHandling('Search components', () =>
         domain.searchComponents(searchParams)
@@ -91,11 +121,16 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     } else {
       // Default to listing all projects
-      const searchParams = {
+      const searchParams: ComponentsSearchParams = {
         qualifiers: ['TRK'] as ComponentQualifier[],
-        page: nullToUndefined(params.p),
-        pageSize: nullToUndefined(params.ps),
       };
+
+      if (nullToUndefined(params.p) !== undefined) {
+        (searchParams as any).page = nullToUndefined(params.p);
+      }
+      if (nullToUndefined(params.ps) !== undefined) {
+        (searchParams as any).pageSize = nullToUndefined(params.ps);
+      }
 
       result = await withErrorHandling('List all projects', () =>
         domain.searchComponents(searchParams)

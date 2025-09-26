@@ -1,5 +1,6 @@
 // Import types for interface definitions
 import type { PaginationParams } from './common.js';
+import type { SonarQubeClient as WebApiClient } from 'sonarqube-web-api-client';
 import type { SonarQubeProjectsResult } from './projects.js';
 import type {
   IssuesParams,
@@ -145,6 +146,9 @@ export type {
 
 // Client interface
 export interface ISonarQubeClient {
+  // Expose webApiClient for testing purposes
+  readonly webApiClient: WebApiClient;
+
   listProjects(params?: PaginationParams): Promise<SonarQubeProjectsResult>;
   getIssues(params: IssuesParams): Promise<SonarQubeIssuesResult>;
   getMetrics(params?: PaginationParams): Promise<SonarQubeMetricsResult>;

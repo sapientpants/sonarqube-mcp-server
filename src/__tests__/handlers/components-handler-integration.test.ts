@@ -1,5 +1,4 @@
 /// <reference types="jest" />
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
  * @jest-environment node
@@ -85,9 +84,14 @@ describe('Components Handler Integration', () => {
       expect(mockSearchBuilder.qualifiers).toHaveBeenCalledWith(['TRK', 'FIL']);
       expect(mockSearchBuilder.execute).toHaveBeenCalled();
 
-      const content = JSON.parse(result.content[0].text);
-      expect(content.components).toHaveLength(2);
-      expect(content.components[0].key).toBe('comp1');
+      const firstContent = result.content[0]!;
+      if ('text' in firstContent && typeof firstContent.text === 'string') {
+        const content = JSON.parse(firstContent.text);
+        expect(content.components).toHaveLength(2);
+        expect(content.components[0].key).toBe('comp1');
+      } else {
+        throw new Error('Expected text content in first result item');
+      }
     });
 
     it('should handle component search with language filter', async () => {
@@ -158,9 +162,14 @@ describe('Components Handler Integration', () => {
       expect(mockTreeBuilder.childrenOnly).toHaveBeenCalled();
       expect(mockTreeBuilder.qualifiers).toHaveBeenCalledWith(['DIR', 'FIL']);
 
-      const content = JSON.parse(result.content[0].text);
-      expect(content.components).toHaveLength(2);
-      expect(content.baseComponent.key).toBe('project1');
+      const secondContent = result.content[0]!;
+      if ('text' in secondContent && typeof secondContent.text === 'string') {
+        const content = JSON.parse(secondContent.text);
+        expect(content.components).toHaveLength(2);
+        expect(content.baseComponent.key).toBe('project1');
+      } else {
+        throw new Error('Expected text content in second result item');
+      }
     });
 
     it('should handle tree navigation with branch', async () => {
@@ -223,9 +232,14 @@ describe('Components Handler Integration', () => {
 
       expect((mockClient.webApiClient as any).components.show).toHaveBeenCalledWith('comp1');
 
-      const content = JSON.parse(result.content[0].text);
-      expect(content.component.key).toBe('comp1');
-      expect(content.ancestors).toHaveLength(2);
+      const thirdContent = result.content[0]!;
+      if ('text' in thirdContent && typeof thirdContent.text === 'string') {
+        const content = JSON.parse(thirdContent.text);
+        expect(content.component.key).toBe('comp1');
+        expect(content.ancestors).toHaveLength(2);
+      } else {
+        throw new Error('Expected text content in third result item');
+      }
     });
 
     it('should handle show component with branch and PR', async () => {

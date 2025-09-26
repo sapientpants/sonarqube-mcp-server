@@ -11,6 +11,7 @@ Accepted
 The SonarQube MCP Server initially supported only stdio transport (ADR-0010). Later, HTTP transport with OAuth 2.0 support was added (ADR-0016) to enable enterprise features like multi-tenancy, authentication, and audit logging.
 
 However, this added significant complexity:
+
 - 60+ authentication/authorization files
 - Complex OAuth token validation
 - Service account management
@@ -20,6 +21,7 @@ However, this added significant complexity:
 - External IdP integration
 
 Meanwhile, the MCP ecosystem has evolved with gateway solutions that handle these enterprise concerns:
+
 - Docker MCP Gateway
 - IBM Context Forge
 - SGNL
@@ -32,6 +34,7 @@ These gateways provide authentication, multi-tenancy, monitoring, and other ente
 We will simplify the MCP server to support only stdio transport, removing all HTTP, OAuth, SSE, and related enterprise infrastructure. Enterprise features will be handled by MCP gateways.
 
 This involves:
+
 1. Removing HTTP transport and all OAuth/authentication code
 2. Removing service account management and permission filtering
 3. Removing audit logging (handled by gateways)
@@ -68,7 +71,7 @@ This involves:
 The simplification will be implemented in phases:
 
 1. **Phase 1**: Remove HTTP/OAuth infrastructure files
-2. **Phase 2**: Simplify configuration and environment variables  
+2. **Phase 2**: Simplify configuration and environment variables
 3. **Phase 3**: Update documentation for stdio-only approach
 4. **Phase 4**: Optimize core functionality and startup time
 5. **Phase 5**: Optimize Docker image for minimal footprint

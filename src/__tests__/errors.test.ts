@@ -122,7 +122,7 @@ describe('Error Handling', () => {
     });
 
     it('should transform ServerError', () => {
-      const clientError = new ServerError('Server error');
+      const clientError = new ServerError('Server error', 500);
       const result = transformError(clientError, 'test-operation');
 
       expect(result.type).toBe(SonarQubeErrorType.SERVER_ERROR);
@@ -138,7 +138,11 @@ describe('Error Handling', () => {
     });
 
     it('should transform unknown SonarQubeClientError', () => {
-      class UnknownError extends SonarQubeClientError {}
+      class UnknownError extends SonarQubeClientError {
+        constructor(message: string) {
+          super(message, 'UNKNOWN');
+        }
+      }
       const clientError = new UnknownError('Unknown error');
       const result = transformError(clientError, 'test-operation');
 
@@ -171,7 +175,7 @@ describe('Error Handling', () => {
     });
 
     it('should return successful result without retry', async () => {
-      const apiCall = jest.fn().mockResolvedValue('success');
+      const apiCall = jest.fn<() => Promise<string>>().mockResolvedValue('success');
       const result = await withErrorHandling('test-operation', apiCall);
 
       expect(result).toBe('success');
@@ -180,7 +184,7 @@ describe('Error Handling', () => {
 
     it('should retry on rate limit error', async () => {
       const apiCall = jest
-        .fn()
+        .fn<() => Promise<string>>()
         .mockRejectedValueOnce(new RateLimitError('Rate limited'))
         .mockRejectedValueOnce(new RateLimitError('Rate limited'))
         .mockResolvedValue('success');
@@ -199,7 +203,7 @@ describe('Error Handling', () => {
 
     it('should retry on network error', async () => {
       const apiCall = jest
-        .fn()
+        .fn<() => Promise<string>>()
         .mockRejectedValueOnce(new NetworkError('Network error'))
         .mockResolvedValue('success');
 
@@ -215,8 +219,8 @@ describe('Error Handling', () => {
 
     it('should retry on server error', async () => {
       const apiCall = jest
-        .fn()
-        .mockRejectedValueOnce(new ServerError('Server error'))
+        .fn<() => Promise<string>>()
+        .mockRejectedValueOnce(new ServerError('Server error', 500))
         .mockResolvedValue('success');
 
       const promise = withErrorHandling('test-operation', apiCall);
@@ -230,7 +234,9 @@ describe('Error Handling', () => {
     });
 
     it('should not retry on authentication error', async () => {
-      const apiCall = jest.fn().mockRejectedValue(new AuthenticationError('Auth failed'));
+      const apiCall = jest
+        .fn<() => Promise<string>>()
+        .mockRejectedValue(new AuthenticationError('Auth failed'));
 
       await expect(withErrorHandling('test-operation', apiCall)).rejects.toThrow(SonarQubeAPIError);
 
@@ -238,7 +244,9 @@ describe('Error Handling', () => {
     });
 
     it('should respect max retries', async () => {
-      const apiCall = jest.fn().mockRejectedValue(new RateLimitError('Rate limited'));
+      const apiCall = jest
+        .fn<() => Promise<string>>()
+        .mockRejectedValue(new RateLimitError('Rate limited'));
 
       // Run the test with real timers since fake timers are problematic with async/await
       jest.useRealTimers();
@@ -267,9 +275,11 @@ describe('Error Handling', () => {
       global.setTimeout = jest.fn((fn: () => void, delay?: number) => {
         if (delay !== undefined) delays.push(delay);
         return originalSetTimeout(fn, 0); // Execute immediately
-      }) as typeof global.setTimeout;
+      }) as unknown as typeof global.setTimeout;
 
-      const apiCall = jest.fn().mockRejectedValue(new RateLimitError('Rate limited'));
+      const apiCall = jest
+        .fn<() => Promise<string>>()
+        .mockRejectedValue(new RateLimitError('Rate limited'));
 
       await expect(
         withErrorHandling('test-operation', apiCall, {
@@ -299,9 +309,11 @@ describe('Error Handling', () => {
       global.setTimeout = jest.fn((fn: () => void, delay?: number) => {
         if (delay !== undefined) delays.push(delay);
         return originalSetTimeout(fn, 0); // Execute immediately
-      }) as typeof global.setTimeout;
+      }) as unknown as typeof global.setTimeout;
 
-      const apiCall = jest.fn().mockRejectedValue(new RateLimitError('Rate limited'));
+      const apiCall = jest
+        .fn<() => Promise<string>>()
+        .mockRejectedValue(new RateLimitError('Rate limited'));
 
       await expect(
         withErrorHandling('test-operation', apiCall, {
@@ -322,7 +334,7 @@ describe('Error Handling', () => {
 
     it('should pass through non-SonarQubeClientError unchanged', async () => {
       const customError = new Error('Custom error');
-      const apiCall = jest.fn().mockRejectedValue(customError);
+      const apiCall = jest.fn<() => Promise<string>>().mockRejectedValue(customError);
 
       await expect(withErrorHandling('test-operation', apiCall)).rejects.toThrow(customError);
       expect(apiCall).toHaveBeenCalledTimes(1);
@@ -397,6 +409,8 @@ describe('Error Handling', () => {
     it('should include full error details in message', () => {
       const error = new SonarQubeAPIError('Test error', SonarQubeErrorType.AUTHENTICATION_FAILED, {
         operation: 'test-op',
+        statusCode: undefined,
+        context: undefined,
         solution: 'Test solution',
       });
       const result = formatErrorForMCP(error);

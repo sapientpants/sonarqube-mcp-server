@@ -10,7 +10,7 @@ export interface ElicitationOptions {
 }
 
 export interface ElicitationResult<T = unknown> {
-  action: 'accept' | 'reject' | 'cancel';
+  action: 'accept' | 'reject' | 'cancel' | 'decline';
   content?: T;
 }
 
@@ -108,7 +108,10 @@ export class ElicitationManager {
         return { action: 'accept', content: parsed };
       }
 
-      return result as ElicitationResult<z.infer<typeof confirmationSchema>>;
+      return {
+        action: result.action,
+        content: result.content as z.infer<typeof confirmationSchema>,
+      };
     } catch (error) {
       console.error('Elicitation error:', error);
       return { action: 'cancel' };
@@ -143,7 +146,10 @@ Which method would you like to use?`,
         return { action: 'accept', content: parsed };
       }
 
-      return result as ElicitationResult<z.infer<typeof authSchema>>;
+      return {
+        action: result.action,
+        content: result.content as z.infer<typeof authSchema>,
+      };
     } catch (error) {
       console.error('Elicitation error:', error);
       return { action: 'cancel' };
@@ -175,10 +181,10 @@ Which method would you like to use?`,
 
       if (result.action === 'accept' && result.content) {
         const parsed = commentSchema.parse(result.content);
-        return { action: 'accept', content: parsed };
+        return { action: 'accept', content: { comment: parsed.comment } };
       }
 
-      return result as ElicitationResult<{ comment: string }>;
+      return { action: result.action };
     } catch (error) {
       console.error('Elicitation error:', error);
       return { action: 'cancel' };
@@ -220,10 +226,10 @@ Which method would you like to use?`,
 
       if (result.action === 'accept' && result.content) {
         const parsed = selectionSchema.parse(result.content);
-        return { action: 'accept', content: parsed };
+        return { action: 'accept', content: { selection: parsed.selection } };
       }
 
-      return result as ElicitationResult<{ selection: string }>;
+      return { action: result.action };
     } catch (error) {
       console.error('Elicitation error:', error);
       return { action: 'cancel' };
@@ -241,11 +247,16 @@ export const createElicitationManager = (
   const envRequireComments = process.env.SONARQUBE_MCP_REQUIRE_COMMENTS === 'true';
   const envInteractiveSearch = process.env.SONARQUBE_MCP_INTERACTIVE_SEARCH === 'true';
 
-  return new ElicitationManager({
+  const managerOptions: Partial<ElicitationOptions> = {
     enabled: envEnabled,
-    bulkOperationThreshold: envThreshold ?? options?.bulkOperationThreshold,
-    requireComments: envRequireComments ?? options?.requireComments,
-    interactiveSearch: envInteractiveSearch ?? options?.interactiveSearch,
+    requireComments: envRequireComments,
+    interactiveSearch: envInteractiveSearch,
     ...options,
-  });
+  };
+
+  if (envThreshold !== undefined) {
+    managerOptions.bulkOperationThreshold = envThreshold;
+  }
+
+  return new ElicitationManager(managerOptions);
 };

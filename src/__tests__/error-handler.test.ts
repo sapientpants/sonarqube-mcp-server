@@ -12,7 +12,9 @@ jest.unstable_mockModule('../utils/logger.js', () => ({
 describe('Error Handler Utilities', () => {
   describe('withMCPErrorHandling', () => {
     it('should return result on success', async () => {
-      const fn = jest.fn().mockResolvedValue({ content: 'success' });
+      const fn = jest
+        .fn<(arg1: string, arg2: string) => Promise<{ content: string }>>()
+        .mockResolvedValue({ content: 'success' });
       const wrapped = withMCPErrorHandling(fn);
 
       const result = await wrapped('arg1', 'arg2');
@@ -27,10 +29,12 @@ describe('Error Handler Utilities', () => {
         SonarQubeErrorType.AUTHENTICATION_FAILED,
         {
           operation: 'test-op',
+          statusCode: undefined,
+          context: undefined,
           solution: 'Test solution',
         }
       );
-      const fn = jest.fn().mockRejectedValue(apiError);
+      const fn = jest.fn<() => Promise<any>>().mockRejectedValue(apiError);
       const wrapped = withMCPErrorHandling(fn);
 
       await expect(wrapped()).rejects.toEqual({
@@ -41,7 +45,7 @@ describe('Error Handler Utilities', () => {
 
     it('should re-throw non-SonarQubeAPIError', async () => {
       const error = new Error('Generic error');
-      const fn = jest.fn().mockRejectedValue(error);
+      const fn = jest.fn<() => Promise<any>>().mockRejectedValue(error);
       const wrapped = withMCPErrorHandling(fn);
 
       await expect(wrapped()).rejects.toThrow(error);
@@ -72,7 +76,7 @@ describe('Error Handler Utilities', () => {
 
       for (const { type, code } of errorTypes) {
         const error = new SonarQubeAPIError(`${type} error`, type);
-        const fn = jest.fn().mockRejectedValue(error);
+        const fn = jest.fn<() => Promise<any>>().mockRejectedValue(error);
         const wrapped = withMCPErrorHandling(fn);
 
         await expect(wrapped()).rejects.toEqual({

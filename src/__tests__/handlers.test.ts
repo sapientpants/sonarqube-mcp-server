@@ -14,7 +14,6 @@ process.env.SONARQUBE_ORGANIZATION = 'test-org';
 // Save environment variables
 const originalEnv = process.env;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 let handleSonarQubeProjects: any;
 let handleSonarQubeGetIssues: any;
 let handleSonarQubeGetMetrics: any;
@@ -24,7 +23,6 @@ let handleSonarQubePing: any;
 let handleSonarQubeComponentMeasures: any;
 let handleSonarQubeComponentsMeasures: any;
 let handleSonarQubeMeasuresHistory: any;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // No need to mock axios anymore since we're using sonarqube-web-api-client
 

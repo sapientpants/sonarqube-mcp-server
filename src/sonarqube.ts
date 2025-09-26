@@ -127,7 +127,8 @@ const DEFAULT_SONARQUBE_URL = 'https://sonarcloud.io';
  * SonarQube client for interacting with the SonarQube API
  */
 export class SonarQubeClient implements ISonarQubeClient {
-  private readonly webApiClient: WebApiClient;
+  // Make webApiClient public readonly to satisfy the interface
+  readonly webApiClient: WebApiClient;
   private readonly organization: OptionalOrganization;
 
   // Domain modules
@@ -252,7 +253,9 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param params Pagination and organization parameters
    * @returns Promise with the list of projects
    */
-  async listProjects(params: PaginationParams = {}): Promise<SonarQubeProjectsResult> {
+  async listProjects(
+    params: PaginationParams = { page: undefined, pageSize: undefined }
+  ): Promise<SonarQubeProjectsResult> {
     return this.projectsDomain.listProjects(params);
   }
 
@@ -270,7 +273,9 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param params Parameters including pagination
    * @returns Promise with the list of metrics
    */
-  async getMetrics(params: PaginationParams = {}): Promise<SonarQubeMetricsResult> {
+  async getMetrics(
+    params: PaginationParams = { page: undefined, pageSize: undefined }
+  ): Promise<SonarQubeMetricsResult> {
     return this.metricsDomain.getMetrics(params);
   }
 
@@ -419,15 +424,25 @@ export class SonarQubeClient implements ISonarQubeClient {
     const response = await builder.execute();
 
     // Transform the response to match our interface
-    return {
+    const result: SonarQubeHotspotSearchResult = {
       hotspots: response.hotspots as SonarQubeHotspot[],
-      components: response.components,
+      components: response.components
+        ? response.components.map((c: any) => ({
+            key: c.key,
+            qualifier: c.qualifier,
+            name: c.name,
+            longName: c.longName,
+            path: c.path,
+          }))
+        : undefined,
       paging: response.paging ?? {
         pageIndex: page ?? 1,
         pageSize: pageSize ?? 100,
         total: response.hotspots.length,
       },
     };
+
+    return result;
   }
 
   /**
@@ -655,9 +670,33 @@ async function tryCreateClientWithElicitation(): Promise<ISonarQubeClient | null
     return null;
   }
 
-  const auth = authResult.content;
+  const authContent = authResult.content;
   const baseUrl = process.env.SONARQUBE_URL ?? DEFAULT_SONARQUBE_URL;
   const organization = process.env.SONARQUBE_ORGANIZATION ?? null;
+
+  // Build auth object with only defined properties to satisfy exactOptionalPropertyTypes
+  const auth: {
+    method: string;
+    token?: string;
+    username?: string;
+    password?: string;
+    passcode?: string;
+  } = {
+    method: authContent.method,
+  };
+
+  if (authContent.token !== undefined) {
+    auth.token = authContent.token;
+  }
+  if (authContent.username !== undefined) {
+    auth.username = authContent.username;
+  }
+  if (authContent.password !== undefined) {
+    auth.password = authContent.password;
+  }
+  if (authContent.passcode !== undefined) {
+    auth.passcode = authContent.passcode;
+  }
 
   return createClientFromAuthMethod(auth, baseUrl, organization);
 }

@@ -17,6 +17,7 @@ As we move towards enterprise deployment of the SonarQube MCP Server, we need co
 5. **SLA Compliance**: Monitor and report on service level objectives
 
 Current monitoring capabilities include:
+
 - Basic health checks for service accounts
 - File-based logging with audit trail
 - Error handling with retry mechanisms
@@ -29,6 +30,7 @@ Current monitoring capabilities include:
 We will implement a comprehensive monitoring and observability stack with the following components:
 
 ### 1. Prometheus Metrics
+
 - Expose metrics endpoint at `/metrics` (configurable)
 - Use `prom-client` library for Node.js
 - Implement custom metrics:
@@ -41,6 +43,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
   - Error rate by type
 
 ### 2. OpenTelemetry Tracing
+
 - Use `@opentelemetry/api` and related packages
 - Support multiple exporters (Jaeger, Zipkin, OTLP)
 - Trace MCP requests through the system
@@ -48,6 +51,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
 - Add custom spans for key operations
 
 ### 3. Enhanced Health Checks
+
 - Extend existing `/health` endpoint with dependency status
 - Add `/ready` endpoint for Kubernetes readiness probes
 - Check connectivity to:
@@ -57,6 +61,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
 - Include version information and uptime
 
 ### 4. Performance Monitoring
+
 - Track request latency percentiles (p50, p95, p99)
 - Monitor throughput (requests per second)
 - Resource usage (CPU, memory, event loop lag)
@@ -64,6 +69,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
 - Cache hit rates
 
 ### 5. Operational Features
+
 - Circuit breakers using `opossum` library
 - Connection pooling with `undici` or `got`
 - Graceful degradation when dependencies fail
@@ -90,6 +96,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
 ## Consequences
 
 ### Positive
+
 - **Production Ready**: Full observability for enterprise deployments
 - **Proactive Monitoring**: Identify issues before they impact users
 - **Performance Optimization**: Data-driven performance improvements
@@ -98,6 +105,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
 - **Integration**: Works with existing monitoring infrastructure
 
 ### Negative
+
 - **Complexity**: Additional dependencies and configuration
 - **Performance Overhead**: Metrics and tracing add some overhead
 - **Storage Requirements**: Metrics and traces require retention storage
@@ -130,6 +138,7 @@ We will implement a comprehensive monitoring and observability stack with the fo
    - Deployment guides
 
 ## References
+
 - [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)
 - [OpenTelemetry Node.js](https://opentelemetry.io/docs/instrumentation/js/)
 - [The RED Method](https://www.weave.works/blog/the-red-method-key-metrics-for-microservices-architecture/)

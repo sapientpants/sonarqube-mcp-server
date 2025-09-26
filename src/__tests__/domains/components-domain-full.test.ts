@@ -9,7 +9,7 @@ import { ComponentsDomain } from '../../domains/components.js';
 
 describe('ComponentsDomain Full Tests', () => {
   let domain: ComponentsDomain;
-  let mockWebApiClient: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let mockWebApiClient: any;
   const organization = 'test-org';
 
   beforeEach(() => {

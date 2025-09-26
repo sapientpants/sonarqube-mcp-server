@@ -86,8 +86,12 @@ export class HealthService {
       features: {
         metrics: true,
       },
-      metrics,
     };
+
+    // Only add metrics if they exist
+    if (metrics !== undefined) {
+      result.metrics = metrics;
+    }
 
     // Cache result
     this.cachedHealth = {
@@ -170,10 +174,15 @@ export class HealthService {
 
     // Check SonarQube connectivity (async)
     const sonarqubeHealth = await this.checkSonarQube();
-    checks.sonarqube = {
+    const sonarqubeCheck: { ready: boolean; message?: string } = {
       ready: sonarqubeHealth.status !== 'unhealthy',
-      message: sonarqubeHealth.message,
     };
+
+    if (sonarqubeHealth.message !== undefined) {
+      sonarqubeCheck.message = sonarqubeHealth.message;
+    }
+
+    checks.sonarqube = sonarqubeCheck;
 
     // Overall readiness
     const ready = Object.values(checks).every((check) => check.ready);

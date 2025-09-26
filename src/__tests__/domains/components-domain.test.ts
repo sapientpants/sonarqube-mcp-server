@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { ComponentsDomain } from '../../domains/components.js';
-import { createSonarQubeClient } from '../../sonarqube.js';
+import { SonarQubeClient as WebApiClient } from 'sonarqube-web-api-client';
 import { resetDefaultClient } from '../../utils/client-factory.js';
 
 // Mock environment variables
@@ -22,8 +22,8 @@ describe('ComponentsDomain', () => {
 
   beforeEach(() => {
     resetDefaultClient();
-    const client = createSonarQubeClient(token, baseUrl, organization);
-    domain = new ComponentsDomain(client['webApiClient'], organization);
+    const webApiClient = WebApiClient.withToken(baseUrl, token, { organization });
+    domain = new ComponentsDomain(webApiClient, organization);
   });
 
   afterEach(() => {

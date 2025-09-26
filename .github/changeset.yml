@@ -1,0 +1,10 @@
+# Configuration for Changeset Bot
+# This bot will comment on PRs to remind contributors to add changesets
+
+# The message to display when a PR is missing a changeset
+# Default message will be used if not specified
+commit: false
+# Whether to exclude certain PR labels from changeset requirements
+# excluded:
+#   - "dependencies"
+#   - "documentation"

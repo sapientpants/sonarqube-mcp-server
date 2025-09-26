@@ -17,7 +17,7 @@ jest.mock('@modelcontextprotocol/sdk/server/mcp.js', () => ({
 
 jest.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   StdioServerTransport: jest.fn().mockImplementation(() => ({
-    connect: jest.fn().mockResolvedValue(undefined),
+    connect: jest.fn<() => Promise<any>>().mockResolvedValue(undefined),
   })),
 }));
 
@@ -25,10 +25,10 @@ jest.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
 describe('Direct Handler Function Tests', () => {
   it('should test metricsHandler functionality', () => {
     // Recreate the metricsHandler function
-    const nullToUndefined = (value) => (value === null ? undefined : value);
+    const nullToUndefined = (value: any) => (value === null ? undefined : value);
 
-    const metricsHandler = async (params) => {
-      const handleMetrics = async (transformedParams) => {
+    const metricsHandler = async (params: { page?: string; page_size?: string }) => {
+      const handleMetrics = async (transformedParams: any) => {
         // Mock the SonarQube response
         return {
           metrics: [{ key: 'test-metric', name: 'Test Metric' }],
@@ -64,8 +64,8 @@ describe('Direct Handler Function Tests', () => {
     // Test the handler
     const params = { page: '2', page_size: '20' };
     return metricsHandler(params).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.metrics).toBeDefined();
       expect(data.paging.pageIndex).toBe(2);
       expect(data.paging.pageSize).toBe(20);
@@ -74,9 +74,9 @@ describe('Direct Handler Function Tests', () => {
 
   it('should test issuesHandler functionality', () => {
     // Recreate functions
-    const nullToUndefined = (value) => (value === null ? undefined : value);
+    const nullToUndefined = (value: any) => (value === null ? undefined : value);
 
-    const mapToSonarQubeParams = (params) => {
+    const mapToSonarQubeParams = (params: any) => {
       return {
         projectKey: params.project_key,
         severity: nullToUndefined(params.severity),
@@ -89,7 +89,7 @@ describe('Direct Handler Function Tests', () => {
       };
     };
 
-    const handleIssues = async (params) => {
+    const handleIssues = async (params: any) => {
       // Parse page and pageSize if they're strings
       const page = typeof params.page === 'string' ? parseInt(params.page, 10) : params.page;
       const pageSize =
@@ -113,7 +113,7 @@ describe('Direct Handler Function Tests', () => {
       };
     };
 
-    const issuesHandler = async (params) => {
+    const issuesHandler = async (params: any) => {
       const result = await handleIssues(mapToSonarQubeParams(params));
 
       return {
@@ -136,8 +136,8 @@ describe('Direct Handler Function Tests', () => {
     };
 
     return issuesHandler(params).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.issues).toBeDefined();
       expect(data.issues[0].project).toBe('test-project');
       expect(data.issues[0].severity).toBe('CRITICAL');
@@ -147,18 +147,18 @@ describe('Direct Handler Function Tests', () => {
   });
 
   it('should test componentMeasuresHandler functionality', () => {
-    const componentMeasuresHandler = async (params) => {
-      const handleComponentMeasures = async (transformedParams) => {
+    const componentMeasuresHandler = async (params: any) => {
+      const handleComponentMeasures = async (transformedParams: any) => {
         // Mock SonarQube response
         return {
           component: {
             key: transformedParams.component,
-            measures: transformedParams.metricKeys.map((metric) => ({
+            measures: transformedParams.metricKeys.map((metric: string) => ({
               metric,
               value: '85.4',
             })),
           },
-          metrics: transformedParams.metricKeys.map((key) => ({
+          metrics: transformedParams.metricKeys.map((key: string) => ({
             key,
             name: key.charAt(0).toUpperCase() + key.slice(1),
           })),
@@ -192,8 +192,8 @@ describe('Direct Handler Function Tests', () => {
     };
 
     return componentMeasuresHandler(paramsString).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.component.key).toBe('test-component');
       expect(data.component.measures[0].metric).toBe('coverage');
       expect(data.metrics[0].key).toBe('coverage');
@@ -201,18 +201,18 @@ describe('Direct Handler Function Tests', () => {
   });
 
   it('should test componentMeasuresHandler with array parameters', () => {
-    const componentMeasuresHandler = async (params) => {
-      const handleComponentMeasures = async (transformedParams) => {
+    const componentMeasuresHandler = async (params: any) => {
+      const handleComponentMeasures = async (transformedParams: any) => {
         // Mock SonarQube response
         return {
           component: {
             key: transformedParams.component,
-            measures: transformedParams.metricKeys.map((metric) => ({
+            measures: transformedParams.metricKeys.map((metric: string) => ({
               metric,
               value: '85.4',
             })),
           },
-          metrics: transformedParams.metricKeys.map((key) => ({
+          metrics: transformedParams.metricKeys.map((key: string) => ({
             key,
             name: key.charAt(0).toUpperCase() + key.slice(1),
           })),
@@ -247,8 +247,8 @@ describe('Direct Handler Function Tests', () => {
     };
 
     return componentMeasuresHandler(paramsArray).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.component.key).toBe('test-component');
       expect(data.component.measures.length).toBe(3);
       expect(data.metrics.length).toBe(3);
@@ -257,10 +257,10 @@ describe('Direct Handler Function Tests', () => {
   });
 
   it('should test componentsMeasuresHandler functionality', () => {
-    const nullToUndefined = (value) => (value === null ? undefined : value);
+    const nullToUndefined = (value: any) => (value === null ? undefined : value);
 
-    const componentsMeasuresHandler = async (params) => {
-      const handleComponentsMeasures = async (transformedParams) => {
+    const componentsMeasuresHandler = async (params: any) => {
+      const handleComponentsMeasures = async (transformedParams: any) => {
         // Parse page and pageSize if they're strings
         const page =
           typeof transformedParams.page === 'string'
@@ -273,14 +273,14 @@ describe('Direct Handler Function Tests', () => {
 
         // Mock SonarQube response
         return {
-          components: transformedParams.componentKeys.map((key) => ({
+          components: transformedParams.componentKeys.map((key: string) => ({
             key,
-            measures: transformedParams.metricKeys.map((metric) => ({
+            measures: transformedParams.metricKeys.map((metric: string) => ({
               metric,
               value: '85.4',
             })),
           })),
-          metrics: transformedParams.metricKeys.map((key) => ({
+          metrics: transformedParams.metricKeys.map((key: string) => ({
             key,
             name: key.charAt(0).toUpperCase() + key.slice(1),
           })),
@@ -324,8 +324,8 @@ describe('Direct Handler Function Tests', () => {
     };
 
     return componentsMeasuresHandler(params).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.components.length).toBe(2);
       expect(data.components[0].measures.length).toBe(2);
       expect(data.metrics.length).toBe(2);
@@ -335,10 +335,10 @@ describe('Direct Handler Function Tests', () => {
   });
 
   it('should test measuresHistoryHandler functionality', () => {
-    const nullToUndefined = (value) => (value === null ? undefined : value);
+    const nullToUndefined = (value: any) => (value === null ? undefined : value);
 
-    const measuresHistoryHandler = async (params) => {
-      const handleMeasuresHistory = async (transformedParams) => {
+    const measuresHistoryHandler = async (params: any) => {
+      const handleMeasuresHistory = async (transformedParams: any) => {
         // Parse page and pageSize if they're strings
         const page =
           typeof transformedParams.page === 'string'
@@ -351,7 +351,7 @@ describe('Direct Handler Function Tests', () => {
 
         // Mock SonarQube response
         return {
-          measures: transformedParams.metrics.map((metric) => ({
+          measures: transformedParams.metrics.map((metric: string) => ({
             metric,
             history: [
               { date: '2023-01-01', value: '85.4' },
@@ -396,8 +396,8 @@ describe('Direct Handler Function Tests', () => {
     };
 
     return measuresHistoryHandler(paramsString).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.measures.length).toBe(1);
       expect(data.measures[0].metric).toBe('coverage');
       expect(data.measures[0].history.length).toBe(2);
@@ -414,8 +414,8 @@ describe('Direct Handler Function Tests', () => {
     };
 
     return measuresHistoryHandler(paramsArray).then((result) => {
-      expect(result.content[0].type).toBe('text');
-      const data = JSON.parse(result.content[0].text);
+      expect(result.content[0]?.type).toBe('text');
+      const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.measures.length).toBe(2);
       expect(data.measures[1].metric).toBe('bugs');
       expect(data.paging.pageIndex).toBe(2);

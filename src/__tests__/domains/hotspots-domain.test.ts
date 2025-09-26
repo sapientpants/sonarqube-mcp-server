@@ -92,7 +92,7 @@ describe('HotspotsDomain', () => {
 
       nock(baseUrl).get('/api/hotspots/search').query({ organization }).reply(200, mockResponse);
 
-      const result = await domain.hotspots({});
+      const result = await domain.hotspots({ page: undefined, pageSize: undefined });
 
       expect(result).toEqual({
         hotspots: [],
@@ -128,10 +128,12 @@ describe('HotspotsDomain', () => {
 
       const result = await domain.hotspots({
         projectKey: 'test-project',
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result.hotspots).toHaveLength(1);
-      expect(result.hotspots[0].key).toBe('hotspot1');
+      expect(result.hotspots[0]!.key).toBe('hotspot1');
     });
   });
 

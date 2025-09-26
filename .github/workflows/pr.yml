@@ -1,0 +1,159 @@
+# =============================================================================
+# WORKFLOW: Pull Request Validation
+# PURPOSE: Ensure code quality and security before merging to main
+# TRIGGERS: Pull requests targeting main branch
+# REQUIREMENTS: All checks must pass, changesets required for features/fixes
+# =============================================================================
+
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+
+# Allow only one PR workflow per branch
+# cancel-in-progress: true cancels old runs when new commits are pushed
+# This speeds up feedback by focusing on the latest code
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimal permissions for security
+# contents: read - Read code for analysis
+# security-events: write - Upload security findings
+# actions: read - Access workflow artifacts
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  # =============================================================================
+  # PARALLEL VALIDATION
+  # All checks run simultaneously for faster feedback
+  # =============================================================================
+
+  # Core validation: audit, typecheck, lint, format, tests
+  # upload-coverage: true generates coverage reports for visibility
+  # FAILS IF: Any check fails or coverage drops below 80%
+  validate:
+    uses: ./.github/workflows/reusable-validate.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # CodeQL: Static security analysis for TypeScript/JavaScript
+  # Scans for: XSS, injection attacks, insecure patterns
+  # Results appear in Security tab of the PR
+  codeql:
+    uses: ./.github/workflows/reusable-security.yml
+    with:
+      generate-sbom: false # Skip SBOM for PRs (generated at release)
+      run-osv-scan: false # OSV runs separately below
+      run-codeql: true # Enable CodeQL scanning
+
+  # OSV: Dependency vulnerability scanning
+  # Uses Google's database of known vulnerabilities
+  # UPDATE: Check quarterly for new versions (currently v2.2.2)
+  vulnerability:
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.2.2
+
+  # =============================================================================
+  # WORKFLOW VALIDATION
+  # Lint GitHub Actions workflow files for errors
+  # =============================================================================
+
+  # Actionlint: Validate GitHub Actions workflow syntax and best practices
+  # Catches: undefined outputs, typos, bash errors, incorrect action inputs
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run actionlint
+        # Uses the official actionlint Docker action
+        # Automatically detects all workflow files in .github/workflows/
+        uses: reviewdog/action-actionlint@v1
+        with:
+          fail_level: error # Fail the job if errors are found
+          reporter: github-pr-check # Report errors as PR checks
+
+  # =============================================================================
+  # CHANGESET VALIDATION
+  # Ensures features and fixes have proper changelog entries
+  # =============================================================================
+
+  # Changeset check - runs in parallel with other jobs
+  changeset:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed to compare with main
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0 # Pinned: Match package.json packageManager
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22 # Pinned: Match package.json engines.node
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Fetch main branch
+        # Need main branch to compare changesets
+        run: git fetch origin main:main
+
+      - name: Changeset status
+        # Validates that changesets exist for features/fixes
+        # FAILS IF: feat/fix commits exist without changesets
+        # To fix: Run 'pnpm changeset' and commit the generated file
+        # For non-code changes: Run 'pnpm changeset --empty'
+        run: pnpm changeset:status
+
+  # =============================================================================
+  # FINAL STATUS CHECK
+  # Single job to verify all parallel checks succeeded
+  # =============================================================================
+
+  # Final status check - ensures all jobs passed
+  # Required for branch protection rules
+  pr-status:
+    needs: [validate, codeql, vulnerability, actionlint, changeset]
+    if: always() # Run even if previous jobs failed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check status
+        # Aggregates results from all parallel jobs
+        # This single check can be used as a required status check
+        # FAILS IF: Any validation job failed or was skipped
+        # Common failures:
+        #   - validate: Tests fail, coverage below 80%, lint errors
+        #   - codeql: Security vulnerabilities detected
+        #   - vulnerability: Vulnerable dependencies found
+        #   - actionlint: Workflow syntax errors or best practice violations
+        #   - changeset: Missing changeset for feat/fix commits
+        run: |
+          if [ "${{ needs.validate.result }}" != "success" ] || \
+             [ "${{ needs.codeql.result }}" != "success" ] || \
+             [ "${{ needs.vulnerability.result }}" != "success" ] || \
+             [ "${{ needs.actionlint.result }}" != "success" ] || \
+             [ "${{ needs.changeset.result }}" != "success" ]; then
+            echo "❌ PR validation failed"
+            # Check individual job results for debugging
+            echo "Validate: ${{ needs.validate.result }}"
+            echo "CodeQL: ${{ needs.codeql.result }}"
+            echo "Vulnerability: ${{ needs.vulnerability.result }}"
+            echo "Actionlint: ${{ needs.actionlint.result }}"
+            echo "Changeset: ${{ needs.changeset.result }}"
+            exit 1
+          fi
+          echo "✅ All PR checks passed"

@@ -6,9 +6,9 @@ export interface SonarQubeProject {
   name: string;
   qualifier: string;
   visibility: string;
-  lastAnalysisDate?: string;
-  revision?: string;
-  managed?: boolean;
+  lastAnalysisDate: string | undefined;
+  revision: string | undefined;
+  managed: boolean | undefined;
 }
 
 /**

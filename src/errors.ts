@@ -25,27 +25,27 @@ export enum SonarQubeErrorType {
 
 export interface SonarQubeError extends Error {
   type: SonarQubeErrorType;
-  operation?: string;
-  statusCode?: number;
-  context?: Record<string, unknown>;
-  solution?: string;
+  operation: string | undefined;
+  statusCode: number | undefined;
+  context: Record<string, unknown> | undefined;
+  solution: string | undefined;
 }
 
 export class SonarQubeAPIError extends Error implements SonarQubeError {
   type: SonarQubeErrorType;
-  operation?: string;
-  statusCode?: number;
-  context?: Record<string, unknown>;
-  solution?: string;
+  operation: string | undefined;
+  statusCode: number | undefined;
+  context: Record<string, unknown> | undefined;
+  solution: string | undefined;
 
   constructor(
     message: string,
     type: SonarQubeErrorType,
     options?: {
-      operation?: string;
-      statusCode?: number;
-      context?: Record<string, unknown>;
-      solution?: string;
+      operation: string | undefined;
+      statusCode: number | undefined;
+      context: Record<string, unknown> | undefined;
+      solution: string | undefined;
     }
   ) {
     super(message);
@@ -57,7 +57,7 @@ export class SonarQubeAPIError extends Error implements SonarQubeError {
     this.solution = options?.solution;
   }
 
-  toString(): string {
+  override toString(): string {
     let result = `Error: ${this.message}`;
     if (this.operation) {
       result += `\nOperation: ${this.operation}`;
@@ -77,7 +77,7 @@ export class SonarQubeAPIError extends Error implements SonarQubeError {
 
 function getErrorTypeFromClientError(error: SonarQubeClientError): {
   type: SonarQubeErrorType;
-  solution?: string;
+  solution: string | undefined;
 } {
   if (error instanceof AuthenticationError) {
     return {
@@ -125,6 +125,7 @@ function getErrorTypeFromClientError(error: SonarQubeClientError): {
   }
   return {
     type: SonarQubeErrorType.UNKNOWN_ERROR,
+    solution: undefined,
   };
 }
 
@@ -154,11 +155,17 @@ export function transformError(error: unknown, operation: string): SonarQubeAPIE
   if (error instanceof Error) {
     return new SonarQubeAPIError(error.message, SonarQubeErrorType.UNKNOWN_ERROR, {
       operation,
+      statusCode: undefined,
+      context: undefined,
+      solution: undefined,
     });
   }
 
   return new SonarQubeAPIError(String(error), SonarQubeErrorType.UNKNOWN_ERROR, {
     operation,
+    statusCode: undefined,
+    context: undefined,
+    solution: undefined,
   });
 }
 

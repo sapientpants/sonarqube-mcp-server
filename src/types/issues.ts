@@ -97,11 +97,11 @@ export interface SonarQubeIssue {
  */
 export interface SonarQubeComponent {
   key: string;
-  enabled?: boolean;
+  enabled: boolean | undefined;
   qualifier: string;
   name: string;
-  longName?: string;
-  path?: string;
+  longName: string | undefined;
+  path: string | undefined;
 }
 
 /**
@@ -148,8 +148,8 @@ export interface SonarQubeIssuesResult {
   issues: SonarQubeIssue[];
   components: SonarQubeComponent[];
   rules: SonarQubeRule[];
-  users?: SonarQubeUser[];
-  facets?: SonarQubeFacet[];
+  users: SonarQubeUser[] | undefined;
+  facets: SonarQubeFacet[] | undefined;
   paging: {
     pageIndex: number;
     pageSize: number;

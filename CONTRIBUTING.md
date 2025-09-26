@@ -145,6 +145,7 @@ footer
 ```
 
 Types:
+
 - `feat`: New feature
 - `fix`: Bug fix
 - `docs`: Documentation changes
@@ -154,6 +155,7 @@ Types:
 - `chore`: Build process or auxiliary tool changes
 
 Example:
+
 ```
 feat(api): add support for branch filtering
 
@@ -236,6 +238,7 @@ When updating the Model Context Protocol SDK (`@modelcontextprotocol/sdk`), foll
 ### Update Process
 
 1. **Update the Dependency**:
+
    ```bash
    pnpm add @modelcontextprotocol/sdk@latest
    ```
@@ -246,10 +249,11 @@ When updating the Model Context Protocol SDK (`@modelcontextprotocol/sdk`), foll
    - Update SDK version in `README.md` if referenced
 
 3. **Test Protocol Compatibility**:
+
    ```bash
    # Run all tests
    pnpm test
-   
+
    # Test with Claude Desktop or other MCP clients
    # Verify all tools work correctly
    ```
@@ -277,6 +281,7 @@ When updating the Model Context Protocol SDK (`@modelcontextprotocol/sdk`), foll
 ### Monitoring SDK Updates
 
 To stay informed about SDK updates:
+
 - Watch the [MCP SDK repository](https://github.com/modelcontextprotocol/sdk)
 - Subscribe to release notifications
 - Review the [MCP specification](https://modelcontextprotocol.io) for protocol changes

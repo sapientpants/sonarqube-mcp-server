@@ -21,7 +21,7 @@ process.env.SONARQUBE_ORGANIZATION = 'test-org';
 
 describe('Issue Resolution with Elicitation', () => {
   let mockElicitationManager: jest.Mocked<ElicitationManager>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   let mockClient: any;
 
   beforeEach(() => {
@@ -79,7 +79,7 @@ describe('Issue Resolution with Elicitation', () => {
         comment: 'Elicited comment for false positive',
       });
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Issue ISSUE-123 marked as false positive');
     });
 
@@ -136,7 +136,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.collectResolutionComment).toHaveBeenCalled();
       expect(mockClient.markIssueFalsePositive).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Operation cancelled by user');
       expect(responseData.issueKey).toBe('ISSUE-123');
     });
@@ -152,7 +152,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.collectResolutionComment).toHaveBeenCalled();
       expect(mockClient.markIssueFalsePositive).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Operation cancelled by user');
     });
   });
@@ -185,7 +185,7 @@ describe('Issue Resolution with Elicitation', () => {
         comment: "Elicited comment for won't fix",
       });
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe("Issue ISSUE-456 marked as won't fix");
     });
 
@@ -200,7 +200,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.collectResolutionComment).toHaveBeenCalled();
       expect(mockClient.markIssueWontFix).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Operation cancelled by user');
       expect(responseData.issueKey).toBe('ISSUE-456');
     });
@@ -236,7 +236,7 @@ describe('Issue Resolution with Elicitation', () => {
         comment: 'Bulk operation comment',
       });
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('2 issues marked as false positive');
     });
 
@@ -271,7 +271,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.confirmBulkOperation).toHaveBeenCalled();
       expect(mockClient.markIssuesFalsePositive).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Bulk operation cancelled by user');
       expect(responseData.issueCount).toBe(2);
     });
@@ -290,7 +290,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.confirmBulkOperation).toHaveBeenCalled();
       expect(mockClient.markIssuesFalsePositive).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Bulk operation cancelled by user');
       expect(responseData.issueCount).toBe(2);
     });
@@ -347,7 +347,7 @@ describe('Issue Resolution with Elicitation', () => {
         comment: "Bulk won't fix comment",
       });
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe("2 issues marked as won't fix");
     });
 
@@ -365,7 +365,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.confirmBulkOperation).toHaveBeenCalled();
       expect(mockClient.markIssuesWontFix).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Bulk operation cancelled by user');
       expect(responseData.issueCount).toBe(2);
     });
@@ -384,7 +384,7 @@ describe('Issue Resolution with Elicitation', () => {
       expect(mockElicitationManager.confirmBulkOperation).toHaveBeenCalled();
       expect(mockClient.markIssuesWontFix).not.toHaveBeenCalled();
 
-      const responseData = JSON.parse(result.content[0].text);
+      const responseData = JSON.parse(result.content[0]!.text as string);
       expect(responseData.message).toBe('Bulk operation cancelled by user');
       expect(responseData.issueCount).toBe(2);
     });
