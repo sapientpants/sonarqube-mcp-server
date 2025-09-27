@@ -49,6 +49,7 @@ grep "auth" /tmp/sonarqube-mcp-debug.log
    - Ensure token has proper permissions
 
 2. **Wrong Authentication Method**
+
    ```json
    // Token authentication (recommended)
    {
@@ -56,7 +57,7 @@ grep "auth" /tmp/sonarqube-mcp-debug.log
        "SONARQUBE_TOKEN": "squ_xxxxxxxx"
      }
    }
-   
+
    // Basic authentication
    {
      "env": {
@@ -74,6 +75,7 @@ grep "auth" /tmp/sonarqube-mcp-debug.log
 #### "No SonarQube authentication configured"
 
 **Solution:** Set one of these authentication methods:
+
 - `SONARQUBE_TOKEN` (recommended)
 - `SONARQUBE_USERNAME` and `SONARQUBE_PASSWORD`
 - `SONARQUBE_PASSCODE`
@@ -83,6 +85,7 @@ grep "auth" /tmp/sonarqube-mcp-debug.log
 #### "Connection refused" or "ECONNREFUSED"
 
 **Diagnostics:**
+
 ```bash
 # Test SonarQube connectivity
 curl -I https://your-sonarqube.com/api/system/status
@@ -93,6 +96,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ```
 
 **Solutions:**
+
 1. Verify `SONARQUBE_URL` is correct
 2. Check network connectivity
 3. Verify firewall rules
@@ -101,6 +105,7 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 #### "SSL/TLS Certificate Error"
 
 **For self-signed certificates:**
+
 ```bash
 # Option 1: Add CA certificate
 export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
@@ -114,6 +119,7 @@ export NODE_TLS_REJECT_UNAUTHORIZED=0
 #### "Organization required"
 
 **Solution:** Add organization for SonarCloud:
+
 ```json
 {
   "env": {
@@ -129,6 +135,7 @@ export NODE_TLS_REJECT_UNAUTHORIZED=0
 #### "Access denied" or "Insufficient permissions"
 
 **Solutions:**
+
 1. Check token permissions in SonarQube
 2. Ensure user has "Browse" permission on projects
 3. For admin tools: verify admin permissions
@@ -139,6 +146,7 @@ export NODE_TLS_REJECT_UNAUTHORIZED=0
 #### Slow Response Times
 
 **Diagnostics:**
+
 ```bash
 # Check circuit breaker status in logs
 grep "circuit breaker" /tmp/sonarqube-mcp-debug.log
@@ -148,6 +156,7 @@ grep "API call took" /tmp/sonarqube-mcp-debug.log
 ```
 
 **Solutions:**
+
 1. Check SonarQube server performance
 2. Review network latency
 3. Circuit breaker may be activated - check logs
@@ -158,6 +167,7 @@ grep "API call took" /tmp/sonarqube-mcp-debug.log
 #### Container Exits Immediately
 
 **Diagnostics:**
+
 ```bash
 # Check container logs
 docker logs sonarqube-mcp
@@ -173,6 +183,7 @@ docker run -it --rm \
 #### "No such file or directory"
 
 **Solution:** Ensure volume mounts exist:
+
 ```bash
 # Create log directory
 mkdir -p ./logs
@@ -186,6 +197,7 @@ docker run -v ./logs:/logs ...
 #### Server Not Appearing in Claude
 
 **Solutions:**
+
 1. Restart Claude Desktop after config changes
 2. Check configuration syntax:
    ```json
@@ -206,6 +218,7 @@ docker run -v ./logs:/logs ...
 #### "Command not found"
 
 **Solutions:**
+
 1. Ensure Node.js is installed
 2. Use Docker instead of npx
 3. Check PATH environment variable
@@ -226,6 +239,7 @@ docker run -v ./logs:/logs ...
 ### 2. Test Specific Tools
 
 In Claude Desktop:
+
 ```
 Use the system_ping tool to check SonarQube connectivity
 ```
@@ -233,6 +247,7 @@ Use the system_ping tool to check SonarQube connectivity
 ### 3. Isolate Issues
 
 Test components individually:
+
 ```bash
 # Test SonarQube API directly
 curl -H "Authorization: Bearer $SONARQUBE_TOKEN" \
@@ -255,21 +270,22 @@ env | grep -E "(PROXY|SSL|TLS|NODE)"
 
 ## Error Messages Reference
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| "Authentication failed" | Invalid credentials | Check token/password |
-| "Resource not found" | Invalid project/component | Verify resource exists |
-| "Network error" | Connection issue | Check URL and network |
-| "Rate limit exceeded" | Too many requests | Wait and retry |
-| "Circuit breaker open" | Multiple failures | Check SonarQube health |
-| "Invalid URL" | Malformed URL | Remove trailing slash |
-| "Organization required" | SonarCloud without org | Add SONARQUBE_ORGANIZATION |
+| Error                   | Cause                     | Solution                   |
+| ----------------------- | ------------------------- | -------------------------- |
+| "Authentication failed" | Invalid credentials       | Check token/password       |
+| "Resource not found"    | Invalid project/component | Verify resource exists     |
+| "Network error"         | Connection issue          | Check URL and network      |
+| "Rate limit exceeded"   | Too many requests         | Wait and retry             |
+| "Circuit breaker open"  | Multiple failures         | Check SonarQube health     |
+| "Invalid URL"           | Malformed URL             | Remove trailing slash      |
+| "Organization required" | SonarCloud without org    | Add SONARQUBE_ORGANIZATION |
 
 ## Getting Help
 
 ### Collect Debug Information
 
 When reporting issues, include:
+
 1. Server version
 2. Error messages from logs
 3. Environment configuration (without secrets)

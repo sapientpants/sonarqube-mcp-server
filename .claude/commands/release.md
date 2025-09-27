@@ -12,6 +12,7 @@ You are about to make a release of the project. Please follow these steps:
    - Description of changes
    - Another change
    ```
+
 4. Update the README.md file if necessary, ensuring it reflects the latest changes and version number.
 5. **Commit the changes** making sure that the pre-commit hook passes without warnings or errors. ^:wq
 6. **Push the branch** to the remote repository.
@@ -23,4 +24,3 @@ You are about to make a release of the project. Please follow these steps:
 ```bash
 gh release create v1.0.0 --title "Release v1.0.0" --notes "Release notes for v1.0.0"
 ```
-

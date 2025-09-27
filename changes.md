@@ -7,6 +7,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 ## Documentation Changes
 
 ### 1. Architecture Documentation (`docs/architecture.md`)
+
 - **System Architecture**: Complete overview with Mermaid diagrams showing component relationships
 - **Core Components**: Detailed explanation of Transport Layer, Authentication, Domain Services, Tool Handlers, and Monitoring
 - **Data Flow**: Sequence diagrams illustrating request processing pipeline
@@ -15,6 +16,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Architecture Decision Records**: Links to all relevant ADRs
 
 ### 2. Enterprise Deployment Guide (`docs/deployment.md`)
+
 - **Docker Deployment**: Production configurations with docker-compose
 - **Kubernetes Deployment**: Full manifest set with best practices
 - **Helm Chart Usage**: Comprehensive values.yaml with all options
@@ -24,6 +26,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Performance Tuning**: Node.js and connection pool optimization
 
 ### 3. Security Configuration Guide (`docs/security.md`)
+
 - **Authentication Methods**: Token, Basic, and Passcode authentication for SonarQube
 - **Service Account Management**: Multi-tenant configuration with health monitoring
 - **Permission System**: Fine-grained access control with regex project filtering
@@ -33,6 +36,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Security Checklist**: 15-point verification list
 
 ### 5. Identity Provider Integration Guide (`docs/idp-integration.md`)
+
 - **Azure AD Integration**: Step-by-step setup with app registration
 - **Okta Integration**: Complete configuration with authorization server
 - **Auth0 Integration**: Application setup and rule configuration
@@ -42,6 +46,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Troubleshooting**: Common issues and debugging steps
 
 ### 6. Troubleshooting Guide (`docs/troubleshooting.md`)
+
 - **Common Issues**: 10+ scenarios with detailed solutions
 - **Diagnostic Tools**: Health checks, debug logging, and metrics
 - **Error Reference**: Comprehensive error codes and meanings
@@ -49,6 +54,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 - **Support Resources**: Links and contact information
 
 ### 7. Performance Tuning Guide (`docs/performance.md`)
+
 - **Resource Optimization**: CPU, memory, and connection settings
 - **Caching Strategies**: Token, permission, and JWKS caching
 - **Scaling Guidelines**: Horizontal and vertical scaling approaches
@@ -58,6 +64,7 @@ This branch implements comprehensive documentation and deployment artifacts for 
 ## Infrastructure Changes
 
 ### 1. Enhanced Dockerfile
+
 ```dockerfile
 # Added health check support
 RUN apk add --no-cache curl
@@ -72,6 +79,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ```
 
 ### 2. Kubernetes Manifests (`k8s/`)
+
 - **base/deployment.yaml**: Production-ready with 3 replicas, resource limits, security context
 - **base/service.yaml**: ClusterIP service for internal access
 - **base/ingress.yaml**: NGINX ingress with TLS and annotations
@@ -84,6 +92,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 - **base/kustomization.yaml**: Kustomize configuration
 
 ### 3. Helm Chart (`helm/sonarqube-mcp/`)
+
 - **Chart.yaml**: Chart metadata with version 0.1.0
 - **values.yaml**: Comprehensive configuration options:
   - Image configuration
@@ -98,6 +107,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 - **templates/NOTES.txt**: Post-install instructions
 
 ### 4. Terraform Modules (`terraform/`)
+
 - **aws/main.tf**: AWS-specific resources
 - **aws/variables.tf**: Input variables for customization
 - **aws/outputs.tf**: Exported values
@@ -108,11 +118,13 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ## Project Updates
 
 ### 1. README.md Enhancement
+
 - Added comprehensive documentation section with links to all guides
 - Updated version references to v1.9.0
 - Maintained existing content while adding documentation references
 
 ### 2. .gitignore Updates
+
 - Added Terraform state files and directories
 - Added Helm package artifacts
 - Added Kubernetes generated files
@@ -121,12 +133,14 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ## Key Features Implemented
 
 ### 1. Production-Ready Docker
+
 - Multi-stage builds for smaller images
 - Non-root user execution
 - Health check endpoints
 - Security hardening
 
 ### 2. Enterprise Kubernetes Deployment
+
 - High availability with 3+ replicas
 - Auto-scaling based on metrics
 - Pod disruption budgets
@@ -134,18 +148,21 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 - RBAC for service accounts
 
 ### 3. Flexible Helm Chart
+
 - Configurable for any environment
 - Built-in security defaults
 - Monitoring integration
 - Persistence support
 
 ### 4. Cloud-Native Terraform
+
 - AWS-focused with plans for Azure/GCP
 - IAM integration
 - CloudWatch monitoring
 - Infrastructure as Code
 
 ### 5. Comprehensive Security
+
 - Multiple authentication methods
 - Fine-grained authorization
 - Audit logging
@@ -163,6 +180,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 ## Migration Guide
 
 For existing users:
+
 1. Review new security configuration options
 2. Update deployment method if desired
 3. Configure monitoring and observability

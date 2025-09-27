@@ -16,8 +16,8 @@ export function stringToNumberTransform(val: string | null | undefined): number 
   if (val === null || val === undefined) {
     return val;
   }
-  const parsed = parseInt(val, 10);
-  return isNaN(parsed) ? null : parsed;
+  const parsed = Number.parseInt(val, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 /**
@@ -80,9 +80,9 @@ export function parseJsonStringArray(
   // If it's a string, try to parse it as JSON
   if (typeof value === 'string') {
     try {
-      const parsed = JSON.parse(value);
+      const parsed: unknown = JSON.parse(value);
       if (Array.isArray(parsed)) {
-        return parsed;
+        return parsed.map(String);
       }
       // If parsed but not an array, wrap it
       return [String(parsed)];

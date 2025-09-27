@@ -12,7 +12,7 @@ Follow these steps:
 6. Implement the necessary changes to fix the issue
 7. Ensure that any new code is well-documented and follows the project's coding standards
 8. Write tests to cover the changes made, if applicable
-9. Ensure code passes formatting, linting, type checking, and tests using `pnpm run ci`
+9. Ensure code passes formatting, linting, type checking, and tests using `pnpm run precommit`
 10. Create a descriptive commit message
 11. Push and create a PR
 12. Wait for code review and address any feedback provided by reviewers.

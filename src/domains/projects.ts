@@ -10,8 +10,8 @@ export class ProjectsDomain extends BaseDomain {
    * @param params Pagination and organization parameters
    * @returns Promise with the list of projects
    */
-  async listProjects(params: PaginationParams = {}): Promise<SonarQubeProjectsResult> {
-    const { page, pageSize } = params;
+  async listProjects(params?: PaginationParams): Promise<SonarQubeProjectsResult> {
+    const { page, pageSize } = params ?? {};
     this.logger.debug('Listing projects', { page, pageSize, organization: this.organization });
 
     try {

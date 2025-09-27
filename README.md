@@ -52,10 +52,12 @@ The SonarQube MCP Server enables AI assistants to interact with SonarQube's code
 ## Documentation
 
 ### Core Guides
+
 - **[Architecture Guide](docs/architecture.md)** - System architecture, design decisions, and component overview
 - **[Troubleshooting Guide](docs/troubleshooting.md)** - Common issues, debugging, and solutions
 
 ### Security & Authentication
+
 - **[Security Guide](docs/security.md)** - Authentication, authorization, and security best practices
 
 ## Compatibility
@@ -73,11 +75,13 @@ For detailed information about MCP protocol version support and SDK compatibilit
 ### 1. Get Your SonarQube Token
 
 **For SonarCloud:**
+
 1. Log in to [SonarCloud](https://sonarcloud.io)
 2. Go to **My Account** → **Security**
 3. Generate a new token
 
 **For SonarQube:**
+
 1. Log in to your SonarQube instance
 2. Go to **My Account** → **Security**
 3. Generate a new token
@@ -107,6 +111,7 @@ For detailed information about MCP protocol version support and SDK compatibilit
 **Alternative authentication methods:**
 
 Using Basic Authentication:
+
 ```json
 {
   "mcpServers": {
@@ -124,6 +129,7 @@ Using Basic Authentication:
 ```
 
 Using System Passcode:
+
 ```json
 {
   "mcpServers": {
@@ -139,8 +145,7 @@ Using System Passcode:
 }
 ```
 
-
-4. Restart Claude Desktop
+1. Restart Claude Desktop
 
 ### 3. Start Using
 
@@ -186,6 +191,7 @@ Docker provides the most reliable deployment method by packaging all dependencie
 #### Quick Start with Docker
 
 **For stdio transport (Claude Desktop):**
+
 ```json
 {
   "mcpServers": {
@@ -195,9 +201,12 @@ Docker provides the most reliable deployment method by packaging all dependencie
         "run",
         "-i",
         "--rm",
-        "-e", "SONARQUBE_URL",
-        "-e", "SONARQUBE_TOKEN",
-        "-e", "SONARQUBE_ORGANIZATION",
+        "-e",
+        "SONARQUBE_URL",
+        "-e",
+        "SONARQUBE_TOKEN",
+        "-e",
+        "SONARQUBE_ORGANIZATION",
         "sapientpants/sonarqube-mcp-server:latest"
       ],
       "env": {
@@ -210,18 +219,19 @@ Docker provides the most reliable deployment method by packaging all dependencie
 }
 ```
 
-
 #### Docker Hub Images
 
 Official images are available on Docker Hub: [`sapientpants/sonarqube-mcp-server`](https://hub.docker.com/r/sapientpants/sonarqube-mcp-server)
 
 **Available tags:**
+
 - `latest` - Latest stable release
 - `1.6.0` - Specific version (recommended for production)
 - `1.6` - Latest patch version of 1.6.x
 - `1` - Latest minor version of 1.x.x
 
 **Pull the image:**
+
 ```bash
 docker pull sapientpants/sonarqube-mcp-server:latest
 ```
@@ -229,6 +239,7 @@ docker pull sapientpants/sonarqube-mcp-server:latest
 #### Advanced Docker Configuration
 
 **With logging enabled:**
+
 ```json
 {
   "mcpServers": {
@@ -238,12 +249,18 @@ docker pull sapientpants/sonarqube-mcp-server:latest
         "run",
         "-i",
         "--rm",
-        "-v", "/tmp/sonarqube-logs:/logs",
-        "-e", "SONARQUBE_URL",
-        "-e", "SONARQUBE_TOKEN",
-        "-e", "SONARQUBE_ORGANIZATION",
-        "-e", "LOG_FILE=/logs/sonarqube-mcp.log",
-        "-e", "LOG_LEVEL=INFO",
+        "-v",
+        "/tmp/sonarqube-logs:/logs",
+        "-e",
+        "SONARQUBE_URL",
+        "-e",
+        "SONARQUBE_TOKEN",
+        "-e",
+        "SONARQUBE_ORGANIZATION",
+        "-e",
+        "LOG_FILE=/logs/sonarqube-mcp.log",
+        "-e",
+        "LOG_LEVEL=INFO",
         "sapientpants/sonarqube-mcp-server:latest"
       ],
       "env": {
@@ -257,6 +274,7 @@ docker pull sapientpants/sonarqube-mcp-server:latest
 ```
 
 **Using Docker Compose:**
+
 ```yaml
 version: '3.8'
 services:
@@ -296,11 +314,13 @@ docker run -i --rm \
 #### Docker Best Practices
 
 1. **Version Pinning**: Always use specific version tags in production:
+
    ```bash
    sapientpants/sonarqube-mcp-server:1.6.0
    ```
 
 2. **Resource Limits**: Set appropriate resource limits:
+
    ```bash
    docker run -i --rm \
      --memory="256m" \
@@ -309,6 +329,7 @@ docker run -i --rm \
    ```
 
 3. **Security**: Run as non-root user (default in our image):
+
    ```bash
    docker run -i --rm \
      --user node \
@@ -343,29 +364,28 @@ For development or customization:
 
 #### Authentication (choose one method)
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| **Token Authentication** | | | |
-| `SONARQUBE_TOKEN` | Authentication token for SonarQube API access | ✅ Yes* | - |
-| **Basic Authentication** | | | |
-| `SONARQUBE_USERNAME` | Username for Basic authentication | ✅ Yes* | - |
-| `SONARQUBE_PASSWORD` | Password for Basic authentication | ✅ Yes* | - |
-| **System Passcode** | | | |
-| `SONARQUBE_PASSCODE` | System passcode for SonarQube authentication | ✅ Yes* | - |
+| Variable                 | Description                                   | Required | Default |
+| ------------------------ | --------------------------------------------- | -------- | ------- |
+| **Token Authentication** |                                               |          |         |
+| `SONARQUBE_TOKEN`        | Authentication token for SonarQube API access | ✅ Yes\* | -       |
+| **Basic Authentication** |                                               |          |         |
+| `SONARQUBE_USERNAME`     | Username for Basic authentication             | ✅ Yes\* | -       |
+| `SONARQUBE_PASSWORD`     | Password for Basic authentication             | ✅ Yes\* | -       |
+| **System Passcode**      |                                               |          |         |
+| `SONARQUBE_PASSCODE`     | System passcode for SonarQube authentication  | ✅ Yes\* | -       |
 
-*One authentication method is required. Token authentication takes priority if multiple methods are configured.
+\*One authentication method is required. Token authentication takes priority if multiple methods are configured.
 
 #### Connection Settings
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `SONARQUBE_URL` | URL of your SonarQube instance | ❌ No | `https://sonarcloud.io` |
-| `SONARQUBE_ORGANIZATION` | Organization key (required for SonarCloud) | ❌ No** | - |
-| `LOG_FILE` | Path to write log files (e.g., `/tmp/sonarqube-mcp.log`) | ❌ No | - |
-| `LOG_LEVEL` | Minimum log level (DEBUG, INFO, WARN, ERROR) | ❌ No | `DEBUG` |
+| Variable                 | Description                                              | Required  | Default                 |
+| ------------------------ | -------------------------------------------------------- | --------- | ----------------------- |
+| `SONARQUBE_URL`          | URL of your SonarQube instance                           | ❌ No     | `https://sonarcloud.io` |
+| `SONARQUBE_ORGANIZATION` | Organization key (required for SonarCloud)               | ❌ No\*\* | -                       |
+| `LOG_FILE`               | Path to write log files (e.g., `/tmp/sonarqube-mcp.log`) | ❌ No     | -                       |
+| `LOG_LEVEL`              | Minimum log level (DEBUG, INFO, WARN, ERROR)             | ❌ No     | `DEBUG`                 |
 
-**Required when using SonarCloud
-
+\*\*Required when using SonarCloud
 
 ### Authentication Methods
 
@@ -373,7 +393,8 @@ The server supports three authentication methods, with important differences bet
 
 #### 1. Token Authentication (Recommended)
 
-**SonarQube 10.0+ (Bearer Token)**
+##### SonarQube 10.0+ (Bearer Token)
+
 - Starting with SonarQube 10.0, Bearer token authentication is the recommended approach
 - Most secure and flexible option
 - Tokens can have limited permissions
@@ -386,7 +407,8 @@ The server supports three authentication methods, with important differences bet
   }
   ```
 
-**SonarQube < 10.0 (Token as Username)**
+##### SonarQube < 10.0 (Token as Username)
+
 - For versions before 10.0, tokens must be sent as the username in Basic authentication
 - No password is required when using a token as username
 - The server automatically handles this based on your SonarQube version
@@ -400,6 +422,7 @@ The server supports three authentication methods, with important differences bet
   ```
 
 #### 2. Basic Authentication
+
 - Traditional username and password authentication
 - Suitable for self-hosted SonarQube instances
 - May not work with SonarCloud if 2FA is enabled
@@ -414,6 +437,7 @@ The server supports three authentication methods, with important differences bet
   ```
 
 #### 3. System Passcode
+
 - Special authentication for SonarQube system administration
 - Typically used for automated deployment scenarios
 - Configuration:
@@ -430,27 +454,30 @@ The server supports three authentication methods, with important differences bet
 ### SonarCloud vs SonarQube
 
 **For SonarCloud:**
+
 - Set `SONARQUBE_URL` to `https://sonarcloud.io`
 - `SONARQUBE_ORGANIZATION` is required
 - Token authentication is recommended
 
 **For SonarQube Server:**
+
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
 - All authentication methods are supported
-
 
 ### Elicitation Configuration (Experimental)
 
 The server supports interactive user input through MCP's elicitation capability. This feature is opt-in and requires compatible MCP clients.
 
 **Environment Variables:**
+
 - `SONARQUBE_MCP_ELICITATION`: Set to `true` to enable elicitation
 - `SONARQUBE_MCP_BULK_THRESHOLD`: Number of items before confirmation (default: 5)
 - `SONARQUBE_MCP_REQUIRE_COMMENTS`: Set to `true` to require comments for resolutions
 - `SONARQUBE_MCP_INTERACTIVE_SEARCH`: Set to `true` for interactive disambiguation
 
 **Example Configuration:**
+
 ```json
 {
   "mcpServers": {
@@ -470,6 +497,7 @@ The server supports interactive user input through MCP's elicitation capability.
 ```
 
 **Features When Enabled:**
+
 1. **Bulk Operation Confirmation**: Prompts for confirmation before marking multiple issues
 2. **Comment Collection**: Collects explanatory comments when marking issues as false positive or won't fix
 3. **Authentication Setup**: Guides through authentication setup when credentials are missing
@@ -482,6 +510,7 @@ The server supports interactive user input through MCP's elicitation capability.
 The server supports file-based logging for debugging and monitoring. Since MCP servers use stdout for protocol communication, logs are written to a file instead of stdout/stderr to avoid interference.
 
 **Enable Logging:**
+
 ```json
 {
   "mcpServers": {
@@ -501,12 +530,14 @@ The server supports file-based logging for debugging and monitoring. Since MCP s
 ```
 
 **Log Levels:**
+
 - `DEBUG`: Detailed information for debugging
 - `INFO`: General information about server operation
 - `WARN`: Warning events that might lead to issues
 - `ERROR`: Error events (server continues running)
 
 **Example Log Output:**
+
 ```
 2024-01-15T10:30:45.123Z INFO [index] Starting SonarQube MCP server
 2024-01-15T10:30:45.234Z INFO [index] Environment variables validated successfully
@@ -516,7 +547,6 @@ The server supports file-based logging for debugging and monitoring. Since MCP s
 2024-01-15T10:30:50.567Z INFO [index] Successfully retrieved projects {"count": 5}
 ```
 
-
 ## Available Tools
 
 ### Permission Requirements
@@ -524,9 +554,11 @@ The server supports file-based logging for debugging and monitoring. Since MCP s
 Different SonarQube tools require different permission levels:
 
 **Tools requiring Admin permissions:**
+
 - `projects` - Lists all SonarQube projects with metadata (visibility, lastAnalysisDate, revision)
 
 **Tools accessible to all users:**
+
 - `components` - Search and navigate projects, directories, and files (requires 'Browse' permission on at least one project)
 - All other tools require appropriate permissions based on the resources being accessed
 
@@ -537,6 +569,7 @@ Use the `projects` tool to get full project metadata including visibility, last 
 
 **For All Users:**
 Use the `components` tool with project qualifier:
+
 - "List all projects I have access to" → `components` with `qualifiers: ['TRK']`
 - "Search for projects containing 'mobile'" → `components` with `query: 'mobile', qualifiers: ['TRK']`
 
@@ -545,25 +578,31 @@ The `components` tool provides a more accessible alternative for non-admin users
 ### Project Management
 
 #### `projects`
+
 List all SonarQube projects with pagination support.
 
 **Parameters:**
+
 - `page` (optional): Page number for results pagination
 - `page_size` (optional): Number of items per page
 
 ### Metrics and Measures
 
 #### `metrics`
+
 Get available metrics from SonarQube.
 
 **Parameters:**
+
 - `page` (optional): Page number for results pagination
 - `page_size` (optional): Number of items per page
 
 #### `measures_component`
+
 Get measures for a specific component.
 
 **Parameters:**
+
 - `component` (required): Component key
 - `metric_keys` (required): Array of metric keys
 - `additional_fields` (optional): Additional fields to return
@@ -572,9 +611,11 @@ Get measures for a specific component.
 - `period` (optional): Period index
 
 #### `measures_components`
+
 Get measures for multiple components.
 
 **Parameters:**
+
 - `component_keys` (required): Array of component keys
 - `metric_keys` (required): Array of metric keys
 - Additional parameters same as `measures_component`
@@ -582,9 +623,11 @@ Get measures for multiple components.
 - `page_size` (optional): Items per page
 
 #### `measures_history`
+
 Get measures history for a component.
 
 **Parameters:**
+
 - `component` (required): Component key
 - `metrics` (required): Array of metric keys
 - `from` (optional): Start date (YYYY-MM-DD)
@@ -597,9 +640,11 @@ Get measures history for a component.
 ### Issue Management
 
 #### `issues`
+
 Search and filter SonarQube issues by severity, status, assignee, tag, file path, and more. Critical for dashboards, targeted clean-up sprints, security audits, and regression testing. Supports faceted search for aggregations.
 
 **Component/File Path Filters:**
+
 - `project_key` (optional): Single project key (backward compatible)
 - `projects` (optional): Array of project keys for multi-project analysis
 - `component_keys` (optional): Array of component keys (file paths, directories, or modules) - use this to filter issues by specific files or folders
@@ -607,10 +652,12 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 - `on_component_only` (optional): Boolean to return only issues on specified components, not sub-components
 
 **Branch/PR Support:**
+
 - `branch` (optional): Branch name for branch analysis
 - `pull_request` (optional): Pull request ID for PR analysis
 
 **Issue Filters:**
+
 - `issues` (optional): Array of specific issue keys to retrieve
 - `severity` (optional): Single severity (deprecated, use severities)
 - `severities` (optional): Array of severities (INFO, MINOR, MAJOR, CRITICAL, BLOCKER)
@@ -620,28 +667,33 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 - `types` (optional): Array of types (CODE_SMELL, BUG, VULNERABILITY, SECURITY_HOTSPOT)
 
 **Clean Code Taxonomy (SonarQube 10.x+):**
+
 - `clean_code_attribute_categories` (optional): Array (ADAPTABLE, CONSISTENT, INTENTIONAL, RESPONSIBLE)
 - `impact_severities` (optional): Array (HIGH, MEDIUM, LOW)
 - `impact_software_qualities` (optional): Array (MAINTAINABILITY, RELIABILITY, SECURITY)
 - `issue_statuses` (optional): Array of new issue status values
 
 **Rules and Tags:**
+
 - `rules` (optional): Array of rule keys
 - `tags` (optional): Array of issue tags - essential for security audits, regression testing, and categorized analysis
 
 **Date Filters:**
+
 - `created_after` (optional): Issues created after date (YYYY-MM-DD)
 - `created_before` (optional): Issues created before date (YYYY-MM-DD)
 - `created_at` (optional): Issues created on date (YYYY-MM-DD)
 - `created_in_last` (optional): Issues created in last period (e.g., "30d", "1m")
 
 **Assignment:**
+
 - `assigned` (optional): Boolean filter for assigned/unassigned
 - `assignees` (optional): Array of assignee logins - critical for targeted clean-up sprints and workload analysis
 - `author` (optional): Single author login
 - `authors` (optional): Array of author logins
 
 **Security Standards:**
+
 - `cwe` (optional): Array of CWE identifiers
 - `owasp_top10` (optional): Array of OWASP Top 10 categories
 - `owasp_top10_v2021` (optional): Array of OWASP Top 10 2021 categories
@@ -650,6 +702,7 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 - `sonarsource_security_category` (optional): Additional security categories
 
 **Other Filters:**
+
 - `languages` (optional): Array of programming languages
 - `facets` (optional): Array of facets to aggregate
 - `facet_mode` (optional): Facet aggregation mode ('effort' or 'count')
@@ -657,21 +710,25 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 - `in_new_code_period` (optional): Boolean for new code period filter
 
 **Sorting:**
+
 - `s` (optional): Sort field (e.g., 'SEVERITY', 'CREATION_DATE', 'UPDATE_DATE')
 - `asc` (optional): Boolean for ascending sort direction (default: false)
 
 **Response Control:**
+
 - `additional_fields` (optional): Array of additional fields to include
 - `page` (optional): Page number for pagination
 - `page_size` (optional): Number of items per page
 
 **Faceted Search (Dashboard Support):**
+
 - `facets` (optional): Array of facets to compute for aggregations. Available facets: severities, statuses, resolutions, rules, tags, types, authors, assignees, languages, etc.
 - `facet_mode` (optional): Mode for facet computation: 'count' (number of issues) or 'effort' (remediation effort)
 
 **Example Use Cases:**
 
 1. **Dashboard Query** - Get issue counts by severity and assignee:
+
 ```json
 {
   "project_key": "my-project",
@@ -680,7 +737,8 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
-2. **Security Audit** - Find critical security issues in authentication modules:
+1. **Security Audit** - Find critical security issues in authentication modules:
+
 ```json
 {
   "project_key": "my-project",
@@ -691,7 +749,8 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
-3. **Sprint Planning** - Get open issues for specific team members:
+1. **Sprint Planning** - Get open issues for specific team members:
+
 ```json
 {
   "project_key": "my-project",
@@ -702,10 +761,11 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
-4. **File-Specific Analysis** - Issues in a specific file:
+1. **File-Specific Analysis** - Issues in a specific file:
+
 ```json
 {
-  "project_key": "my-project",  
+  "project_key": "my-project",
   "component_keys": ["src/main/java/com/example/PaymentService.java"],
   "on_component_only": true
 }
@@ -714,18 +774,22 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 ### Component Navigation
 
 #### `components`
+
 Search and navigate SonarQube components (projects, directories, files). Supports text search, filtering by type/language, and tree navigation.
 
 **Search Parameters:**
+
 - `query` (optional): Text search query
 - `qualifiers` (optional): Array of component types (TRK, DIR, FIL, UTS, BRC, APP, VW, SVW, LIB)
 - `language` (optional): Programming language filter
 
 **Tree Navigation Parameters:**
+
 - `component` (optional): Component key for tree navigation
 - `strategy` (optional): Tree traversal strategy ('all', 'children', 'leaves')
 
 **Common Parameters:**
+
 - `asc` (optional): Sort ascending/descending
 - `ps` (optional): Page size (default: 100, max: 500)
 - `p` (optional): Page number
@@ -733,6 +797,7 @@ Search and navigate SonarQube components (projects, directories, files). Support
 - `pullRequest` (optional): Pull request ID
 
 **Component Qualifiers:**
+
 - `TRK`: Project
 - `DIR`: Directory
 - `FIL`: File
@@ -746,6 +811,7 @@ Search and navigate SonarQube components (projects, directories, files). Support
 **Example Use Cases:**
 
 1. **Find specific files:**
+
 ```json
 {
   "query": "UserService",
@@ -753,7 +819,8 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-2. **List all test files in a project:**
+1. **List all test files in a project:**
+
 ```json
 {
   "component": "my-project",
@@ -761,7 +828,8 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-3. **Navigate directory structure:**
+1. **Navigate directory structure:**
+
 ```json
 {
   "component": "my-project:src/main",
@@ -770,7 +838,8 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-4. **Search for components by language:**
+1. **Search for components by language:**
+
 ```json
 {
   "language": "java",
@@ -779,7 +848,8 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-5. **Get project list:**
+1. **Get project list:**
+
 ```json
 {
   "qualifiers": ["TRK"]
@@ -789,9 +859,11 @@ Search and navigate SonarQube components (projects, directories, files). Support
 ### Security Hotspots
 
 #### `hotspots`
+
 Search for security hotspots with specialized filters for security review workflows.
 
 **Parameters:**
+
 - `project_key` (optional): Project key to filter hotspots
 - `branch` (optional): Branch name for branch analysis
 - `pull_request` (optional): Pull request ID for PR analysis
@@ -805,12 +877,15 @@ Search for security hotspots with specialized filters for security review workfl
 - `page_size` (optional): Number of items per page
 
 #### `hotspot`
+
 Get detailed information about a specific security hotspot including security context.
 
 **Parameters:**
+
 - `hotspot_key` (required): The unique key of the hotspot
 
 **Returns:**
+
 - Detailed hotspot information including:
   - Security category and vulnerability probability
   - Rule information and security context
@@ -818,9 +893,11 @@ Get detailed information about a specific security hotspot including security co
   - Code flows and locations
 
 #### `update_hotspot_status`
+
 Update the status of a security hotspot (requires appropriate permissions).
 
 **Parameters:**
+
 - `hotspot_key` (required): The unique key of the hotspot
 - `status` (required): New status (TO_REVIEW, REVIEWED)
 - `resolution` (optional): Resolution when status is REVIEWED (FIXED, SAFE)
@@ -829,20 +906,25 @@ Update the status of a security hotspot (requires appropriate permissions).
 ### Quality Gates
 
 #### `quality_gates`
+
 List available quality gates.
 
-**No parameters required**
+No parameters required.
 
 #### `quality_gate`
+
 Get quality gate conditions.
 
 **Parameters:**
+
 - `id` (required): Quality gate ID
 
 #### `quality_gate_status`
+
 Get project quality gate status.
 
 **Parameters:**
+
 - `project_key` (required): Project key
 - `branch` (optional): Branch name
 - `pull_request` (optional): Pull request key
@@ -850,9 +932,11 @@ Get project quality gate status.
 ### Source Code
 
 #### `source_code`
+
 View source code with issues highlighted.
 
 **Parameters:**
+
 - `key` (required): File key
 - `from` (optional): Start line
 - `to` (optional): End line
@@ -860,73 +944,91 @@ View source code with issues highlighted.
 - `pull_request` (optional): Pull request key
 
 #### `scm_blame`
+
 Get SCM blame information for source code.
 
 **Parameters:**
+
 - Same as `source_code`
 
 ### System Monitoring
 
 #### `system_health`
+
 Get the health status of the SonarQube instance.
 
-**No parameters required**
+No parameters required.
 
 #### `system_status`
+
 Get the status of the SonarQube instance.
 
-**No parameters required**
+No parameters required.
 
 #### `system_ping`
+
 Ping the SonarQube instance to check if it is up.
 
-**No parameters required**
+No parameters required.
 
 ### Issue Resolution and Management
 
 #### `markIssueFalsePositive`
+
 Mark an issue as false positive.
 
 **Parameters:**
+
 - `issue_key` (required): The key of the issue to mark
 - `comment` (optional): Comment explaining why it's a false positive
 
 #### `markIssueWontFix`
+
 Mark an issue as won't fix.
 
 **Parameters:**
+
 - `issue_key` (required): The key of the issue to mark
 - `comment` (optional): Comment explaining why it won't be fixed
 
 #### `markIssuesFalsePositive`
+
 Mark multiple issues as false positive in bulk.
 
 **Parameters:**
+
 - `issue_keys` (required): Array of issue keys to mark
 - `comment` (optional): Comment applying to all issues
 
 #### `markIssuesWontFix`
+
 Mark multiple issues as won't fix in bulk.
 
 **Parameters:**
+
 - `issue_keys` (required): Array of issue keys to mark
 - `comment` (optional): Comment applying to all issues
 
 #### `addCommentToIssue`
+
 Add a comment to a SonarQube issue.
 
 **Parameters:**
+
 - `issue_key` (required): The key of the issue to comment on
 - `text` (required): The comment text (supports markdown formatting)
 
 #### `assignIssue`
+
 Assign a SonarQube issue to a user or unassign it.
 
 **Parameters:**
+
 - `issueKey` (required): The key of the issue to assign
 - `assignee` (optional): Username of the assignee. Leave empty to unassign the issue
 
 **Example usage:**
+
 ```json
 {
   "issueKey": "PROJECT-123",
@@ -937,6 +1039,7 @@ Assign a SonarQube issue to a user or unassign it.
 ## Usage Examples
 
 ### Basic Project Analysis
+
 ```
 "List all my SonarQube projects"
 "Show me the code coverage for project xyz"
@@ -944,6 +1047,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### Issue Investigation
+
 ```
 "Show me all critical bugs in project abc"
 "Find security vulnerabilities in the main branch"
@@ -957,6 +1061,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### Component Navigation
+
 ```
 "Find all files containing 'UserService' in their name"
 "List all test files in my project"
@@ -969,6 +1074,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### Issue Management
+
 ```
 "Assign issue PROJECT-123 to john.doe"
 "Unassign issue PROJECT-456"
@@ -978,6 +1084,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### Quality Monitoring
+
 ```
 "Check the quality gate status for my main project"
 "Show me the code coverage history for the last month"
@@ -986,6 +1093,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### Security Hotspot Review
+
 ```
 "Find all security hotspots that need review in project xyz"
 "Show me hotspots in the authentication module"
@@ -997,6 +1105,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### Source Code Analysis
+
 ```
 "Show me the source code for file xyz with issues highlighted"
 "Get blame information for the problematic file"
@@ -1004,6 +1113,7 @@ Assign a SonarQube issue to a user or unassign it.
 ```
 
 ### System Health
+
 ```
 "Check if SonarQube is running"
 "What's the health status of the SonarQube instance?"
@@ -1053,24 +1163,27 @@ The SonarQube MCP Server follows a modular architecture:
 
 ### Prerequisites
 
-- Node.js 20 or higher
-- pnpm 10.7.0 or higher
+- Node.js 22 or higher
+- pnpm 10.17.1 or higher
 - Docker (for container builds)
 
 ### Setup
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/sapientpants/sonarqube-mcp-server.git
 cd sonarqube-mcp-server
 ```
 
-2. Install dependencies:
+1. Install dependencies:
+
 ```bash
 pnpm install
 ```
 
-3. Build the project:
+1. Build the project:
+
 ```bash
 pnpm build
 ```
@@ -1115,12 +1228,14 @@ pnpm inspect
 ### Testing
 
 The project uses Jest for testing with:
+
 - Unit tests for all major components
 - Mocked HTTP responses using `nock`
 - Coverage reporting
 - TypeScript support
 
 Run specific test files:
+
 ```bash
 NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest src/__tests__/file-name.test.ts
 ```
@@ -1128,36 +1243,41 @@ NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest src/__
 ### Code Quality
 
 The project maintains high code quality through:
+
 - TypeScript for type safety
 - ESLint for code linting
 - Prettier for code formatting
 - Jest for testing
 - SonarCloud for continuous code analysis
 
-## Troubleshooting
+## Common Issues and Solutions
 
-### Common Issues
+### Quick Fixes
 
 #### "Authentication failed"
+
 - **Cause**: Invalid or expired token
 - **Solution**: Generate a new token in SonarQube/SonarCloud
 
 #### "Project not found"
+
 - **Cause**: Incorrect project key or insufficient permissions
 - **Solution**: Verify the project key and check token permissions
 
 #### "Organization required"
+
 - **Cause**: Using SonarCloud without organization parameter
 - **Solution**: Add `SONARQUBE_ORGANIZATION` to your configuration
 
 #### "Connection refused"
+
 - **Cause**: Incorrect URL or network issues
 - **Solution**: Verify `SONARQUBE_URL` and network connectivity
 
 #### "No output or errors visible"
+
 - **Cause**: Errors might be happening but not visible in Claude Desktop
 - **Solution**: Enable logging with `LOG_FILE` and check the log file for detailed error messages
-
 
 ### FAQ
 
@@ -1179,10 +1299,12 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Authentication Errors
 
-**Error: "Authentication failed"**
+##### Error: "Authentication failed"
+
 - **Solution**: Check that your SONARQUBE_TOKEN is valid and not expired. Generate a new token from your SonarQube user profile.
 
-**Error: "No SonarQube authentication configured"**
+##### Error: "No SonarQube authentication configured"
+
 - **Solution**: Set one of the following authentication methods:
   - `SONARQUBE_TOKEN` for token-based authentication (recommended)
   - `SONARQUBE_USERNAME` and `SONARQUBE_PASSWORD` for basic authentication
@@ -1190,7 +1312,8 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Authorization Errors
 
-**Error: "Access denied"**
+##### Error: "Access denied"
+
 - **Solution**: Ensure your token has the required permissions for the operation. Common required permissions:
   - "Execute Analysis" for code analysis
   - "Browse" for reading project data
@@ -1198,7 +1321,8 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Resource Not Found Errors
 
-**Error: "Resource not found"**
+##### Error: "Resource not found"
+
 - **Solution**: Verify that:
   - The project key/component exists in SonarQube
   - You have access to the resource
@@ -1206,14 +1330,16 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Network and Connection Errors
 
-**Error: "Connection refused"**
+##### Error: "Connection refused"
+
 - **Solution**: Check that:
   - The SonarQube server is running
   - The SONARQUBE_URL is correct
   - There are no firewall rules blocking the connection
 
-**Error: "Network error" or timeout errors**
-- **Solution**: 
+##### Error: "Network error" or timeout errors
+
+- **Solution**:
   - Verify your network connection
   - Check if the SonarQube server is accessible
   - Ensure the URL doesn't have a trailing slash
@@ -1221,7 +1347,8 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Rate Limiting
 
-**Error: "Rate limit exceeded"**
+##### Error: "Rate limit exceeded"
+
 - **Solution**: The server automatically retries rate-limited requests with exponential backoff. If you continue to hit rate limits:
   - Reduce the frequency of your requests
   - Implement request batching where possible
@@ -1229,7 +1356,8 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Configuration Errors
 
-**Error: "Invalid SONARQUBE_URL"**
+##### Error: "Invalid SONARQUBE_URL"
+
 - **Solution**: Provide a valid URL including the protocol:
   - ✅ Correct: `https://sonarcloud.io`
   - ✅ Correct: `https://sonarqube.example.com`
@@ -1239,11 +1367,13 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 ### Debugging Tips
 
 1. **Enable Debug Logging**:
+
    ```bash
    export LOG_LEVEL=DEBUG
    ```
 
 2. **Check Environment Variables**:
+
    ```bash
    echo $SONARQUBE_URL
    echo $SONARQUBE_TOKEN
@@ -1252,6 +1382,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 3. **Test Connection**:
    Use the `ping` tool to verify connectivity:
+
    ```bash
    # In your MCP client
    sonarqube.ping
@@ -1267,6 +1398,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 ### Retry Behavior
 
 The server automatically retries failed requests for transient errors:
+
 - **Network errors**: Retried up to 3 times
 - **Rate limiting**: Retried with exponential backoff
 - **Server errors (5xx)**: Retried up to 3 times
@@ -1312,17 +1444,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## External Resources
 
 ### SonarQube Documentation
+
 - [SonarQube Documentation](https://docs.sonarqube.org/latest/)
 - [SonarCloud Documentation](https://docs.sonarcloud.io/)
 - [Web API Documentation](https://docs.sonarqube.org/latest/extend/web-api/)
 
 ### Model Context Protocol
+
 - [MCP Documentation](https://modelcontextprotocol.io/)
 - [MCP Specification](https://github.com/modelcontextprotocol/specification)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 
 ---
 
-<p align="center">
-  Made with ❤️ by the SonarQube MCP Server community
-</p>
+Made with ❤️ by the SonarQube MCP Server community

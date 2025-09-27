@@ -1,10 +1,4 @@
-/// <reference types="jest" />
-
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import nock from 'nock';
 
 // Mock environment variables
@@ -13,7 +7,7 @@ process.env.SONARQUBE_URL = 'http://localhost:9000';
 
 describe('Lambda Handlers Coverage Tests', () => {
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
 
     // Setup nock to mock SonarQube API responses
     nock('http://localhost:9000')
@@ -131,10 +125,10 @@ describe('Lambda Handlers Coverage Tests', () => {
   // Import the module directly in each test to ensure it's available
   it('should call metricsHandler', async () => {
     const module = await import('../index.js');
-    const result = await module.metricsHandler({ page: '1', page_size: '10' });
+    const result = await module.metricsHandler({ page: 1, page_size: 10 });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 
   it('should call componentMeasuresHandler', async () => {
@@ -149,7 +143,7 @@ describe('Lambda Handlers Coverage Tests', () => {
     });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 
   it('should call componentsMeasuresHandler', async () => {
@@ -166,7 +160,7 @@ describe('Lambda Handlers Coverage Tests', () => {
     });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 
   it('should call measuresHistoryHandler', async () => {
@@ -183,6 +177,6 @@ describe('Lambda Handlers Coverage Tests', () => {
     });
     expect(result).toBeDefined();
     expect(result.content).toBeDefined();
-    expect(result.content[0].text).toBeDefined();
+    expect(result.content?.[0]?.text).toBeDefined();
   });
 });

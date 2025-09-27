@@ -58,13 +58,15 @@ export interface SonarQubeHotspot {
  */
 export interface SonarQubeHotspotSearchResult {
   hotspots: SonarQubeHotspot[];
-  components?: Array<{
-    key: string;
-    qualifier: string;
-    name: string;
-    longName?: string;
-    path?: string;
-  }>;
+  components:
+    | Array<{
+        key: string;
+        qualifier: string;
+        name: string;
+        longName: string | undefined;
+        path: string | undefined;
+      }>
+    | undefined;
   paging: {
     pageIndex: number;
     pageSize: number;
@@ -82,28 +84,34 @@ export interface SonarQubeHotspotDetails extends SonarQubeHotspot {
     securityCategory: string;
     vulnerabilityProbability: SeverityLevel;
   };
-  changelog?: Array<{
-    user: string;
-    userName?: string;
-    creationDate: string;
-    diffs: Array<{
-      key: string;
-      oldValue?: string;
-      newValue?: string;
-    }>;
-  }>;
-  comment?: Array<{
-    key: string;
-    login: string;
-    htmlText: string;
-    markdown?: string;
-    createdAt: string;
-  }>;
-  users?: Array<{
-    login: string;
-    name: string;
-    active: boolean;
-  }>;
+  changelog:
+    | Array<{
+        user: string;
+        userName: string | undefined;
+        creationDate: string;
+        diffs: Array<{
+          key: string;
+          oldValue: string | undefined;
+          newValue: string | undefined;
+        }>;
+      }>
+    | undefined;
+  comment:
+    | Array<{
+        key: string;
+        login: string;
+        htmlText: string;
+        markdown: string | undefined;
+        createdAt: string;
+      }>
+    | undefined;
+  users:
+    | Array<{
+        login: string;
+        name: string;
+        active: boolean;
+      }>
+    | undefined;
 }
 
 /**

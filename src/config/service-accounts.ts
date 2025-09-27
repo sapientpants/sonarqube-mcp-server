@@ -5,8 +5,8 @@
 export interface ServiceAccountConfig {
   id: string;
   token: string;
-  url?: string;
-  organization?: string;
+  url: string | undefined;
+  organization: string | undefined;
 }
 
 /**
@@ -20,12 +20,13 @@ export function getServiceAccountConfig(accountId: string): ServiceAccountConfig
       return null;
     }
 
-    return {
+    const config: ServiceAccountConfig = {
       id: 'default',
       token,
       url: process.env.SONARQUBE_URL,
       organization: process.env.SONARQUBE_ORGANIZATION,
     };
+    return config;
   }
 
   // For numbered accounts (SA1-SA10)
@@ -38,12 +39,13 @@ export function getServiceAccountConfig(accountId: string): ServiceAccountConfig
       return null;
     }
 
-    return {
+    const config: ServiceAccountConfig = {
       id: accountId,
       token,
       url: process.env[`SONARQUBE_SA${num}_URL`],
       organization: process.env[`SONARQUBE_SA${num}_ORGANIZATION`],
     };
+    return config;
   }
 
   return null;

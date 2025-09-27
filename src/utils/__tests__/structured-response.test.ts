@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import {
   createStructuredResponse,
   createTextResponse,
@@ -77,7 +77,7 @@ describe('structured-response', () => {
       };
       const result = createStructuredResponse(data);
 
-      expect(result.content[0].text).toBe(JSON.stringify(data, null, 2));
+      expect(result.content[0]?.text).toBe(JSON.stringify(data, null, 2));
       expect(result.structuredContent).toBe(data);
     });
 
@@ -94,7 +94,7 @@ describe('structured-response', () => {
       const result = createStructuredResponse(data);
 
       expect(result.structuredContent).toEqual({ created: date });
-      expect(result.content[0].text).toBe(JSON.stringify(data, null, 2));
+      expect(result.content[0]?.text).toBe(JSON.stringify(data, null, 2));
     });
   });
 
@@ -144,7 +144,7 @@ describe('structured-response', () => {
       const text = 'Special chars: < > & " \' \\ \n \t';
       const result = createTextResponse(text);
 
-      expect(result.content[0].text).toBe(text);
+      expect(result.content[0]?.text).toBe(text);
     });
 
     it('should not include structuredContent', () => {
@@ -285,8 +285,8 @@ describe('structured-response', () => {
       expect(result.content).toHaveLength(1);
 
       // Check that content item has correct type
-      expect(result.content[0].type).toBe('text');
-      expect(typeof result.content[0].text).toBe('string');
+      expect(result.content[0]?.type).toBe('text');
+      expect(typeof result.content[0]?.text).toBe('string');
     });
 
     it('should cast structuredContent to Record<string, unknown>', () => {

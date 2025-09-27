@@ -51,13 +51,21 @@ export class SonarQubeAPIError extends Error implements SonarQubeError {
     super(message);
     this.name = 'SonarQubeAPIError';
     this.type = type;
-    this.operation = options?.operation;
-    this.statusCode = options?.statusCode;
-    this.context = options?.context;
-    this.solution = options?.solution;
+    if (options?.operation !== undefined) {
+      this.operation = options.operation;
+    }
+    if (options?.statusCode !== undefined) {
+      this.statusCode = options.statusCode;
+    }
+    if (options?.context !== undefined) {
+      this.context = options.context;
+    }
+    if (options?.solution !== undefined) {
+      this.solution = options.solution;
+    }
   }
 
-  toString(): string {
+  override toString(): string {
     let result = `Error: ${this.message}`;
     if (this.operation) {
       result += `\nOperation: ${this.operation}`;
@@ -77,7 +85,7 @@ export class SonarQubeAPIError extends Error implements SonarQubeError {
 
 function getErrorTypeFromClientError(error: SonarQubeClientError): {
   type: SonarQubeErrorType;
-  solution?: string;
+  solution: string | undefined;
 } {
   if (error instanceof AuthenticationError) {
     return {
@@ -125,6 +133,7 @@ function getErrorTypeFromClientError(error: SonarQubeClientError): {
   }
   return {
     type: SonarQubeErrorType.UNKNOWN_ERROR,
+    solution: undefined,
   };
 }
 
@@ -143,12 +152,22 @@ export function transformError(error: unknown, operation: string): SonarQubeAPIE
       statusCode = (error as ApiError & { statusCode?: number }).statusCode;
     }
 
-    return new SonarQubeAPIError(error.message, type, {
+    const errorOptions: {
+      operation?: string;
+      statusCode?: number;
+      context?: Record<string, unknown>;
+      solution?: string;
+    } = {
       operation,
-      statusCode,
       context,
-      solution,
-    });
+    };
+    if (statusCode !== undefined) {
+      errorOptions.statusCode = statusCode;
+    }
+    if (solution !== undefined) {
+      errorOptions.solution = solution;
+    }
+    return new SonarQubeAPIError(error.message, type, errorOptions);
   }
 
   if (error instanceof Error) {

@@ -31,7 +31,7 @@ export interface ComponentsResult {
  */
 export interface ComponentsTreeResult {
   components: SonarQubeComponent[];
-  baseComponent?: SonarQubeComponent;
+  baseComponent: SonarQubeComponent | undefined;
   paging: {
     pageIndex: number;
     pageSize: number;

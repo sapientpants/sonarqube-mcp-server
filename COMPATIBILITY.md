@@ -6,12 +6,12 @@ This document outlines the Model Context Protocol (MCP) version compatibility fo
 
 The SonarQube MCP Server supports the following MCP protocol versions:
 
-| Protocol Version | Status | SDK Version Required |
-|-----------------|--------|---------------------|
-| 2025-06-18 | ✅ Supported | 1.13.0+ |
-| 2025-03-26 | ✅ Supported (Default) | 1.13.0+ |
-| 2024-11-05 | ✅ Supported | 1.13.0+ |
-| 2024-10-07 | ✅ Supported | 1.13.0+ |
+| Protocol Version | Status                 | SDK Version Required |
+| ---------------- | ---------------------- | -------------------- |
+| 2025-06-18       | ✅ Supported           | 1.13.0+              |
+| 2025-03-26       | ✅ Supported (Default) | 1.13.0+              |
+| 2024-11-05       | ✅ Supported           | 1.13.0+              |
+| 2024-10-07       | ✅ Supported           | 1.13.0+              |
 
 ### Version Negotiation
 
@@ -27,16 +27,19 @@ The project currently uses `@modelcontextprotocol/sdk` version `1.13.0`, which s
 ## Feature Compatibility
 
 ### Protocol Version 2025-06-18
+
 - Latest protocol version
 - Full support for all server capabilities
 - Enhanced error handling
 
 ### Protocol Version 2025-03-26
+
 - Default negotiated version for most clients
 - Full support for elicitation capabilities (required for our implementation)
 - All standard MCP features
 
 ### Protocol Versions 2024-11-05 and 2024-10-07
+
 - Basic MCP functionality
 - May not support all advanced features
 - Provided for backward compatibility
@@ -59,7 +62,7 @@ When updating the MCP SDK:
 4. Run `pnpm install` to update the lock file
 5. Test all server capabilities with multiple protocol versions
 6. Update this compatibility document if new protocol versions are supported
-7. Run the full test suite: `pnpm run ci`
+7. Run the full test suite: `pnpm run precommit`
 
 ## Monitoring Protocol Usage
 
@@ -74,6 +77,7 @@ The server will log the negotiated protocol version during client connection.
 ## Deprecated Features
 
 As of MCP protocol version 2025-03-26:
+
 - JSON-RPC batch support has been removed
 - Our server uses the SDK's built-in transport layer, which handles this automatically
 

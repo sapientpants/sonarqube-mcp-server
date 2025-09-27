@@ -67,20 +67,20 @@ Follow these conventions to maintain code quality:
 
 ### Code Complexity
 
-5. **Keep Cognitive Complexity Low**
+1. **Keep Cognitive Complexity Low**
    - Maximum cognitive complexity: 15
    - Break complex functions into smaller, focused functions
    - Reduce nesting levels
    - Simplify conditional logic
 
-6. **Remove Redundant Code**
+2. **Remove Redundant Code**
    - Don't create type aliases for primitive types
    - Remove unused variable assignments
    - Eliminate dead code
 
 ### Regular Expressions
 
-7. **Make Regex Operator Precedence Explicit**
+1. **Make Regex Operator Precedence Explicit**
 
    ```typescript
    // ❌ Ambiguous precedence
@@ -92,16 +92,16 @@ Follow these conventions to maintain code quality:
 
 ### General Guidelines
 
-8. **Follow Existing Patterns**
+1. **Follow Existing Patterns**
    - Check how similar functionality is implemented in the codebase
    - Maintain consistency with existing code style
    - Use the same libraries and utilities as the rest of the project
 
-9. **Run Validation Before Committing**
+2. **Run Validation Before Committing**
 
    ```bash
    # Run all checks before committing
-   pnpm run ci
+   pnpm run precommit
 
    # This includes:
    # - Format checking (prettier)
@@ -115,8 +115,36 @@ Follow these conventions to maintain code quality:
 - Remember to use the ADR creation command with `EDITOR=true` to prevent timeouts in Claude Code
 - Never use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks
 - Run `pnpm format` to format code before committing
-- Run `pnpm run ci` before finalizing any code changes
+- Run `pnpm run precommit` before finalizing any code changes
 - Documentation for sonarqube-web-api-client can be retrieved from <https://raw.githubusercontent.com/sapientpants/sonarqube-web-api-client/refs/heads/main/docs/LLM.md>
+
+## Updating pnpm Version
+
+When updating the pnpm version in this project, you MUST update it in ALL of the following locations to maintain consistency:
+
+1. **package.json**: Update the `packageManager` field (e.g., `"packageManager": "pnpm@10.17.1"`)
+2. **Dockerfile**: Update the version in `RUN npm install -g pnpm@10.17.1`
+3. **Documentation files**:
+   - **README.md**: Update the Prerequisites section
+   - **CONTRIBUTING.md**: Update the Prerequisites section
+4. **Setup script**: Update `scripts/setup.sh` for mise installation
+5. **GitHub Actions workflows** (CRITICAL - these must match package.json exactly):
+   - `.github/workflows/main.yml`: Line with `version: 10.17.1`
+   - `.github/workflows/pr.yml`: Line with `version: 10.17.1`
+   - `.github/workflows/publish.yml`: `PNPM_VERSION` environment variable
+   - `.github/workflows/reusable-setup.yml`: Default value for `pnpm-version` input
+   - `.github/workflows/reusable-security.yml`: Default value for `pnpm-version` input
+   - `.github/workflows/reusable-validate.yml`: Default value for `pnpm-version` input
+
+**Important**: If package.json and GitHub workflows have different pnpm versions, the CI/CD pipeline will fail with an error like:
+
+```
+Error: Multiple versions of pnpm specified:
+  - version X in the GitHub Action config with the key "version"
+  - version pnpm@Y in the package.json with the key "packageManager"
+```
+
+Always search for the old version number across all files to ensure no location is missed.
 
 ## Memory
 

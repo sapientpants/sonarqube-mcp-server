@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { TransportFactory } from '../../transports/factory.js';
 import { StdioTransport } from '../../transports/stdio.js';
 import type { ITransportConfig } from '../../transports/base.js';
@@ -26,7 +26,7 @@ describe('TransportFactory', () => {
     });
 
     it('should throw error for unsupported transport type', () => {
-      const config = { type: 'unsupported' } as ITransportConfig;
+      const config = { type: 'unsupported' as any } as ITransportConfig;
 
       expect(() => TransportFactory.create(config)).toThrow(
         'Unsupported transport type: unsupported'

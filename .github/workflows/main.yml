@@ -1,0 +1,278 @@
+# =============================================================================
+# WORKFLOW: Main Branch Release Pipeline
+# PURPOSE: Automate version management, releases, and security scanning on main
+# TRIGGERS: Push to main branch (merges, direct commits)
+# OUTPUTS: GitHub release with artifacts, NPM package, Docker image
+# =============================================================================
+
+name: Main
+
+on:
+  push:
+    branches: [main]
+
+# Prevent concurrent runs on the same ref to avoid race conditions during releases
+# cancel-in-progress: false ensures releases complete even if new commits arrive
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+# SECURITY: Required permissions for release automation
+# contents: write - Create releases and tags
+# id-token: write - Generate SLSA attestations for supply chain security
+# attestations: write - Attach attestations to artifacts
+# security-events: write - Upload security scan results
+# actions: read - Access workflow runs and artifacts
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  security-events: write
+  actions: read
+
+jobs:
+  # =============================================================================
+  # VALIDATION PHASE
+  # Runs all quality checks in parallel to ensure code meets standards
+  # =============================================================================
+
+  validate:
+    # Reusable workflow handles: audit, typecheck, lint, format, tests
+    # FAILS IF: Any check fails, tests don't meet 80% coverage threshold
+    uses: ./.github/workflows/reusable-validate.yml
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # =============================================================================
+  # SECURITY SCANNING PHASE
+  # Parallel security scans to identify vulnerabilities before release
+  # =============================================================================
+
+  # CodeQL: Static analysis for security vulnerabilities
+  # Scans TypeScript/JavaScript for common security issues (XSS, SQL injection, etc.)
+  codeql:
+    uses: ./.github/workflows/reusable-security.yml
+    with:
+      generate-sbom: false # SBOM generated during release for consistency
+      run-osv-scan: false # OSV scan runs separately below
+      run-codeql: true # Enable CodeQL analysis
+
+  # OSV (Open Source Vulnerabilities) scanning
+  # Uses Google's official action for comprehensive dependency vulnerability checks
+  # UPDATE: Quarterly review for new scanner versions (currently v2.2.1)
+  vulnerability:
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.2.1
+    with:
+      # Scan entire project including all manifests (package.json, pnpm-lock.yaml)
+      scan-args: |-
+        ./
+    permissions:
+      security-events: write # Required to upload findings to Security tab
+      actions: read
+      contents: read
+
+  # =============================================================================
+  # RELEASE PHASE
+  # Creates versioned releases with artifacts when changesets are present
+  # =============================================================================
+
+  version-and-release:
+    # Only runs after all validation and security checks pass
+    # Ensures we never release vulnerable or broken code
+    needs: [validate, codeql, vulnerability]
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.released }} # true if release created
+      version: ${{ steps.version.outputs.version }} # semantic version number
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for changeset detection
+          # SECURITY: Use RELEASE_TOKEN if available for protected branch pushes
+          # Falls back to GITHUB_TOKEN for standard permissions
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # =============================================================================
+      # ENVIRONMENT SETUP
+      # Consistent toolchain setup matching package.json requirements
+      # =============================================================================
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1 # Pinned: Must match packageManager in package.json
+          run_install: false # Dependencies installed separately for caching
+          standalone: true # Faster installation method
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22 # Pinned: Must match engines.node in package.json
+          cache: pnpm # Cache dependencies between runs (saves 1-2 min)
+
+      - name: Install dependencies
+        # frozen-lockfile ensures exact versions from pnpm-lock.yaml
+        # FAILS IF: Lock file doesn't match package.json
+        run: pnpm install --frozen-lockfile
+
+      # =============================================================================
+      # BUILD FOR CHANGESET
+      # Build TypeScript to ensure custom changelog generator is available
+      # =============================================================================
+
+      - name: Build for changeset
+        # Must build before versioning since custom changelog is TypeScript
+        # The compiled JS file is needed at: ./dist/src/dev/changelog-custom.js
+        run: pnpm build
+
+      # =============================================================================
+      # VERSION MANAGEMENT
+      # Determines if release needed based on changesets
+      # =============================================================================
+
+      - name: Version packages
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Custom script validates changesets and updates version
+          # FAILS IF: feat/fix commits exist without changesets
+          # Outputs: changed=true/false, version=X.Y.Z
+          # Debug: Add --verbose flag to script for detailed logs
+          node .github/scripts/version-and-release.js
+
+      # =============================================================================
+      # BUILD AND ARTIFACT GENERATION
+      # Only runs when version changes detected
+      # =============================================================================
+
+      - name: Build
+        # Skip build if no version change (e.g., docs-only commits)
+        # Clean and rebuild to ensure SBOM reflects exact build artifacts
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          pnpm clean  # Remove any previous build artifacts
+          pnpm build  # Fresh build for release
+
+      - name: Generate SBOM
+        # Software Bill of Materials for supply chain security
+        # Creates sbom.cdx.json in CycloneDX format
+        if: steps.version.outputs.changed == 'true'
+        run: pnpm sbom
+
+      - name: Create release artifacts
+        # Package dist/ folder for GitHub release attachments
+        # Creates both tar.gz (Linux/Mac) and zip (Windows) formats
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          tar -czf dist-${VERSION}.tar.gz dist/
+          zip -r dist-${VERSION}.zip dist/
+
+      # =============================================================================
+      # GIT OPERATIONS
+      # Commit version changes and create release tag
+      # =============================================================================
+
+      - name: Install actionlint for pre-commit validation
+        # Install actionlint so pre-commit hooks can run workflow validation
+        # Uses the official installer script from rhysd/actionlint
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          echo "Installing actionlint for pre-commit validation..."
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          echo "${PWD}" >> $GITHUB_PATH
+
+      - name: Commit version changes
+        # Creates release commit with updated package.json and CHANGELOG.md
+        # [skip actions] prevents infinite loop by skipping this workflow on the commit
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          # Configure git with GitHub Actions bot identity
+          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git config --local user.name "${{ github.actor }}"
+
+          # Stage version-related changes
+          git add package.json CHANGELOG.md .changeset
+
+          # Commit with [skip actions] to prevent workflow recursion
+          git commit -m "chore(release): v${{ steps.version.outputs.version }} [skip actions]"
+
+          # Create annotated tag for the release
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+
+          # Push changes and tags to origin
+          # SECURITY: Requires write permissions or RELEASE_TOKEN
+          git push origin main --follow-tags
+
+      # =============================================================================
+      # RELEASE CREATION
+      # Extract changelog and create GitHub release with artifacts
+      # =============================================================================
+
+      - name: Extract release notes
+        # Parse CHANGELOG.md to get notes for this specific version
+        # AWK script extracts content between version headers
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Extract content between this version header and the next
+          awk -v version="## $VERSION" '
+            $0 ~ version { flag=1; next }
+            /^## [0-9]/ && flag { exit }
+            flag { print }
+          ' CHANGELOG.md > release-notes.md
+
+          # Fallback if extraction fails (e.g., first release)
+          if [ ! -s release-notes.md ]; then
+            echo "Release v$VERSION" > release-notes.md
+          fi
+
+      - name: Create GitHub Release
+        # Publishes release with artifacts to GitHub Releases page
+        # Pinned to v2 for stability - check for updates quarterly
+        if: steps.version.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body_path: release-notes.md # Changelog excerpt from above
+          draft: false # Publish immediately
+          prerelease: false # Mark as stable release
+          make_latest: true # Update "latest" pointer
+          files: | # Artifacts attached to release
+            sbom.cdx.json
+            dist-${{ steps.version.outputs.version }}.tar.gz
+            dist-${{ steps.version.outputs.version }}.zip
+        env:
+          # SECURITY: Use RELEASE_TOKEN for protected branches
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # =============================================================================
+      # SUPPLY CHAIN SECURITY
+      # Generate SLSA attestations for build provenance
+      # =============================================================================
+
+      - name: Generate attestations
+        # Creates cryptographic proof of build provenance (SLSA Level 3)
+        # Attestations link artifacts to specific workflow run
+        # Helps detect tampering and verify authenticity
+        if: steps.version.outputs.changed == 'true'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/**/*.js         # All built JavaScript files
+            sbom.cdx.json       # Software Bill of Materials
+            dist-*.tar.gz       # Release archives
+            dist-*.zip
+
+      - name: Set release output
+        # Output variables for downstream jobs
+        # Used by publish workflows to trigger distribution
+        id: release
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          echo "released=true" >> $GITHUB_OUTPUT
+          echo "version=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "✅ Released version ${{ steps.version.outputs.version }}"

@@ -47,7 +47,7 @@ export class ComponentsDomain extends BaseDomain {
         builder.query(query);
       }
       if (qualifiers !== undefined && qualifiers.length > 0) {
-        builder.qualifiers(qualifiers as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        builder.qualifiers(qualifiers as Parameters<typeof builder.qualifiers>[0]);
       }
       if (language !== undefined) {
         builder.languages([language]);
@@ -66,7 +66,7 @@ export class ComponentsDomain extends BaseDomain {
       });
 
       return {
-        components: response.components.map(this.transformComponent),
+        components: response.components.map((comp) => this.transformComponent(comp)),
         paging: response.paging || {
           pageIndex: 1,
           pageSize: 100,
@@ -108,7 +108,7 @@ export class ComponentsDomain extends BaseDomain {
       }
 
       if (qualifiers !== undefined && qualifiers.length > 0) {
-        builder.qualifiers(qualifiers as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+        builder.qualifiers(qualifiers as Parameters<typeof builder.qualifiers>[0]);
       }
 
       // Apply sorting
@@ -142,7 +142,7 @@ export class ComponentsDomain extends BaseDomain {
       });
 
       return {
-        components: response.components.map(this.transformComponent),
+        components: response.components.map((comp) => this.transformComponent(comp)),
         baseComponent: response.baseComponent
           ? this.transformComponent(response.baseComponent)
           : undefined,
@@ -180,7 +180,7 @@ export class ComponentsDomain extends BaseDomain {
 
       return {
         component: this.transformComponent(response.component),
-        ancestors: response.ancestors?.map(this.transformComponent) ?? [],
+        ancestors: response.ancestors?.map((comp) => this.transformComponent(comp)) ?? [],
       };
     } catch (error) {
       this.logger.error('Failed to show component', error);

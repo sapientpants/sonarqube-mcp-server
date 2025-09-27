@@ -11,6 +11,7 @@ Accepted
 The Model Context Protocol (MCP) server needs a transport mechanism to communicate with MCP clients. The transport layer determines how the server receives requests and sends responses.
 
 Several transport options are available:
+
 - STDIO (Standard Input/Output)
 - WebSocket
 - HTTP

@@ -10,10 +10,12 @@ import {
   HotspotStatusUpdateParams,
 } from './sonarqube.js';
 import type { ComponentQualifier } from './types/components.js';
+import type { AssignIssueParams } from './types/issues.js';
 import { createLogger } from './utils/logger.js';
 import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
-import { validateEnvironmentVariables, resetDefaultClient } from './utils/client-factory.js';
+import { validateEnvironmentVariables } from './utils/client-factory.js';
+export { resetDefaultClient } from './utils/client-factory.js';
 import { createElicitationManager } from './utils/elicitation.js';
 import { SERVER_VERSION, VERSION_INFO } from './config/versions.js';
 import { TransportFactory } from './transports/index.js';
@@ -117,8 +119,7 @@ export const createDefaultClient = (): ISonarQubeClient => {
   return client;
 };
 
-// Re-export resetDefaultClient for backward compatibility
-export { resetDefaultClient };
+// resetDefaultClient is now re-exported at the top of the file
 
 // Re-export handlers for backward compatibility
 export {
@@ -169,44 +170,72 @@ export const issuesHandler = async (params: Record<string, unknown>) => {
 };
 
 /**
+ * Generic factory for issue handlers with optional comment
+ */
+type IssueWithCommentParams = {
+  issueKey: string;
+  comment?: string;
+};
+
+function createIssueWithCommentHandler<T extends IssueWithCommentParams, R>(
+  handler: (params: T) => Promise<R>
+) {
+  return async (params: Record<string, unknown>): Promise<R> => {
+    const handleParams: T = {
+      issueKey: params.issue_key as string,
+    } as T;
+    if (params.comment !== undefined) {
+      handleParams.comment = params.comment as string;
+    }
+    return handler(handleParams);
+  };
+}
+
+/**
  * Lambda function for mark issue false positive tool
  */
-export const markIssueFalsePositiveHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssueFalsePositive({
-    issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
-};
+export const markIssueFalsePositiveHandler = createIssueWithCommentHandler(
+  handleMarkIssueFalsePositive
+);
 
 /**
  * Lambda function for mark issue won't fix tool
  */
-export const markIssueWontFixHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssueWontFix({
-    issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
+export const markIssueWontFixHandler = createIssueWithCommentHandler(handleMarkIssueWontFix);
+
+/**
+ * Generic factory for bulk issue handlers with optional comment
+ */
+type BulkIssueWithCommentParams = {
+  issueKeys: string[];
+  comment?: string;
 };
+
+function createBulkIssueWithCommentHandler<T extends BulkIssueWithCommentParams, R>(
+  handler: (params: T) => Promise<R>
+) {
+  return async (params: Record<string, unknown>): Promise<R> => {
+    const handleParams: T = {
+      issueKeys: params.issue_keys as string[],
+    } as T;
+    if (params.comment !== undefined) {
+      handleParams.comment = params.comment as string;
+    }
+    return handler(handleParams);
+  };
+}
 
 /**
  * Lambda function for mark issues false positive (bulk) tool
  */
-export const markIssuesFalsePositiveHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssuesFalsePositive({
-    issueKeys: params.issue_keys as string[],
-    comment: params.comment as string | undefined,
-  });
-};
+export const markIssuesFalsePositiveHandler = createBulkIssueWithCommentHandler(
+  handleMarkIssuesFalsePositive
+);
 
 /**
  * Lambda function for mark issues won't fix (bulk) tool
  */
-export const markIssuesWontFixHandler = async (params: Record<string, unknown>) => {
-  return handleMarkIssuesWontFix({
-    issueKeys: params.issue_keys as string[],
-    comment: params.comment as string | undefined,
-  });
-};
+export const markIssuesWontFixHandler = createBulkIssueWithCommentHandler(handleMarkIssuesWontFix);
 
 /**
  * Lambda function for add comment to issue tool
@@ -222,51 +251,34 @@ export const addCommentToIssueHandler = async (params: Record<string, unknown>) 
  * Lambda function for assign issue tool
  */
 export const assignIssueHandler = async (params: Record<string, unknown>) => {
-  return handleAssignIssue({
+  const handleParams: AssignIssueParams = {
     issueKey: params.issueKey as string,
-    assignee: params.assignee as string | undefined,
-  });
+  };
+  if (params.assignee !== undefined) {
+    handleParams.assignee = params.assignee as string;
+  }
+  return handleAssignIssue(handleParams);
 };
 
 /**
  * Lambda function for confirm issue tool
  */
-export const confirmIssueHandler = async (params: Record<string, unknown>) => {
-  return handleConfirmIssue({
-    issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
-};
+export const confirmIssueHandler = createIssueWithCommentHandler(handleConfirmIssue);
 
 /**
  * Lambda function for unconfirm issue tool
  */
-export const unconfirmIssueHandler = async (params: Record<string, unknown>) => {
-  return handleUnconfirmIssue({
-    issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
-};
+export const unconfirmIssueHandler = createIssueWithCommentHandler(handleUnconfirmIssue);
 
 /**
  * Lambda function for resolve issue tool
  */
-export const resolveIssueHandler = async (params: Record<string, unknown>) => {
-  return handleResolveIssue({
-    issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
-};
+export const resolveIssueHandler = createIssueWithCommentHandler(handleResolveIssue);
 
 /**
  * Lambda function for reopen issue tool
  */
-export const reopenIssueHandler = async (params: Record<string, unknown>) => {
-  return handleReopenIssue({
-    issueKey: params.issue_key as string,
-    comment: params.comment as string | undefined,
-  });
-};
+export const reopenIssueHandler = createIssueWithCommentHandler(handleReopenIssue);
 
 /**
  * Lambda function for system_health tool
@@ -287,46 +299,104 @@ export const pingHandler = handleSonarQubePing;
  * Lambda function for measures_component tool
  */
 export const componentMeasuresHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeComponentMeasures({
+  const handleParams: {
+    component: string;
+    metricKeys: string[];
+    additionalFields?: string[];
+    branch?: string;
+    pullRequest?: string;
+    period?: string;
+  } = {
     component: params.component as string,
     metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
-    additionalFields: params.additional_fields as string[] | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-    period: params.period as string | undefined,
-  });
+  };
+
+  if (params.additional_fields !== undefined) {
+    handleParams.additionalFields = params.additional_fields as string[];
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+  if (params.period !== undefined) {
+    handleParams.period = params.period as string;
+  }
+
+  return handleSonarQubeComponentMeasures(handleParams);
 };
 
 /**
  * Lambda function for measures_components tool
  */
 export const componentsMeasuresHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeComponentsMeasures({
+  const handleParams: {
+    componentKeys: string[];
+    metricKeys: string[];
+    additionalFields?: string[];
+    branch?: string;
+    pullRequest?: string;
+    period?: string;
+    page: number | undefined;
+    pageSize: number | undefined;
+  } = {
     componentKeys: ensureStringArray(params.component_keys as StringOrArrayParam),
     metricKeys: ensureStringArray(params.metric_keys as StringOrArrayParam),
-    additionalFields: params.additional_fields as string[] | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-    period: params.period as string | undefined,
     page: nullToUndefined(params.page) as number | undefined,
     pageSize: nullToUndefined(params.page_size) as number | undefined,
-  });
+  };
+
+  if (params.additional_fields !== undefined) {
+    handleParams.additionalFields = params.additional_fields as string[];
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+  if (params.period !== undefined) {
+    handleParams.period = params.period as string;
+  }
+
+  return handleSonarQubeComponentsMeasures(handleParams);
 };
 
 /**
  * Lambda function for measures_history tool
  */
 export const measuresHistoryHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeMeasuresHistory({
+  const handleParams: {
+    component: string;
+    metrics: string[];
+    from?: string;
+    to?: string;
+    branch?: string;
+    pullRequest?: string;
+    page: number | undefined;
+    pageSize: number | undefined;
+  } = {
     component: params.component as string,
     metrics: ensureStringArray(params.metrics as StringOrArrayParam),
-    from: params.from as string | undefined,
-    to: params.to as string | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
     page: nullToUndefined(params.page) as number | undefined,
     pageSize: nullToUndefined(params.page_size) as number | undefined,
-  });
+  };
+
+  if (params.from !== undefined) {
+    handleParams.from = params.from as string;
+  }
+  if (params.to !== undefined) {
+    handleParams.to = params.to as string;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeMeasuresHistory(handleParams);
 };
 
 /**
@@ -347,56 +417,128 @@ export const qualityGateHandler = async (params: Record<string, unknown>) => {
  * Lambda function for quality_gate_status tool
  */
 export const qualityGateStatusHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeQualityGateStatus({
+  const handleParams: {
+    projectKey: string;
+    branch?: string;
+    pullRequest?: string;
+  } = {
     projectKey: params.project_key as string,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-  });
+  };
+
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeQualityGateStatus(handleParams);
 };
 
 /**
  * Lambda function for source_code tool
  */
 export const sourceCodeHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeGetSourceCode({
+  const handleParams: {
+    key: string;
+    from?: number;
+    to?: number;
+    branch?: string;
+    pullRequest?: string;
+  } = {
     key: params.key as string,
-    from: nullToUndefined(params.from) as number | undefined,
-    to: nullToUndefined(params.to) as number | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-  });
+  };
+
+  if (params.from !== undefined) {
+    handleParams.from = nullToUndefined(params.from) as number;
+  }
+  if (params.to !== undefined) {
+    handleParams.to = nullToUndefined(params.to) as number;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeGetSourceCode(handleParams);
 };
 
 /**
  * Lambda function for scm_blame tool
  */
 export const scmBlameHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeGetScmBlame({
+  const handleParams: {
+    key: string;
+    from?: number;
+    to?: number;
+    branch?: string;
+    pullRequest?: string;
+  } = {
     key: params.key as string,
-    from: nullToUndefined(params.from) as number | undefined,
-    to: nullToUndefined(params.to) as number | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-  });
+  };
+
+  if (params.from !== undefined) {
+    handleParams.from = nullToUndefined(params.from) as number;
+  }
+  if (params.to !== undefined) {
+    handleParams.to = nullToUndefined(params.to) as number;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+
+  return handleSonarQubeGetScmBlame(handleParams);
 };
 
 /**
  * Lambda function for search_hotspots tool
  */
 export const hotspotsHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeHotspots({
-    projectKey: params.project_key as string | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pull_request as string | undefined,
-    status: params.status as HotspotSearchParams['status'],
-    resolution: params.resolution as HotspotSearchParams['resolution'],
-    files: nullToUndefined(params.files) as string[] | undefined,
-    assignedToMe: nullToUndefined(params.assigned_to_me) as boolean | undefined,
-    sinceLeakPeriod: nullToUndefined(params.since_leak_period) as boolean | undefined,
-    inNewCodePeriod: nullToUndefined(params.in_new_code_period) as boolean | undefined,
+  const handleParams: HotspotSearchParams = {
     page: nullToUndefined(params.page) as number | undefined,
     pageSize: nullToUndefined(params.page_size) as number | undefined,
-  });
+  };
+
+  if (params.project_key !== undefined) {
+    handleParams.projectKey = params.project_key as string;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pull_request !== undefined) {
+    handleParams.pullRequest = params.pull_request as string;
+  }
+  if (params.status !== undefined) {
+    const status = params.status as HotspotSearchParams['status'];
+    if (status !== undefined) {
+      handleParams.status = status;
+    }
+  }
+  if (params.resolution !== undefined) {
+    const resolution = params.resolution as HotspotSearchParams['resolution'];
+    if (resolution !== undefined) {
+      handleParams.resolution = resolution;
+    }
+  }
+  if (params.files !== undefined) {
+    handleParams.files = nullToUndefined(params.files) as string[];
+  }
+  if (params.assigned_to_me !== undefined) {
+    handleParams.assignedToMe = nullToUndefined(params.assigned_to_me) as boolean;
+  }
+  if (params.since_leak_period !== undefined) {
+    handleParams.sinceLeakPeriod = nullToUndefined(params.since_leak_period) as boolean;
+  }
+  if (params.in_new_code_period !== undefined) {
+    handleParams.inNewCodePeriod = nullToUndefined(params.in_new_code_period) as boolean;
+  }
+
+  return handleSonarQubeHotspots(handleParams);
 };
 
 /**
@@ -410,31 +552,77 @@ export const hotspotHandler = async (params: Record<string, unknown>) => {
  * Lambda function for update_hotspot_status tool
  */
 export const updateHotspotStatusHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeUpdateHotspotStatus({
+  const handleParams: HotspotStatusUpdateParams = {
     hotspot: params.hotspot_key as string,
     status: params.status as HotspotStatusUpdateParams['status'],
-    resolution: params.resolution as HotspotStatusUpdateParams['resolution'],
-    comment: params.comment as string | undefined,
-  });
+  };
+
+  if (params.resolution !== undefined) {
+    const resolution = params.resolution as HotspotStatusUpdateParams['resolution'];
+    if (resolution !== undefined) {
+      handleParams.resolution = resolution;
+    }
+  }
+  if (params.comment !== undefined) {
+    handleParams.comment = params.comment as string;
+  }
+
+  return handleSonarQubeUpdateHotspotStatus(handleParams);
 };
 
 /**
  * Lambda function for components tool
  */
 export const componentsHandler = async (params: Record<string, unknown>) => {
-  return handleSonarQubeComponents({
-    query: params.query as string | undefined,
-    qualifiers: params.qualifiers as ComponentQualifier[] | undefined,
-    language: params.language as string | undefined,
-    component: params.component as string | undefined,
-    strategy: params.strategy as 'all' | 'children' | 'leaves' | undefined,
-    key: params.key as string | undefined,
-    asc: params.asc as boolean | undefined,
-    ps: params.ps as number | undefined,
-    p: params.p as number | undefined,
-    branch: params.branch as string | undefined,
-    pullRequest: params.pullRequest as string | undefined,
-  });
+  const handleParams: {
+    query?: string;
+    qualifiers?: ComponentQualifier[];
+    language?: string;
+    component?: string;
+    strategy?: 'all' | 'children' | 'leaves';
+    key?: string;
+    asc?: boolean;
+    ps?: number;
+    p?: number;
+    branch?: string;
+    pullRequest?: string;
+  } = {};
+
+  if (params.query !== undefined) {
+    handleParams.query = params.query as string;
+  }
+  if (params.qualifiers !== undefined) {
+    handleParams.qualifiers = params.qualifiers as ComponentQualifier[];
+  }
+  if (params.language !== undefined) {
+    handleParams.language = params.language as string;
+  }
+  if (params.component !== undefined) {
+    handleParams.component = params.component as string;
+  }
+  if (params.strategy !== undefined) {
+    handleParams.strategy = params.strategy as 'all' | 'children' | 'leaves';
+  }
+  if (params.key !== undefined) {
+    handleParams.key = params.key as string;
+  }
+  if (params.asc !== undefined) {
+    handleParams.asc = params.asc as boolean;
+  }
+  if (params.ps !== undefined) {
+    handleParams.ps = params.ps as number;
+  }
+  if (params.p !== undefined) {
+    handleParams.p = params.p as number;
+  }
+  if (params.branch !== undefined) {
+    handleParams.branch = params.branch as string;
+  }
+  if (params.pullRequest !== undefined) {
+    handleParams.pullRequest = params.pullRequest as string;
+  }
+
+  return handleSonarQubeComponents(handleParams);
 };
 
 // Wrapper functions for MCP registration that don't expose the client parameter
@@ -484,6 +672,27 @@ export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =
   updateHotspotStatusHandler(params);
 export const componentsMcpHandler = (params: Record<string, unknown>) => componentsHandler(params);
 
+// Common tool hint configurations to reduce duplication
+const READ_ONLY_TOOL_HINTS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  openWorldHint: true,
+} as const;
+
+const WRITE_TOOL_HINTS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+} as const;
+
+const WRITE_NON_IDEMPOTENT_TOOL_HINTS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+} as const;
+
 // Register SonarQube tools
 mcpServer.tool(
   'projects',
@@ -491,9 +700,7 @@ mcpServer.tool(
   projectsToolSchema,
   {
     title: 'List Projects',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   projectsMcpHandler
 );
@@ -504,9 +711,7 @@ mcpServer.tool(
   metricsToolSchema,
   {
     title: 'Get Metrics',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   metricsMcpHandler
 );
@@ -517,9 +722,7 @@ mcpServer.tool(
   issuesToolSchema,
   {
     title: 'Search Issues',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   issuesMcpHandler
 );
@@ -530,10 +733,7 @@ mcpServer.tool(
   markIssueFalsePositiveToolSchema,
   {
     title: 'Mark Issue False Positive',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssueFalsePositiveMcpHandler
 );
@@ -544,10 +744,7 @@ mcpServer.tool(
   markIssueWontFixToolSchema,
   {
     title: "Mark Issue Won't Fix",
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssueWontFixMcpHandler
 );
@@ -558,10 +755,7 @@ mcpServer.tool(
   markIssuesFalsePositiveToolSchema,
   {
     title: 'Mark Issues False Positive',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssuesFalsePositiveMcpHandler
 );
@@ -572,10 +766,7 @@ mcpServer.tool(
   markIssuesWontFixToolSchema,
   {
     title: "Mark Issues Won't Fix",
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssuesWontFixMcpHandler
 );
@@ -586,10 +777,7 @@ mcpServer.tool(
   addCommentToIssueToolSchema,
   {
     title: 'Add Comment to Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   addCommentToIssueMcpHandler
 );
@@ -600,10 +788,7 @@ mcpServer.tool(
   assignIssueToolSchema,
   {
     title: 'Assign Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   assignIssueMcpHandler
 );
@@ -614,10 +799,7 @@ mcpServer.tool(
   confirmIssueToolSchema,
   {
     title: 'Confirm Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   confirmIssueMcpHandler
 );
@@ -628,10 +810,7 @@ mcpServer.tool(
   unconfirmIssueToolSchema,
   {
     title: 'Unconfirm Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   unconfirmIssueMcpHandler
 );
@@ -642,10 +821,7 @@ mcpServer.tool(
   resolveIssueToolSchema,
   {
     title: 'Resolve Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   resolveIssueMcpHandler
 );
@@ -656,10 +832,7 @@ mcpServer.tool(
   reopenIssueToolSchema,
   {
     title: 'Reopen Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   reopenIssueMcpHandler
 );
@@ -671,9 +844,7 @@ mcpServer.tool(
   systemHealthToolSchema,
   {
     title: 'Get System Health',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   healthMcpHandler
 );
@@ -684,9 +855,7 @@ mcpServer.tool(
   systemStatusToolSchema,
   {
     title: 'Get System Status',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   statusMcpHandler
 );
@@ -697,9 +866,7 @@ mcpServer.tool(
   systemPingToolSchema,
   {
     title: 'Ping System',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   pingMcpHandler
 );
@@ -711,9 +878,7 @@ mcpServer.tool(
   componentMeasuresToolSchema,
   {
     title: 'Get Component Measures',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   componentMeasuresMcpHandler
 );
@@ -724,9 +889,7 @@ mcpServer.tool(
   componentsMeasuresToolSchema,
   {
     title: 'Get Components Measures',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   componentsMeasuresMcpHandler
 );
@@ -737,9 +900,7 @@ mcpServer.tool(
   measuresHistoryToolSchema,
   {
     title: 'Get Measures History',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   measuresHistoryMcpHandler
 );
@@ -751,9 +912,7 @@ mcpServer.tool(
   qualityGatesToolSchema,
   {
     title: 'List Quality Gates',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   qualityGatesMcpHandler
 );
@@ -764,9 +923,7 @@ mcpServer.tool(
   qualityGateToolSchema,
   {
     title: 'Get Quality Gate',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   qualityGateMcpHandler
 );
@@ -777,9 +934,7 @@ mcpServer.tool(
   qualityGateStatusToolSchema,
   {
     title: 'Get Quality Gate Status',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   qualityGateStatusMcpHandler
 );
@@ -791,9 +946,7 @@ mcpServer.tool(
   sourceCodeToolSchema,
   {
     title: 'View Source Code',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   sourceCodeMcpHandler
 );
@@ -804,9 +957,7 @@ mcpServer.tool(
   scmBlameToolSchema,
   {
     title: 'Get SCM Blame',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   scmBlameMcpHandler
 );
@@ -818,9 +969,7 @@ mcpServer.tool(
   hotspotsToolSchema,
   {
     title: 'Search Hotspots',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   hotspotsMcpHandler
 );
@@ -831,9 +980,7 @@ mcpServer.tool(
   hotspotToolSchema,
   {
     title: 'Get Hotspot Details',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   hotspotMcpHandler
 );
@@ -844,10 +991,7 @@ mcpServer.tool(
   updateHotspotStatusToolSchema,
   {
     title: 'Update Hotspot Status',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   updateHotspotStatusMcpHandler
 );
@@ -859,9 +1003,7 @@ mcpServer.tool(
   componentsToolSchema,
   {
     title: 'Search Components',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   componentsMcpHandler
 );
@@ -869,7 +1011,7 @@ mcpServer.tool(
 // Only start the server if not in test mode
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
-  (async () => {
+  await (async () => {
     logger.info('Starting SonarQube MCP server', {
       ...VERSION_INFO,
       logFile: process.env.LOG_FILE ?? 'not configured',
@@ -882,19 +1024,22 @@ if (process.env.NODE_ENV !== 'test') {
     logger.info(`Using ${transport.getName()} transport`);
 
     // Set the underlying Server instance on the elicitation manager
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    elicitationManager.setServer((mcpServer as any).server as Server);
+    elicitationManager.setServer((mcpServer as { server: Server }).server);
 
     // Connect the transport to the MCP server
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await transport.connect((mcpServer as any).server as Server);
+    await transport.connect((mcpServer as { server: Server }).server);
 
     logger.info('SonarQube MCP server started successfully', {
       mcpProtocolInfo: 'Protocol version will be negotiated with client during initialization',
     });
   })().catch((error) => {
     logger.error('Failed to start server', error);
-    process.exit(1);
+    // Only exit in production mode, not during tests
+    // Check for Vitest environment or test mode
+    const isTestEnvironment = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+    if (!isTestEnvironment) {
+      process.exit(1);
+    }
   });
 }
 

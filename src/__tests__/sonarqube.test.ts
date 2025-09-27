@@ -1,5 +1,5 @@
 import nock from 'nock';
-import { SonarQubeClient } from '../sonarqube';
+import { SonarQubeClient } from '../sonarqube.js';
 
 describe('SonarQubeClient', () => {
   const baseUrl = 'https://sonarqube.example.com';
@@ -54,8 +54,8 @@ describe('SonarQubeClient', () => {
 
       // Should return transformed data with 'projects' instead of 'components'
       expect(result.projects).toHaveLength(2);
-      expect(result.projects[0].key).toBe('project1');
-      expect(result.projects[1].key).toBe('project2');
+      expect(result.projects?.[0]?.key).toBe('project1');
+      expect(result.projects?.[1]?.key).toBe('project2');
       expect(result.paging).toEqual(mockResponse.paging);
     });
 
@@ -87,12 +87,11 @@ describe('SonarQubeClient', () => {
       const result = await client.listProjects({
         page: 2,
         pageSize: 1,
-        organization: 'my-org',
       });
 
       // Should return transformed data with 'projects' instead of 'components'
       expect(result.projects).toHaveLength(1);
-      expect(result.projects[0].key).toBe('project3');
+      expect(result.projects?.[0]?.key).toBe('project3');
       expect(result.paging).toEqual(mockResponse.paging);
       expect(scope.isDone()).toBe(true);
     });
@@ -172,12 +171,16 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      const result = await client.getIssues({ projectKey: 'project1' });
+      const result = await client.getIssues({
+        projectKey: 'project1',
+        page: undefined,
+        pageSize: undefined,
+      });
       expect(result).toEqual(mockResponse);
-      expect(result.issues[0].cleanCodeAttribute).toBe('CLEAR');
-      expect(result.issues[0].impacts?.[0].softwareQuality).toBe('SECURITY');
-      expect(result.components[0].qualifier).toBe('FIL');
-      expect(result.rules[0].lang).toBe('java');
+      expect(result.issues?.[0]?.cleanCodeAttribute).toBe('CLEAR');
+      expect(result.issues?.[0]?.impacts?.[0]?.softwareQuality).toBe('SECURITY');
+      expect(result.components?.[0]?.qualifier).toBe('FIL');
+      expect(result.rules?.[0]?.lang).toBe('java');
     });
 
     it('should handle filtering by severity', async () => {
@@ -302,6 +305,8 @@ describe('SonarQubeClient', () => {
         tags: ['code-smell', 'performance'],
         createdAfter: '2023-01-01',
         languages: ['java', 'typescript'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result).toEqual(mockResponse);
@@ -352,6 +357,8 @@ describe('SonarQubeClient', () => {
         resolved: false,
         sinceLeakPeriod: true,
         inNewCodePeriod: true,
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result).toEqual(mockResponse);
@@ -404,8 +411,8 @@ describe('SonarQubeClient', () => {
       const result = await client.getMetrics();
       expect(result).toEqual(mockResponse);
       expect(result.metrics).toHaveLength(2);
-      expect(result.metrics[0].key).toBe('team_size');
-      expect(result.metrics[1].key).toBe('uncovered_lines');
+      expect(result.metrics?.[0]?.key).toBe('team_size');
+      expect(result.metrics?.[1]?.key).toBe('uncovered_lines');
       expect(result.paging).toEqual(mockResponse.paging);
     });
 
@@ -446,7 +453,7 @@ describe('SonarQubeClient', () => {
       });
 
       expect(result.metrics).toHaveLength(1);
-      expect(result.metrics[0].key).toBe('code_coverage');
+      expect(result.metrics?.[0]?.key).toBe('code_coverage');
       expect(result.paging).toEqual(mockResponse.paging);
       expect(scope.isDone()).toBe(true);
     });
@@ -555,6 +562,8 @@ describe('SonarQubeClient', () => {
 
       await client.getIssues({
         projects: ['proj1', 'proj2'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -586,6 +595,8 @@ describe('SonarQubeClient', () => {
         componentKeys: ['comp1'],
         components: ['comp2'],
         onComponentOnly: true,
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -610,6 +621,8 @@ describe('SonarQubeClient', () => {
       await client.getIssues({
         branch: 'feature/test',
         pullRequest: '123',
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -645,6 +658,8 @@ describe('SonarQubeClient', () => {
         resolutions: ['FALSE-POSITIVE', 'WONTFIX'],
         resolved: true,
         types: ['BUG', 'VULNERABILITY'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -674,6 +689,8 @@ describe('SonarQubeClient', () => {
         rules: ['java:S1234', 'java:S5678'],
         tags: ['security', 'performance'],
         languages: ['java', 'javascript'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -712,6 +729,8 @@ describe('SonarQubeClient', () => {
         assignees: ['user1', 'user2'],
         author: 'author1',
         authors: ['author1', 'author2'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -746,7 +765,9 @@ describe('SonarQubeClient', () => {
         owaspTop10v2021: ['a01', 'a03'],
         sansTop25: ['insecure-interaction', 'risky-resource'],
         sonarsourceSecurity: ['sql-injection', 'xss'],
-        sonarsourceSecurityCategory: 'injection',
+        sonarsourceSecurityCategory: ['injection'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -767,7 +788,7 @@ describe('SonarQubeClient', () => {
             actualQuery.cleanCodeAttributeCategories === 'INTENTIONAL,RESPONSIBLE' &&
             actualQuery.impactSeverities === 'HIGH,MEDIUM' &&
             actualQuery.impactSoftwareQualities === 'SECURITY,RELIABILITY' &&
-            actualQuery.issueStatuses === 'ACCEPTED,CONFIRMED'
+            actualQuery.issueStatuses === 'OPEN,CONFIRMED'
           );
         })
         .matchHeader('authorization', 'Bearer test-token')
@@ -777,7 +798,9 @@ describe('SonarQubeClient', () => {
         cleanCodeAttributeCategories: ['INTENTIONAL', 'RESPONSIBLE'],
         impactSeverities: ['HIGH', 'MEDIUM'],
         impactSoftwareQualities: ['SECURITY', 'RELIABILITY'],
-        issueStatuses: ['ACCEPTED', 'CONFIRMED'],
+        issueStatuses: ['OPEN', 'CONFIRMED'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -812,7 +835,9 @@ describe('SonarQubeClient', () => {
       await client.getIssues({
         facets: ['severities', 'types'],
         facetMode: 'effort',
-        additionalFields: '_all',
+        additionalFields: ['_all'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -837,8 +862,10 @@ describe('SonarQubeClient', () => {
       await client.getIssues({
         inNewCodePeriod: true,
         sinceLeakPeriod: true,
-        sort: 'FILE_LINE',
+        s: 'FILE_LINE',
         asc: false,
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -860,7 +887,7 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      await client.getIssues({ severity: 'MAJOR' });
+      await client.getIssues({ severity: 'MAJOR', page: undefined, pageSize: undefined });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -880,7 +907,7 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      await client.getIssues({ resolved: false });
+      await client.getIssues({ resolved: false, page: undefined, pageSize: undefined });
       expect(scope.isDone()).toBe(true);
     });
 
@@ -900,7 +927,7 @@ describe('SonarQubeClient', () => {
         .matchHeader('authorization', 'Bearer test-token')
         .reply(200, mockResponse);
 
-      await client.getIssues({ assigned: false });
+      await client.getIssues({ assigned: false, page: undefined, pageSize: undefined });
       expect(scope.isDone()).toBe(true);
     });
   });
@@ -970,8 +997,8 @@ describe('SonarQubeClient', () => {
       expect(result.component.key).toBe('my-project');
       expect(result.component.measures).toHaveLength(2);
       expect(result.metrics).toHaveLength(2);
-      expect(result.component.measures[0].metric).toBe('complexity');
-      expect(result.component.measures[0].value).toBe('42');
+      expect(result.component.measures?.[0]?.metric).toBe('complexity');
+      expect(result.component.measures?.[0]?.value).toBe('42');
     });
 
     it('should handle additional parameters', async () => {
@@ -1024,7 +1051,7 @@ describe('SonarQubeClient', () => {
 
       const result = await client.getComponentMeasures({
         component: 'my-project',
-        metricKeys: 'coverage',
+        metricKeys: ['coverage'],
         additionalFields: ['periods'],
         branch: 'main',
       });
@@ -1145,14 +1172,16 @@ describe('SonarQubeClient', () => {
       const result = await client.getComponentsMeasures({
         componentKeys: ['project1', 'project2'],
         metricKeys: ['bugs', 'vulnerabilities'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result).toEqual(mockResponse);
       expect(result.components).toHaveLength(2);
-      expect(result.components[0].key).toBe('project1');
-      expect(result.components[1].key).toBe('project2');
-      expect(result.components[0].measures).toHaveLength(2);
-      expect(result.components[1].measures).toHaveLength(2);
+      expect(result.components?.[0]?.key).toBe('project1');
+      expect(result.components?.[1]?.key).toBe('project2');
+      expect(result.components?.[0]?.measures).toHaveLength(2);
+      expect(result.components?.[1]?.measures).toHaveLength(2);
       expect(result.metrics).toHaveLength(2);
       expect(result.paging.total).toBe(2);
     });
@@ -1286,7 +1315,7 @@ describe('SonarQubeClient', () => {
 
       // Since we paginate after fetching all components, we should have only 1 result
       expect(result.components).toHaveLength(1);
-      expect(result.components[0].key).toBe('project2'); // Page 2, size 1 would show the 2nd component
+      expect(result.components?.[0]?.key).toBe('project2'); // Page 2, size 1 would show the 2nd component
       expect(result.paging.pageIndex).toBe(2);
       expect(result.paging.pageSize).toBe(1);
       expect(result.paging.total).toBe(3); // Total of 3 components
@@ -1360,11 +1389,13 @@ describe('SonarQubeClient', () => {
       const result = await client.getComponentsMeasures({
         componentKeys: 'comp1,comp2',
         metricKeys: ['coverage'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result.components).toHaveLength(2);
-      expect(result.components[0].key).toBe('comp1');
-      expect(result.components[1].key).toBe('comp2');
+      expect(result.components?.[0]?.key).toBe('comp1');
+      expect(result.components?.[1]?.key).toBe('comp2');
     });
 
     it('should handle comma-separated metricKeys string', async () => {
@@ -1423,10 +1454,12 @@ describe('SonarQubeClient', () => {
       const result = await client.getComponentsMeasures({
         componentKeys: ['project1'],
         metricKeys: 'coverage,duplicated_lines_density',
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result.components).toHaveLength(1);
-      expect(result.components[0].measures).toHaveLength(2);
+      expect(result.components?.[0]?.measures).toHaveLength(2);
       expect(result.metrics).toHaveLength(2);
     });
   });
@@ -1480,14 +1513,16 @@ describe('SonarQubeClient', () => {
       const result = await client.getMeasuresHistory({
         component: 'my-project',
         metrics: ['coverage', 'bugs'],
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result).toEqual(mockResponse);
       expect(result.measures).toHaveLength(2);
-      expect(result.measures[0].metric).toBe('coverage');
-      expect(result.measures[1].metric).toBe('bugs');
-      expect(result.measures[0].history).toHaveLength(2);
-      expect(result.measures[1].history).toHaveLength(2);
+      expect(result.measures?.[0]?.metric).toBe('coverage');
+      expect(result.measures?.[1]?.metric).toBe('bugs');
+      expect(result.measures?.[0]?.history).toHaveLength(2);
+      expect(result.measures?.[1]?.history).toHaveLength(2);
       expect(result.paging.total).toBe(2);
     });
 
@@ -1531,19 +1566,21 @@ describe('SonarQubeClient', () => {
 
       const result = await client.getMeasuresHistory({
         component: 'my-project',
-        metrics: 'code_smells',
+        metrics: ['code_smells'],
         from: '2023-01-15',
         to: '2023-01-31',
         branch: 'main',
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(result).toEqual(mockResponse);
       expect(scope.isDone()).toBe(true);
       expect(result.measures).toHaveLength(1);
-      expect(result.measures[0].metric).toBe('code_smells');
-      expect(result.measures[0].history).toHaveLength(2);
-      expect(result.measures[0].history[0].date).toBe('2023-01-15T00:00:00+0000');
-      expect(result.measures[0].history[1].date).toBe('2023-01-20T00:00:00+0000');
+      expect(result.measures?.[0]?.metric).toBe('code_smells');
+      expect(result.measures?.[0]?.history).toHaveLength(2);
+      expect(result.measures?.[0]?.history?.[0]?.date).toBe('2023-01-15T00:00:00+0000');
+      expect(result.measures?.[0]?.history?.[1]?.date).toBe('2023-01-20T00:00:00+0000');
     });
   });
 
@@ -1601,7 +1638,7 @@ describe('SonarQubeClient', () => {
       expect(result).toEqual(mockResponse);
       expect(scope.isDone()).toBe(true);
       expect(result.hotspots).toHaveLength(1);
-      expect(result.hotspots[0].key).toBe('AYg1234567890');
+      expect(result.hotspots?.[0]?.key).toBe('AYg1234567890');
     });
 
     it('should search hotspots with all filters', async () => {
@@ -1637,6 +1674,8 @@ describe('SonarQubeClient', () => {
         assignedToMe: true,
         sinceLeakPeriod: true,
         inNewCodePeriod: true,
+        page: undefined,
+        pageSize: undefined,
       });
 
       expect(scope.isDone()).toBe(true);
@@ -2086,7 +2125,7 @@ describe('SonarQubeClient', () => {
         expect(assignScope.isDone()).toBe(true);
         expect(searchScope.isDone()).toBe(true);
         expect(result.key).toBe(issueKey);
-        expect(result.assignee).toBe(assignee);
+        expect((result as any).assignee).toBe(assignee);
       });
 
       it('should unassign an issue when assignee is not provided', async () => {
@@ -2131,7 +2170,7 @@ describe('SonarQubeClient', () => {
         expect(assignScope.isDone()).toBe(true);
         expect(searchScope.isDone()).toBe(true);
         expect(result.key).toBe(issueKey);
-        expect(result.assignee).toBeNull();
+        expect((result as any).assignee).toBeNull();
       });
     });
 

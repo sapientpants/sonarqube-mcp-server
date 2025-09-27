@@ -11,6 +11,7 @@ Accepted
 We need to integrate SonarQube's code quality and security analysis capabilities with AI assistants like Claude. This integration should allow AI clients to programmatically access SonarQube data and perform operations through a standardized interface.
 
 The Model Context Protocol (MCP) is emerging as a standard protocol for AI assistants to interact with external tools and data sources. It provides:
+
 - A standardized way to expose tools to AI assistants
 - Built-in support for bidirectional communication
 - A growing ecosystem of compatible AI clients

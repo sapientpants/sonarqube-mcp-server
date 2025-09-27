@@ -5,6 +5,7 @@ This directory contains comprehensive test scripts for validating the SonarQube 
 ## Overview
 
 The test suite ensures that all deployment artifacts are:
+
 - Syntactically correct
 - Follow security best practices
 - Work as expected in different configurations
@@ -35,6 +36,7 @@ Orchestrates all test suites in the correct order.
 **Script:** `validate-docs.sh`
 
 Validates documentation for:
+
 - Broken internal links
 - Invalid code examples
 - Missing required sections
@@ -50,6 +52,7 @@ Validates documentation for:
 **Script:** `validate-terraform.sh`
 
 Tests Terraform modules for:
+
 - Syntax validation
 - Formatting standards
 - Security issues (hardcoded secrets)
@@ -65,6 +68,7 @@ Tests Terraform modules for:
 **Script:** `test-helm-values.sh`
 
 Tests Helm chart with various configurations:
+
 - Minimal deployment
 - Production settings
 - High availability
@@ -106,6 +110,7 @@ Extended test that validates both Kustomize and Helm deployments.
 **Script:** `security-scan.sh`
 
 Comprehensive security scanning using:
+
 - Kubesec for Kubernetes manifests
 - Trivy for container vulnerabilities
 - Polaris for policy violations
@@ -120,6 +125,7 @@ Comprehensive security scanning using:
 **Script:** `test-monitoring-integration.sh`
 
 Tests monitoring endpoints and integration:
+
 - Health and readiness checks
 - Prometheus metrics format
 - Circuit breaker functionality
@@ -161,11 +167,13 @@ Fixes DNS resolution issues in kind clusters (common on macOS).
 ## Helm Test Hooks
 
 Located in `helm/sonarqube-mcp/templates/tests/`:
+
 - `deployment-test.yaml` - Tests deployment readiness
 - `service-test.yaml` - Tests service connectivity
 - `config-test.yaml` - Tests configuration validity
 
 Run with:
+
 ```bash
 helm test release-name -n namespace
 ```
@@ -173,11 +181,13 @@ helm test release-name -n namespace
 ## Prerequisites
 
 ### Required Tools
+
 - Docker
 - kubectl
 - Helm 3+
 
 ### Optional Tools
+
 - kind (for Kubernetes tests)
 - Terraform (for Terraform validation)
 - k6 or Apache Bench (for load testing)
@@ -219,17 +229,20 @@ test:
 ### Common Issues
 
 1. **Script not executable**
+
    ```bash
    chmod +x scripts/*.sh
    ```
 
 2. **Kind cluster issues**
+
    ```bash
    kind delete cluster --name sonarqube-mcp-test
    ./scripts/test-k8s-deployment.sh
    ```
 
 3. **DNS resolution in kind**
+
    ```bash
    ./scripts/fix-kind-dns.sh sonarqube-mcp-test
    ```
@@ -240,6 +253,7 @@ test:
 ## Best Practices
 
 1. **Run tests before commits**
+
    ```bash
    ./scripts/run-all-tests.sh --only docs,helm,security
    ```
@@ -248,6 +262,7 @@ test:
    Integrate appropriate tests in your pipeline.
 
 3. **Regular security scans**
+
    ```bash
    ./scripts/security-scan.sh
    ```
@@ -261,6 +276,7 @@ test:
 ## Contributing
 
 When adding new deployment artifacts:
+
 1. Update relevant test scripts
 2. Add new test cases if needed
 3. Document in this README

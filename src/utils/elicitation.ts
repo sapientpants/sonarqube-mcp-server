@@ -1,6 +1,7 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { createLogger } from './logger.js';
 
 export interface ElicitationOptions {
   enabled: boolean;
@@ -10,7 +11,7 @@ export interface ElicitationOptions {
 }
 
 export interface ElicitationResult<T = unknown> {
-  action: 'accept' | 'reject' | 'cancel';
+  action: 'accept' | 'reject' | 'cancel' | 'decline';
   content?: T;
 }
 
@@ -42,6 +43,7 @@ export const authSchema = z
 export class ElicitationManager {
   private server: Server | null = null;
   private options: ElicitationOptions;
+  private readonly logger = createLogger('ElicitationManager');
 
   constructor(options: Partial<ElicitationOptions> = {}) {
     this.options = {
@@ -96,8 +98,12 @@ export class ElicitationManager {
 
       const result = await this.server.elicitInput({
         message: `You are about to ${operation} ${itemCount} items${itemsDisplay}. This action cannot be undone.`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(confirmationSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(confirmationSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(confirmationSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
@@ -108,9 +114,12 @@ export class ElicitationManager {
         return { action: 'accept', content: parsed };
       }
 
-      return result as ElicitationResult<z.infer<typeof confirmationSchema>>;
+      return {
+        action: result.action,
+        content: result.content as z.infer<typeof confirmationSchema>,
+      };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -134,8 +143,12 @@ Available methods:
 3. System passcode - For SonarQube instances with system authentication
 
 Which method would you like to use?`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(authSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(authSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(authSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
@@ -143,9 +156,12 @@ Which method would you like to use?`,
         return { action: 'accept', content: parsed };
       }
 
-      return result as ElicitationResult<z.infer<typeof authSchema>>;
+      return {
+        action: result.action,
+        content: result.content as z.infer<typeof authSchema>,
+      };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -169,18 +185,22 @@ Which method would you like to use?`,
     try {
       const result = await this.server.elicitInput({
         message: `Please provide a comment explaining why issue ${issueKey} is being marked as ${resolution}:`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(commentSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(commentSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(commentSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
         const parsed = commentSchema.parse(result.content);
-        return { action: 'accept', content: parsed };
+        return { action: 'accept', content: { comment: parsed.comment } };
       }
 
-      return result as ElicitationResult<{ comment: string }>;
+      return { action: result.action };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -214,18 +234,22 @@ Which method would you like to use?`,
     try {
       const result = await this.server.elicitInput({
         message: `Multiple ${itemType}s found. Please select one:\n\n${itemsList}`,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requestedSchema: zodToJsonSchema(selectionSchema) as any,
+        requestedSchema: {
+          ...zodToJsonSchema(selectionSchema),
+          type: 'object' as const,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          properties: (zodToJsonSchema(selectionSchema) as any).properties ?? {},
+        },
       });
 
       if (result.action === 'accept' && result.content) {
         const parsed = selectionSchema.parse(result.content);
-        return { action: 'accept', content: parsed };
+        return { action: 'accept', content: { selection: parsed.selection } };
       }
 
-      return result as ElicitationResult<{ selection: string }>;
+      return { action: result.action };
     } catch (error) {
-      console.error('Elicitation error:', error);
+      this.logger.error('Elicitation error:', error);
       return { action: 'cancel' };
     }
   }
@@ -236,16 +260,21 @@ export const createElicitationManager = (
 ): ElicitationManager => {
   const envEnabled = process.env.SONARQUBE_MCP_ELICITATION === 'true';
   const envThreshold = process.env.SONARQUBE_MCP_BULK_THRESHOLD
-    ? parseInt(process.env.SONARQUBE_MCP_BULK_THRESHOLD, 10)
+    ? Number.parseInt(process.env.SONARQUBE_MCP_BULK_THRESHOLD, 10)
     : undefined;
   const envRequireComments = process.env.SONARQUBE_MCP_REQUIRE_COMMENTS === 'true';
   const envInteractiveSearch = process.env.SONARQUBE_MCP_INTERACTIVE_SEARCH === 'true';
 
-  return new ElicitationManager({
+  const managerOptions: Partial<ElicitationOptions> = {
     enabled: envEnabled,
-    bulkOperationThreshold: envThreshold ?? options?.bulkOperationThreshold,
-    requireComments: envRequireComments ?? options?.requireComments,
-    interactiveSearch: envInteractiveSearch ?? options?.interactiveSearch,
+    requireComments: envRequireComments,
+    interactiveSearch: envInteractiveSearch,
     ...options,
-  });
+  };
+
+  if (envThreshold !== undefined) {
+    managerOptions.bulkOperationThreshold = envThreshold;
+  }
+
+  return new ElicitationManager(managerOptions);
 };

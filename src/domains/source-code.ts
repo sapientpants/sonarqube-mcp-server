@@ -3,6 +3,8 @@ import type {
   ScmBlameParams,
   SonarQubeSourceResult,
   SonarQubeScmBlameResult,
+  SonarQubeSourceLine,
+  IssuesParams,
 } from '../types/index.js';
 import type { SonarQubeClient as WebApiClient } from 'sonarqube-web-api-client';
 import type { IssuesDomain } from './issues.js';
@@ -65,35 +67,111 @@ export class SourceCodeDomain extends BaseDomain {
     // Get issues for this component to annotate the source
     if (key && this.issuesDomain) {
       try {
-        const issues = await this.issuesDomain.getIssues({
+        const issuesParams: IssuesParams = {
           projects: [key],
-          branch,
-          pullRequest,
           onComponentOnly: true,
-        });
+          page: 1,
+          pageSize: 100,
+        };
+        if (params.branch) {
+          issuesParams.branch = params.branch;
+        }
+        if (params.pullRequest) {
+          issuesParams.pullRequest = params.pullRequest;
+        }
+
+        const issues = await this.issuesDomain.getIssues(issuesParams);
 
         // Map issues to source lines
-        const sourceLines = sources.sources.map((line) => {
+        const sourceLines: SonarQubeSourceLine[] = sources.sources.map((line) => {
           const lineIssues = issues.issues.filter((issue) => issue.line === line.line);
           return {
-            ...line,
+            line: line.line,
+            code: line.code,
+            scmAuthor: undefined,
+            scmDate: undefined,
+            scmRevision: undefined,
+            duplicated: undefined,
+            isNew: undefined,
+            lineHits: undefined,
+            conditions: undefined,
+            coveredConditions: undefined,
+            highlightedText: undefined,
             issues: lineIssues.length > 0 ? lineIssues : undefined,
           };
         });
 
         return {
-          component: sources.component,
+          component: {
+            key: sources.component.key,
+            path: undefined,
+            qualifier: sources.component.qualifier,
+            name: sources.component.name,
+            longName: sources.component.longName,
+            language: undefined,
+          },
           sources: sourceLines,
         };
       } catch (error) {
         // Log the error for debugging but continue with source code without annotations
         this.logger.error('Failed to retrieve issues for source code annotation', error);
         // Return source code without issue annotations
-        return sources;
+        return this.mapSourceToResult(sources);
       }
     }
 
-    return sources;
+    return this.mapSourceToResult(sources);
+  }
+
+  private mapSourceToResult(sources: {
+    sources: Array<{
+      line: number;
+      code: string;
+      scmAuthor?: string;
+      scmDate?: string;
+      scmRevision?: string;
+      duplicated?: boolean;
+      isNew?: boolean;
+      lineHits?: number;
+      conditions?: number;
+      coveredConditions?: number;
+      highlightedText?: string;
+    }>;
+    component: {
+      key: string;
+      path?: string;
+      qualifier: string;
+      name: string;
+      longName?: string;
+      language?: string;
+    };
+  }): SonarQubeSourceResult {
+    const mappedSources: SonarQubeSourceLine[] = sources.sources.map((line) => ({
+      line: line.line,
+      code: line.code,
+      scmAuthor: line.scmAuthor,
+      scmDate: line.scmDate,
+      scmRevision: line.scmRevision,
+      duplicated: line.duplicated,
+      isNew: line.isNew,
+      lineHits: line.lineHits,
+      conditions: line.conditions,
+      coveredConditions: line.coveredConditions,
+      highlightedText: line.highlightedText,
+      issues: undefined,
+    }));
+
+    return {
+      component: {
+        key: sources.component.key,
+        path: sources.component.path,
+        qualifier: sources.component.qualifier,
+        name: sources.component.name,
+        longName: sources.component.longName,
+        language: sources.component.language,
+      },
+      sources: mappedSources,
+    };
   }
 
   /**

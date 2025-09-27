@@ -2,18 +2,13 @@
   "name": "sonarqube-mcp-server",
   "version": "1.7.5",
   "description": "Model Context Protocol server for SonarQube",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "sonarqube-mcp-server": "./dist/index.js"
-  },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
+  "keywords": [
+    "sonarqube",
+    "mcp",
+    "model-context-protocol"
+  ],
+  "author": "Marc Tremblay <marc.tremblay@gmail.com>",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sapientpants/sonarqube-mcp-server.git"
@@ -21,82 +16,130 @@
   "bugs": {
     "url": "https://github.com/sapientpants/sonarqube-mcp-server/issues"
   },
+  "homepage": "https://github.com/sapientpants/sonarqube-mcp-server",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "sonarqube-mcp-server": "./dist/index.js"
+  },
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
-    "build": "tsc",
-    "ci": "pnpm audit --audit-level=low && pnpm run format:check && pnpm run lint && pnpm run check-types && pnpm run build && pnpm run test:coverage",
-    "start": "node --experimental-specifier-resolution=node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "watch": "tsc -w",
-    "test": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --detectOpenHandles --forceExit",
-    "test:watch": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --watch --detectOpenHandles --forceExit",
-    "test:coverage": "NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --coverage --detectOpenHandles --forceExit",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
-    "check-types": "tsc --noEmit",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "build:watch": "tsc -p tsconfig.build.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:watch": "tsc -p tsconfig.json --noEmit --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:workflows": "./scripts/actionlint.sh",
+    "lint:markdown": "markdownlint-cli2 \"**/*.md\" \"#node_modules\"",
+    "lint:markdown:fix": "markdownlint-cli2 --fix \"**/*.md\" \"#node_modules\"",
+    "lint:yaml": "yamllint '**/*.{yml,yaml}' --ignore='node_modules/**' --ignore='.github/workflows/**' --ignore='pnpm-lock.yaml'",
+    "format": "prettier --check .",
+    "format:fix": "prettier --write .",
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --reporter=verbose --coverage",
+    "test:coverage:watch": "vitest --coverage",
+    "coverage:report": "vitest run --coverage --reporter=verbose",
+    "coverage:open": "open coverage/index.html",
+    "clean": "rimraf dist coverage",
+    "reset": "pnpm clean && pnpm install",
+    "quick-check": "pnpm typecheck && pnpm lint && pnpm test",
+    "precommit": "pnpm audit --audit-level critical && pnpm typecheck && pnpm lint && pnpm lint:workflows && pnpm lint:markdown && pnpm lint:yaml && pnpm format && pnpm test",
+    "verify": "pnpm precommit",
+    "setup": "./scripts/setup.sh",
+    "lint-staged": "lint-staged",
+    "sbom": "pnpm dlx @cyclonedx/cdxgen -o sbom.cdx.json",
+    "scan:container": "./scripts/scan-container.sh",
+    "scan:container:sarif": "./scripts/scan-container.sh --format sarif --output container-scan.sarif",
     "prepare": "husky",
-    "validate": "pnpm run check-types && pnpm run lint && pnpm run test",
-    "inspect": "npx @modelcontextprotocol/inspector@latest node dist/index.js",
-    "clean": "rm -rf dist"
+    "release": "changeset version && pnpm build",
+    "release:publish": "pnpm build && changeset publish",
+    "release:tag": "git add -A && git commit -m \"chore(release): version packages\" && git tag -a v$(node -p \"require('./package.json').version\") -m \"Release\"",
+    "changeset": "changeset",
+    "changeset:status": "changeset status --since=main",
+    "ci:local": "./scripts/ci-local.sh",
+    "ci:local:fast": "./scripts/ci-local.sh --fast",
+    "doctor": "node -e \"console.log('Node:', process.version); console.log('npm scripts:', Object.keys(require('./package.json').scripts).length, 'available'); console.log('Run: pnpm run help')\"",
+    "help": "node -e \"const s=require('./package.json').scripts; console.log('Available commands:'); Object.keys(s).sort().forEach(k => console.log('  pnpm run ' + k.padEnd(20) + ' # ' + s[k].split(' ')[0]))\""
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "prettier --check",
-      "eslint"
+    "*.{ts,tsx,js,json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.{ts,tsx,js,json,jsonc,json5}": [
+      "eslint --fix"
+    ],
+    "*.md": [
+      "markdownlint-cli2 --fix"
+    ],
+    "*.{yml,yaml}": [
+      "yamllint"
     ]
   },
-  "keywords": [
-    "sonarqube",
-    "mcp",
-    "model-context-protocol"
-  ],
-  "author": "Marc Tremblay <marc.tremblay@gmail.com>",
-  "homepage": "https://github.com/sapientpants/sonarqube-mcp-server",
-  "license": "MIT",
-  "packageManager": "pnpm@10.7.1",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.3",
+    "@modelcontextprotocol/sdk": "^1.18.2",
     "lodash": "^4.17.21",
     "opossum": "^9.0.0",
+    "pino": "9.10.0",
+    "pino-roll": "3.1.0",
+    "pino-syslog": "3.2.0",
     "sonarqube-web-api-client": "0.11.1",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },
   "devDependencies": {
-    "@eslint/js": "^9.33.0",
-    "@jest/globals": "^30.0.5",
+    "@changesets/cli": "^2.29.7",
+    "@commitlint/cli": "19.8.1",
+    "@commitlint/config-conventional": "19.8.1",
+    "@cyclonedx/cdxgen": "11.7.0",
+    "@eslint/js": "^9.36.0",
+    "@fast-check/vitest": "^0.2.2",
+    "@jest/globals": "^30.1.2",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
-    "@types/node": "^24.3.0",
+    "@types/node": "^24.5.2",
     "@types/opossum": "^8.1.9",
-    "@typescript-eslint/eslint-plugin": "^8.39.1",
-    "@typescript-eslint/parser": "^8.39.1",
-    "eslint": "^9.33.0",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "changelog-github-custom": "1.2.5",
+    "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsonc": "2.20.1",
     "eslint-plugin-prettier": "^5.5.4",
+    "fast-check": "^4.3.0",
     "husky": "^9.1.7",
-    "jest": "^30.0.5",
-    "lint-staged": "^16.1.5",
+    "jest": "^30.1.3",
+    "jsonc-eslint-parser": "2.4.0",
+    "lint-staged": "^16.2.1",
+    "markdownlint-cli2": "0.18.1",
     "nock": "^14.0.10",
+    "pino-pretty": "13.1.1",
     "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
     "supertest": "^7.1.4",
-    "ts-jest": "^29.4.1",
+    "ts-jest": "^29.4.4",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vite": "7.1.5",
+    "vitest": "^3.2.4",
+    "yaml-lint": "1.7.0"
   },
   "pnpm": {
     "overrides": {
-      "brace-expansion@1": ">=1.1.12",
-      "brace-expansion@2": ">=2.0.2",
-      "brace-expansion": ">=4.0.0",
-      "cross-spawn": ">=7.0.5",
-      "form-data": ">=4.0.4",
       "@eslint/plugin-kit": ">=0.3.3"
-    },
-    "ignoredBuiltDependencies": [
-      "bcrypt"
-    ]
+    }
   }
 }

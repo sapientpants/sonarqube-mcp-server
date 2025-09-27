@@ -1,0 +1,95 @@
+# Markdownlint configuration
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+# Default state for all rules
+default: true
+
+# MD003/heading-style - Heading style
+MD003:
+  style: 'atx' # Use # style headers
+
+# MD004/ul-style - Unordered list style
+MD004:
+  style: 'dash' # Use - for unordered lists
+
+# MD007/ul-indent - Unordered list indentation
+MD007:
+  indent: 2 # 2 spaces for nested lists
+
+# MD013/line-length - Line length
+# Disabled as many lines contain URLs or complex content
+MD013: false
+
+# MD022/blanks-around-headings - Headings should be surrounded by blank lines
+# Allow some flexibility in heading spacing
+MD022: false
+
+# MD024/no-duplicate-heading - Multiple headings with the same content
+MD024:
+  siblings_only: true # Allow same heading if not siblings
+
+# MD026/no-trailing-punctuation - Trailing punctuation in heading
+# Allow colons in headings for clarity
+MD026: false
+
+# MD031/blanks-around-fences - Fenced code blocks should be surrounded by blank lines
+# Sometimes inline code blocks make sense
+MD031: false
+
+# MD034/no-bare-urls - Bare URLs
+# Sometimes bare URLs are intentional for clarity
+MD034: false
+
+# MD025/single-title - Multiple top-level headings
+# Disabled because we might have multiple H1s in different sections
+MD025: false
+
+# MD033/no-inline-html - Inline HTML
+MD033:
+  allowed_elements:
+    - details
+    - summary
+    - sub
+    - sup
+    - br
+    - img
+    - a
+    - code
+    - pre
+    - table
+    - thead
+    - tbody
+    - tr
+    - td
+    - th
+    - div
+    - span
+    - kbd
+
+# MD040/fenced-code-language - Fenced code blocks should have a language specified
+# Disabled as we sometimes have plain text blocks
+MD040: false
+
+# MD041/first-line-heading - First line in a file should be a top-level heading
+# Disabled as not all markdown files need to start with a heading
+MD041: false
+
+# MD045/no-alt-text - Images should have alternate text
+# Disabled as decorative images don't always need alt text
+MD045: false
+
+# MD046/code-block-style - Code block style
+MD046:
+  style: 'fenced' # Use ``` for code blocks
+
+# MD048/code-fence-style - Code fence style
+MD048:
+  style: 'backtick' # Use backticks for code fences
+
+# MD049/emphasis-style - Emphasis style
+MD049:
+  style: 'underscore' # Use _ for italic
+
+# MD050/strong-style - Strong style
+MD050:
+  style: 'asterisk' # Use ** for bold

@@ -1,5 +1,5 @@
 import type { PaginationParams, SeverityLevel } from './common.js';
-import type { DoTransitionRequest, DoTransitionResponse } from 'sonarqube-web-api-client';
+export type { DoTransitionRequest, DoTransitionResponse } from 'sonarqube-web-api-client';
 
 /**
  * Interface for SonarQube issue impact
@@ -74,6 +74,7 @@ export interface SonarQubeIssue {
   effort?: string;
   debt?: string;
   author?: string;
+  assignee?: string;
   severity?: string;
   tags: string[];
   creationDate: string;
@@ -97,11 +98,11 @@ export interface SonarQubeIssue {
  */
 export interface SonarQubeComponent {
   key: string;
-  enabled?: boolean;
+  enabled: boolean | undefined;
   qualifier: string;
   name: string;
-  longName?: string;
-  path?: string;
+  longName: string | undefined;
+  path: string | undefined;
 }
 
 /**
@@ -148,8 +149,8 @@ export interface SonarQubeIssuesResult {
   issues: SonarQubeIssue[];
   components: SonarQubeComponent[];
   rules: SonarQubeRule[];
-  users?: SonarQubeUser[];
-  facets?: SonarQubeFacet[];
+  users: SonarQubeUser[] | undefined;
+  facets: SonarQubeFacet[] | undefined;
   paging: {
     pageIndex: number;
     pageSize: number;
@@ -308,5 +309,4 @@ export interface ReopenIssueParams {
   comment?: string;
 }
 
-// Re-export transition types from the web API client
-export type { DoTransitionRequest, DoTransitionResponse };
+// Transition types are re-exported at the top of the file

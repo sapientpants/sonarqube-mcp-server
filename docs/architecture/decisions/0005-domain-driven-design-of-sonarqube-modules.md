@@ -30,6 +30,7 @@ We will organize the SonarQube client functionality using a domain-driven design
 - `SystemDomain`: Handles system health and status checks
 
 Each domain class:
+
 - Encapsulates all API methods related to its specific area
 - Has its own dedicated test file
 - Can evolve independently without affecting other domains

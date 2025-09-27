@@ -1,13 +1,21 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createDefaultClient } from '../index.js';
 
 // Mock the sonarqube module
-jest.mock('../sonarqube.js', () => ({
-  createSonarQubeClientFromEnv: jest.fn(() => ({
+vi.mock('../sonarqube.js', () => ({
+  createSonarQubeClientFromEnv: vi.fn(() => ({
     // Mock client implementation
-    listProjects: jest.fn(),
-    getIssues: jest.fn(),
+    listProjects: vi.fn(),
+    getIssues: vi.fn(),
   })),
+  setSonarQubeElicitationManager: vi.fn(),
+  createSonarQubeClientFromEnvWithElicitation: vi.fn(() =>
+    Promise.resolve({
+      // Mock client implementation
+      listProjects: vi.fn(),
+      getIssues: vi.fn(),
+    })
+  ),
 }));
 
 describe('Environment Validation', () => {

@@ -6,6 +6,7 @@ import type {
   MarkIssueWontFixParams,
   BulkIssueMarkParams,
   AddCommentToIssueParams,
+  AssignIssueParams,
   ConfirmIssueParams,
   UnconfirmIssueParams,
   ResolveIssueParams,
@@ -274,16 +275,18 @@ export async function handleMarkIssueFalsePositive(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    params = elicitationResult.params;
+    const finalParams = (
+      elicitationResult as { params: MarkIssueFalsePositiveParams; cancelled: false }
+    ).params;
 
-    const result = await client.markIssueFalsePositive(params);
+    const result = await client.markIssueFalsePositive(finalParams);
     logger.info('Successfully marked issue as false positive', {
-      issueKey: params.issueKey,
-      comment: params.comment ? 'with comment' : 'without comment',
+      issueKey: finalParams.issueKey,
+      comment: finalParams.comment ? 'with comment' : 'without comment',
     });
 
     return createIssueOperationResponse(
-      `Issue ${params.issueKey} marked as false positive`,
+      `Issue ${finalParams.issueKey} marked as false positive`,
       result
     );
   } catch (error) {
@@ -310,15 +313,19 @@ export async function handleMarkIssueWontFix(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    params = elicitationResult.params;
+    const finalParams = (elicitationResult as { params: MarkIssueWontFixParams; cancelled: false })
+      .params;
 
-    const result = await client.markIssueWontFix(params);
+    const result = await client.markIssueWontFix(finalParams);
     logger.info("Successfully marked issue as won't fix", {
-      issueKey: params.issueKey,
-      comment: params.comment ? 'with comment' : 'without comment',
+      issueKey: finalParams.issueKey,
+      comment: finalParams.comment ? 'with comment' : 'without comment',
     });
 
-    return createIssueOperationResponse(`Issue ${params.issueKey} marked as won't fix`, result);
+    return createIssueOperationResponse(
+      `Issue ${finalParams.issueKey} marked as won't fix`,
+      result
+    );
   } catch (error) {
     logger.error("Failed to mark issue as won't fix", error);
     throw error;
@@ -345,16 +352,17 @@ export async function handleMarkIssuesFalsePositive(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    params = elicitationResult.params;
+    const finalParams = (elicitationResult as { params: BulkIssueMarkParams; cancelled: false })
+      .params;
 
-    const results = await client.markIssuesFalsePositive(params);
+    const results = await client.markIssuesFalsePositive(finalParams);
     logger.info('Successfully marked issues as false positive', {
-      issueCount: params.issueKeys.length,
-      comment: params.comment ? 'with comment' : 'without comment',
+      issueCount: finalParams.issueKeys.length,
+      comment: finalParams.comment ? 'with comment' : 'without comment',
     });
 
     return createStructuredResponse({
-      message: `${params.issueKeys.length} issues marked as false positive`,
+      message: `${finalParams.issueKeys.length} issues marked as false positive`,
       results: mapBulkResults(results),
     });
   } catch (error) {
@@ -383,16 +391,17 @@ export async function handleMarkIssuesWontFix(
     if (elicitationResult.cancelled) {
       return elicitationResult.response;
     }
-    params = elicitationResult.params;
+    const finalParams = (elicitationResult as { params: BulkIssueMarkParams; cancelled: false })
+      .params;
 
-    const results = await client.markIssuesWontFix(params);
+    const results = await client.markIssuesWontFix(finalParams);
     logger.info("Successfully marked issues as won't fix", {
-      issueCount: params.issueKeys.length,
-      comment: params.comment ? 'with comment' : 'without comment',
+      issueCount: finalParams.issueKeys.length,
+      comment: finalParams.comment ? 'with comment' : 'without comment',
     });
 
     return createStructuredResponse({
-      message: `${params.issueKeys.length} issues marked as won't fix`,
+      message: `${finalParams.issueKeys.length} issues marked as won't fix`,
       results: mapBulkResults(results),
     });
   } catch (error) {
@@ -455,10 +464,14 @@ export async function handleAssignIssue(
     // Normalize empty string to undefined for consistent unassignment handling
     const normalizedAssignee = params.assignee === '' ? undefined : params.assignee;
 
-    const updatedIssue = await sonarQubeClient.assignIssue({
+    const assignParams: AssignIssueParams = {
       issueKey: params.issueKey,
-      assignee: normalizedAssignee,
-    });
+    };
+    if (normalizedAssignee !== undefined) {
+      assignParams.assignee = normalizedAssignee;
+    }
+
+    const updatedIssue = await sonarQubeClient.assignIssue(assignParams);
 
     // Cast to access dynamic fields
     const issueWithAssignee = updatedIssue as SonarQubeIssue & {

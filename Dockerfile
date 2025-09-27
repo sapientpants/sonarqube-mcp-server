@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install pnpm and configure for production build
-RUN npm install -g pnpm@10.7.1 && \
+RUN npm install -g pnpm@10.17.1 && \
     echo "enable-pre-post-scripts=false" > .npmrc
 
 # Set environment for production build
@@ -26,7 +26,7 @@ RUN pnpm run build
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # Production stage - minimal stdio-only runtime
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Create non-root user upfront
 RUN addgroup -g 1001 nodejs && \

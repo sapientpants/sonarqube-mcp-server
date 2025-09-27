@@ -14,9 +14,9 @@ export interface SonarQubeQualityGateCondition {
 export interface SonarQubeQualityGate {
   id: string;
   name: string;
-  isDefault?: boolean;
-  isBuiltIn?: boolean;
-  conditions?: SonarQubeQualityGateCondition[];
+  isDefault: boolean | undefined;
+  isBuiltIn: boolean | undefined;
+  conditions: SonarQubeQualityGateCondition[] | undefined;
 }
 
 /**
@@ -25,9 +25,11 @@ export interface SonarQubeQualityGate {
 export interface SonarQubeQualityGatesResult {
   qualitygates: SonarQubeQualityGate[];
   default: string;
-  actions?: {
-    create?: boolean;
-  };
+  actions:
+    | {
+        create: boolean | undefined;
+      }
+    | undefined;
 }
 
 /**

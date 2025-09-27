@@ -1,0 +1,15 @@
+# Trivy Ignore File
+# This file contains CVEs to ignore during container security scanning
+# Format: CVE-ID or CVE-ID with expiry date
+# 
+# Example entries:
+# CVE-2022-12345
+# CVE-2022-12345 exp:2025-01-01
+#
+# Add CVEs here that are false positives or accepted risks
+# Each exclusion should be documented with a comment explaining why
+
+# Example: False positive in test dependency
+# CVE-2024-XXXXX
+
+# Note: Regularly review and update this file to remove outdated exclusions

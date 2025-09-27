@@ -1,10 +1,5 @@
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-
 // Our focus is on testing the schema transformation functions that are used in index.ts
 describe('Zod Schema Transformation Tests', () => {
   describe('String to Number Transformations', () => {
@@ -13,160 +8,136 @@ describe('Zod Schema Transformation Tests', () => {
       const schema = z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) || null : null));
-
+        .transform((val: any) => (val ? parseInt(val, 10) || null : null));
       // Test with a valid number string
       expect(schema.parse('10')).toBe(10);
     });
-
     it('should transform invalid string numbers to null', () => {
       // This is the exact transformation used in index.ts
       const schema = z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) || null : null));
-
+        .transform((val: any) => (val ? parseInt(val, 10) || null : null));
       // Test with an invalid number string
       expect(schema.parse('abc')).toBe(null);
     });
-
     it('should transform empty string to null', () => {
       // This is the exact transformation used in index.ts
       const schema = z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) || null : null));
-
+        .transform((val: any) => (val ? parseInt(val, 10) || null : null));
       // Test with an empty string
       expect(schema.parse('')).toBe(null);
     });
-
     it('should transform undefined to null', () => {
       // This is the exact transformation used in index.ts
       const schema = z
         .string()
         .optional()
-        .transform((val) => (val ? parseInt(val, 10) || null : null));
-
+        .transform((val: any) => (val ? parseInt(val, 10) || null : null));
       // Test with undefined
       expect(schema.parse(undefined)).toBe(null);
     });
   });
-
   describe('String to Boolean Transformations', () => {
     it('should transform "true" string to true boolean', () => {
       // This is the exact transformation used in index.ts
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test with "true" string
       expect(schema.parse('true')).toBe(true);
     });
-
     it('should transform "false" string to false boolean', () => {
       // This is the exact transformation used in index.ts
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test with "false" string
       expect(schema.parse('false')).toBe(false);
     });
-
     it('should pass through true boolean', () => {
       // This is the exact transformation used in index.ts
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test with true boolean
       expect(schema.parse(true)).toBe(true);
     });
-
     it('should pass through false boolean', () => {
       // This is the exact transformation used in index.ts
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test with false boolean
       expect(schema.parse(false)).toBe(false);
     });
-
     it('should pass through null', () => {
       // This is the exact transformation used in index.ts
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test with null
       expect(schema.parse(null)).toBe(null);
     });
-
     it('should pass through undefined', () => {
       // This is the exact transformation used in index.ts
       const schema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test with undefined
       expect(schema.parse(undefined)).toBe(undefined);
     });
   });
-
   describe('Complex Schema Combinations', () => {
     it('should transform string parameters in a complex schema', () => {
       // Create a schema similar to the ones in index.ts
       const statusEnumSchema = z.enum(['OPEN', 'CONFIRMED', 'REOPENED', 'RESOLVED', 'CLOSED']);
       const statusSchema = z.array(statusEnumSchema).nullable().optional();
-
       const resolutionEnumSchema = z.enum(['FALSE-POSITIVE', 'WONTFIX', 'FIXED', 'REMOVED']);
       const resolutionSchema = z.array(resolutionEnumSchema).nullable().optional();
-
       const typeEnumSchema = z.enum(['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT']);
       const typeSchema = z.array(typeEnumSchema).nullable().optional();
-
       const issuesSchema = z.object({
         project_key: z.string(),
         severity: z.enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER']).nullable().optional(),
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         statuses: statusSchema,
         resolutions: resolutionSchema,
         resolved: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
         types: typeSchema,
         rules: z.array(z.string()).nullable().optional(),
         tags: z.array(z.string()).nullable().optional(),
         on_component_only: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
         since_leak_period: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
         in_new_code_period: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
       });
-
       // Test with various parameter types
       const parsedParams = issuesSchema.parse({
         project_key: 'test-project',
@@ -182,7 +153,6 @@ describe('Zod Schema Transformation Tests', () => {
         since_leak_period: 'true',
         in_new_code_period: 'true',
       });
-
       // Check all the transformations
       expect(parsedParams.project_key).toBe('test-project');
       expect(parsedParams.severity).toBe('MAJOR');
@@ -195,7 +165,6 @@ describe('Zod Schema Transformation Tests', () => {
       expect(parsedParams.since_leak_period).toBe(true);
       expect(parsedParams.in_new_code_period).toBe(true);
     });
-
     it('should transform component measures schema parameters', () => {
       // Create a schema similar to component measures schema in index.ts
       const measuresComponentSchema = z.object({
@@ -208,13 +177,12 @@ describe('Zod Schema Transformation Tests', () => {
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
       });
-
       // Test with valid parameters
       const parsedParams = measuresComponentSchema.parse({
         component: 'test-component',
@@ -224,14 +192,12 @@ describe('Zod Schema Transformation Tests', () => {
         page: '2',
         page_size: '20',
       });
-
       // Check the transformations
       expect(parsedParams.component).toBe('test-component');
       expect(parsedParams.metric_keys).toEqual(['complexity', 'coverage']);
       expect(parsedParams.branch).toBe('main');
       expect(parsedParams.page).toBe(2);
       expect(parsedParams.page_size).toBe(20);
-
       // Test with invalid page values
       const invalidParams = measuresComponentSchema.parse({
         component: 'test-component',
@@ -239,11 +205,9 @@ describe('Zod Schema Transformation Tests', () => {
         page: 'invalid',
         page_size: 'invalid',
       });
-
       expect(invalidParams.page).toBe(null);
       expect(invalidParams.page_size).toBe(null);
     });
-
     it('should transform components measures schema parameters', () => {
       // Create a schema similar to components measures schema in index.ts
       const measuresComponentsSchema = z.object({
@@ -256,13 +220,12 @@ describe('Zod Schema Transformation Tests', () => {
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
       });
-
       // Test with valid parameters
       const parsedParams = measuresComponentsSchema.parse({
         component_keys: ['comp-1', 'comp-2'],
@@ -271,14 +234,12 @@ describe('Zod Schema Transformation Tests', () => {
         page: '2',
         page_size: '20',
       });
-
       // Check the transformations
       expect(parsedParams.component_keys).toEqual(['comp-1', 'comp-2']);
       expect(parsedParams.metric_keys).toEqual(['complexity', 'coverage']);
       expect(parsedParams.page).toBe(2);
       expect(parsedParams.page_size).toBe(20);
     });
-
     it('should transform measures history schema parameters', () => {
       // Create a schema similar to measures history schema in index.ts
       const measuresHistorySchema = z.object({
@@ -291,13 +252,12 @@ describe('Zod Schema Transformation Tests', () => {
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
       });
-
       // Test with valid parameters
       const parsedParams = measuresHistorySchema.parse({
         component: 'test-component',
@@ -307,7 +267,6 @@ describe('Zod Schema Transformation Tests', () => {
         page: '3',
         page_size: '15',
       });
-
       // Check the transformations
       expect(parsedParams.component).toBe('test-component');
       expect(parsedParams.metrics).toEqual(['complexity', 'coverage']);

@@ -19,7 +19,10 @@ describe('SonarQube Source Code API', () => {
     query?: Record<string, unknown>
   ) => {
     const queryMatcher = query ? query : { key };
-    return nock(baseUrl).get('/api/sources/raw').query(queryMatcher).reply(200, sourceCode);
+    return nock(baseUrl)
+      .get('/api/sources/raw')
+      .query(queryMatcher as any)
+      .reply(200, sourceCode);
   };
 
   beforeEach(() => {
@@ -116,10 +119,10 @@ describe('SonarQube Source Code API', () => {
       expect(result.sources.length).toBe(3);
 
       // Line 2 should have an issue associated with it
-      expect(result.sources[1].line).toBe(2);
-      expect(result.sources[1].code).toBe('  console.log("Hello, world!");');
-      expect(result.sources[1].issues).toBeDefined();
-      expect(result.sources[1].issues?.[0].message).toBe('Use a logger instead of console.log');
+      expect(result.sources?.[1]?.line).toBe(2);
+      expect(result.sources?.[1]?.code).toBe('  console.log("Hello, world!");');
+      expect(result.sources?.[1]?.issues).toBeDefined();
+      expect(result.sources?.[1]?.issues?.[0]?.message).toBe('Use a logger instead of console.log');
     });
 
     it('should handle errors in issues retrieval', async () => {
@@ -165,7 +168,7 @@ describe('SonarQube Source Code API', () => {
       };
 
       // Mock the source code API call - raw endpoint returns plain text
-      mockRawSourceResponse('', 'function main() {', true);
+      mockRawSourceResponse('', 'function main() {', { key: '' } as any);
 
       const result = await client.getSourceCode(params);
 
@@ -237,8 +240,8 @@ describe('SonarQube Source Code API', () => {
 
       expect(result.component).toEqual(mockResponse.component);
       expect(result.sources.length).toBe(1);
-      expect(result.sources[0].line).toBe(2);
-      expect(result.sources[0].issues).toBeUndefined();
+      expect(result.sources?.[0]?.line).toBe(2);
+      expect(result.sources?.[0]?.issues).toBeUndefined();
     });
 
     it('handler should return source code in the expected format', async () => {
@@ -280,9 +283,9 @@ describe('SonarQube Source Code API', () => {
       const response = await handleSonarQubeGetSourceCode(params, client);
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
+      expect(response.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(response.content[0].text);
+      const parsedContent = JSON.parse(response.content[0]?.text as string);
       expect(parsedContent.component).toEqual(mockResponse.component);
     });
   });
@@ -326,9 +329,9 @@ describe('SonarQube Source Code API', () => {
 
       expect(result.component).toEqual(mockResponse.component);
       expect(Object.keys(result.sources).length).toBe(3);
-      expect(result.sources['1'].author).toBe('developer');
-      expect(result.sources['2'].author).toBe('another-dev');
-      expect(result.sources['1'].revision).toBe('abc123');
+      expect(result.sources?.['1']?.author).toBe('developer');
+      expect(result.sources?.['2']?.author).toBe('another-dev');
+      expect(result.sources?.['1']?.revision).toBe('abc123');
     });
 
     it('should return SCM blame for specific line range', async () => {
@@ -365,7 +368,7 @@ describe('SonarQube Source Code API', () => {
       expect(result.component).toEqual(mockResponse.component);
       expect(Object.keys(result.sources).length).toBe(1);
       expect(Object.keys(result.sources)[0]).toBe('2');
-      expect(result.sources['2'].author).toBe('another-dev');
+      expect(result.sources?.['2']?.author).toBe('another-dev');
     });
 
     it('handler should return SCM blame in the expected format', async () => {
@@ -395,11 +398,11 @@ describe('SonarQube Source Code API', () => {
       const response = await handleSonarQubeGetScmBlame(params, client);
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
+      expect(response.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(response.content[0].text);
+      const parsedContent = JSON.parse(response.content[0]?.text as string);
       expect(parsedContent.component).toEqual(mockResponse.component);
-      expect(parsedContent.sources['1'].author).toBe('developer');
+      expect(parsedContent.sources?.['1']?.author).toBe('developer');
     });
   });
 });

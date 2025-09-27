@@ -74,9 +74,9 @@ describe('SonarQube Quality Gates API', () => {
       const response = await handleSonarQubeListQualityGates(client);
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
+      expect(response.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(response.content[0].text);
+      const parsedContent = JSON.parse(response.content[0]?.text as string);
       expect(parsedContent).toEqual(mockResponse);
     });
   });
@@ -131,9 +131,9 @@ describe('SonarQube Quality Gates API', () => {
       const response = await handleSonarQubeGetQualityGate({ id: gateId }, client);
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
+      expect(response.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(response.content[0].text);
+      const parsedContent = JSON.parse(response.content[0]?.text as string);
       expect(parsedContent).toEqual(mockResponse);
     });
   });
@@ -228,9 +228,9 @@ describe('SonarQube Quality Gates API', () => {
       const response = await handleSonarQubeQualityGateStatus(params, client);
       expect(response).toHaveProperty('content');
       expect(response.content).toHaveLength(1);
-      expect(response.content[0].type).toBe('text');
+      expect(response.content[0]?.type).toBe('text');
 
-      const parsedContent = JSON.parse(response.content[0].text);
+      const parsedContent = JSON.parse(response.content[0]?.text as string);
       expect(parsedContent).toEqual(mockResponse);
     });
   });

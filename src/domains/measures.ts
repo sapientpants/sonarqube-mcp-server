@@ -24,13 +24,21 @@ export class MeasuresDomain extends BaseDomain {
   ): Promise<SonarQubeComponentMeasuresResult> {
     const { component, metricKeys, additionalFields, branch, pullRequest } = params;
 
-    const response = await this.webApiClient.measures.component({
+    const request: {
+      component: string;
+      metricKeys: string[];
+      additionalFields?: MeasuresAdditionalField[];
+      branch?: string;
+      pullRequest?: string;
+    } = {
       component,
       metricKeys: ensureStringArray(metricKeys),
-      additionalFields: additionalFields as MeasuresAdditionalField[] | undefined,
-      branch,
-      pullRequest,
-    });
+      ...(additionalFields && { additionalFields: additionalFields as MeasuresAdditionalField[] }),
+      ...(branch && { branch }),
+      ...(pullRequest && { pullRequest }),
+    };
+
+    const response = await this.webApiClient.measures.component(request);
 
     return response as SonarQubeComponentMeasuresResult;
   }
@@ -49,16 +57,17 @@ export class MeasuresDomain extends BaseDomain {
     const metricKeys = ensureStringArray(params.metricKeys);
 
     const results = await Promise.all(
-      componentKeys.map((componentKey) =>
-        this.getComponentMeasures({
+      componentKeys.map((componentKey) => {
+        const requestParams: ComponentMeasuresParams = {
           component: componentKey,
           metricKeys,
-          additionalFields: params.additionalFields,
-          branch: params.branch,
-          pullRequest: params.pullRequest,
-          period: params.period,
-        })
-      )
+          ...(params.additionalFields && { additionalFields: params.additionalFields }),
+          ...(params.branch && { branch: params.branch }),
+          ...(params.pullRequest && { pullRequest: params.pullRequest }),
+          ...(params.period && { period: params.period }),
+        };
+        return this.getComponentMeasures(requestParams);
+      })
     );
 
     // Aggregate results with pagination

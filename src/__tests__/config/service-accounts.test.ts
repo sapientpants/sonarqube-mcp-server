@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from '@jest/globals';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { getServiceAccountConfig } from '../../config/service-accounts.js';
 
 describe('Service Accounts Configuration', () => {
@@ -195,13 +195,11 @@ describe('Service Accounts Configuration', () => {
 
     describe('edge cases', () => {
       it('should handle null account ID', () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const config = getServiceAccountConfig(null as any);
         expect(config).toBeNull();
       });
 
       it('should handle undefined account ID', () => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const config = getServiceAccountConfig(undefined as any);
         expect(config).toBeNull();
       });

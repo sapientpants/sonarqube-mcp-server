@@ -1,46 +1,46 @@
-import { describe, it, expect, jest } from '@jest/globals';
-import { handleSonarQubeProjects } from '../../handlers/projects';
+import { describe, it, expect, vi, type MockedFunction } from 'vitest';
+import { handleSonarQubeProjects } from '../../handlers/projects.js';
 import type { ISonarQubeClient } from '../../types/index.js';
 
 describe('Projects Handler Authorization Error', () => {
   // Mock client
   const mockClient: ISonarQubeClient = {
-    listProjects: jest.fn(),
-    getIssues: jest.fn(),
-    getMetrics: jest.fn(),
-    getHealth: jest.fn(),
-    getStatus: jest.fn(),
-    ping: jest.fn(),
-    getComponentMeasures: jest.fn(),
-    getComponentsMeasures: jest.fn(),
-    getMeasuresHistory: jest.fn(),
-    listQualityGates: jest.fn(),
-    getQualityGate: jest.fn(),
-    getQualityGateStatus: jest.fn(),
-    getSourceCode: jest.fn(),
-    getScmBlame: jest.fn(),
-    searchHotspots: jest.fn(),
-    getHotspot: jest.fn(),
-    updateHotspotStatus: jest.fn(),
-    markIssueAsFalsePositive: jest.fn(),
-    markIssueAsWontFix: jest.fn(),
-    bulkMarkIssuesAsFalsePositive: jest.fn(),
-    bulkMarkIssuesAsWontFix: jest.fn(),
-    addCommentToIssue: jest.fn(),
-    assignIssue: jest.fn(),
-    confirmIssue: jest.fn(),
-    unconfirmIssue: jest.fn(),
-    resolveIssue: jest.fn(),
-    reopenIssue: jest.fn(),
-    searchComponents: jest.fn(),
-  } as ISonarQubeClient;
+    webApiClient: {} as any,
+    listProjects: vi.fn() as any,
+    getIssues: vi.fn() as any,
+    getMetrics: vi.fn() as any,
+    getHealth: vi.fn() as any,
+    getStatus: vi.fn() as any,
+    ping: vi.fn() as any,
+    getComponentMeasures: vi.fn() as any,
+    getComponentsMeasures: vi.fn() as any,
+    getMeasuresHistory: vi.fn() as any,
+    listQualityGates: vi.fn() as any,
+    getQualityGate: vi.fn() as any,
+    getProjectQualityGateStatus: vi.fn() as any,
+    getSourceCode: vi.fn() as any,
+    getScmBlame: vi.fn() as any,
+    hotspots: vi.fn() as any,
+    hotspot: vi.fn() as any,
+    updateHotspotStatus: vi.fn() as any,
+    markIssueFalsePositive: vi.fn() as any,
+    markIssueWontFix: vi.fn() as any,
+    markIssuesFalsePositive: vi.fn() as any,
+    markIssuesWontFix: vi.fn() as any,
+    addCommentToIssue: vi.fn() as any,
+    assignIssue: vi.fn() as any,
+    confirmIssue: vi.fn() as any,
+    unconfirmIssue: vi.fn() as any,
+    resolveIssue: vi.fn() as any,
+    reopenIssue: vi.fn() as any,
+  };
 
   it('should provide helpful error message when authorization fails', async () => {
     // Mock the listProjects method to throw an authorization error
     const authError = new Error('Insufficient privileges');
-    (
-      mockClient.listProjects as jest.MockedFunction<typeof mockClient.listProjects>
-    ).mockRejectedValue(authError);
+    (mockClient.listProjects as MockedFunction<typeof mockClient.listProjects>).mockRejectedValue(
+      authError
+    );
 
     await expect(handleSonarQubeProjects({}, mockClient)).rejects.toThrow(
       /Note: The 'projects' tool requires admin permissions/
@@ -48,11 +48,11 @@ describe('Projects Handler Authorization Error', () => {
   });
 
   it('should provide helpful error message for error containing "403"', async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     const authError = new Error('Error 403 Forbidden');
-    (
-      mockClient.listProjects as jest.MockedFunction<typeof mockClient.listProjects>
-    ).mockRejectedValue(authError);
+    (mockClient.listProjects as MockedFunction<typeof mockClient.listProjects>).mockRejectedValue(
+      authError
+    );
 
     await expect(handleSonarQubeProjects({}, mockClient)).rejects.toThrow(
       /Note: The 'projects' tool requires admin permissions/
@@ -60,11 +60,11 @@ describe('Projects Handler Authorization Error', () => {
   });
 
   it('should provide helpful error message for "Insufficient privileges" error', async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     const authError = new Error('Insufficient privileges');
-    (
-      mockClient.listProjects as jest.MockedFunction<typeof mockClient.listProjects>
-    ).mockRejectedValue(authError);
+    (mockClient.listProjects as MockedFunction<typeof mockClient.listProjects>).mockRejectedValue(
+      authError
+    );
 
     await expect(handleSonarQubeProjects({}, mockClient)).rejects.toThrow(
       /Note: The 'projects' tool requires admin permissions/
@@ -74,9 +74,9 @@ describe('Projects Handler Authorization Error', () => {
   it('should not modify error message for non-authorization errors', async () => {
     // Mock a different type of error
     const serverError = new Error('Internal server error');
-    (
-      mockClient.listProjects as jest.MockedFunction<typeof mockClient.listProjects>
-    ).mockRejectedValue(serverError);
+    (mockClient.listProjects as MockedFunction<typeof mockClient.listProjects>).mockRejectedValue(
+      serverError
+    );
 
     await expect(handleSonarQubeProjects({}, mockClient)).rejects.toThrow('Internal server error');
     await expect(handleSonarQubeProjects({}, mockClient)).rejects.not.toThrow(
@@ -104,14 +104,18 @@ describe('Projects Handler Authorization Error', () => {
       },
     };
 
-    (
-      mockClient.listProjects as jest.MockedFunction<typeof mockClient.listProjects>
-    ).mockResolvedValue(mockResponse);
+    (mockClient.listProjects as MockedFunction<typeof mockClient.listProjects>).mockResolvedValue(
+      mockResponse
+    );
 
     const result = await handleSonarQubeProjects({}, mockClient);
-    const data = JSON.parse(result.content[0].text);
-
-    expect(data.projects).toHaveLength(1);
-    expect(data.projects[0].key).toBe('test-project');
+    const firstContent = result.content[0]!;
+    if ('text' in firstContent && typeof firstContent.text === 'string') {
+      const data = JSON.parse(firstContent.text);
+      expect(data.projects).toHaveLength(1);
+      expect(data.projects[0].key).toBe('test-project');
+    } else {
+      throw new Error('Expected text content');
+    }
   });
 });

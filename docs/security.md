@@ -21,12 +21,14 @@ The most secure method for API access.
 ```
 
 **Benefits:**
+
 - Tokens can be scoped with limited permissions
 - Easy to revoke without changing passwords
 - No password exposure in logs or configs
 - Works with both SonarCloud and SonarQube
 
 **SonarQube Version Differences:**
+
 - **SonarQube 10.0+**: Uses Bearer token authentication
 - **SonarQube < 10.0**: Automatically uses token as username in Basic auth
 
@@ -44,6 +46,7 @@ Traditional username/password authentication.
 ```
 
 **Considerations:**
+
 - Suitable for self-hosted SonarQube instances
 - May not work with SonarCloud if 2FA is enabled
 - Passwords visible in environment variables
@@ -61,6 +64,7 @@ Special authentication for system administration.
 ```
 
 **Use Cases:**
+
 - Automated deployment scenarios
 - System-level operations
 - Emergency access
@@ -70,6 +74,7 @@ Special authentication for system administration.
 ### 1. Token Management
 
 **Creating Secure Tokens:**
+
 1. Log into SonarQube/SonarCloud
 2. Navigate to **My Account** → **Security**
 3. Generate tokens with minimal required permissions:
@@ -78,6 +83,7 @@ Special authentication for system administration.
    - Project-specific tokens when possible
 
 **Token Rotation:**
+
 - Rotate tokens every 90 days
 - Immediately revoke compromised tokens
 - Use different tokens for different environments
@@ -85,11 +91,13 @@ Special authentication for system administration.
 ### 2. Credential Storage
 
 **Local Development (Claude Desktop):**
+
 - Credentials stored in Claude Desktop's config file
 - Ensure proper file permissions (600 on Unix)
 - Consider using OS keychain integration
 
 **Docker Deployment:**
+
 ```bash
 # Use Docker secrets
 docker secret create sonarqube-token token.txt
@@ -101,6 +109,7 @@ docker run --env-file .env ...
 ```
 
 **MCP Gateway Deployment:**
+
 - Use gateway's secret management
 - Leverage vault integration if available
 - Rotate credentials at gateway level
@@ -108,11 +117,13 @@ docker run --env-file .env ...
 ### 3. Environment Variable Security
 
 **DO:**
+
 - Use `.env` files with restricted permissions
 - Load secrets from secure sources at runtime
 - Use placeholder values in version control
 
 **DON'T:**
+
 - Commit credentials to version control
 - Log environment variables
 - Pass secrets via command line arguments
@@ -135,12 +146,14 @@ Always use HTTPS for SonarQube connections:
 ### 2. Certificate Validation
 
 For self-signed certificates:
+
 ```bash
 # Add CA certificate to trusted store
 export NODE_EXTRA_CA_CERTS=/path/to/ca-cert.pem
 ```
 
 Never disable certificate validation in production:
+
 ```bash
 # INSECURE - Development only
 NODE_TLS_REJECT_UNAUTHORIZED=0
@@ -151,18 +164,20 @@ NODE_TLS_REJECT_UNAUTHORIZED=0
 ### 1. Container Security
 
 **Image Security:**
+
 - Use specific version tags, not `latest`
 - Scan images for vulnerabilities
 - Use minimal base images (Alpine)
 
 **Runtime Security:**
+
 ```yaml
 # docker-compose.yml
 services:
   sonarqube-mcp:
     image: sapientpants/sonarqube-mcp-server:1.7.0
-    user: "1001:1001"  # Non-root user
-    read_only: true     # Read-only filesystem
+    user: '1001:1001' # Non-root user
+    read_only: true # Read-only filesystem
     tmpfs:
       - /tmp
     security_opt:
@@ -174,24 +189,26 @@ services:
 ### 2. Resource Limits
 
 Prevent resource exhaustion:
+
 ```yaml
 resources:
   limits:
-    memory: "256M"
-    cpus: "0.5"
+    memory: '256M'
+    cpus: '0.5'
   requests:
-    memory: "128M"
-    cpus: "0.1"
+    memory: '128M'
+    cpus: '0.1'
 ```
 
 ### 3. Network Isolation
 
 For stdio transport, no network exposure needed:
+
 ```yaml
 networks:
   internal:
     driver: bridge
-    internal: true  # No external access
+    internal: true # No external access
 ```
 
 ## Logging and Monitoring
@@ -210,6 +227,7 @@ Configure logging to avoid credential exposure:
 ```
 
 **Log Security:**
+
 - Never log authentication tokens
 - Redact sensitive data in logs
 - Rotate logs regularly
@@ -218,6 +236,7 @@ Configure logging to avoid credential exposure:
 ### 2. Monitoring Access
 
 Track usage patterns:
+
 - Monitor failed authentication attempts
 - Track unusual API usage patterns
 - Alert on circuit breaker activations
@@ -270,6 +289,7 @@ Track usage patterns:
 ### Security Updates
 
 Stay informed about security updates:
+
 - Watch the [GitHub repository](https://github.com/sapientpants/sonarqube-mcp-server)
 - Subscribe to security advisories
 - Test updates in non-production first
@@ -285,6 +305,7 @@ Stay informed about security updates:
 ### Audit Requirements
 
 When deployed with MCP gateways:
+
 - Leverage gateway audit capabilities
 - Track all access at gateway level
 - Maintain audit logs per compliance needs
@@ -292,6 +313,7 @@ When deployed with MCP gateways:
 ## Support
 
 For security concerns:
+
 - Report vulnerabilities via GitHub Security Advisory
 - Contact maintainers for sensitive issues
 - Check documentation for updates

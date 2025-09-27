@@ -1,11 +1,11 @@
-import { describe, test, expect } from '@jest/globals';
+import { describe, test, expect } from 'vitest';
 import {
   ensureArray,
   ensureStringArray,
   nullToUndefined,
   stringToNumberTransform,
   numberOrStringToString,
-} from '../../utils/transforms';
+} from '../../utils/transforms.js';
 
 describe('transforms', () => {
   describe('nullToUndefined', () => {

@@ -1,10 +1,11 @@
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Mocked } from 'vitest';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ElicitationManager, createElicitationManager } from '../elicitation.js';
 
 describe('ElicitationManager', () => {
   let manager: ElicitationManager;
-  let mockServer: jest.Mocked<Server>;
+  let mockServer: Mocked<Server>;
 
   beforeEach(() => {
     // Reset environment variables
@@ -15,8 +16,8 @@ describe('ElicitationManager', () => {
 
     manager = new ElicitationManager();
     mockServer = {
-      elicitInput: jest.fn(),
-    } as unknown as jest.Mocked<Server>;
+      elicitInput: vi.fn(),
+    } as unknown as Mocked<Server>;
   });
 
   describe('initialization', () => {

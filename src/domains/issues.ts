@@ -49,7 +49,14 @@ export class IssuesDomain extends BaseDomain {
     // Transform to our interface
     return {
       issues: response.issues as SonarQubeIssue[],
-      components: response.components ?? [],
+      components: (response.components ?? []).map((comp) => ({
+        key: comp.key,
+        name: comp.name,
+        qualifier: comp.qualifier,
+        enabled: comp.enabled,
+        longName: comp.longName,
+        path: comp.path,
+      })),
       rules: (response.rules ?? []) as SonarQubeRule[],
       users: response.users,
       facets: response.facets,
@@ -321,12 +328,13 @@ export class IssuesDomain extends BaseDomain {
    */
   async markIssuesFalsePositive(params: BulkIssueMarkParams): Promise<DoTransitionResponse[]> {
     return Promise.all(
-      params.issueKeys.map((issueKey) =>
-        this.markIssueFalsePositive({
+      params.issueKeys.map((issueKey) => {
+        const requestParams: MarkIssueFalsePositiveParams = {
           issueKey,
-          comment: params.comment,
-        })
-      )
+          ...(params.comment && { comment: params.comment }),
+        };
+        return this.markIssueFalsePositive(requestParams);
+      })
     );
   }
 
@@ -339,10 +347,11 @@ export class IssuesDomain extends BaseDomain {
     const results: DoTransitionResponse[] = [];
 
     for (const issueKey of params.issueKeys) {
-      const result = await this.markIssueWontFix({
+      const requestParams: MarkIssueWontFixParams = {
         issueKey,
-        comment: params.comment,
-      });
+        ...(params.comment && { comment: params.comment }),
+      };
+      const result = await this.markIssueWontFix(requestParams);
       results.push(result);
     }
 
@@ -368,7 +377,7 @@ export class IssuesDomain extends BaseDomain {
     comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     // The newly added comment should now be the last one
-    const newComment = comments[comments.length - 1];
+    const newComment = comments.at(-1);
     if (!newComment) {
       throw new Error('Failed to retrieve the newly added comment');
     }
@@ -383,10 +392,14 @@ export class IssuesDomain extends BaseDomain {
    */
   async assignIssue(params: AssignIssueParams): Promise<SonarQubeIssue> {
     // Call the assign API
-    await this.webApiClient.issues.assign({
+    const assignRequest: {
+      issue: string;
+      assignee?: string;
+    } = {
       issue: params.issueKey,
-      assignee: params.assignee,
-    });
+      ...(params.assignee && { assignee: params.assignee }),
+    };
+    await this.webApiClient.issues.assign(assignRequest);
 
     // Fetch and return the updated issue using the same search as getIssues
     const searchBuilder = this.webApiClient.issues.search();

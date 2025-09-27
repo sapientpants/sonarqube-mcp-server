@@ -62,10 +62,10 @@ export class MetricsService {
   /**
    * Get metrics in Prometheus format (for testing compatibility)
    */
-  async getMetrics(): Promise<string> {
+  getMetrics(): string {
     const lines: string[] = [];
 
-    for (const [key, value] of this.metrics.entries()) {
+    for (const [key, value] of Array.from(this.metrics.entries())) {
       // Convert internal format to Prometheus format for tests
       if (key.startsWith('circuit-breaker.failure.')) {
         const service = key.replace('circuit-breaker.failure.', '');

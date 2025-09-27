@@ -11,6 +11,7 @@ Accepted
 Following the transport architecture refactoring in ADR-0015, we need to implement HTTP transport to support enterprise deployment scenarios. The HTTP transport must provide authentication discovery mechanisms for MCP clients as outlined in the MCP specification.
 
 ### Requirements:
+
 1. Implement HTTP transport as an alternative to STDIO
 2. Support OAuth 2.0 metadata discovery endpoints (RFC9728 and RFC8414)
 3. Enable enterprise authentication workflows
@@ -18,8 +19,9 @@ Following the transport architecture refactoring in ADR-0015, we need to impleme
 5. Prepare for future OAuth 2.0 flow implementation
 
 ### Standards Compliance:
+
 - RFC9728: OAuth 2.0 Protected Resource Metadata
-- RFC8414: OAuth 2.0 Authorization Server Metadata  
+- RFC8414: OAuth 2.0 Authorization Server Metadata
 - RFC6750: Bearer Token Usage
 
 ## Decision
@@ -27,7 +29,7 @@ Following the transport architecture refactoring in ADR-0015, we need to impleme
 We will implement HTTP transport with OAuth 2.0 metadata endpoints:
 
 1. **HTTP Transport Implementation**: Express-based HTTP server following the ITransport interface
-2. **Metadata Endpoints**: 
+2. **Metadata Endpoints**:
    - `/.well-known/oauth-protected-resource` (RFC9728)
    - `/.well-known/oauth-authorization-server` (RFC8414, optional)
 3. **Authentication Structure**: WWW-Authenticate headers with resource metadata URLs
@@ -54,6 +56,7 @@ class HttpTransport implements ITransport {
 ```
 
 ### Environment Variables:
+
 - `MCP_TRANSPORT=http`: Enable HTTP transport
 - `MCP_HTTP_PORT`: HTTP server port
 - `MCP_HTTP_HOST`: HTTP server host
@@ -64,6 +67,7 @@ class HttpTransport implements ITransport {
 ## Consequences
 
 ### Positive:
+
 1. **Enterprise Ready**: Supports enterprise authentication discovery workflows
 2. **Standards Compliant**: Follows OAuth 2.0 RFCs for metadata discovery
 3. **Extensible**: Structure ready for full OAuth 2.0 flow implementation
@@ -71,10 +75,12 @@ class HttpTransport implements ITransport {
 5. **Discovery Mechanism**: Clients can automatically discover authentication requirements
 
 ### Negative:
+
 1. **Token Validation Pending**: Actual token validation not yet implemented
 2. **Additional Dependencies**: Requires Express and CORS packages
 
 ### Neutral:
+
 1. **Incremental Implementation**: Sets foundation for future OAuth stories
 2. **Documentation Required**: New transport needs comprehensive documentation
 

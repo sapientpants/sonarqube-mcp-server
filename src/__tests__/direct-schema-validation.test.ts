@@ -1,37 +1,26 @@
-/**
- * @jest-environment node
- */
-
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-
 describe('Schema Validation by Direct Testing', () => {
   // Test specific schema transformation functions
   describe('Transformation Functions', () => {
     it('should transform string numbers to integers or null', () => {
       // Create a transformation function similar to the ones in index.ts
       const transformFn = (val?: string) => (val ? parseInt(val, 10) || null : null);
-
       // Valid number
       expect(transformFn('10')).toBe(10);
-
       // Empty string should return null
       expect(transformFn('')).toBe(null);
-
       // Invalid number should return null
       expect(transformFn('abc')).toBe(null);
-
       // Undefined should return null
       expect(transformFn(undefined)).toBe(null);
     });
-
     it('should transform string booleans to boolean values', () => {
       // Create a schema with boolean transformation
       const booleanSchema = z
-        .union([z.boolean(), z.string().transform((val) => val === 'true')])
+        .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
         .nullable()
         .optional();
-
       // Test the transformation
       expect(booleanSchema.parse('true')).toBe(true);
       expect(booleanSchema.parse('false')).toBe(false);
@@ -40,25 +29,21 @@ describe('Schema Validation by Direct Testing', () => {
       expect(booleanSchema.parse(null)).toBe(null);
       expect(booleanSchema.parse(undefined)).toBe(undefined);
     });
-
     it('should validate enum values', () => {
       // Create a schema with enum validation
       const severitySchema = z
         .enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER'])
         .nullable()
         .optional();
-
       // Test the validation
       expect(severitySchema.parse('MAJOR')).toBe('MAJOR');
       expect(severitySchema.parse('CRITICAL')).toBe('CRITICAL');
       expect(severitySchema.parse(null)).toBe(null);
       expect(severitySchema.parse(undefined)).toBe(undefined);
-
       // Invalid value should throw
       expect(() => severitySchema.parse('INVALID')).toThrow();
     });
   });
-
   // Test complex schema objects
   describe('Complex Schema Objects', () => {
     it('should validate issues schema parameters', () => {
@@ -74,28 +59,25 @@ describe('Schema Validation by Direct Testing', () => {
         'REVIEWED',
       ]);
       const statusSchema = z.array(statusEnumSchema).nullable().optional();
-
       const resolutionEnumSchema = z.enum(['FALSE-POSITIVE', 'WONTFIX', 'FIXED', 'REMOVED']);
       const resolutionSchema = z.array(resolutionEnumSchema).nullable().optional();
-
       const typeEnumSchema = z.enum(['CODE_SMELL', 'BUG', 'VULNERABILITY', 'SECURITY_HOTSPOT']);
       const typeSchema = z.array(typeEnumSchema).nullable().optional();
-
       const issuesSchema = z.object({
         project_key: z.string(),
         severity: z.enum(['INFO', 'MINOR', 'MAJOR', 'CRITICAL', 'BLOCKER']).nullable().optional(),
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         statuses: statusSchema,
         resolutions: resolutionSchema,
         resolved: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
         types: typeSchema,
@@ -113,20 +95,19 @@ describe('Schema Validation by Direct Testing', () => {
         sans_top25: z.array(z.string()).nullable().optional(),
         sonarsource_security: z.array(z.string()).nullable().optional(),
         on_component_only: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
         facets: z.array(z.string()).nullable().optional(),
         since_leak_period: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
         in_new_code_period: z
-          .union([z.boolean(), z.string().transform((val) => val === 'true')])
+          .union([z.boolean(), z.string().transform((val: any) => val === 'true')])
           .nullable()
           .optional(),
       });
-
       // Test with various parameter types
       const result = issuesSchema.parse({
         project_key: 'test-project',
@@ -143,7 +124,6 @@ describe('Schema Validation by Direct Testing', () => {
         since_leak_period: 'true',
         in_new_code_period: 'true',
       });
-
       // Check the transformations
       expect(result.project_key).toBe('test-project');
       expect(result.severity).toBe('MAJOR');
@@ -156,7 +136,6 @@ describe('Schema Validation by Direct Testing', () => {
       expect(result.since_leak_period).toBe(true);
       expect(result.in_new_code_period).toBe(true);
     });
-
     it('should validate component measures schema parameters', () => {
       // Create a schema similar to component measures schema in index.ts
       const measuresComponentSchema = z.object({
@@ -169,13 +148,12 @@ describe('Schema Validation by Direct Testing', () => {
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
       });
-
       // Test with valid parameters
       const result = measuresComponentSchema.parse({
         component: 'test-component',
@@ -185,14 +163,12 @@ describe('Schema Validation by Direct Testing', () => {
         page: '2',
         page_size: '20',
       });
-
       // Check the transformations
       expect(result.component).toBe('test-component');
       expect(result.metric_keys).toEqual(['complexity', 'coverage']);
       expect(result.branch).toBe('main');
       expect(result.page).toBe(2);
       expect(result.page_size).toBe(20);
-
       // Test with invalid page values
       const result2 = measuresComponentSchema.parse({
         component: 'test-component',
@@ -200,11 +176,9 @@ describe('Schema Validation by Direct Testing', () => {
         page: 'invalid',
         page_size: 'invalid',
       });
-
       expect(result2.page).toBe(null);
       expect(result2.page_size).toBe(null);
     });
-
     it('should validate components measures schema parameters', () => {
       // Create a schema similar to components measures schema in index.ts
       const measuresComponentsSchema = z.object({
@@ -217,13 +191,12 @@ describe('Schema Validation by Direct Testing', () => {
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
       });
-
       // Test with valid parameters
       const result = measuresComponentsSchema.parse({
         component_keys: ['comp-1', 'comp-2'],
@@ -232,14 +205,12 @@ describe('Schema Validation by Direct Testing', () => {
         page: '2',
         page_size: '20',
       });
-
       // Check the transformations
       expect(result.component_keys).toEqual(['comp-1', 'comp-2']);
       expect(result.metric_keys).toEqual(['complexity', 'coverage']);
       expect(result.page).toBe(2);
       expect(result.page_size).toBe(20);
     });
-
     it('should validate measures history schema parameters', () => {
       // Create a schema similar to measures history schema in index.ts
       const measuresHistorySchema = z.object({
@@ -252,13 +223,12 @@ describe('Schema Validation by Direct Testing', () => {
         page: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
         page_size: z
           .string()
           .optional()
-          .transform((val) => (val ? parseInt(val, 10) || null : null)),
+          .transform((val: any) => (val ? parseInt(val, 10) || null : null)),
       });
-
       // Test with valid parameters
       const result = measuresHistorySchema.parse({
         component: 'test-component',
@@ -268,7 +238,6 @@ describe('Schema Validation by Direct Testing', () => {
         page: '3',
         page_size: '15',
       });
-
       // Check the transformations
       expect(result.component).toBe('test-component');
       expect(result.metrics).toEqual(['complexity', 'coverage']);

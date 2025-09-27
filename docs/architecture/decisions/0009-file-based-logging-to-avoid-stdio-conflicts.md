@@ -19,6 +19,7 @@ Similarly, stderr output could interfere with the client's ability to properly p
 We will implement file-based logging for all diagnostic and debugging output in the MCP server.
 
 The server will:
+
 - Write all log messages to a file specified by the `LOG_FILE` environment variable
 - Default to no logging if `LOG_FILE` is not set
 - Never write log messages to stdout or stderr
