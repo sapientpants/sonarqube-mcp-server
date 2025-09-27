@@ -24,9 +24,10 @@ export class TransportFactory {
       case 'stdio':
         return new StdioTransport();
 
-      case 'http':
+      case 'http': {
         const httpConfig = config as IHttpTransportConfig;
         return new HttpTransport(httpConfig.options);
+      }
 
       default:
         throw new Error(`Unsupported transport type: ${config.type as string}`);
@@ -49,7 +50,7 @@ export class TransportFactory {
       const options: IHttpTransportConfig['options'] = {};
 
       if (process.env.MCP_HTTP_PORT) {
-        options.port = parseInt(process.env.MCP_HTTP_PORT, 10);
+        options.port = Number.parseInt(process.env.MCP_HTTP_PORT, 10);
       }
       if (process.env.MCP_HTTP_ALLOWED_HOSTS) {
         options.allowedHosts = process.env.MCP_HTTP_ALLOWED_HOSTS.split(',').map((h) => h.trim());
@@ -60,7 +61,7 @@ export class TransportFactory {
         );
       }
       if (process.env.MCP_HTTP_SESSION_TIMEOUT) {
-        options.sessionTimeout = parseInt(process.env.MCP_HTTP_SESSION_TIMEOUT, 10);
+        options.sessionTimeout = Number.parseInt(process.env.MCP_HTTP_SESSION_TIMEOUT, 10);
       }
       if (process.env.MCP_HTTP_ENABLE_DNS_REBINDING_PROTECTION === 'true') {
         options.enableDnsRebindingProtection = true;

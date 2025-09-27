@@ -4,7 +4,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { ITransport, IHttpTransportConfig } from './base.js';
 import { SessionManager, ISession } from './session-manager.js';
 import { createLogger } from '../utils/logger.js';
-import { Server as HttpServer } from 'http';
+import { Server as HttpServer } from 'node:http';
 
 const logger = createLogger('http-transport');
 
@@ -46,9 +46,9 @@ interface McpHttpResponse {
  * Provides a REST API interface for MCP communication with session management.
  */
 export class HttpTransport implements ITransport {
-  private app: Express;
+  private readonly app: Express;
   private httpServer?: HttpServer;
-  private sessionManager: SessionManager;
+  private readonly sessionManager: SessionManager;
   private mcpServer?: Server;
   private readonly config: {
     port: number;

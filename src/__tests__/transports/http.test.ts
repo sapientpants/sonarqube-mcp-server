@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { HttpTransport } from '../../transports/http.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import type { Server as HttpServer } from 'http';
+import type { Server as HttpServer } from 'node:http';
 
 // Mock Express app
 vi.mock('express', () => {

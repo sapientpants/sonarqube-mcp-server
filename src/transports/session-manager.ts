@@ -42,7 +42,7 @@ export interface ISessionManagerConfig {
  * Manages HTTP transport sessions with lifecycle management.
  */
 export class SessionManager {
-  private sessions: Map<string, ISession> = new Map();
+  private readonly sessions: Map<string, ISession> = new Map();
   private cleanupTimer?: NodeJS.Timeout;
   private readonly config: Required<ISessionManagerConfig>;
 
@@ -244,7 +244,7 @@ export class SessionManager {
     if (sessions.length > 0) {
       sessions.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
       const oldestSession = sessions[0];
-      const newestSession = sessions[sessions.length - 1];
+      const newestSession = sessions.at(-1);
       if (oldestSession) {
         stats.oldestSession = oldestSession.createdAt;
       }
