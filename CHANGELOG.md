@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.8.0
+
+### Minor Changes
+
+- [#284](https://github.com/sapientpants/sonarqube-mcp-server/pull/284) [`1796c4d`](https://github.com/sapientpants/sonarqube-mcp-server/commit/1796c4d2984fe2f00a3c458532efc0a24a38a7e2) - feat: integrate agentic-node-ts-starter toolchain and update dependencies
+
+  ## Toolchain Integration
+  - Integrated full agentic-node-ts-starter toolchain with strict TypeScript configuration
+  - Migrated test framework from Jest to Vitest for improved performance
+  - Added changesets for release management
+  - Enhanced GitHub Actions workflows with reusable components
+  - Added strict TypeScript settings (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`)
+  - Configured comprehensive linting for markdown, YAML, and workflows
+
+  ## Dependency Updates
+  - Updated pnpm from 10.7.1 to 10.17.0 across all configuration files
+  - Updated Node.js requirement from 20 to 22 in documentation and Docker
+  - Ensures compatibility with latest toolchain versions
+
+  ## Code Quality Improvements
+  - Fixed all TypeScript compilation errors (416 → 0)
+  - Resolved all ESLint errors (244 → 0) with proper error handling patterns
+  - Fixed all markdown linting issues (31 → 0)
+  - Fixed all test failures (42 → 0, now 909 tests passing)
+  - Created MCPError class for MCP SDK-compatible error handling
+  - Updated error throwing to comply with ESLint's only-throw-error rule
+
+  ## Breaking Changes
+
+  None - This maintains backward compatibility while improving internal tooling.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
