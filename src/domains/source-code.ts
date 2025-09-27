@@ -138,16 +138,6 @@ export class SourceCodeDomain extends BaseDomain {
   }): SonarQubeSourceResult {
     const mappedSources: SonarQubeSourceLine[] = sources.sources.map((line) => ({
       ...line,
-      issues: undefined,
-    }));
-
-    return {
-      component: {
-        key: sources.component.key,
-        path: sources.component.path,
-        qualifier: sources.component.qualifier,
-        name: sources.component.name,
-        longName: sources.component.longName,
         language: sources.component.language,
       },
       sources: mappedSources,
