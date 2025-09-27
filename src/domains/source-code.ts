@@ -86,7 +86,17 @@ export class SourceCodeDomain extends BaseDomain {
         const sourceLines: SonarQubeSourceLine[] = sources.sources.map((line) => {
           const lineIssues = issues.issues.filter((issue) => issue.line === line.line);
           return {
-            ...line,
+            line: line.line,
+            code: line.code,
+            scmAuthor: undefined,
+            scmDate: undefined,
+            scmRevision: undefined,
+            duplicated: undefined,
+            isNew: undefined,
+            lineHits: undefined,
+            conditions: undefined,
+            coveredConditions: undefined,
+            highlightedText: undefined,
             issues: lineIssues.length > 0 ? lineIssues : undefined,
           };
         });
@@ -137,7 +147,27 @@ export class SourceCodeDomain extends BaseDomain {
     };
   }): SonarQubeSourceResult {
     const mappedSources: SonarQubeSourceLine[] = sources.sources.map((line) => ({
-      ...line,
+      line: line.line,
+      code: line.code,
+      scmAuthor: line.scmAuthor,
+      scmDate: line.scmDate,
+      scmRevision: line.scmRevision,
+      duplicated: line.duplicated,
+      isNew: line.isNew,
+      lineHits: line.lineHits,
+      conditions: line.conditions,
+      coveredConditions: line.coveredConditions,
+      highlightedText: line.highlightedText,
+      issues: undefined,
+    }));
+
+    return {
+      component: {
+        key: sources.component.key,
+        path: sources.component.path,
+        qualifier: sources.component.qualifier,
+        name: sources.component.name,
+        longName: sources.component.longName,
         language: sources.component.language,
       },
       sources: mappedSources,
