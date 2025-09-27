@@ -10,16 +10,7 @@ import {
   HotspotStatusUpdateParams,
 } from './sonarqube.js';
 import type { ComponentQualifier } from './types/components.js';
-import type {
-  MarkIssueFalsePositiveParams,
-  MarkIssueWontFixParams,
-  BulkIssueMarkParams,
-  AssignIssueParams,
-  ConfirmIssueParams,
-  UnconfirmIssueParams,
-  ResolveIssueParams,
-  ReopenIssueParams,
-} from './types/issues.js';
+import type { AssignIssueParams } from './types/issues.js';
 import { createLogger } from './utils/logger.js';
 import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
@@ -179,56 +170,72 @@ export const issuesHandler = async (params: Record<string, unknown>) => {
 };
 
 /**
+ * Generic factory for issue handlers with optional comment
+ */
+type IssueWithCommentParams = {
+  issueKey: string;
+  comment?: string;
+};
+
+function createIssueWithCommentHandler<T extends IssueWithCommentParams, R>(
+  handler: (params: T) => Promise<R>
+) {
+  return async (params: Record<string, unknown>): Promise<R> => {
+    const handleParams: T = {
+      issueKey: params.issue_key as string,
+    } as T;
+    if (params.comment !== undefined) {
+      handleParams.comment = params.comment as string;
+    }
+    return handler(handleParams);
+  };
+}
+
+/**
  * Lambda function for mark issue false positive tool
  */
-export const markIssueFalsePositiveHandler = async (params: Record<string, unknown>) => {
-  const handleParams: MarkIssueFalsePositiveParams = {
-    issueKey: params.issue_key as string,
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleMarkIssueFalsePositive(handleParams);
-};
+export const markIssueFalsePositiveHandler = createIssueWithCommentHandler(
+  handleMarkIssueFalsePositive
+);
 
 /**
  * Lambda function for mark issue won't fix tool
  */
-export const markIssueWontFixHandler = async (params: Record<string, unknown>) => {
-  const handleParams: MarkIssueWontFixParams = {
-    issueKey: params.issue_key as string,
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleMarkIssueWontFix(handleParams);
+export const markIssueWontFixHandler = createIssueWithCommentHandler(handleMarkIssueWontFix);
+
+/**
+ * Generic factory for bulk issue handlers with optional comment
+ */
+type BulkIssueWithCommentParams = {
+  issueKeys: string[];
+  comment?: string;
 };
+
+function createBulkIssueWithCommentHandler<T extends BulkIssueWithCommentParams, R>(
+  handler: (params: T) => Promise<R>
+) {
+  return async (params: Record<string, unknown>): Promise<R> => {
+    const handleParams: T = {
+      issueKeys: params.issue_keys as string[],
+    } as T;
+    if (params.comment !== undefined) {
+      handleParams.comment = params.comment as string;
+    }
+    return handler(handleParams);
+  };
+}
 
 /**
  * Lambda function for mark issues false positive (bulk) tool
  */
-export const markIssuesFalsePositiveHandler = async (params: Record<string, unknown>) => {
-  const handleParams: BulkIssueMarkParams = {
-    issueKeys: params.issue_keys as string[],
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleMarkIssuesFalsePositive(handleParams);
-};
+export const markIssuesFalsePositiveHandler = createBulkIssueWithCommentHandler(
+  handleMarkIssuesFalsePositive
+);
 
 /**
  * Lambda function for mark issues won't fix (bulk) tool
  */
-export const markIssuesWontFixHandler = async (params: Record<string, unknown>) => {
-  const handleParams: BulkIssueMarkParams = {
-    issueKeys: params.issue_keys as string[],
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleMarkIssuesWontFix(handleParams);
-};
+export const markIssuesWontFixHandler = createBulkIssueWithCommentHandler(handleMarkIssuesWontFix);
 
 /**
  * Lambda function for add comment to issue tool
@@ -256,54 +263,22 @@ export const assignIssueHandler = async (params: Record<string, unknown>) => {
 /**
  * Lambda function for confirm issue tool
  */
-export const confirmIssueHandler = async (params: Record<string, unknown>) => {
-  const handleParams: ConfirmIssueParams = {
-    issueKey: params.issue_key as string,
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleConfirmIssue(handleParams);
-};
+export const confirmIssueHandler = createIssueWithCommentHandler(handleConfirmIssue);
 
 /**
  * Lambda function for unconfirm issue tool
  */
-export const unconfirmIssueHandler = async (params: Record<string, unknown>) => {
-  const handleParams: UnconfirmIssueParams = {
-    issueKey: params.issue_key as string,
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleUnconfirmIssue(handleParams);
-};
+export const unconfirmIssueHandler = createIssueWithCommentHandler(handleUnconfirmIssue);
 
 /**
  * Lambda function for resolve issue tool
  */
-export const resolveIssueHandler = async (params: Record<string, unknown>) => {
-  const handleParams: ResolveIssueParams = {
-    issueKey: params.issue_key as string,
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleResolveIssue(handleParams);
-};
+export const resolveIssueHandler = createIssueWithCommentHandler(handleResolveIssue);
 
 /**
  * Lambda function for reopen issue tool
  */
-export const reopenIssueHandler = async (params: Record<string, unknown>) => {
-  const handleParams: ReopenIssueParams = {
-    issueKey: params.issue_key as string,
-  };
-  if (params.comment !== undefined) {
-    handleParams.comment = params.comment as string;
-  }
-  return handleReopenIssue(handleParams);
-};
+export const reopenIssueHandler = createIssueWithCommentHandler(handleReopenIssue);
 
 /**
  * Lambda function for system_health tool
