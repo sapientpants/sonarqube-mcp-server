@@ -8,6 +8,14 @@ vi.mock('../sonarqube.js', () => ({
     listProjects: vi.fn(),
     getIssues: vi.fn(),
   })),
+  setSonarQubeElicitationManager: vi.fn(),
+  createSonarQubeClientFromEnvWithElicitation: vi.fn(() =>
+    Promise.resolve({
+      // Mock client implementation
+      listProjects: vi.fn(),
+      getIssues: vi.fn(),
+    })
+  ),
 }));
 
 describe('Environment Validation', () => {

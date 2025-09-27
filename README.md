@@ -145,7 +145,7 @@ Using System Passcode:
 }
 ```
 
-4. Restart Claude Desktop
+1. Restart Claude Desktop
 
 ### 3. Start Using
 
@@ -393,7 +393,7 @@ The server supports three authentication methods, with important differences bet
 
 #### 1. Token Authentication (Recommended)
 
-**SonarQube 10.0+ (Bearer Token)**
+##### SonarQube 10.0+ (Bearer Token)
 
 - Starting with SonarQube 10.0, Bearer token authentication is the recommended approach
 - Most secure and flexible option
@@ -407,7 +407,7 @@ The server supports three authentication methods, with important differences bet
   }
   ```
 
-**SonarQube < 10.0 (Token as Username)**
+##### SonarQube < 10.0 (Token as Username)
 
 - For versions before 10.0, tokens must be sent as the username in Basic authentication
 - No password is required when using a token as username
@@ -737,7 +737,7 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
-2. **Security Audit** - Find critical security issues in authentication modules:
+1. **Security Audit** - Find critical security issues in authentication modules:
 
 ```json
 {
@@ -749,7 +749,7 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
-3. **Sprint Planning** - Get open issues for specific team members:
+1. **Sprint Planning** - Get open issues for specific team members:
 
 ```json
 {
@@ -761,7 +761,7 @@ Search and filter SonarQube issues by severity, status, assignee, tag, file path
 }
 ```
 
-4. **File-Specific Analysis** - Issues in a specific file:
+1. **File-Specific Analysis** - Issues in a specific file:
 
 ```json
 {
@@ -819,7 +819,7 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-2. **List all test files in a project:**
+1. **List all test files in a project:**
 
 ```json
 {
@@ -828,7 +828,7 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-3. **Navigate directory structure:**
+1. **Navigate directory structure:**
 
 ```json
 {
@@ -838,7 +838,7 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-4. **Search for components by language:**
+1. **Search for components by language:**
 
 ```json
 {
@@ -848,7 +848,7 @@ Search and navigate SonarQube components (projects, directories, files). Support
 }
 ```
 
-5. **Get project list:**
+1. **Get project list:**
 
 ```json
 {
@@ -909,7 +909,7 @@ Update the status of a security hotspot (requires appropriate permissions).
 
 List available quality gates.
 
-**No parameters required**
+No parameters required.
 
 #### `quality_gate`
 
@@ -957,19 +957,19 @@ Get SCM blame information for source code.
 
 Get the health status of the SonarQube instance.
 
-**No parameters required**
+No parameters required.
 
 #### `system_status`
 
 Get the status of the SonarQube instance.
 
-**No parameters required**
+No parameters required.
 
 #### `system_ping`
 
 Ping the SonarQube instance to check if it is up.
 
-**No parameters required**
+No parameters required.
 
 ### Issue Resolution and Management
 
@@ -1176,13 +1176,13 @@ git clone https://github.com/sapientpants/sonarqube-mcp-server.git
 cd sonarqube-mcp-server
 ```
 
-2. Install dependencies:
+1. Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-3. Build the project:
+1. Build the project:
 
 ```bash
 pnpm build
@@ -1250,9 +1250,9 @@ The project maintains high code quality through:
 - Jest for testing
 - SonarCloud for continuous code analysis
 
-## Troubleshooting
+## Common Issues and Solutions
 
-### Common Issues
+### Quick Fixes
 
 #### "Authentication failed"
 
@@ -1299,11 +1299,11 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Authentication Errors
 
-**Error: "Authentication failed"**
+##### Error: "Authentication failed"
 
 - **Solution**: Check that your SONARQUBE_TOKEN is valid and not expired. Generate a new token from your SonarQube user profile.
 
-**Error: "No SonarQube authentication configured"**
+##### Error: "No SonarQube authentication configured"
 
 - **Solution**: Set one of the following authentication methods:
   - `SONARQUBE_TOKEN` for token-based authentication (recommended)
@@ -1312,7 +1312,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Authorization Errors
 
-**Error: "Access denied"**
+##### Error: "Access denied"
 
 - **Solution**: Ensure your token has the required permissions for the operation. Common required permissions:
   - "Execute Analysis" for code analysis
@@ -1321,7 +1321,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Resource Not Found Errors
 
-**Error: "Resource not found"**
+##### Error: "Resource not found"
 
 - **Solution**: Verify that:
   - The project key/component exists in SonarQube
@@ -1330,14 +1330,14 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Network and Connection Errors
 
-**Error: "Connection refused"**
+##### Error: "Connection refused"
 
 - **Solution**: Check that:
   - The SonarQube server is running
   - The SONARQUBE_URL is correct
   - There are no firewall rules blocking the connection
 
-**Error: "Network error" or timeout errors**
+##### Error: "Network error" or timeout errors
 
 - **Solution**:
   - Verify your network connection
@@ -1347,7 +1347,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Rate Limiting
 
-**Error: "Rate limit exceeded"**
+##### Error: "Rate limit exceeded"
 
 - **Solution**: The server automatically retries rate-limited requests with exponential backoff. If you continue to hit rate limits:
   - Reduce the frequency of your requests
@@ -1356,7 +1356,7 @@ A: Yes! Many tools support `branch` and `pull_request` parameters for branch and
 
 #### Configuration Errors
 
-**Error: "Invalid SONARQUBE_URL"**
+##### Error: "Invalid SONARQUBE_URL"
 
 - **Solution**: Provide a valid URL including the protocol:
   - ✅ Correct: `https://sonarcloud.io`
@@ -1457,6 +1457,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-<p align="center">
-  Made with ❤️ by the SonarQube MCP Server community
-</p>
+Made with ❤️ by the SonarQube MCP Server community

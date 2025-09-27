@@ -3,6 +3,48 @@ import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vite
 process.env.SONARQUBE_TOKEN = 'test-token';
 process.env.SONARQUBE_URL = 'http://localhost:9000';
 process.env.SONARQUBE_ORGANIZATION = 'test-org';
+
+// Mock the sonarqube client
+vi.mock('../sonarqube.js', () => ({
+  createSonarQubeClientFromEnv: vi.fn(() => ({
+    listProjects: vi.fn().mockResolvedValue({
+      projects: [{ key: 'test-project', name: 'Test Project' }],
+      paging: { pageIndex: 1, pageSize: 10, total: 1 },
+    }),
+    getIssues: vi.fn().mockResolvedValue({
+      issues: [{ key: 'test-issue', rule: 'test-rule', severity: 'MAJOR' }],
+      paging: { pageIndex: 1, pageSize: 10, total: 1 },
+    }),
+    getMetrics: vi.fn().mockResolvedValue({
+      metrics: [{ key: 'coverage', name: 'Coverage' }],
+      paging: { pageIndex: 1, pageSize: 10, total: 1 },
+    }),
+    getHealth: vi.fn().mockResolvedValue({ health: 'GREEN', causes: [] }),
+    getStatus: vi.fn().mockResolvedValue({ id: 'test-id', version: '10.3.0.82913', status: 'UP' }),
+    ping: vi.fn().mockResolvedValue('pong'),
+    getComponentMeasures: vi.fn().mockResolvedValue({
+      component: { key: 'test-component', measures: [{ metric: 'coverage', value: '85.4' }] },
+      metrics: [{ key: 'coverage', name: 'Coverage' }],
+    }),
+    getComponentsMeasures: vi.fn().mockResolvedValue({
+      components: [{ key: 'test-component-1', measures: [{ metric: 'coverage', value: '85.4' }] }],
+      metrics: [{ key: 'coverage', name: 'Coverage' }],
+      paging: { pageIndex: 1, pageSize: 10, total: 1 },
+    }),
+    getMeasuresHistory: vi.fn().mockResolvedValue({
+      measures: [{ metric: 'coverage', history: [{ date: '2023-01-01', value: '85.4' }] }],
+      paging: { pageIndex: 1, pageSize: 10, total: 1 },
+    }),
+  })),
+  setSonarQubeElicitationManager: vi.fn(),
+  createSonarQubeClientFromEnvWithElicitation: vi.fn(() =>
+    Promise.resolve({
+      listProjects: vi.fn(),
+      getIssues: vi.fn(),
+    })
+  ),
+}));
+
 // Save environment variables
 const originalEnv = process.env;
 let handleSonarQubeProjects: any;

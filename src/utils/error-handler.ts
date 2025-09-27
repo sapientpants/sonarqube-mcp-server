@@ -4,6 +4,19 @@ import { createLogger } from './logger.js';
 const logger = createLogger('utils/error-handler');
 
 /**
+ * Custom error class for MCP errors that includes a code property
+ */
+class MCPError extends Error {
+  code: number;
+
+  constructor(message: string, code: number) {
+    super(message);
+    this.name = 'MCPError';
+    this.code = code;
+  }
+}
+
+/**
  * Wraps an async MCP handler function with error handling that converts
  * SonarQubeAPIError instances to MCP-formatted errors
  *
@@ -21,9 +34,7 @@ export function withMCPErrorHandling<T extends (...args: any[]) => Promise<any>>
       if (error instanceof SonarQubeAPIError) {
         logger.error('SonarQube API error occurred', error);
         const mcpError = formatErrorForMCP(error);
-        const errorObj = new Error(mcpError.message);
-        (errorObj as Error & { code: number }).code = mcpError.code;
-        throw errorObj;
+        throw new MCPError(mcpError.message, mcpError.code);
       }
       // Re-throw non-SonarQubeAPIError errors as-is
       throw error;

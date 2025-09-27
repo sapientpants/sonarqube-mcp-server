@@ -4,27 +4,31 @@ import type { MockedFunction } from 'vitest';
 process.env.SONARQUBE_TOKEN = 'test-token';
 process.env.SONARQUBE_URL = 'http://localhost:9000';
 process.env.SONARQUBE_ORGANIZATION = 'test-org';
+
 // Mock the web API client
-const mockDoTransition = vi.fn() as MockedFunction<(...args: unknown[]) => Promise<unknown>>;
-const mockAddComment = vi.fn() as MockedFunction<(...args: unknown[]) => Promise<unknown>>;
-vi.mock('sonarqube-web-api-client', () => ({
-  SonarQubeClient: {
-    withToken: vi.fn().mockReturnValue({
-      issues: {
-        doTransition: mockDoTransition,
-        addComment: mockAddComment,
-        search: vi.fn().mockReturnValue({
-          execute: vi.fn<() => Promise<any>>().mockResolvedValue({
-            issues: [],
-            components: [],
-            rules: [],
-            paging: { pageIndex: 1, pageSize: 10, total: 0 },
-          } as never),
-        }),
-      },
-    }),
-  },
-}));
+vi.mock('sonarqube-web-api-client', () => {
+  const mockDoTransition = vi.fn() as MockedFunction<(...args: unknown[]) => Promise<unknown>>;
+  const mockAddComment = vi.fn() as MockedFunction<(...args: unknown[]) => Promise<unknown>>;
+
+  return {
+    SonarQubeClient: {
+      withToken: vi.fn().mockReturnValue({
+        issues: {
+          doTransition: mockDoTransition,
+          addComment: mockAddComment,
+          search: vi.fn().mockReturnValue({
+            execute: vi.fn<() => Promise<any>>().mockResolvedValue({
+              issues: [],
+              components: [],
+              rules: [],
+              paging: { pageIndex: 1, pageSize: 10, total: 0 },
+            } as never),
+          }),
+        },
+      }),
+    },
+  };
+});
 import { IssuesDomain } from '../domains/issues.js';
 import {
   handleConfirmIssue,
@@ -34,15 +38,26 @@ import {
 } from '../handlers/issues.js';
 describe('IssuesDomain - Issue Transitions', () => {
   let domain: IssuesDomain;
-  const mockWebApiClient = {
-    issues: {
-      doTransition: mockDoTransition,
-      addComment: mockAddComment,
-      search: vi.fn(),
-    },
-  };
-  beforeEach(() => {
-    domain = new IssuesDomain(mockWebApiClient as any, 'test-org');
+  let mockDoTransition: any;
+  let mockAddComment: any;
+  let mockWebApiClient: any;
+
+  beforeEach(async () => {
+    // Import the mocked client to get access to the mock functions
+    const { SonarQubeClient } = await import('sonarqube-web-api-client');
+    const clientInstance = SonarQubeClient.withToken('http://localhost:9000', 'test-token');
+    mockDoTransition = clientInstance.issues.doTransition;
+    mockAddComment = clientInstance.issues.addComment;
+
+    mockWebApiClient = {
+      issues: {
+        doTransition: mockDoTransition,
+        addComment: mockAddComment,
+        search: vi.fn(),
+      },
+    };
+
+    domain = new IssuesDomain(mockWebApiClient, 'test-org');
     vi.clearAllMocks();
   });
   describe('confirmIssue', () => {

@@ -6,35 +6,37 @@ type SearchIssuesRequestBuilderInterface = any;
 process.env.SONARQUBE_TOKEN = 'test-token';
 process.env.SONARQUBE_URL = 'http://localhost:9000';
 process.env.SONARQUBE_ORGANIZATION = 'test-org';
-// Mock search builder
-const mockSearchBuilder = {
-  withProjects: vi.fn().mockReturnThis(),
-  withComponents: vi.fn().mockReturnThis(),
-  onComponentOnly: vi.fn().mockReturnThis(),
-  withSeverities: vi.fn().mockReturnThis(),
-  withStatuses: vi.fn().mockReturnThis(),
-  withTags: vi.fn().mockReturnThis(),
-  assignedToAny: vi.fn().mockReturnThis(),
-  onlyAssigned: vi.fn().mockReturnThis(),
-  onlyUnassigned: vi.fn().mockReturnThis(),
-  byAuthor: vi.fn().mockReturnThis(),
-  byAuthors: vi.fn().mockReturnThis(),
-  withFacets: vi.fn().mockReturnThis(),
-  withFacetMode: vi.fn().mockReturnThis(),
-  page: vi.fn().mockReturnThis(),
-  pageSize: vi.fn().mockReturnThis(),
-  execute: vi.fn(),
-} as unknown as SearchIssuesRequestBuilderInterface;
 // Mock the web API client
-vi.mock('sonarqube-web-api-client', () => ({
-  SonarQubeClient: {
-    withToken: vi.fn().mockReturnValue({
-      issues: {
-        search: vi.fn().mockReturnValue(mockSearchBuilder),
-      },
-    }),
-  },
-}));
+vi.mock('sonarqube-web-api-client', () => {
+  const mockSearchBuilder = {
+    withProjects: vi.fn().mockReturnThis(),
+    withComponents: vi.fn().mockReturnThis(),
+    onComponentOnly: vi.fn().mockReturnThis(),
+    withSeverities: vi.fn().mockReturnThis(),
+    withStatuses: vi.fn().mockReturnThis(),
+    withTags: vi.fn().mockReturnThis(),
+    assignedToAny: vi.fn().mockReturnThis(),
+    onlyAssigned: vi.fn().mockReturnThis(),
+    onlyUnassigned: vi.fn().mockReturnThis(),
+    byAuthor: vi.fn().mockReturnThis(),
+    byAuthors: vi.fn().mockReturnThis(),
+    withFacets: vi.fn().mockReturnThis(),
+    withFacetMode: vi.fn().mockReturnThis(),
+    page: vi.fn().mockReturnThis(),
+    pageSize: vi.fn().mockReturnThis(),
+    execute: vi.fn(),
+  } as unknown as SearchIssuesRequestBuilderInterface;
+
+  return {
+    SonarQubeClient: {
+      withToken: vi.fn().mockReturnValue({
+        issues: {
+          search: vi.fn().mockReturnValue(mockSearchBuilder),
+        },
+      }),
+    },
+  };
+});
 import { IssuesDomain } from '../domains/issues.js';
 import { handleSonarQubeGetIssues } from '../handlers/issues.js';
 import type { IssuesParams, ISonarQubeClient } from '../types/index.js';
@@ -42,8 +44,16 @@ import type { IssuesParams, ISonarQubeClient } from '../types/index.js';
 // type IWebApiClient = ISonarQubeClient;
 describe('Enhanced Issues Search', () => {
   let domain: IssuesDomain;
-  beforeEach(() => {
+  let mockSearchBuilder: any;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+
+    // Import the mocked client to get access to the mock functions
+    const { SonarQubeClient } = await import('sonarqube-web-api-client');
+    const clientInstance = SonarQubeClient.withToken('http://localhost:9000', 'test-token');
+    mockSearchBuilder = clientInstance.issues.search();
+
     // Reset mock implementation for execute
     (mockSearchBuilder.execute as Mock<() => Promise<any>>).mockResolvedValue({
       issues: [

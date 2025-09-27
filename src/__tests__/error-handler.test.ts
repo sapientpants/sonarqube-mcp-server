@@ -37,7 +37,7 @@ describe('Error Handler Utilities', () => {
       const fn = vi.fn<() => Promise<any>>().mockRejectedValue(apiError);
       const wrapped = withMCPErrorHandling(fn);
 
-      await expect(wrapped()).rejects.toEqual({
+      await expect(wrapped()).rejects.toMatchObject({
         code: -32001,
         message: expect.stringContaining('Test error'),
       });
@@ -79,7 +79,7 @@ describe('Error Handler Utilities', () => {
         const fn = vi.fn<() => Promise<any>>().mockRejectedValue(error);
         const wrapped = withMCPErrorHandling(fn);
 
-        await expect(wrapped()).rejects.toEqual({
+        await expect(wrapped()).rejects.toMatchObject({
           code,
           message: expect.stringContaining(`${type} error`),
         });

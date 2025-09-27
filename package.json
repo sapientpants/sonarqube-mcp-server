@@ -55,7 +55,7 @@
     "clean": "rimraf dist coverage",
     "reset": "pnpm clean && pnpm install",
     "quick-check": "pnpm typecheck && pnpm lint && pnpm test",
-    "precommit": "pnpm audit --audit-level critical && pnpm typecheck && pnpm lint && pnpm lint:workflows && pnpm lint:yaml && pnpm format",
+    "precommit": "pnpm audit --audit-level critical && pnpm typecheck && pnpm lint && pnpm lint:workflows && pnpm lint:markdown && pnpm lint:yaml && pnpm format && pnpm test",
     "verify": "pnpm precommit",
     "setup": "./scripts/setup.sh",
     "lint-staged": "lint-staged",

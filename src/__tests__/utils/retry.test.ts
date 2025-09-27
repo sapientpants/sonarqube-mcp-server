@@ -149,7 +149,10 @@ describe('Retry Utilities', () => {
     });
 
     it('should use custom shouldRetry function', async () => {
-      const customShouldRetry = vi.fn((error: Error) => error.message.includes('retry-me'));
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const customShouldRetry = vi.fn((error: Error, _attempt: number) =>
+        error.message.includes('retry-me')
+      );
 
       mockFn.mockRejectedValueOnce(new Error('retry-me please')).mockResolvedValue('success');
 
@@ -158,7 +161,8 @@ describe('Retry Utilities', () => {
       expect(result).toBe('success');
       expect(mockFn).toHaveBeenCalledTimes(2);
       expect(customShouldRetry).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'retry-me please' })
+        expect.objectContaining({ message: 'retry-me please' }),
+        1
       );
     });
 

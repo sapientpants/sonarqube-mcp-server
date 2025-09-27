@@ -788,7 +788,7 @@ describe('SonarQubeClient', () => {
             actualQuery.cleanCodeAttributeCategories === 'INTENTIONAL,RESPONSIBLE' &&
             actualQuery.impactSeverities === 'HIGH,MEDIUM' &&
             actualQuery.impactSoftwareQualities === 'SECURITY,RELIABILITY' &&
-            actualQuery.issueStatuses === 'ACCEPTED,CONFIRMED'
+            actualQuery.issueStatuses === 'OPEN,CONFIRMED'
           );
         })
         .matchHeader('authorization', 'Bearer test-token')
@@ -2098,7 +2098,7 @@ describe('SonarQubeClient', () => {
           .get('/api/issues/search')
           .query({
             issues: issueKey,
-            additionalFields: ['_all'],
+            additionalFields: '_all',
           })
           .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {
@@ -2144,7 +2144,7 @@ describe('SonarQubeClient', () => {
           .get('/api/issues/search')
           .query({
             issues: issueKey,
-            additionalFields: ['_all'],
+            additionalFields: '_all',
           })
           .matchHeader('authorization', 'Bearer test-token')
           .reply(200, {

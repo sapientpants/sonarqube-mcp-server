@@ -67,20 +67,20 @@ Follow these conventions to maintain code quality:
 
 ### Code Complexity
 
-5. **Keep Cognitive Complexity Low**
+1. **Keep Cognitive Complexity Low**
    - Maximum cognitive complexity: 15
    - Break complex functions into smaller, focused functions
    - Reduce nesting levels
    - Simplify conditional logic
 
-6. **Remove Redundant Code**
+2. **Remove Redundant Code**
    - Don't create type aliases for primitive types
    - Remove unused variable assignments
    - Eliminate dead code
 
 ### Regular Expressions
 
-7. **Make Regex Operator Precedence Explicit**
+1. **Make Regex Operator Precedence Explicit**
 
    ```typescript
    // ❌ Ambiguous precedence
@@ -92,12 +92,12 @@ Follow these conventions to maintain code quality:
 
 ### General Guidelines
 
-8. **Follow Existing Patterns**
+1. **Follow Existing Patterns**
    - Check how similar functionality is implemented in the codebase
    - Maintain consistency with existing code style
    - Use the same libraries and utilities as the rest of the project
 
-9. **Run Validation Before Committing**
+2. **Run Validation Before Committing**
 
    ```bash
    # Run all checks before committing

@@ -39,6 +39,41 @@ vi.mock('../sonarqube.js', () => {
         paging: { pageIndex: 1, pageSize: 10, total: 1 },
       }),
     })),
+    setSonarQubeElicitationManager: vi.fn(),
+    createSonarQubeClientFromEnv: vi.fn(() => ({
+      listProjects: vi.fn<() => Promise<any>>().mockResolvedValue({
+        projects: [{ key: 'test-project', name: 'Test Project' }],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      }),
+      getIssues: vi.fn<() => Promise<any>>().mockResolvedValue({
+        issues: [{ key: 'test-issue', rule: 'test-rule' }],
+        components: [],
+        rules: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      }),
+      getMetrics: vi.fn<() => Promise<any>>().mockResolvedValue({
+        metrics: [{ key: 'test-metric', name: 'Test Metric' }],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      }),
+      getHealth: vi.fn<() => Promise<any>>().mockResolvedValue({ health: 'GREEN', causes: [] }),
+      getStatus: vi
+        .fn<() => Promise<any>>()
+        .mockResolvedValue({ id: 'id', version: '1.0', status: 'UP' }),
+      ping: vi.fn<() => Promise<any>>().mockResolvedValue('pong'),
+      getComponentMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
+        component: { key: 'test-component', measures: [] },
+        metrics: [],
+      }),
+      getComponentsMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
+        components: [{ key: 'test-component', measures: [] }],
+        metrics: [],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      }),
+      getMeasuresHistory: vi.fn<() => Promise<any>>().mockResolvedValue({
+        measures: [{ metric: 'coverage', history: [] }],
+        paging: { pageIndex: 1, pageSize: 10, total: 1 },
+      }),
+    })),
   };
 });
 describe('Direct Lambda Testing', () => {

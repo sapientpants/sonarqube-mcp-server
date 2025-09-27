@@ -1105,7 +1105,12 @@ if (process.env.NODE_ENV !== 'test') {
     });
   })().catch((error) => {
     logger.error('Failed to start server', error);
-    process.exit(1);
+    // Only exit in production mode, not during tests
+    // Check for Vitest environment or test mode
+    const isTestEnvironment = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+    if (!isTestEnvironment) {
+      process.exit(1);
+    }
   });
 }
 

@@ -87,6 +87,8 @@ describe('SourceCodeDomain', () => {
           projects: 'com.example:Example.java',
           onComponentOnly: 'true',
           organization,
+          p: '1',
+          ps: '100',
         })
         .reply(200, mockIssuesResponse);
 
@@ -103,8 +105,10 @@ describe('SourceCodeDomain', () => {
         code: 'public class Example {',
         issues: undefined,
       });
+      expect(result.sources[1]).toBeDefined();
       expect(result.sources[1]!.issues).toHaveLength(1);
       expect(result.sources[1]!.issues?.[0]!.key).toBe('issue1');
+      expect(result.sources[2]).toBeDefined();
       expect(result.sources[2]!.issues).toHaveLength(1);
       expect(result.sources[2]!.issues?.[0]!.key).toBe('issue2');
     });

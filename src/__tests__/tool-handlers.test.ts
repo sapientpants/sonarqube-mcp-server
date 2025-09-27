@@ -5,130 +5,139 @@ process.env.SONARQUBE_URL = 'http://localhost:9000';
 process.env.SONARQUBE_ORGANIZATION = 'test-org';
 // Save environment variables
 const originalEnv = process.env;
-// Mock all the needed imports
-vi.mock('../sonarqube.js', () => {
-  return {
-    SonarQubeClient: vi.fn().mockImplementation(() => ({
-      listProjects: vi.fn<() => Promise<any>>().mockResolvedValue({
-        projects: [
-          {
-            key: 'test-project',
-            name: 'Test Project',
-            qualifier: 'TRK',
-            visibility: 'public',
-            lastAnalysisDate: '2023-01-01',
-            revision: 'abc123',
-            managed: false,
-          },
-        ],
-        paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getIssues: vi.fn<() => Promise<any>>().mockResolvedValue({
-        issues: [
-          {
-            key: 'issue1',
-            rule: 'rule1',
-            severity: 'MAJOR',
-            component: 'comp1',
-            project: 'proj1',
-            line: 1,
-            status: 'OPEN',
-            message: 'Test issue',
-            tags: [],
-            creationDate: '2023-01-01',
-            updateDate: '2023-01-01',
-          },
-        ],
-        components: [],
-        rules: [],
-        paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getMetrics: vi.fn<() => Promise<any>>().mockResolvedValue({
-        metrics: [
-          {
-            key: 'coverage',
-            name: 'Coverage',
-            description: 'Test coverage',
-            domain: 'Coverage',
-            type: 'PERCENT',
-          },
-        ],
-        paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getHealth: vi.fn<() => Promise<any>>().mockResolvedValue({
-        health: 'GREEN',
-        causes: [],
-      }),
-      getStatus: vi.fn<() => Promise<any>>().mockResolvedValue({
-        id: 'test-id',
-        version: '10.3.0.82913',
-        status: 'UP',
-      }),
-      ping: vi.fn<() => Promise<any>>().mockResolvedValue('pong'),
-      getComponentMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
-        component: {
-          key: 'test-component',
-          name: 'Test Component',
-          qualifier: 'TRK',
-          measures: [
-            {
-              metric: 'coverage',
-              value: '85.4',
-            },
-          ],
+
+// Define mock client that handlers will use
+const mockClient = {
+  listProjects: vi.fn<() => Promise<any>>().mockResolvedValue({
+    projects: [
+      {
+        key: 'test-project',
+        name: 'Test Project',
+        qualifier: 'TRK',
+        visibility: 'public',
+        lastAnalysisDate: '2023-01-01',
+        revision: 'abc123',
+        managed: false,
+      },
+    ],
+    paging: { pageIndex: 1, pageSize: 10, total: 1 },
+  }),
+  getIssues: vi.fn<() => Promise<any>>().mockResolvedValue({
+    issues: [
+      {
+        key: 'issue1',
+        rule: 'rule1',
+        severity: 'MAJOR',
+        component: 'comp1',
+        project: 'proj1',
+        line: 1,
+        status: 'OPEN',
+        message: 'Test issue',
+        tags: [],
+        creationDate: '2023-01-01',
+        updateDate: '2023-01-01',
+      },
+    ],
+    components: [],
+    rules: [],
+    paging: { pageIndex: 1, pageSize: 10, total: 1 },
+  }),
+  getMetrics: vi.fn<() => Promise<any>>().mockResolvedValue({
+    metrics: [
+      {
+        key: 'coverage',
+        name: 'Coverage',
+        description: 'Test coverage',
+        domain: 'Coverage',
+        type: 'PERCENT',
+      },
+    ],
+    paging: { pageIndex: 1, pageSize: 10, total: 1 },
+  }),
+  getHealth: vi.fn<() => Promise<any>>().mockResolvedValue({
+    health: 'GREEN',
+    causes: [],
+  }),
+  getStatus: vi.fn<() => Promise<any>>().mockResolvedValue({
+    id: 'server-id',
+    version: '9.9.0',
+    status: 'UP',
+  }),
+  ping: vi.fn<() => Promise<any>>().mockResolvedValue('pong'),
+  getComponentMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
+    component: {
+      key: 'test-component',
+      name: 'Test Component',
+      qualifier: 'TRK',
+      measures: [
+        {
+          metric: 'coverage',
+          value: '85.4',
         },
-        metrics: [
-          {
-            key: 'coverage',
-            name: 'Coverage',
-            description: 'Test coverage percentage',
-            domain: 'Coverage',
-            type: 'PERCENT',
-          },
-        ],
-      }),
-      getComponentsMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
-        components: [
-          {
-            key: 'test-component-1',
-            name: 'Test Component 1',
-            qualifier: 'TRK',
-            measures: [
-              {
-                metric: 'coverage',
-                value: '85.4',
-              },
-            ],
-          },
-        ],
-        metrics: [
-          {
-            key: 'coverage',
-            name: 'Coverage',
-            description: 'Test coverage percentage',
-            domain: 'Coverage',
-            type: 'PERCENT',
-          },
-        ],
-        paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-      getMeasuresHistory: vi.fn<() => Promise<any>>().mockResolvedValue({
+      ],
+    },
+    metrics: [
+      {
+        key: 'coverage',
+        name: 'Coverage',
+        description: 'Test coverage percentage',
+        domain: 'Coverage',
+        type: 'PERCENT',
+      },
+    ],
+    paging: { pageIndex: 1, pageSize: 10, total: 1 },
+  }),
+  getComponentsMeasures: vi.fn<() => Promise<any>>().mockResolvedValue({
+    components: [
+      {
+        key: 'test-component-1',
+        name: 'Test Component 1',
+        qualifier: 'TRK',
         measures: [
           {
             metric: 'coverage',
-            history: [
-              {
-                date: '2023-01-01T00:00:00+0000',
-                value: '85.4',
-              },
-            ],
+            value: '85.4',
           },
         ],
-        paging: { pageIndex: 1, pageSize: 10, total: 1 },
-      }),
-    })),
+      },
+    ],
+    metrics: [
+      {
+        key: 'coverage',
+        name: 'Coverage',
+        description: 'Test coverage percentage',
+        domain: 'Coverage',
+        type: 'PERCENT',
+      },
+    ],
+    paging: { pageIndex: 1, pageSize: 10, total: 1 },
+  }),
+  getMeasuresHistory: vi.fn<() => Promise<any>>().mockResolvedValue({
+    measures: [
+      {
+        metric: 'coverage',
+        history: [
+          {
+            date: '2023-01-01T00:00:00+0000',
+            value: '85.4',
+          },
+        ],
+      },
+    ],
+    paging: { pageIndex: 1, pageSize: 10, total: 1 },
+  }),
+};
+
+// Mock all the needed imports
+vi.mock('../sonarqube.js', () => {
+  return {
+    SonarQubeClient: vi.fn().mockImplementation(() => mockClient),
+    createSonarQubeClientFromEnv: vi.fn(() => mockClient),
+    setSonarQubeElicitationManager: vi.fn(),
+    createSonarQubeClientFromEnvWithElicitation: vi.fn(() => Promise.resolve(mockClient)),
   };
 });
+
 describe('Tool Handlers with Mocked Client', () => {
   let handlers: any;
   beforeAll(async () => {
@@ -157,21 +166,24 @@ describe('Tool Handlers with Mocked Client', () => {
   });
   describe('Core Handlers', () => {
     it('should handle projects correctly', async () => {
-      const result = await handlers.handleSonarQubeProjects({});
+      const result = await handlers.handleSonarQubeProjects({}, mockClient);
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.projects).toBeDefined();
       expect(data.projects).toHaveLength(1);
       expect(data.projects[0].key).toBe('test-project');
     });
     it('should handle issues correctly', async () => {
-      const result = await handlers.handleSonarQubeGetIssues({ projectKey: 'test-project' });
+      const result = await handlers.handleSonarQubeGetIssues(
+        { projectKey: 'test-project' },
+        mockClient
+      );
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.issues).toBeDefined();
       expect(data.issues).toHaveLength(1);
       expect(data.issues[0].severity).toBe('MAJOR');
     });
     it('should handle metrics correctly', async () => {
-      const result = await handlers.handleSonarQubeGetMetrics({});
+      const result = await handlers.handleSonarQubeGetMetrics({}, mockClient);
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.metrics).toBeDefined();
       expect(data.metrics).toHaveLength(1);
@@ -180,45 +192,54 @@ describe('Tool Handlers with Mocked Client', () => {
   });
   describe('System API Handlers', () => {
     it('should handle health correctly', async () => {
-      const result = await handlers.handleSonarQubeGetHealth();
+      const result = await handlers.handleSonarQubeGetHealth(mockClient);
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.health).toBe('GREEN');
     });
     it('should handle status correctly', async () => {
-      const result = await handlers.handleSonarQubeGetStatus();
+      const result = await handlers.handleSonarQubeGetStatus(mockClient);
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.status).toBe('UP');
     });
     it('should handle ping correctly', async () => {
-      const result = await handlers.handleSonarQubePing();
+      const result = await handlers.handleSonarQubePing(mockClient);
       expect(result.content[0]?.text).toBe('pong');
     });
   });
   describe('Measures API Handlers', () => {
     it('should handle component measures correctly', async () => {
-      const result = await handlers.handleSonarQubeComponentMeasures({
-        component: 'test-component',
-        metricKeys: ['coverage'],
-      });
+      const result = await handlers.handleSonarQubeComponentMeasures(
+        {
+          component: 'test-component',
+          metricKeys: ['coverage'],
+        },
+        mockClient
+      );
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.component).toBeDefined();
       expect(data.component.key).toBe('test-component');
     });
     it('should handle components measures correctly', async () => {
-      const result = await handlers.handleSonarQubeComponentsMeasures({
-        componentKeys: ['test-component-1'],
-        metricKeys: ['coverage'],
-      });
+      const result = await handlers.handleSonarQubeComponentsMeasures(
+        {
+          componentKeys: ['test-component-1'],
+          metricKeys: ['coverage'],
+        },
+        mockClient
+      );
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.components).toBeDefined();
       expect(data.components).toHaveLength(1);
       expect(data.components[0].key).toBe('test-component-1');
     });
     it('should handle measures history correctly', async () => {
-      const result = await handlers.handleSonarQubeMeasuresHistory({
-        component: 'test-component',
-        metrics: ['coverage'],
-      });
+      const result = await handlers.handleSonarQubeMeasuresHistory(
+        {
+          component: 'test-component',
+          metrics: ['coverage'],
+        },
+        mockClient
+      );
       const data = JSON.parse(result.content[0]?.text ?? '{}');
       expect(data.measures).toBeDefined();
       expect(data.measures).toHaveLength(1);
@@ -250,10 +271,13 @@ describe('Tool Handlers with Mocked Client', () => {
     it('should handle metrics lambda correctly', async () => {
       // Create a lambda function similar to what's registered in index.ts
       const metricsLambda = async (params: any) => {
-        const result = await handlers.handleSonarQubeGetMetrics({
-          page: handlers.nullToUndefined(params.page),
-          pageSize: handlers.nullToUndefined(params.page_size),
-        });
+        const result = await handlers.handleSonarQubeGetMetrics(
+          {
+            page: handlers.nullToUndefined(params.page),
+            pageSize: handlers.nullToUndefined(params.page_size),
+          },
+          mockClient
+        );
         return {
           content: [
             {
@@ -269,7 +293,10 @@ describe('Tool Handlers with Mocked Client', () => {
     it('should handle issues lambda correctly', async () => {
       // Create a lambda function similar to what's registered in index.ts
       const issuesLambda = async (params: any) => {
-        return await handlers.handleSonarQubeGetIssues(handlers.mapToSonarQubeParams(params));
+        return await handlers.handleSonarQubeGetIssues(
+          handlers.mapToSonarQubeParams(params),
+          mockClient
+        );
       };
       const result = await issuesLambda({ project_key: 'test-project', severity: 'MAJOR' });
       const data = JSON.parse(result.content[0]?.text ?? '{}');
@@ -278,14 +305,19 @@ describe('Tool Handlers with Mocked Client', () => {
     it('should handle measures component lambda correctly', async () => {
       // Create a lambda function similar to what's registered in index.ts
       const measuresLambda = async (params: any) => {
-        return await handlers.handleSonarQubeComponentMeasures({
-          component: params.component,
-          metricKeys: Array.isArray(params.metric_keys) ? params.metric_keys : [params.metric_keys],
-          additionalFields: params.additional_fields,
-          branch: params.branch,
-          pullRequest: params.pull_request,
-          period: params.period,
-        });
+        return await handlers.handleSonarQubeComponentMeasures(
+          {
+            component: params.component,
+            metricKeys: Array.isArray(params.metric_keys)
+              ? params.metric_keys
+              : [params.metric_keys],
+            additionalFields: params.additional_fields,
+            branch: params.branch,
+            pullRequest: params.pull_request,
+            period: params.period,
+          },
+          mockClient
+        );
       };
       const result = await measuresLambda({
         component: 'test-component',
@@ -298,18 +330,23 @@ describe('Tool Handlers with Mocked Client', () => {
     it('should handle measures components lambda correctly', async () => {
       // Create a lambda function similar to what's registered in index.ts
       const componentsLambda = async (params: any) => {
-        return await handlers.handleSonarQubeComponentsMeasures({
-          componentKeys: Array.isArray(params.component_keys)
-            ? params.component_keys
-            : [params.component_keys],
-          metricKeys: Array.isArray(params.metric_keys) ? params.metric_keys : [params.metric_keys],
-          additionalFields: params.additional_fields,
-          branch: params.branch,
-          pullRequest: params.pull_request,
-          period: params.period,
-          page: handlers.nullToUndefined(params.page),
-          pageSize: handlers.nullToUndefined(params.page_size),
-        });
+        return await handlers.handleSonarQubeComponentsMeasures(
+          {
+            componentKeys: Array.isArray(params.component_keys)
+              ? params.component_keys
+              : [params.component_keys],
+            metricKeys: Array.isArray(params.metric_keys)
+              ? params.metric_keys
+              : [params.metric_keys],
+            additionalFields: params.additional_fields,
+            branch: params.branch,
+            pullRequest: params.pull_request,
+            period: params.period,
+            page: handlers.nullToUndefined(params.page),
+            pageSize: handlers.nullToUndefined(params.page_size),
+          },
+          mockClient
+        );
       };
       const result = await componentsLambda({
         component_keys: ['test-component-1'],
@@ -323,16 +360,19 @@ describe('Tool Handlers with Mocked Client', () => {
     it('should handle measures history lambda correctly', async () => {
       // Create a lambda function similar to what's registered in index.ts
       const historyLambda = async (params: any) => {
-        return await handlers.handleSonarQubeMeasuresHistory({
-          component: params.component,
-          metrics: Array.isArray(params.metrics) ? params.metrics : [params.metrics],
-          from: params.from,
-          to: params.to,
-          branch: params.branch,
-          pullRequest: params.pull_request,
-          page: handlers.nullToUndefined(params.page),
-          pageSize: handlers.nullToUndefined(params.page_size),
-        });
+        return await handlers.handleSonarQubeMeasuresHistory(
+          {
+            component: params.component,
+            metrics: Array.isArray(params.metrics) ? params.metrics : [params.metrics],
+            from: params.from,
+            to: params.to,
+            branch: params.branch,
+            pullRequest: params.pull_request,
+            page: handlers.nullToUndefined(params.page),
+            pageSize: handlers.nullToUndefined(params.page_size),
+          },
+          mockClient
+        );
       };
       const result = await historyLambda({
         component: 'test-component',
