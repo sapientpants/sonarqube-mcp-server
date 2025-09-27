@@ -16,6 +16,82 @@ import { createStructuredResponse } from '../utils/structured-response.js';
 const logger = createLogger('handlers/components');
 
 /**
+ * Build tree parameters from component params
+ */
+function buildTreeParams(params: ComponentsParams): ComponentsTreeParams {
+  const treeParams: ComponentsTreeParams = {
+    component: params.component!,
+  };
+
+  if (nullToUndefined(params.strategy) !== undefined) {
+    treeParams.strategy = nullToUndefined(params.strategy) as 'all' | 'children' | 'leaves';
+  }
+  if (params.qualifiers !== undefined) {
+    treeParams.qualifiers = params.qualifiers;
+  }
+  if (nullToUndefined(params.asc) !== undefined) {
+    treeParams.asc = nullToUndefined(params.asc) as boolean;
+  }
+  if (nullToUndefined(params.p) !== undefined) {
+    treeParams.page = nullToUndefined(params.p) as number;
+  }
+  if (nullToUndefined(params.ps) !== undefined) {
+    treeParams.pageSize = nullToUndefined(params.ps) as number;
+  }
+  if (nullToUndefined(params.branch) !== undefined) {
+    treeParams.branch = nullToUndefined(params.branch) as string;
+  }
+  if (nullToUndefined(params.pullRequest) !== undefined) {
+    treeParams.pullRequest = nullToUndefined(params.pullRequest) as string;
+  }
+
+  return treeParams;
+}
+
+/**
+ * Build search parameters from component params
+ */
+function buildSearchParams(params: ComponentsParams): ComponentsSearchParams {
+  const searchParams: ComponentsSearchParams = {};
+
+  if (nullToUndefined(params.query) !== undefined) {
+    searchParams.query = nullToUndefined(params.query) as string;
+  }
+  if (params.qualifiers !== undefined) {
+    searchParams.qualifiers = params.qualifiers;
+  }
+  if (nullToUndefined(params.language) !== undefined) {
+    searchParams.language = nullToUndefined(params.language) as string;
+  }
+  if (nullToUndefined(params.p) !== undefined) {
+    searchParams.page = nullToUndefined(params.p) as number;
+  }
+  if (nullToUndefined(params.ps) !== undefined) {
+    searchParams.pageSize = nullToUndefined(params.ps) as number;
+  }
+
+  return searchParams;
+}
+
+/**
+ * Build default project listing parameters
+ */
+function buildDefaultParams(params: ComponentsParams): ComponentsSearchParams {
+  const searchParams: ComponentsSearchParams = {
+    qualifiers: ['TRK'] as ComponentQualifier[],
+  };
+
+  if (nullToUndefined(params.p) !== undefined) {
+    searchParams.page = nullToUndefined(params.p) as number;
+  }
+  if (nullToUndefined(params.ps) !== undefined) {
+    searchParams.pageSize = nullToUndefined(params.ps) as number;
+  }
+
+  return searchParams;
+}
+
+/**
  * Handles component search and tree navigation operations
  * @param params Parameters for component operations
  * @param client Optional SonarQube client instance
@@ -54,32 +130,7 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     } else if (isTreeOperation) {
       // Component tree navigation
-      const treeParams: ComponentsTreeParams = {
-        component: params.component!,
-      };
-
-      if (nullToUndefined(params.strategy) !== undefined) {
-        treeParams.strategy = nullToUndefined(params.strategy) as 'all' | 'children' | 'leaves';
-      }
-      if (params.qualifiers !== undefined) {
-        treeParams.qualifiers = params.qualifiers;
-      }
-      if (nullToUndefined(params.asc) !== undefined) {
-        treeParams.asc = nullToUndefined(params.asc) as boolean;
-      }
-      if (nullToUndefined(params.p) !== undefined) {
-        treeParams.page = nullToUndefined(params.p) as number;
-      }
-      if (nullToUndefined(params.ps) !== undefined) {
-        treeParams.pageSize = nullToUndefined(params.ps) as number;
-      }
-      if (nullToUndefined(params.branch) !== undefined) {
-        treeParams.branch = nullToUndefined(params.branch) as string;
-      }
-      if (nullToUndefined(params.pullRequest) !== undefined) {
-        treeParams.pullRequest = nullToUndefined(params.pullRequest) as string;
-      }
-
+      const treeParams = buildTreeParams(params);
       result = await withErrorHandling('Get component tree', () =>
         domain.getComponentTree(treeParams)
       );
@@ -89,24 +140,7 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     } else if (isSearchOperation) {
       // Component search
-      const searchParams: ComponentsSearchParams = {};
-
-      if (nullToUndefined(params.query) !== undefined) {
-        searchParams.query = nullToUndefined(params.query) as string;
-      }
-      if (params.qualifiers !== undefined) {
-        searchParams.qualifiers = params.qualifiers;
-      }
-      if (nullToUndefined(params.language) !== undefined) {
-        searchParams.language = nullToUndefined(params.language) as string;
-      }
-      if (nullToUndefined(params.p) !== undefined) {
-        searchParams.page = nullToUndefined(params.p) as number;
-      }
-      if (nullToUndefined(params.ps) !== undefined) {
-        searchParams.pageSize = nullToUndefined(params.ps) as number;
-      }
-
+      const searchParams = buildSearchParams(params);
       result = await withErrorHandling('Search components', () =>
         domain.searchComponents(searchParams)
       );
@@ -116,17 +150,7 @@ export const handleSonarQubeComponents = withMCPErrorHandling(
       });
     } else {
       // Default to listing all projects
-      const searchParams: ComponentsSearchParams = {
-        qualifiers: ['TRK'] as ComponentQualifier[],
-      };
-
-      if (nullToUndefined(params.p) !== undefined) {
-        searchParams.page = nullToUndefined(params.p) as number;
-      }
-      if (nullToUndefined(params.ps) !== undefined) {
-        searchParams.pageSize = nullToUndefined(params.ps) as number;
-      }
-
+      const searchParams = buildDefaultParams(params);
       result = await withErrorHandling('List all projects', () =>
         domain.searchComponents(searchParams)
       );
