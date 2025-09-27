@@ -102,17 +102,15 @@ class McpHttpClient {
   /**
    * Connect to server-sent events for notifications.
    */
-  connectToEvents(onMessage: (data: unknown) => void): EventSource | null {
+  connectToEvents(onMessage: (data: unknown) => void): EventSource {
     if (!this.sessionId) {
       throw new Error('Not connected. Call connect() first.');
-      return null;
     }
 
     // Note: EventSource is not available in Node.js by default
     // You'd need to use a library like 'eventsource' for Node.js
     if (typeof EventSource === 'undefined') {
       throw new Error('EventSource not available. Install "eventsource" package for Node.js.');
-      return null;
     }
 
     const eventSource = new EventSource(`${this.baseUrl}/events/${this.sessionId}`);
@@ -207,7 +205,13 @@ async function main() {
 }
 
 // Run the example if this file is executed directly
-if (require.main === module) {
+// Note: For ES modules, use import.meta.url comparison
+// For CommonJS compatibility, we check if this is the main module
+if (typeof require !== 'undefined' && require.main === module) {
+  // eslint-disable-next-line no-console
+  main().catch(console.error);
+} else if (typeof import.meta !== 'undefined' && import.meta.url === `file://${process.argv[1]}`) {
+  // ES module execution detection
   // eslint-disable-next-line no-console
   main().catch(console.error);
 }

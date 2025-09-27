@@ -73,13 +73,20 @@ export class SessionManager {
     }
 
     const sessionId = uuidv4();
-    const session: ISession = {
-      id: sessionId,
-      server,
-      createdAt: new Date(),
-      lastActivityAt: new Date(),
-      ...(metadata ? { metadata } : {}),
-    };
+    const session: ISession = metadata
+      ? {
+          id: sessionId,
+          server,
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+          metadata,
+        }
+      : {
+          id: sessionId,
+          server,
+          createdAt: new Date(),
+          lastActivityAt: new Date(),
+        };
 
     this.sessions.set(sessionId, session);
     logger.info(`Session created: ${sessionId}`);
@@ -205,9 +212,8 @@ export class SessionManager {
     // Stop cleanup timer
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
-      // Delete the property rather than setting to undefined for exactOptionalPropertyTypes
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-      delete (this as any).cleanupTimer;
+      // Delete the property for exactOptionalPropertyTypes compatibility
+      delete this.cleanupTimer;
     }
 
     // Clear all sessions
