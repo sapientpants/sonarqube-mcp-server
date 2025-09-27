@@ -387,6 +387,19 @@ For development or customization:
 
 \*\*Required when using SonarCloud
 
+#### HTTP Transport Settings (Advanced)
+
+By default, the server uses stdio transport for communication with Claude Desktop. For programmatic access or running as a web service, HTTP transport is available:
+
+| Variable                                   | Description                                  | Required | Default     |
+| ------------------------------------------ | -------------------------------------------- | -------- | ----------- |
+| `MCP_TRANSPORT_TYPE`                       | Transport type (`stdio` or `http`)           | ❌ No    | `stdio`     |
+| `MCP_HTTP_PORT`                            | Port for HTTP server                         | ❌ No    | `3000`      |
+| `MCP_HTTP_SESSION_TIMEOUT`                 | Session timeout in milliseconds              | ❌ No    | `1800000`   |
+| `MCP_HTTP_ALLOWED_HOSTS`                   | Comma-separated list of allowed hosts        | ❌ No    | `localhost` |
+| `MCP_HTTP_ALLOWED_ORIGINS`                 | Comma-separated list of allowed CORS origins | ❌ No    | `*`         |
+| `MCP_HTTP_ENABLE_DNS_REBINDING_PROTECTION` | Enable DNS rebinding protection              | ❌ No    | `false`     |
+
 ### Authentication Methods
 
 The server supports three authentication methods, with important differences between SonarQube versions:
@@ -464,6 +477,88 @@ The server supports three authentication methods, with important differences bet
 - Set `SONARQUBE_URL` to your instance URL
 - `SONARQUBE_ORGANIZATION` is typically not needed
 - All authentication methods are supported
+
+### HTTP Transport Mode
+
+The server supports HTTP transport for programmatic access and web service deployments. This enables integration with custom clients and web applications.
+
+#### Running as an HTTP Server
+
+Start the server with HTTP transport:
+
+```bash
+# Using environment variables
+MCP_TRANSPORT_TYPE=http MCP_HTTP_PORT=3000 npx sonarqube-mcp-server
+
+# With Docker
+docker run -i --rm \
+  -p 3000:3000 \
+  -e MCP_TRANSPORT_TYPE=http \
+  -e MCP_HTTP_PORT=3000 \
+  -e SONARQUBE_URL=https://sonarcloud.io \
+  -e SONARQUBE_TOKEN=your-token \
+  sapientpants/sonarqube-mcp-server:latest
+```
+
+#### HTTP API Endpoints
+
+When running in HTTP mode, the server exposes the following endpoints:
+
+- `GET /health` - Health check endpoint
+- `POST /session` - Create a new session
+- `DELETE /session/:sessionId` - Close a session
+- `POST /mcp` - Execute MCP requests
+- `GET /events/:sessionId` - Server-sent events for notifications
+
+#### Example HTTP Client
+
+See [examples/http-client.ts](examples/http-client.ts) for a complete TypeScript client example.
+
+Basic usage with curl:
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Create session
+SESSION_ID=$(curl -X POST http://localhost:3000/session | jq -r .sessionId)
+
+# Execute MCP request
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"sessionId\": \"$SESSION_ID\",
+    \"method\": \"tools/list\",
+    \"params\": {}
+  }"
+
+# Close session
+curl -X DELETE http://localhost:3000/session/$SESSION_ID
+```
+
+#### Security Considerations
+
+When running in HTTP mode:
+
+1. **Enable DNS rebinding protection** for public deployments:
+
+   ```bash
+   MCP_HTTP_ENABLE_DNS_REBINDING_PROTECTION=true
+   ```
+
+2. **Configure CORS** for browser-based clients:
+
+   ```bash
+   MCP_HTTP_ALLOWED_ORIGINS=https://yourapp.com,https://anotherapp.com
+   ```
+
+3. **Set session timeouts** appropriately:
+
+   ```bash
+   MCP_HTTP_SESSION_TIMEOUT=900000  # 15 minutes
+   ```
+
+4. **Use HTTPS** in production (configure through a reverse proxy like nginx)
 
 ### Elicitation Configuration (Experimental)
 
