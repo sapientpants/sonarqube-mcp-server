@@ -118,6 +118,34 @@ Follow these conventions to maintain code quality:
 - Run `pnpm run ci` before finalizing any code changes
 - Documentation for sonarqube-web-api-client can be retrieved from <https://raw.githubusercontent.com/sapientpants/sonarqube-web-api-client/refs/heads/main/docs/LLM.md>
 
+## Updating pnpm Version
+
+When updating the pnpm version in this project, you MUST update it in ALL of the following locations to maintain consistency:
+
+1. **package.json**: Update the `packageManager` field (e.g., `"packageManager": "pnpm@10.17.1"`)
+2. **Dockerfile**: Update the version in `RUN npm install -g pnpm@10.17.1`
+3. **Documentation files**:
+   - **README.md**: Update the Prerequisites section
+   - **CONTRIBUTING.md**: Update the Prerequisites section
+4. **Setup script**: Update `scripts/setup.sh` for mise installation
+5. **GitHub Actions workflows** (CRITICAL - these must match package.json exactly):
+   - `.github/workflows/main.yml`: Line with `version: 10.17.1`
+   - `.github/workflows/pr.yml`: Line with `version: 10.17.1`
+   - `.github/workflows/publish.yml`: `PNPM_VERSION` environment variable
+   - `.github/workflows/reusable-setup.yml`: Default value for `pnpm-version` input
+   - `.github/workflows/reusable-security.yml`: Default value for `pnpm-version` input
+   - `.github/workflows/reusable-validate.yml`: Default value for `pnpm-version` input
+
+**Important**: If package.json and GitHub workflows have different pnpm versions, the CI/CD pipeline will fail with an error like:
+
+```
+Error: Multiple versions of pnpm specified:
+  - version X in the GitHub Action config with the key "version"
+  - version pnpm@Y in the package.json with the key "packageManager"
+```
+
+Always search for the old version number across all files to ensure no location is missed.
+
 ## Memory
 
 Follow these steps for each interaction:
