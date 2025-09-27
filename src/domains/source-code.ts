@@ -137,17 +137,7 @@ export class SourceCodeDomain extends BaseDomain {
     };
   }): SonarQubeSourceResult {
     const mappedSources: SonarQubeSourceLine[] = sources.sources.map((line) => ({
-      line: line.line,
-      code: line.code,
-      scmAuthor: line.scmAuthor,
-      scmDate: line.scmDate,
-      scmRevision: line.scmRevision,
-      duplicated: line.duplicated,
-      isNew: line.isNew,
-      lineHits: line.lineHits,
-      conditions: line.conditions,
-      coveredConditions: line.coveredConditions,
-      highlightedText: line.highlightedText,
+      ...line,
       issues: undefined,
     }));
 
