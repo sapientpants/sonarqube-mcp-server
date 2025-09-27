@@ -88,15 +88,15 @@ export class SourceCodeDomain extends BaseDomain {
           return {
             line: line.line,
             code: line.code,
-            scmAuthor: (line as { scmAuthor?: string }).scmAuthor,
-            scmDate: (line as { scmDate?: string }).scmDate,
-            scmRevision: (line as { scmRevision?: string }).scmRevision,
-            duplicated: (line as { duplicated?: boolean }).duplicated,
-            isNew: (line as { isNew?: boolean }).isNew,
-            lineHits: (line as { lineHits?: number }).lineHits,
-            conditions: (line as { conditions?: number }).conditions,
-            coveredConditions: (line as { coveredConditions?: number }).coveredConditions,
-            highlightedText: (line as { highlightedText?: string }).highlightedText,
+            scmAuthor: undefined,
+            scmDate: undefined,
+            scmRevision: undefined,
+            duplicated: undefined,
+            isNew: undefined,
+            lineHits: undefined,
+            conditions: undefined,
+            coveredConditions: undefined,
+            highlightedText: undefined,
             issues: lineIssues.length > 0 ? lineIssues : undefined,
           };
         });
@@ -104,11 +104,11 @@ export class SourceCodeDomain extends BaseDomain {
         return {
           component: {
             key: sources.component.key,
-            path: (sources.component as { path?: string }).path,
+            path: undefined,
             qualifier: sources.component.qualifier,
             name: sources.component.name,
             longName: sources.component.longName,
-            language: (sources.component as { language?: string }).language,
+            language: undefined,
           },
           sources: sourceLines,
         };

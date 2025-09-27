@@ -409,8 +409,6 @@ describe('Error Handling', () => {
     it('should include full error details in message', () => {
       const error = new SonarQubeAPIError('Test error', SonarQubeErrorType.AUTHENTICATION_FAILED, {
         operation: 'test-op',
-        statusCode: undefined,
-        context: undefined,
         solution: 'Test solution',
       });
       const result = formatErrorForMCP(error);

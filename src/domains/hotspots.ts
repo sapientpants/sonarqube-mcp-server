@@ -97,14 +97,15 @@ export class HotspotsDomain extends BaseDomain {
         vulnerabilityProbability: response.rule.vulnerabilityProbability as SeverityLevel,
       },
       changelog: response.changelog?.map((change) => ({
-        user: change.user.login,
-        userName: change.user.name,
+        user: change.user?.login,
+        userName: change.user?.name,
         creationDate: change.creationDate,
-        diffs: change.diffs.map((diff) => ({
-          key: diff.key,
-          oldValue: diff.oldValue,
-          newValue: diff.newValue,
-        })),
+        diffs:
+          change.diffs?.map((diff) => ({
+            key: diff.key,
+            oldValue: diff.oldValue,
+            newValue: diff.newValue,
+          })) ?? [],
       })),
       comment: response.comment,
       users: (response as { users?: SonarQubeHotspotDetails['users'] }).users,

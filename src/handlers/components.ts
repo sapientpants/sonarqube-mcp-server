@@ -20,7 +20,7 @@ const logger = createLogger('handlers/components');
  */
 function buildTreeParams(params: ComponentsParams): ComponentsTreeParams {
   const treeParams: ComponentsTreeParams = {
-    component: params.component!,
+    component: params.component ?? '',
   };
 
   if (nullToUndefined(params.strategy) !== undefined) {

@@ -23,7 +23,6 @@ export const validateEnvironmentVariables = () => {
       SonarQubeErrorType.CONFIGURATION_ERROR,
       {
         operation: 'validateEnvironmentVariables',
-        statusCode: undefined,
         solution:
           'Set one of the following authentication methods:\n' +
           '• SONARQUBE_TOKEN for token-based authentication (recommended)\n' +
@@ -51,7 +50,6 @@ export const validateEnvironmentVariables = () => {
         SonarQubeErrorType.CONFIGURATION_ERROR,
         {
           operation: 'validateEnvironmentVariables',
-          statusCode: undefined,
           solution:
             'Provide a valid URL including protocol (e.g., https://sonarcloud.io or https://your-sonarqube.com)\n' +
             'Note: URL should not have a trailing slash',
@@ -72,7 +70,6 @@ export const validateEnvironmentVariables = () => {
       SonarQubeErrorType.CONFIGURATION_ERROR,
       {
         operation: 'validateEnvironmentVariables',
-        statusCode: undefined,
         solution:
           'Provide a valid organization key (e.g., "my-org") or remove the environment variable',
         context: {

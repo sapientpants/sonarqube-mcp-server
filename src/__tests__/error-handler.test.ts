@@ -29,8 +29,6 @@ describe('Error Handler Utilities', () => {
         SonarQubeErrorType.AUTHENTICATION_FAILED,
         {
           operation: 'test-op',
-          statusCode: undefined,
-          context: undefined,
           solution: 'Test solution',
         }
       );

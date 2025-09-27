@@ -47,7 +47,7 @@ export class ComponentsDomain extends BaseDomain {
         builder.query(query);
       }
       if (qualifiers !== undefined && qualifiers.length > 0) {
-        builder.qualifiers(qualifiers as unknown as Parameters<typeof builder.qualifiers>[0]);
+        builder.qualifiers(qualifiers as Parameters<typeof builder.qualifiers>[0]);
       }
       if (language !== undefined) {
         builder.languages([language]);
@@ -108,7 +108,7 @@ export class ComponentsDomain extends BaseDomain {
       }
 
       if (qualifiers !== undefined && qualifiers.length > 0) {
-        builder.qualifiers(qualifiers as unknown as Parameters<typeof builder.qualifiers>[0]);
+        builder.qualifiers(qualifiers as Parameters<typeof builder.qualifiers>[0]);
       }
 
       // Apply sorting

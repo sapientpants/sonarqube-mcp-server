@@ -25,36 +25,44 @@ export enum SonarQubeErrorType {
 
 export interface SonarQubeError extends Error {
   type: SonarQubeErrorType;
-  operation: string | undefined;
-  statusCode: number | undefined;
-  context: Record<string, unknown> | undefined;
-  solution: string | undefined;
+  operation?: string;
+  statusCode?: number;
+  context?: Record<string, unknown>;
+  solution?: string;
 }
 
 export class SonarQubeAPIError extends Error implements SonarQubeError {
   type: SonarQubeErrorType;
-  operation: string | undefined;
-  statusCode: number | undefined;
-  context: Record<string, unknown> | undefined;
-  solution: string | undefined;
+  operation?: string;
+  statusCode?: number;
+  context?: Record<string, unknown>;
+  solution?: string;
 
   constructor(
     message: string,
     type: SonarQubeErrorType,
     options?: {
-      operation: string | undefined;
-      statusCode: number | undefined;
-      context: Record<string, unknown> | undefined;
-      solution: string | undefined;
+      operation?: string;
+      statusCode?: number;
+      context?: Record<string, unknown>;
+      solution?: string;
     }
   ) {
     super(message);
     this.name = 'SonarQubeAPIError';
     this.type = type;
-    this.operation = options?.operation;
-    this.statusCode = options?.statusCode;
-    this.context = options?.context;
-    this.solution = options?.solution;
+    if (options?.operation !== undefined) {
+      this.operation = options.operation;
+    }
+    if (options?.statusCode !== undefined) {
+      this.statusCode = options.statusCode;
+    }
+    if (options?.context !== undefined) {
+      this.context = options.context;
+    }
+    if (options?.solution !== undefined) {
+      this.solution = options.solution;
+    }
   }
 
   override toString(): string {
@@ -144,28 +152,32 @@ export function transformError(error: unknown, operation: string): SonarQubeAPIE
       statusCode = (error as ApiError & { statusCode?: number }).statusCode;
     }
 
-    return new SonarQubeAPIError(error.message, type, {
+    const errorOptions: {
+      operation?: string;
+      statusCode?: number;
+      context?: Record<string, unknown>;
+      solution?: string;
+    } = {
       operation,
-      statusCode,
       context,
-      solution,
-    });
+    };
+    if (statusCode !== undefined) {
+      errorOptions.statusCode = statusCode;
+    }
+    if (solution !== undefined) {
+      errorOptions.solution = solution;
+    }
+    return new SonarQubeAPIError(error.message, type, errorOptions);
   }
 
   if (error instanceof Error) {
     return new SonarQubeAPIError(error.message, SonarQubeErrorType.UNKNOWN_ERROR, {
       operation,
-      statusCode: undefined,
-      context: undefined,
-      solution: undefined,
     });
   }
 
   return new SonarQubeAPIError(String(error), SonarQubeErrorType.UNKNOWN_ERROR, {
     operation,
-    statusCode: undefined,
-    context: undefined,
-    solution: undefined,
   });
 }
 
