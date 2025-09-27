@@ -697,6 +697,27 @@ export const updateHotspotStatusMcpHandler = (params: Record<string, unknown>) =
   updateHotspotStatusHandler(params);
 export const componentsMcpHandler = (params: Record<string, unknown>) => componentsHandler(params);
 
+// Common tool hint configurations to reduce duplication
+const READ_ONLY_TOOL_HINTS = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  openWorldHint: true,
+} as const;
+
+const WRITE_TOOL_HINTS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+} as const;
+
+const WRITE_NON_IDEMPOTENT_TOOL_HINTS = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+} as const;
+
 // Register SonarQube tools
 mcpServer.tool(
   'projects',
@@ -704,9 +725,7 @@ mcpServer.tool(
   projectsToolSchema,
   {
     title: 'List Projects',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   projectsMcpHandler
 );
@@ -717,9 +736,7 @@ mcpServer.tool(
   metricsToolSchema,
   {
     title: 'Get Metrics',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   metricsMcpHandler
 );
@@ -730,9 +747,7 @@ mcpServer.tool(
   issuesToolSchema,
   {
     title: 'Search Issues',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   issuesMcpHandler
 );
@@ -743,10 +758,7 @@ mcpServer.tool(
   markIssueFalsePositiveToolSchema,
   {
     title: 'Mark Issue False Positive',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssueFalsePositiveMcpHandler
 );
@@ -757,10 +769,7 @@ mcpServer.tool(
   markIssueWontFixToolSchema,
   {
     title: "Mark Issue Won't Fix",
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssueWontFixMcpHandler
 );
@@ -771,10 +780,7 @@ mcpServer.tool(
   markIssuesFalsePositiveToolSchema,
   {
     title: 'Mark Issues False Positive',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssuesFalsePositiveMcpHandler
 );
@@ -785,10 +791,7 @@ mcpServer.tool(
   markIssuesWontFixToolSchema,
   {
     title: "Mark Issues Won't Fix",
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   markIssuesWontFixMcpHandler
 );
@@ -799,10 +802,7 @@ mcpServer.tool(
   addCommentToIssueToolSchema,
   {
     title: 'Add Comment to Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   addCommentToIssueMcpHandler
 );
@@ -813,10 +813,7 @@ mcpServer.tool(
   assignIssueToolSchema,
   {
     title: 'Assign Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   assignIssueMcpHandler
 );
@@ -827,10 +824,7 @@ mcpServer.tool(
   confirmIssueToolSchema,
   {
     title: 'Confirm Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   confirmIssueMcpHandler
 );
@@ -841,10 +835,7 @@ mcpServer.tool(
   unconfirmIssueToolSchema,
   {
     title: 'Unconfirm Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   unconfirmIssueMcpHandler
 );
@@ -855,10 +846,7 @@ mcpServer.tool(
   resolveIssueToolSchema,
   {
     title: 'Resolve Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: true,
-    openWorldHint: true,
+    ...WRITE_TOOL_HINTS,
   },
   resolveIssueMcpHandler
 );
@@ -869,10 +857,7 @@ mcpServer.tool(
   reopenIssueToolSchema,
   {
     title: 'Reopen Issue',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   reopenIssueMcpHandler
 );
@@ -884,9 +869,7 @@ mcpServer.tool(
   systemHealthToolSchema,
   {
     title: 'Get System Health',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   healthMcpHandler
 );
@@ -897,9 +880,7 @@ mcpServer.tool(
   systemStatusToolSchema,
   {
     title: 'Get System Status',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   statusMcpHandler
 );
@@ -910,9 +891,7 @@ mcpServer.tool(
   systemPingToolSchema,
   {
     title: 'Ping System',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   pingMcpHandler
 );
@@ -924,9 +903,7 @@ mcpServer.tool(
   componentMeasuresToolSchema,
   {
     title: 'Get Component Measures',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   componentMeasuresMcpHandler
 );
@@ -937,9 +914,7 @@ mcpServer.tool(
   componentsMeasuresToolSchema,
   {
     title: 'Get Components Measures',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   componentsMeasuresMcpHandler
 );
@@ -950,9 +925,7 @@ mcpServer.tool(
   measuresHistoryToolSchema,
   {
     title: 'Get Measures History',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   measuresHistoryMcpHandler
 );
@@ -964,9 +937,7 @@ mcpServer.tool(
   qualityGatesToolSchema,
   {
     title: 'List Quality Gates',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   qualityGatesMcpHandler
 );
@@ -977,9 +948,7 @@ mcpServer.tool(
   qualityGateToolSchema,
   {
     title: 'Get Quality Gate',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   qualityGateMcpHandler
 );
@@ -990,9 +959,7 @@ mcpServer.tool(
   qualityGateStatusToolSchema,
   {
     title: 'Get Quality Gate Status',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   qualityGateStatusMcpHandler
 );
@@ -1004,9 +971,7 @@ mcpServer.tool(
   sourceCodeToolSchema,
   {
     title: 'View Source Code',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   sourceCodeMcpHandler
 );
@@ -1017,9 +982,7 @@ mcpServer.tool(
   scmBlameToolSchema,
   {
     title: 'Get SCM Blame',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   scmBlameMcpHandler
 );
@@ -1031,9 +994,7 @@ mcpServer.tool(
   hotspotsToolSchema,
   {
     title: 'Search Hotspots',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   hotspotsMcpHandler
 );
@@ -1044,9 +1005,7 @@ mcpServer.tool(
   hotspotToolSchema,
   {
     title: 'Get Hotspot Details',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   hotspotMcpHandler
 );
@@ -1057,10 +1016,7 @@ mcpServer.tool(
   updateHotspotStatusToolSchema,
   {
     title: 'Update Hotspot Status',
-    readOnlyHint: false,
-    destructiveHint: false,
-    idempotentHint: false,
-    openWorldHint: true,
+    ...WRITE_NON_IDEMPOTENT_TOOL_HINTS,
   },
   updateHotspotStatusMcpHandler
 );
@@ -1072,9 +1028,7 @@ mcpServer.tool(
   componentsToolSchema,
   {
     title: 'Search Components',
-    readOnlyHint: true,
-    destructiveHint: false,
-    openWorldHint: true,
+    ...READ_ONLY_TOOL_HINTS,
   },
   componentsMcpHandler
 );
