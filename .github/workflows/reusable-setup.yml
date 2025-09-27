@@ -17,7 +17,7 @@ on:
       pnpm-version:
         description: 'pnpm version to install (should match packageManager in package.json)'
         type: string
-        default: '10.15.0' # UPDATE: When upgrading pnpm in package.json
+        default: '10.17.1' # UPDATE: When upgrading pnpm in package.json
       install-deps:
         description: 'Whether to install npm dependencies'
         type: boolean
