@@ -3,7 +3,7 @@
   "changelog": [
     "changelog-github-custom",
     {
-      "repo": "sapientpants/agentic-node-ts-starter"
+      "repo": "sapientpants/sonarqube-mcp-server"
     }
   ],
   "commit": false,
