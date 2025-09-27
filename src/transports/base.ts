@@ -30,12 +30,45 @@ export interface ITransportConfig {
   /**
    * The type of transport to use.
    */
-  type: 'stdio';
+  type: 'stdio' | 'http';
 
   /**
    * Optional configuration specific to the transport type.
    */
   options?: Record<string, unknown>;
+}
+
+/**
+ * HTTP-specific transport configuration.
+ */
+export interface IHttpTransportConfig extends ITransportConfig {
+  type: 'http';
+  options?: {
+    /**
+     * Port to listen on for HTTP requests.
+     */
+    port?: number;
+
+    /**
+     * Allowed hosts for DNS rebinding protection.
+     */
+    allowedHosts?: string[];
+
+    /**
+     * Allowed origins for CORS.
+     */
+    allowedOrigins?: string[];
+
+    /**
+     * Session timeout in milliseconds.
+     */
+    sessionTimeout?: number;
+
+    /**
+     * Enable DNS rebinding protection.
+     */
+    enableDnsRebindingProtection?: boolean;
+  };
 }
 
 /**
