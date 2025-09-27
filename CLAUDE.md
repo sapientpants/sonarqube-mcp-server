@@ -101,7 +101,7 @@ Follow these conventions to maintain code quality:
 
    ```bash
    # Run all checks before committing
-   pnpm run ci
+   pnpm run precommit
 
    # This includes:
    # - Format checking (prettier)

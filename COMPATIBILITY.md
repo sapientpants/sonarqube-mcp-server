@@ -62,7 +62,7 @@ When updating the MCP SDK:
 4. Run `pnpm install` to update the lock file
 5. Test all server capabilities with multiple protocol versions
 6. Update this compatibility document if new protocol versions are supported
-7. Run the full test suite: `pnpm run ci`
+7. Run the full test suite: `pnpm run precommit`
 
 ## Monitoring Protocol Usage
 
