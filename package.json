@@ -29,7 +29,7 @@
   "bin": {
     "sonarqube-mcp-server": "./dist/index.js"
   },
-  "packageManager": "pnpm@10.7.1",
+  "packageManager": "pnpm@10.17.1",
   "scripts": {
     "dev": "tsc --watch --preserveWatchOutput",
     "start": "node dist/index.js",

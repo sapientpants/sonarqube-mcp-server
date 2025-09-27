@@ -33,7 +33,7 @@ on:
 #     uses: ./.github/workflows/reusable-setup.yml
 #     with:
 #       node-version: '22'
-#       pnpm-version: '10.15.0'
+#       pnpm-version: '10.17.1'
 #       install-deps: true
 #       build: true
 
