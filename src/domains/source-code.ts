@@ -86,17 +86,7 @@ export class SourceCodeDomain extends BaseDomain {
         const sourceLines: SonarQubeSourceLine[] = sources.sources.map((line) => {
           const lineIssues = issues.issues.filter((issue) => issue.line === line.line);
           return {
-            line: line.line,
-            code: line.code,
-            scmAuthor: undefined,
-            scmDate: undefined,
-            scmRevision: undefined,
-            duplicated: undefined,
-            isNew: undefined,
-            lineHits: undefined,
-            conditions: undefined,
-            coveredConditions: undefined,
-            highlightedText: undefined,
+            ...line,
             issues: lineIssues.length > 0 ? lineIssues : undefined,
           };
         });
