@@ -43,7 +43,7 @@ By participating in this project, you agree to abide by our code of conduct: be 
 ### Prerequisites
 
 - Node.js 22 or higher
-- pnpm 10.17.1 or higher
+- pnpm 10.17.0 or higher
 - Git
 
 ### Setup Steps
