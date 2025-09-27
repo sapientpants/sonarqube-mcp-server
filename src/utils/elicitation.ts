@@ -43,7 +43,7 @@ export const authSchema = z
 export class ElicitationManager {
   private server: Server | null = null;
   private options: ElicitationOptions;
-  private logger = createLogger('ElicitationManager');
+  private readonly logger = createLogger('ElicitationManager');
 
   constructor(options: Partial<ElicitationOptions> = {}) {
     this.options = {
@@ -260,7 +260,7 @@ export const createElicitationManager = (
 ): ElicitationManager => {
   const envEnabled = process.env.SONARQUBE_MCP_ELICITATION === 'true';
   const envThreshold = process.env.SONARQUBE_MCP_BULK_THRESHOLD
-    ? parseInt(process.env.SONARQUBE_MCP_BULK_THRESHOLD, 10)
+    ? Number.parseInt(process.env.SONARQUBE_MCP_BULK_THRESHOLD, 10)
     : undefined;
   const envRequireComments = process.env.SONARQUBE_MCP_REQUIRE_COMMENTS === 'true';
   const envInteractiveSearch = process.env.SONARQUBE_MCP_INTERACTIVE_SEARCH === 'true';

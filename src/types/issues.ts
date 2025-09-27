@@ -1,5 +1,5 @@
 import type { PaginationParams, SeverityLevel } from './common.js';
-import type { DoTransitionRequest, DoTransitionResponse } from 'sonarqube-web-api-client';
+export type { DoTransitionRequest, DoTransitionResponse } from 'sonarqube-web-api-client';
 
 /**
  * Interface for SonarQube issue impact
@@ -309,5 +309,4 @@ export interface ReopenIssueParams {
   comment?: string;
 }
 
-// Re-export transition types from the web API client
-export type { DoTransitionRequest, DoTransitionResponse };
+// Transition types are re-exported at the top of the file

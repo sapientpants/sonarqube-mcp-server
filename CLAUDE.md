@@ -115,7 +115,7 @@ Follow these conventions to maintain code quality:
 - Remember to use the ADR creation command with `EDITOR=true` to prevent timeouts in Claude Code
 - Never use `--no-verify` when committing code. This bypasses pre-commit hooks which run important validation checks
 - Run `pnpm format` to format code before committing
-- Run `pnpm run ci` before finalizing any code changes
+- Run `pnpm run precommit` before finalizing any code changes
 - Documentation for sonarqube-web-api-client can be retrieved from <https://raw.githubusercontent.com/sapientpants/sonarqube-web-api-client/refs/heads/main/docs/LLM.md>
 
 ## Updating pnpm Version

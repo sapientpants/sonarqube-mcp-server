@@ -314,9 +314,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param params Pagination and organization parameters
    * @returns Promise with the list of projects
    */
-  async listProjects(
-    params: PaginationParams = { page: undefined, pageSize: undefined }
-  ): Promise<SonarQubeProjectsResult> {
+  async listProjects(params?: PaginationParams): Promise<SonarQubeProjectsResult> {
     return this.projectsDomain.listProjects(params);
   }
 
@@ -334,9 +332,7 @@ export class SonarQubeClient implements ISonarQubeClient {
    * @param params Parameters including pagination
    * @returns Promise with the list of metrics
    */
-  async getMetrics(
-    params: PaginationParams = { page: undefined, pageSize: undefined }
-  ): Promise<SonarQubeMetricsResult> {
+  async getMetrics(params?: PaginationParams): Promise<SonarQubeMetricsResult> {
     return this.metricsDomain.getMetrics(params);
   }
 

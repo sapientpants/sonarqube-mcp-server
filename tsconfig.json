@@ -13,10 +13,11 @@
     "resolveJsonModule": true,
     "declaration": true,
     "sourceMap": true,
+    "rootDir": "./src",
     "outDir": "dist",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "downlevelIteration": true
   },
-  "include": ["src", "tests", "vitest.config.ts"]
+  "include": ["src", "tests"]
 }

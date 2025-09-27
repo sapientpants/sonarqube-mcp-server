@@ -23,7 +23,8 @@ import type {
 import { createLogger } from './utils/logger.js';
 import { nullToUndefined, ensureStringArray } from './utils/transforms.js';
 import { mapToSonarQubeParams } from './utils/parameter-mappers.js';
-import { validateEnvironmentVariables, resetDefaultClient } from './utils/client-factory.js';
+import { validateEnvironmentVariables } from './utils/client-factory.js';
+export { resetDefaultClient } from './utils/client-factory.js';
 import { createElicitationManager } from './utils/elicitation.js';
 import { SERVER_VERSION, VERSION_INFO } from './config/versions.js';
 import { TransportFactory } from './transports/index.js';
@@ -127,8 +128,7 @@ export const createDefaultClient = (): ISonarQubeClient => {
   return client;
 };
 
-// Re-export resetDefaultClient for backward compatibility
-export { resetDefaultClient };
+// resetDefaultClient is now re-exported at the top of the file
 
 // Re-export handlers for backward compatibility
 export {
@@ -1082,7 +1082,7 @@ mcpServer.tool(
 // Only start the server if not in test mode
 /* istanbul ignore if */
 if (process.env.NODE_ENV !== 'test') {
-  (async () => {
+  await (async () => {
     logger.info('Starting SonarQube MCP server', {
       ...VERSION_INFO,
       logFile: process.env.LOG_FILE ?? 'not configured',

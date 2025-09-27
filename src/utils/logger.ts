@@ -10,8 +10,8 @@
  * to a file instead of stdout/stderr to avoid interference.
  */
 
-import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { writeFileSync, appendFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 
 /**
  * Log levels for the application
@@ -178,9 +178,9 @@ export class Logger {
     if (shouldLog(LogLevel.DEBUG) && getLogFilePath()) {
       const formattedMessage = formatLogMessage(LogLevel.DEBUG, message, this.context);
       const fullMessage =
-        data !== undefined
-          ? `${formattedMessage} ${JSON.stringify(data, null, 2)}`
-          : formattedMessage;
+        data === undefined
+          ? formattedMessage
+          : `${formattedMessage} ${JSON.stringify(data, null, 2)}`;
       writeToLogFile(fullMessage);
     }
   }
@@ -194,9 +194,9 @@ export class Logger {
     if (shouldLog(LogLevel.INFO) && getLogFilePath()) {
       const formattedMessage = formatLogMessage(LogLevel.INFO, message, this.context);
       const fullMessage =
-        data !== undefined
-          ? `${formattedMessage} ${JSON.stringify(data, null, 2)}`
-          : formattedMessage;
+        data === undefined
+          ? formattedMessage
+          : `${formattedMessage} ${JSON.stringify(data, null, 2)}`;
       writeToLogFile(fullMessage);
     }
   }
@@ -210,9 +210,9 @@ export class Logger {
     if (shouldLog(LogLevel.WARN) && getLogFilePath()) {
       const formattedMessage = formatLogMessage(LogLevel.WARN, message, this.context);
       const fullMessage =
-        data !== undefined
-          ? `${formattedMessage} ${JSON.stringify(data, null, 2)}`
-          : formattedMessage;
+        data === undefined
+          ? formattedMessage
+          : `${formattedMessage} ${JSON.stringify(data, null, 2)}`;
       writeToLogFile(fullMessage);
     }
   }

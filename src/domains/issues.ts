@@ -377,7 +377,7 @@ export class IssuesDomain extends BaseDomain {
     comments.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     // The newly added comment should now be the last one
-    const newComment = comments[comments.length - 1];
+    const newComment = comments.at(-1);
     if (!newComment) {
       throw new Error('Failed to retrieve the newly added comment');
     }

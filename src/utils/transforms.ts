@@ -16,8 +16,8 @@ export function stringToNumberTransform(val: string | null | undefined): number 
   if (val === null || val === undefined) {
     return val;
   }
-  const parsed = parseInt(val, 10);
-  return isNaN(parsed) ? null : parsed;
+  const parsed = Number.parseInt(val, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 /**
