@@ -122,15 +122,15 @@ Follow these conventions to maintain code quality:
 
 When updating the pnpm version in this project, you MUST update it in ALL of the following locations to maintain consistency:
 
-1. **package.json**: Update the `packageManager` field (e.g., `"packageManager": "pnpm@10.17.1"`)
-2. **Dockerfile**: Update the version in `RUN npm install -g pnpm@10.17.1`
+1. **package.json**: Update the `packageManager` field (e.g., `"packageManager": "pnpm@10.17.0"`)
+2. **Dockerfile**: Update the version in `RUN npm install -g pnpm@10.17.0`
 3. **Documentation files**:
    - **README.md**: Update the Prerequisites section
    - **CONTRIBUTING.md**: Update the Prerequisites section
 4. **Setup script**: Update `scripts/setup.sh` for mise installation
 5. **GitHub Actions workflows** (CRITICAL - these must match package.json exactly):
-   - `.github/workflows/main.yml`: Line with `version: 10.17.1`
-   - `.github/workflows/pr.yml`: Line with `version: 10.17.1`
+   - `.github/workflows/main.yml`: Line with `version: 10.17.0`
+   - `.github/workflows/pr.yml`: Line with `version: 10.17.0`
    - `.github/workflows/publish.yml`: `PNPM_VERSION` environment variable
    - `.github/workflows/reusable-setup.yml`: Default value for `pnpm-version` input
    - `.github/workflows/reusable-security.yml`: Default value for `pnpm-version` input

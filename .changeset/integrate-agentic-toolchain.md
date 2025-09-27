@@ -15,7 +15,7 @@ feat: integrate agentic-node-ts-starter toolchain and update dependencies
 
 ## Dependency Updates
 
-- Updated pnpm from 10.7.1 to 10.17.1 across all configuration files
+- Updated pnpm from 10.7.1 to 10.17.0 across all configuration files
 - Updated Node.js requirement from 20 to 22 in documentation and Docker
 - Ensures compatibility with latest toolchain versions
 

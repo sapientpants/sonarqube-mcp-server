@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 
 # Install pnpm and configure for production build
-RUN npm install -g pnpm@10.17.1 && \
+RUN npm install -g pnpm@10.17.0 && \
     echo "enable-pre-post-scripts=false" > .npmrc
 
 # Set environment for production build

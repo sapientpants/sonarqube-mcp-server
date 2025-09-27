@@ -1164,7 +1164,7 @@ The SonarQube MCP Server follows a modular architecture:
 ### Prerequisites
 
 - Node.js 22 or higher
-- pnpm 10.17.1 or higher
+- pnpm 10.17.0 or higher
 - Docker (for container builds)
 
 ### Setup

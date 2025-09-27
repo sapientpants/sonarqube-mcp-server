@@ -101,7 +101,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.17.1 # Pinned: Must match packageManager in package.json
+          version: 10.17.0 # Pinned: Must match packageManager in package.json
           run_install: false # Dependencies installed separately for caching
           standalone: true # Faster installation method
 

@@ -17,7 +17,7 @@ on:
       pnpm-version:
         description: 'pnpm version (should match package.json packageManager)'
         type: string
-        default: '10.17.1' # UPDATE: When upgrading pnpm
+        default: '10.17.0' # UPDATE: When upgrading pnpm
       run-codeql:
         description: 'Run CodeQL static analysis for security vulnerabilities'
         type: boolean

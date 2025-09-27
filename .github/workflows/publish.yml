@@ -19,7 +19,7 @@ on:
 
 # Global environment variables for consistency
 env:
-  PNPM_VERSION: 10.17.1 # Pinned: Must match packageManager in package.json
+  PNPM_VERSION: 10.17.0 # Pinned: Must match packageManager in package.json
   NODE_VERSION: 22 # Pinned: Must match engines.node in package.json
 
 # SECURITY: Minimal required permissions

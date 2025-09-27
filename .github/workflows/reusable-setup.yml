@@ -17,7 +17,7 @@ on:
       pnpm-version:
         description: 'pnpm version to install (should match packageManager in package.json)'
         type: string
-        default: '10.17.1' # UPDATE: When upgrading pnpm in package.json
+        default: '10.17.0' # UPDATE: When upgrading pnpm in package.json
       install-deps:
         description: 'Whether to install npm dependencies'
         type: boolean
@@ -33,7 +33,7 @@ on:
 #     uses: ./.github/workflows/reusable-setup.yml
 #     with:
 #       node-version: '22'
-#       pnpm-version: '10.17.1'
+#       pnpm-version: '10.17.0'
 #       install-deps: true
 #       build: true
 
