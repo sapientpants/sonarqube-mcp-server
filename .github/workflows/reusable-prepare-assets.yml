@@ -34,10 +34,10 @@ on:
         value: ${{ inputs.version }}
       docker_built:
         description: 'Whether Docker image was built'
-        value: ${{ jobs.docker.outputs.built && 'true' || 'false' }}
+        value: ${{ inputs.enable_docker == true && 'true' || 'false' }}
       npm_built:
         description: 'Whether NPM package was built'
-        value: ${{ jobs.npm.outputs.built && 'true' || 'false' }}
+        value: ${{ inputs.enable_npm == true && 'true' || 'false' }}
       assets_summary:
         description: 'Summary of all prepared assets'
         value: ${{ jobs.summary.outputs.summary }}
