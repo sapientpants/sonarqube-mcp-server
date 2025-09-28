@@ -172,7 +172,7 @@ jobs:
 
   # =============================================================================
   # DOCKER HUB PUBLISHING
-  # Builds and publishes multi-platform Docker images
+  # Uses pre-built and pre-scanned Docker image from main workflow
   # =============================================================================
 
   docker:
@@ -184,7 +184,7 @@ jobs:
     permissions:
       contents: read
       packages: write # Push to GitHub Container Registry if needed
-      security-events: write # Upload vulnerability scan results
+      actions: read # Required to download artifacts
     steps:
       - name: Determine version
         id: version
@@ -192,12 +192,8 @@ jobs:
           VERSION="${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag }}"
           VERSION="${VERSION#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "🐳 Building Docker image: $VERSION"
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: v${{ steps.version.outputs.version }}
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "🐳 Publishing Docker image: $VERSION"
 
       - name: Check Docker credentials
         id: check-docker
@@ -214,13 +210,88 @@ jobs:
             exit 0
           fi
 
-      - name: Set up QEMU
-        # Required for multi-platform builds (arm64)
+      - name: Determine artifact source
+        id: artifact
         if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/setup-qemu-action@v3
+        # Find the correct artifact based on the release tag using GitHub API
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the commit SHA for this release tag using GitHub API
+          TAG_NAME="${{ steps.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
+
+          # Fetch tag information from GitHub API with authentication
+          TAG_API_URL="https://api.github.com/repos/$REPO/git/ref/tags/$TAG_NAME"
+          TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
+          TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
+          TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
+
+          if [ "$TAG_STATUS" != "200" ]; then
+            echo "❌ GitHub API request failed for $TAG_API_URL with status $TAG_STATUS"
+            echo "Response: $TAG_BODY"
+            exit 1
+          fi
+
+          # Extract the object SHA and type
+          OBJECT_TYPE=$(echo "$TAG_BODY" | jq -r '.object.type')
+          OBJECT_SHA=$(echo "$TAG_BODY" | jq -r '.object.sha')
+
+          # If it's an annotated tag, we need to dereference to get the commit
+          if [ "$OBJECT_TYPE" = "tag" ]; then
+            # Fetch the tag object to get the actual commit SHA
+            TAG_OBJ_URL="https://api.github.com/repos/$REPO/git/tags/$OBJECT_SHA"
+            TAG_OBJ_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_OBJ_URL)
+            TAG_OBJ_BODY=$(echo "$TAG_OBJ_RESPONSE" | head -n -1)
+            TAG_OBJ_STATUS=$(echo "$TAG_OBJ_RESPONSE" | tail -n 1)
+
+            if [ "$TAG_OBJ_STATUS" != "200" ]; then
+              echo "❌ GitHub API request failed for $TAG_OBJ_URL with status $TAG_OBJ_STATUS"
+              echo "Response: $TAG_OBJ_BODY"
+              exit 1
+            fi
+
+            RELEASE_SHA=$(echo "$TAG_OBJ_BODY" | jq -r '.object.sha')
+          else
+            # For lightweight tags, the object is already the commit
+            RELEASE_SHA="$OBJECT_SHA"
+          fi
+
+          if [ -z "$RELEASE_SHA" ] || [ "$RELEASE_SHA" = "null" ]; then
+            echo "❌ Could not find commit SHA for tag $TAG_NAME"
+            exit 1
+          fi
+
+          echo "commit_sha=$RELEASE_SHA" >> $GITHUB_OUTPUT
+          echo "artifact_name=docker-image-main-$RELEASE_SHA" >> $GITHUB_OUTPUT
+          echo "📦 Looking for artifact from commit: $RELEASE_SHA"
+
+      - name: Download Docker image artifact
+        # Download the pre-built, pre-scanned image from main workflow
+        # This ensures we publish exactly what was tested
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.artifact_name }}
+          path: ./docker-artifact
+
+      - name: Verify artifact exists
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        run: |
+          if [ ! -f ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar.gz ]; then
+            echo "❌ Docker image artifact not found!"
+            echo "Expected: ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar.gz"
+            echo "Contents of ./docker-artifact:"
+            ls -la ./docker-artifact/ || echo "Directory does not exist"
+            echo ""
+            echo "This usually means the main workflow didn't build a Docker image."
+            echo "Ensure ENABLE_DOCKER_RELEASE was set to 'true' when the release was created."
+            exit 1
+          fi
+          echo "✅ Found Docker image artifact"
 
       - name: Set up Docker Buildx
-        # Advanced Docker builder with cache support
+        # Required for loading and pushing multi-platform images
         if: steps.check-docker.outputs.has_credentials == 'true'
         uses: docker/setup-buildx-action@v3
 
@@ -232,71 +303,40 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      - name: Load and push Docker image
+        # Load the pre-built image and push with proper tags
         if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
-          tags: |
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}},value=${{ steps.version.outputs.version }}
-            type=raw,value=latest
+        run: |
+          echo "📥 Decompressing Docker image..."
+          gunzip ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar.gz
 
-      - name: Build Docker image
-        # Initial build for vulnerability scanning (amd64 only)
-        # Multi-platform build happens after security scan passes
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64 # Single platform for scanning
-          push: false # Don't push yet, scan first
-          load: true # Load into Docker for scanning
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha # Use GitHub Actions cache
-          cache-to: type=gha,mode=max # Maximum cache retention
-          build-args: VERSION=${{ steps.version.outputs.version }}
+          echo "🔄 Loading Docker image..."
+          docker load < ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar
 
-      - name: Scan Docker image for vulnerabilities
-        # SECURITY: Scan image before publishing
-        # FAILS IF: Critical or high vulnerabilities found
-        # To debug: Check trivy-results.sarif in Security tab
-        # To allow: Add CVEs to .trivyignore with justification
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ steps.version.outputs.version }}
-          format: 'sarif' # GitHub Security format
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH' # Fail on serious issues
-          ignore-unfixed: false # Don't ignore unfixed CVEs
-          exit-code: '1' # Fail workflow if vulnerabilities found
+          # The image is already tagged with the version from the main build
+          # We need to retag it with the Docker Hub repository name
+          # Note: This must match the image-name parameter in main.yml's docker job
+          SOURCE_IMAGE_NAME="sonarqube-mcp-server"
+          SOURCE_IMAGE="$SOURCE_IMAGE_NAME:${{ steps.version.outputs.version }}"
+          TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
 
-      - name: Upload Trivy results to GitHub Security
-        if: always() && steps.check-docker.outputs.has_credentials == 'true'
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'
-          category: 'container-scan'
+          echo "🏷️ Tagging image for Docker Hub..."
+          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:${{ steps.version.outputs.version }}"
+          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:latest"
 
-      - name: Push Docker image to Docker Hub
-        # Multi-platform build and push after security scan passes
-        # Builds for both amd64 (Intel/AMD) and arm64 (Apple Silicon, AWS Graviton)
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64 # Multi-platform support
-          push: true # Push to registry
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha # Reuse cache from scan build
-          cache-to: type=gha,mode=max
-          build-args: VERSION=${{ steps.version.outputs.version }}
+          # Also add major and major.minor tags
+          MAJOR=$(echo "${{ steps.version.outputs.version }}" | cut -d. -f1)
+          MINOR=$(echo "${{ steps.version.outputs.version }}" | cut -d. -f2)
+          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:$MAJOR"
+          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:$MAJOR.$MINOR"
+
+          echo "📤 Pushing to Docker Hub..."
+          docker push "$TARGET_REPO:${{ steps.version.outputs.version }}"
+          docker push "$TARGET_REPO:latest"
+          docker push "$TARGET_REPO:$MAJOR"
+          docker push "$TARGET_REPO:$MAJOR.$MINOR"
+
+          echo "✅ Docker image published successfully"
 
   # =============================================================================
   # NOTIFICATION

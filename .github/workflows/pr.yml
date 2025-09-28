@@ -79,6 +79,22 @@ jobs:
           reporter: github-pr-check # Report errors as PR checks
 
   # =============================================================================
+  # DOCKER CONTAINER VALIDATION
+  # Build and scan Docker image for vulnerabilities
+  # =============================================================================
+
+  # Docker: Build and security scan container image
+  # Only runs when ENABLE_DOCKER_RELEASE is configured
+  # Scans for: CVEs, misconfigurations, secrets in image layers
+  docker:
+    if: vars.ENABLE_DOCKER_RELEASE == 'true'
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      platforms: 'linux/amd64' # Single platform for faster PR validation
+      save-artifact: false # Don't save artifact for PRs
+      image-name: 'sonarqube-mcp-server-pr'
+
+  # =============================================================================
   # CHANGESET VALIDATION
   # Ensures features and fixes have proper changelog entries
   # =============================================================================
@@ -127,26 +143,44 @@ jobs:
   # Final status check - ensures all jobs passed
   # Required for branch protection rules
   pr-status:
-    needs: [validate, codeql, vulnerability, actionlint, changeset]
+    needs: [validate, codeql, vulnerability, actionlint, changeset, docker]
     if: always() # Run even if previous jobs failed
     runs-on: ubuntu-latest
     steps:
       - name: Check status
         # Aggregates results from all parallel jobs
         # This single check can be used as a required status check
-        # FAILS IF: Any validation job failed or was skipped
+        # FAILS IF: Any validation job failed
         # Common failures:
         #   - validate: Tests fail, coverage below 80%, lint errors
         #   - codeql: Security vulnerabilities detected
         #   - vulnerability: Vulnerable dependencies found
         #   - actionlint: Workflow syntax errors or best practice violations
         #   - changeset: Missing changeset for feat/fix commits
+        #   - docker: Container vulnerabilities or build failures (when enabled)
         run: |
+          # Check Docker job status
+          # The job can be:
+          # - success: Job ran and passed
+          # - failure: Job ran and failed
+          # - cancelled: Job was cancelled
+          # - skipped: Job condition was not met (e.g., ENABLE_DOCKER_RELEASE != 'true')
+          DOCKER_RESULT="${{ needs.docker.result }}"
+
+          # Docker is acceptable if it succeeded or was skipped
+          # It's a failure only if it actually ran and failed/was cancelled
+          if [ "$DOCKER_RESULT" == "failure" ] || [ "$DOCKER_RESULT" == "cancelled" ]; then
+            DOCKER_FAILED=true
+          else
+            DOCKER_FAILED=false
+          fi
+
           if [ "${{ needs.validate.result }}" != "success" ] || \
              [ "${{ needs.codeql.result }}" != "success" ] || \
              [ "${{ needs.vulnerability.result }}" != "success" ] || \
              [ "${{ needs.actionlint.result }}" != "success" ] || \
-             [ "${{ needs.changeset.result }}" != "success" ]; then
+             [ "${{ needs.changeset.result }}" != "success" ] || \
+             [ "$DOCKER_FAILED" == "true" ]; then
             echo "❌ PR validation failed"
             # Check individual job results for debugging
             echo "Validate: ${{ needs.validate.result }}"
@@ -154,6 +188,7 @@ jobs:
             echo "Vulnerability: ${{ needs.vulnerability.result }}"
             echo "Actionlint: ${{ needs.actionlint.result }}"
             echo "Changeset: ${{ needs.changeset.result }}"
+            echo "Docker: ${{ needs.docker.result }}"
             exit 1
           fi
           echo "✅ All PR checks passed"

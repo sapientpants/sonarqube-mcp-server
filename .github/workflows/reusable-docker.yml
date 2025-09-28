@@ -1,0 +1,210 @@
+# =============================================================================
+# REUSABLE WORKFLOW: Docker Build and Security Scanning
+# PURPOSE: Build Docker images and scan for vulnerabilities with Trivy
+# USAGE: Called by PR and main workflows for container validation
+# OUTPUTS: Security findings uploaded to GitHub Security tab, Docker image artifact
+# =============================================================================
+
+name: Reusable Docker
+
+on:
+  workflow_call:
+    inputs:
+      platforms:
+        description: 'Docker platforms to build (e.g., linux/amd64,linux/arm64)'
+        type: string
+        default: 'linux/amd64' # Single platform for PRs, multi for main
+      push-image:
+        description: 'Whether to push image to registry (always false for this workflow)'
+        type: boolean
+        default: false
+      save-artifact:
+        description: 'Whether to save Docker image as artifact for later use'
+        type: boolean
+        default: false
+      artifact-name:
+        description: 'Name for the Docker image artifact'
+        type: string
+        default: 'docker-image'
+      version:
+        description: 'Version tag for the Docker image'
+        type: string
+        default: ''
+      image-name:
+        description: 'Docker image name (without registry)'
+        type: string
+        default: 'sonarqube-mcp-server'
+    outputs:
+      image-digest:
+        description: 'Docker image digest'
+        value: ${{ jobs.docker.outputs.digest }}
+      artifact-name:
+        description: 'Name of the saved artifact'
+        value: ${{ jobs.docker.outputs.artifact-name }}
+
+# SECURITY: Required permissions for Docker operations
+# Note: packages: write is only needed if pushing to GitHub Container Registry
+# Calling workflows can omit it if not pushing images
+permissions:
+  contents: read # Read source code
+  security-events: write # Upload Trivy scan results
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+      artifact-name: ${{ inputs.artifact-name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # =============================================================================
+      # DOCKER SETUP
+      # Configure build environment for single or multi-platform builds
+      # =============================================================================
+
+      - name: Set up QEMU
+        # Required for multi-platform builds (arm64)
+        if: contains(inputs.platforms, 'arm64')
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        # Advanced Docker builder with cache support
+        uses: docker/setup-buildx-action@v3
+
+      # =============================================================================
+      # DOCKER BUILD
+      # Build image with layer caching for efficiency
+      # =============================================================================
+
+      - name: Generate Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ inputs.image-name }}
+          tags: |
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
+            type=raw,value=latest,enable=${{ inputs.version != '' }}
+            type=ref,event=pr
+            type=sha,format=short
+
+      - name: Determine build configuration
+        # Set clear variables for build mode to improve readability
+        id: build-config
+        run: |
+          # Determine if we're building for multiple platforms
+          if echo "${{ inputs.platforms }}" | grep -q ','; then
+            echo "is_multi_platform=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_multi_platform=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Determine if we can load the image (only for single-platform non-artifact builds)
+          SAVE_ARTIFACT="${{ inputs.save-artifact }}"
+          if [ "$SAVE_ARTIFACT" != "true" ] && ! echo "${{ inputs.platforms }}" | grep -q ','; then
+            echo "can_load=true" >> $GITHUB_OUTPUT
+            echo "output_type=" >> $GITHUB_OUTPUT
+          else
+            # Need to output to tar for artifact or multi-platform builds
+            echo "can_load=false" >> $GITHUB_OUTPUT
+            echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ inputs.platforms }}
+          push: false # Never push from this reusable workflow
+          load: ${{ steps.build-config.outputs.can_load == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha # Use GitHub Actions cache
+          cache-to: type=gha,mode=max # Maximum cache retention
+          build-args: |
+            VERSION=${{ inputs.version || github.sha }}
+          outputs: ${{ steps.build-config.outputs.output_type }}
+
+      # =============================================================================
+      # SECURITY SCANNING
+      # Trivy vulnerability scanning with configurable severity
+      # =============================================================================
+
+      - name: Determine Trivy scan configuration
+        # Set clear variables for scan inputs to improve readability
+        id: scan-config
+        run: |
+          # Determine scanning mode based on build configuration
+          CAN_LOAD="${{ steps.build-config.outputs.can_load }}"
+          if [ "$CAN_LOAD" = "true" ]; then
+            # For loaded single-platform images, scan by image reference
+            FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+            echo "scan_input=" >> $GITHUB_OUTPUT
+            echo "scan_image_ref=$FIRST_TAG" >> $GITHUB_OUTPUT
+            echo "Using image reference for scanning: $FIRST_TAG"
+          else
+            # For multi-platform or artifact builds, scan the tar file
+            echo "scan_input=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+            echo "scan_image_ref=" >> $GITHUB_OUTPUT
+            echo "Using tar file for scanning: ${{ inputs.artifact-name }}-${{ github.sha }}.tar"
+          fi
+
+      - name: Run Trivy vulnerability scanner
+        # SECURITY: Scan image for vulnerabilities before any distribution
+        # FAILS IF: Critical or high vulnerabilities found (configurable)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          input: ${{ steps.scan-config.outputs.scan_input }}
+          image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
+          format: 'sarif' # GitHub Security format
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH' # Fail on serious vulnerabilities
+          ignore-unfixed: false # Include unfixed CVEs
+          exit-code: '1' # Fail workflow if vulnerabilities found
+          trivyignores: '.trivyignore' # Use ignore file for false positives
+
+      - name: Upload Trivy results to GitHub Security
+        # Always upload results, even if scan fails
+        # Results viewable at: Security > Code scanning alerts
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'container-scan-${{ github.event_name }}'
+
+      # =============================================================================
+      # ARTIFACT STORAGE
+      # Save Docker image for reuse in publish workflow
+      # =============================================================================
+
+      - name: Compress Docker image artifact
+        # Compress the tar file to reduce storage costs
+        if: inputs.save-artifact
+        run: |
+          echo "Compressing Docker image artifact..."
+          gzip -9 ${{ inputs.artifact-name }}-${{ github.sha }}.tar
+          ls -lh ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz
+
+      - name: Upload Docker image artifact
+        # Store image for deterministic publishing
+        if: inputs.save-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}-${{ github.sha }}
+          path: ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz
+          retention-days: 7 # Keep for a week (enough for release cycle)
+          compression-level: 0 # Already compressed with gzip
+
+      # =============================================================================
+      # SUPPLY CHAIN SECURITY
+      # Generate attestations for build provenance (main builds only)
+      # =============================================================================
+
+      - name: Generate attestations
+        # Creates cryptographic proof of build provenance (SLSA Level 3)
+        if: inputs.save-artifact && inputs.version != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz

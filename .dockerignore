@@ -1,0 +1,78 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# GitHub files
+.github
+
+# Documentation
+*.md
+LICENSE
+docs
+doc
+
+# Development files
+.husky
+.changeset
+.eslintrc.json
+.prettierrc
+.prettierignore
+.editorconfig
+.vscode
+.idea
+
+# Test files
+tests
+test
+*.test.ts
+*.spec.ts
+coverage
+.nyc_output
+junit.xml
+
+# Build artifacts that will be created during Docker build
+dist
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (should not be in image)
+.env
+.env.*
+
+# CI/CD files
+.travis.yml
+.gitlab-ci.yml
+Jenkinsfile
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.bak
+*.swp
+
+# SBOM and security scan results
+sbom.cdx.json
+trivy-results.sarif
+results.sarif
+
+# Archives
+*.tar.gz
+*.zip
