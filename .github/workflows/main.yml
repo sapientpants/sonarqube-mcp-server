@@ -72,18 +72,19 @@ jobs:
       contents: read
 
   # =============================================================================
-  # RELEASE PHASE
-  # Creates versioned releases with artifacts when changesets are present
+  # VERSION DETERMINATION PHASE
+  # Determines version and builds artifacts, but doesn't create release yet
   # =============================================================================
 
-  version-and-release:
+  version:
     # Only runs after all validation and security checks pass
-    # Ensures we never release vulnerable or broken code
+    # Determines version number needed for Docker builds
     needs: [validate, codeql, vulnerability]
     runs-on: ubuntu-latest
     outputs:
-      released: ${{ steps.release.outputs.released }} # true if release created
+      changed: ${{ steps.version.outputs.changed }} # true if version changed
       version: ${{ steps.version.outputs.version }} # semantic version number
+      commit_sha: ${{ steps.commit.outputs.sha }} # commit SHA for artifact naming
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -161,33 +162,107 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: pnpm sbom
 
-      - name: Create release artifacts
-        # Package dist/ folder for GitHub release attachments
-        # Creates both tar.gz (Linux/Mac) and zip (Windows) formats
+      - name: Store commit SHA
+        # Store the commit SHA for Docker artifact naming
+        id: commit
         if: steps.version.outputs.changed == 'true'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "📌 Commit SHA for artifacts: ${{ github.sha }}"
+
+  # =============================================================================
+  # DOCKER BUILD PHASE
+  # Build and scan Docker image with version tag BEFORE creating the release
+  # =============================================================================
+
+  docker:
+    # Only runs when Docker release is enabled AND version changed
+    # Builds after version determination but BEFORE release creation
+    if: vars.ENABLE_DOCKER_RELEASE == 'true' && needs.version.outputs.changed == 'true'
+    needs: [version]
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      platforms: 'linux/amd64,linux/arm64' # Multi-platform for production
+      save-artifact: true # Save for deterministic publishing
+      artifact-name: 'docker-image-main'
+      image-name: 'sonarqube-mcp-server'
+      version: ${{ needs.version.outputs.version }}
+
+  # =============================================================================
+  # RELEASE CREATION PHASE
+  # Creates GitHub release with all artifacts after everything is built
+  # =============================================================================
+
+  release:
+    # Create release only after all artifacts are ready
+    # This ensures publish workflow has everything it needs
+    needs: [version, docker]
+    # Run even if docker was skipped (when ENABLE_DOCKER_RELEASE is false)
+    if: |
+      always() &&
+      needs.version.result == 'success' &&
+      needs.version.outputs.changed == 'true' &&
+      (needs.docker.result == 'success' || needs.docker.result == 'skipped')
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      version: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # =============================================================================
+      # ENVIRONMENT SETUP
+      # =============================================================================
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # =============================================================================
+      # BUILD FOR RELEASE
+      # =============================================================================
+
+      - name: Build
+        run: |
+          pnpm clean
+          pnpm build
+
+      - name: Generate SBOM
+        run: pnpm sbom
+
+      - name: Create release artifacts
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
           tar -czf dist-${VERSION}.tar.gz dist/
           zip -r dist-${VERSION}.zip dist/
 
       # =============================================================================
       # GIT OPERATIONS
-      # Commit version changes and create release tag
       # =============================================================================
 
       - name: Install actionlint for pre-commit validation
-        # Install actionlint so pre-commit hooks can run workflow validation
-        # Uses the official installer script from rhysd/actionlint
-        if: steps.version.outputs.changed == 'true'
         run: |
           echo "Installing actionlint for pre-commit validation..."
           bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           echo "${PWD}" >> $GITHUB_PATH
 
       - name: Commit version changes
-        # Creates release commit with updated package.json and CHANGELOG.md
-        # [skip actions] prevents infinite loop by skipping this workflow on the commit
-        if: steps.version.outputs.changed == 'true'
         run: |
           # Configure git with GitHub Actions bot identity
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
@@ -197,100 +272,62 @@ jobs:
           git add package.json CHANGELOG.md .changeset
 
           # Commit with [skip actions] to prevent workflow recursion
-          git commit -m "chore(release): v${{ steps.version.outputs.version }} [skip actions]"
+          git commit -m "chore(release): v${{ needs.version.outputs.version }} [skip actions]"
 
           # Create annotated tag for the release
-          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+          git tag -a "v${{ needs.version.outputs.version }}" -m "Release v${{ needs.version.outputs.version }}"
 
           # Push changes and tags to origin
-          # SECURITY: Requires write permissions or RELEASE_TOKEN
           git push origin main --follow-tags
 
       # =============================================================================
       # RELEASE CREATION
-      # Extract changelog and create GitHub release with artifacts
       # =============================================================================
 
       - name: Extract release notes
-        # Parse CHANGELOG.md to get notes for this specific version
-        # AWK script extracts content between version headers
-        if: steps.version.outputs.changed == 'true'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          # Extract content between this version header and the next
+          VERSION="${{ needs.version.outputs.version }}"
           awk -v version="## $VERSION" '
             $0 ~ version { flag=1; next }
             /^## [0-9]/ && flag { exit }
             flag { print }
           ' CHANGELOG.md > release-notes.md
 
-          # Fallback if extraction fails (e.g., first release)
           if [ ! -s release-notes.md ]; then
             echo "Release v$VERSION" > release-notes.md
           fi
 
       - name: Create GitHub Release
-        # Publishes release with artifacts to GitHub Releases page
-        # Pinned to v2 for stability - check for updates quarterly
-        if: steps.version.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          body_path: release-notes.md # Changelog excerpt from above
-          draft: false # Publish immediately
-          prerelease: false # Mark as stable release
-          make_latest: true # Update "latest" pointer
-          files: | # Artifacts attached to release
+          tag_name: v${{ needs.version.outputs.version }}
+          name: v${{ needs.version.outputs.version }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
             sbom.cdx.json
-            dist-${{ steps.version.outputs.version }}.tar.gz
-            dist-${{ steps.version.outputs.version }}.zip
+            dist-${{ needs.version.outputs.version }}.tar.gz
+            dist-${{ needs.version.outputs.version }}.zip
         env:
-          # SECURITY: Use RELEASE_TOKEN for protected branches
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       # =============================================================================
       # SUPPLY CHAIN SECURITY
-      # Generate SLSA attestations for build provenance
       # =============================================================================
 
       - name: Generate attestations
-        # Creates cryptographic proof of build provenance (SLSA Level 3)
-        # Attestations link artifacts to specific workflow run
-        # Helps detect tampering and verify authenticity
-        if: steps.version.outputs.changed == 'true'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            dist/**/*.js         # All built JavaScript files
-            sbom.cdx.json       # Software Bill of Materials
-            dist-*.tar.gz       # Release archives
+            dist/**/*.js
+            sbom.cdx.json
+            dist-*.tar.gz
             dist-*.zip
 
       - name: Set release output
-        # Output variables for downstream jobs
-        # Used by publish workflows to trigger distribution
         id: release
-        if: steps.version.outputs.changed == 'true'
         run: |
           echo "released=true" >> $GITHUB_OUTPUT
-          echo "version=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
-          echo "✅ Released version ${{ steps.version.outputs.version }}"
-
-  # =============================================================================
-  # DOCKER BUILD PHASE
-  # Build and scan Docker image with version tag for later publishing
-  # =============================================================================
-
-  docker:
-    # Only runs when Docker release is enabled
-    # Builds after version-and-release to use proper version tag
-    if: vars.ENABLE_DOCKER_RELEASE == 'true'
-    needs: [version-and-release]
-    uses: ./.github/workflows/reusable-docker.yml
-    with:
-      platforms: 'linux/amd64,linux/arm64' # Multi-platform for production
-      save-artifact: true # Save for deterministic publishing
-      artifact-name: 'docker-image-main'
-      image-name: 'sonarqube-mcp-server'
-      version: ${{ needs.version-and-release.outputs.version || github.sha }}
+          echo "✅ Released version ${{ needs.version.outputs.version }}"
