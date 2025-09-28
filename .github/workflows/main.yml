@@ -214,7 +214,7 @@ jobs:
           elif [ "${{ needs.docker.result }}" == "success" ]; then
             echo "✅ Docker build succeeded"
           else
-            echo "⏭️ Docker build was skipped (ENABLE_DOCKER_RELEASE not set)"
+            echo "⏭️ Docker build was skipped (either ENABLE_DOCKER_RELEASE is not 'true' or version did not change)"
           fi
           echo "Proceeding to release..."
 
@@ -227,8 +227,6 @@ jobs:
     # Create release only after all build artifacts are ready
     # wait-for-docker ensures Docker completes if enabled
     needs: [wait-for-docker]
-    # Only run if all prerequisites passed
-    if: needs.wait-for-docker.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
