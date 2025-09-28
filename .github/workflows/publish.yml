@@ -213,13 +213,33 @@ jobs:
       - name: Determine artifact source
         id: artifact
         if: steps.check-docker.outputs.has_credentials == 'true'
-        # Find the correct artifact based on the release tag
+        # Find the correct artifact based on the release tag using GitHub API
         run: |
-          # Get the commit SHA for this release tag
-          RELEASE_SHA=$(git ls-remote https://github.com/${{ github.repository }}.git refs/tags/${{ steps.version.outputs.tag }} | cut -f1)
+          # Get the commit SHA for this release tag using GitHub API
+          TAG_NAME="${{ steps.version.outputs.tag }}"
+          REPO="${{ github.repository }}"
 
-          if [ -z "$RELEASE_SHA" ]; then
-            echo "❌ Could not find commit SHA for tag ${{ steps.version.outputs.tag }}"
+          # Fetch tag information from GitHub API
+          TAG_API_URL="https://api.github.com/repos/$REPO/git/ref/tags/$TAG_NAME"
+          TAG_RESPONSE=$(curl -s $TAG_API_URL)
+
+          # Extract the object SHA and type
+          OBJECT_TYPE=$(echo "$TAG_RESPONSE" | jq -r '.object.type')
+          OBJECT_SHA=$(echo "$TAG_RESPONSE" | jq -r '.object.sha')
+
+          # If it's an annotated tag, we need to dereference to get the commit
+          if [ "$OBJECT_TYPE" = "tag" ]; then
+            # Fetch the tag object to get the actual commit SHA
+            TAG_OBJ_URL="https://api.github.com/repos/$REPO/git/tags/$OBJECT_SHA"
+            TAG_OBJ=$(curl -s $TAG_OBJ_URL)
+            RELEASE_SHA=$(echo "$TAG_OBJ" | jq -r '.object.sha')
+          else
+            # For lightweight tags, the object is already the commit
+            RELEASE_SHA="$OBJECT_SHA"
+          fi
+
+          if [ -z "$RELEASE_SHA" ] || [ "$RELEASE_SHA" = "null" ]; then
+            echo "❌ Could not find commit SHA for tag $TAG_NAME"
             exit 1
           fi
 

@@ -89,6 +89,28 @@ jobs:
             type=ref,event=pr
             type=sha,format=short
 
+      - name: Determine build configuration
+        # Set clear variables for build mode to improve readability
+        id: build-config
+        run: |
+          # Determine if we're building for multiple platforms
+          if echo "${{ inputs.platforms }}" | grep -q ','; then
+            echo "is_multi_platform=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_multi_platform=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Determine if we can load the image (only for single-platform non-artifact builds)
+          SAVE_ARTIFACT="${{ inputs.save-artifact }}"
+          if [ "$SAVE_ARTIFACT" != "true" ] && ! echo "${{ inputs.platforms }}" | grep -q ','; then
+            echo "can_load=true" >> $GITHUB_OUTPUT
+            echo "output_type=" >> $GITHUB_OUTPUT
+          else
+            # Need to output to tar for artifact or multi-platform builds
+            echo "can_load=false" >> $GITHUB_OUTPUT
+            echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build Docker image
         id: build
         uses: docker/build-push-action@v6
@@ -96,41 +118,46 @@ jobs:
           context: .
           platforms: ${{ inputs.platforms }}
           push: false # Never push from this reusable workflow
-          # Can only load single-platform images; for multi-platform, use outputs
-          load: ${{ !inputs.save-artifact && !contains(inputs.platforms, ',') }}
+          load: ${{ steps.build-config.outputs.can_load == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha # Use GitHub Actions cache
           cache-to: type=gha,mode=max # Maximum cache retention
           build-args: |
             VERSION=${{ inputs.version || github.sha }}
-          # Output to tar for artifact or multi-platform scanning
-          outputs: ${{ (inputs.save-artifact || contains(inputs.platforms, ',')) && format('type=docker,dest={0}-{1}.tar', inputs.artifact-name, github.sha) || '' }}
+          outputs: ${{ steps.build-config.outputs.output_type }}
 
       # =============================================================================
       # SECURITY SCANNING
       # Trivy vulnerability scanning with configurable severity
       # =============================================================================
 
-      - name: Determine Docker tag for scanning
-        # Extract the appropriate tag for Trivy scanning
-        # For single-platform builds, we need to use an actual tag that was applied to the image
-        id: scan-tag
-        if: ${{ !inputs.save-artifact && !contains(inputs.platforms, ',') }}
+      - name: Determine Trivy scan configuration
+        # Set clear variables for scan inputs to improve readability
+        id: scan-config
         run: |
-          # Get the first tag from the metadata output
-          FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
-          echo "tag=$FIRST_TAG" >> $GITHUB_OUTPUT
-          echo "Using tag for scanning: $FIRST_TAG"
+          # Determine scanning mode based on build configuration
+          CAN_LOAD="${{ steps.build-config.outputs.can_load }}"
+          if [ "$CAN_LOAD" = "true" ]; then
+            # For loaded single-platform images, scan by image reference
+            FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+            echo "scan_input=" >> $GITHUB_OUTPUT
+            echo "scan_image_ref=$FIRST_TAG" >> $GITHUB_OUTPUT
+            echo "Using image reference for scanning: $FIRST_TAG"
+          else
+            # For multi-platform or artifact builds, scan the tar file
+            echo "scan_input=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+            echo "scan_image_ref=" >> $GITHUB_OUTPUT
+            echo "Using tar file for scanning: ${{ inputs.artifact-name }}-${{ github.sha }}.tar"
+          fi
 
       - name: Run Trivy vulnerability scanner
         # SECURITY: Scan image for vulnerabilities before any distribution
         # FAILS IF: Critical or high vulnerabilities found (configurable)
         uses: aquasecurity/trivy-action@0.28.0
         with:
-          # Scan tar file if multi-platform or saving artifact; otherwise scan loaded image
-          input: ${{ (inputs.save-artifact || contains(inputs.platforms, ',')) && format('{0}-{1}.tar', inputs.artifact-name, github.sha) || '' }}
-          image-ref: ${{ (!inputs.save-artifact && !contains(inputs.platforms, ',')) && steps.scan-tag.outputs.tag || '' }}
+          input: ${{ steps.scan-config.outputs.scan_input }}
+          image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
           format: 'sarif' # GitHub Security format
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH' # Fail on serious vulnerabilities
