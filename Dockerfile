@@ -1,28 +1,36 @@
-# Build stage
+# Build stage - compile TypeScript to JavaScript
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files first for better caching
+# Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and configure for production build
-RUN npm install -g pnpm@10.17.0 && \
-    echo "enable-pre-post-scripts=false" > .npmrc
+# Install pnpm
+RUN npm install -g pnpm@10.17.0
 
-# Set environment for production build
-ENV SKIP_HUSKY=1
-ENV NODE_ENV=production
-
-# Install dependencies (including dev for build)
+# Install ALL dependencies (including dev) needed for build
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Copy source code and build
+# Copy source code and build configuration
 COPY src/ ./src/
 COPY tsconfig.json tsconfig.build.json ./
+
+# Build the application
 RUN pnpm run build
 
-# Install production dependencies separately for clean copy
+# Production dependencies stage - prepare clean node_modules
+FROM node:22-alpine AS deps
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install pnpm
+RUN npm install -g pnpm@10.17.0
+
+# Install ONLY production dependencies
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # Production stage - minimal stdio-only runtime
@@ -34,16 +42,20 @@ RUN addgroup -g 1001 nodejs && \
 
 WORKDIR /app
 
-# Copy production dependencies from build stage
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Copy production dependencies from deps stage (clean, no dev deps)
+COPY --from=deps /app/node_modules ./node_modules
 
-# Copy built application
+# Copy package.json for metadata
+COPY --from=deps /app/package.json ./package.json
+
+# Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Set environment for stdio-only operation
+# Set default environment for production
 ENV NODE_ENV=production
 ENV LOG_LEVEL=INFO
+# Default to stdio transport, can be overridden at runtime
+ENV MCP_TRANSPORT=stdio
 
 # Create logs directory with proper permissions
 RUN mkdir -p logs && \
@@ -52,7 +64,16 @@ RUN mkdir -p logs && \
 # Switch to non-root user
 USER nodejs
 
-# Stdio transport - no ports exposed, no health checks needed
+# Expose port for HTTP transport (ignored when using stdio)
+EXPOSE 3000
 
-# Start the server with optimized flags for stdio
+# Health check for HTTP mode (no-op for stdio mode)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD if [ "$MCP_TRANSPORT" = "http" ]; then \
+        wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1; \
+      else \
+        exit 0; \
+      fi
+
+# Start the server with optimized flags
 CMD ["node", "--experimental-specifier-resolution=node", "--max-old-space-size=512", "dist/index.js"] 

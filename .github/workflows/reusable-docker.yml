@@ -112,10 +112,13 @@ jobs:
       # Trivy vulnerability scanning with configurable severity
       # =============================================================================
 
-      - name: Get first Docker tag for scanning
-        # Extract the first tag from the metadata output for Trivy scanning
-        id: first-tag
+      - name: Determine Docker tag for scanning
+        # Extract the appropriate tag for Trivy scanning
+        # For single-platform builds, we need to use an actual tag that was applied to the image
+        id: scan-tag
+        if: ${{ !inputs.save-artifact && !contains(inputs.platforms, ',') }}
         run: |
+          # Get the first tag from the metadata output
           FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
           echo "tag=$FIRST_TAG" >> $GITHUB_OUTPUT
           echo "Using tag for scanning: $FIRST_TAG"
@@ -127,7 +130,7 @@ jobs:
         with:
           # Scan tar file if multi-platform or saving artifact; otherwise scan loaded image
           input: ${{ (inputs.save-artifact || contains(inputs.platforms, ',')) && format('{0}-{1}.tar', inputs.artifact-name, github.sha) || '' }}
-          image-ref: ${{ (!inputs.save-artifact && !contains(inputs.platforms, ',')) && steps.first-tag.outputs.tag || '' }}
+          image-ref: ${{ (!inputs.save-artifact && !contains(inputs.platforms, ',')) && steps.scan-tag.outputs.tag || '' }}
           format: 'sarif' # GitHub Security format
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH' # Fail on serious vulnerabilities
