@@ -159,6 +159,8 @@ jobs:
       - name: Run Trivy vulnerability scanner
         # SECURITY: Scan image for vulnerabilities before any distribution
         # FAILS IF: Critical or high vulnerabilities found (configurable)
+        # NOTE: Multi-platform OCI exports cannot be scanned from tar files
+        if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
         uses: aquasecurity/trivy-action@0.28.0
         with:
           input: ${{ steps.scan-config.outputs.scan_input }}
@@ -173,7 +175,8 @@ jobs:
       - name: Upload Trivy results to GitHub Security
         # Always upload results, even if scan fails
         # Results viewable at: Security > Code scanning alerts
-        if: always()
+        # Only upload if Trivy actually ran (not for multi-platform builds)
+        if: always() && (steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ','))
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
