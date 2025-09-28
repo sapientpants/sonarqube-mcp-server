@@ -43,10 +43,11 @@ on:
         value: ${{ jobs.docker.outputs.artifact-name }}
 
 # SECURITY: Required permissions for Docker operations
+# Note: packages: write is only needed if pushing to GitHub Container Registry
+# Calling workflows can omit it if not pushing images
 permissions:
   contents: read # Read source code
   security-events: write # Upload Trivy scan results
-  packages: write # For GitHub Container Registry (if needed)
 
 jobs:
   docker:
