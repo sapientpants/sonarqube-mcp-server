@@ -103,7 +103,8 @@ jobs:
         id: pack
         run: |
           # Create the NPM package tarball
-          NPM_PACKAGE=$(npm pack 2>/dev/null)
+          # Use tail -1 to get just the filename, as npm pack may output additional text
+          NPM_PACKAGE=$(npm pack 2>/dev/null | tail -1)
           echo "📦 Created NPM package: $NPM_PACKAGE"
 
           # Generate metadata

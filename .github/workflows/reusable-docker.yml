@@ -108,7 +108,12 @@ jobs:
           else
             # Need to output to tar for artifact or multi-platform builds
             echo "can_load=false" >> $GITHUB_OUTPUT
-            echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+            # Use OCI format for multi-platform builds (docker format doesn't support manifest lists)
+            if echo "${{ inputs.platforms }}" | grep -q ','; then
+              echo "output_type=type=oci,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+            else
+              echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Build Docker image
