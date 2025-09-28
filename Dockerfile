@@ -68,9 +68,12 @@ USER nodejs
 EXPOSE 3000
 
 # Health check for HTTP mode (no-op for stdio mode)
+# Uses node's built-in http module for more secure health checking
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD if [ "$MCP_TRANSPORT" = "http" ]; then \
-        wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1; \
+        node -e "require('http').get('http://127.0.0.1:3000/health', (res) => { \
+          if (res.statusCode === 200) { process.exit(0); } else { process.exit(1); } \
+        }).on('error', () => { process.exit(1); });" || exit 1; \
       else \
         exit 0; \
       fi

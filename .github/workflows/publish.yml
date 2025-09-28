@@ -214,25 +214,44 @@ jobs:
         id: artifact
         if: steps.check-docker.outputs.has_credentials == 'true'
         # Find the correct artifact based on the release tag using GitHub API
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get the commit SHA for this release tag using GitHub API
           TAG_NAME="${{ steps.version.outputs.tag }}"
           REPO="${{ github.repository }}"
 
-          # Fetch tag information from GitHub API
+          # Fetch tag information from GitHub API with authentication
           TAG_API_URL="https://api.github.com/repos/$REPO/git/ref/tags/$TAG_NAME"
-          TAG_RESPONSE=$(curl -s $TAG_API_URL)
+          TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
+          TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
+          TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
+
+          if [ "$TAG_STATUS" != "200" ]; then
+            echo "❌ GitHub API request failed for $TAG_API_URL with status $TAG_STATUS"
+            echo "Response: $TAG_BODY"
+            exit 1
+          fi
 
           # Extract the object SHA and type
-          OBJECT_TYPE=$(echo "$TAG_RESPONSE" | jq -r '.object.type')
-          OBJECT_SHA=$(echo "$TAG_RESPONSE" | jq -r '.object.sha')
+          OBJECT_TYPE=$(echo "$TAG_BODY" | jq -r '.object.type')
+          OBJECT_SHA=$(echo "$TAG_BODY" | jq -r '.object.sha')
 
           # If it's an annotated tag, we need to dereference to get the commit
           if [ "$OBJECT_TYPE" = "tag" ]; then
             # Fetch the tag object to get the actual commit SHA
             TAG_OBJ_URL="https://api.github.com/repos/$REPO/git/tags/$OBJECT_SHA"
-            TAG_OBJ=$(curl -s $TAG_OBJ_URL)
-            RELEASE_SHA=$(echo "$TAG_OBJ" | jq -r '.object.sha')
+            TAG_OBJ_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_OBJ_URL)
+            TAG_OBJ_BODY=$(echo "$TAG_OBJ_RESPONSE" | head -n -1)
+            TAG_OBJ_STATUS=$(echo "$TAG_OBJ_RESPONSE" | tail -n 1)
+
+            if [ "$TAG_OBJ_STATUS" != "200" ]; then
+              echo "❌ GitHub API request failed for $TAG_OBJ_URL with status $TAG_OBJ_STATUS"
+              echo "Response: $TAG_OBJ_BODY"
+              exit 1
+            fi
+
+            RELEASE_SHA=$(echo "$TAG_OBJ_BODY" | jq -r '.object.sha')
           else
             # For lightweight tags, the object is already the commit
             RELEASE_SHA="$OBJECT_SHA"
@@ -296,7 +315,9 @@ jobs:
 
           # The image is already tagged with the version from the main build
           # We need to retag it with the Docker Hub repository name
-          SOURCE_IMAGE="sonarqube-mcp-server:${{ steps.version.outputs.version }}"
+          # Note: This must match the image-name parameter in main.yml's docker job
+          SOURCE_IMAGE_NAME="sonarqube-mcp-server"
+          SOURCE_IMAGE="$SOURCE_IMAGE_NAME:${{ steps.version.outputs.version }}"
           TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
 
           echo "🏷️ Tagging image for Docker Hub..."
