@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.9.0
+
+### Minor Changes
+
+- [#294](https://github.com/sapientpants/sonarqube-mcp-server/pull/294) [`49fdac0`](https://github.com/sapientpants/sonarqube-mcp-server/commit/49fdac0e43aea73444721d06fb8343bf3a9c4bba) - feat: add HTTP transport support for MCP server
+
+  Implements Streamable HTTP transport as an alternative to stdio, enabling:
+  - Web service deployments and programmatic access via HTTP/REST
+  - Session management with automatic lifecycle control
+  - RESTful API endpoints for MCP operations
+  - Server-sent events for real-time notifications
+  - Security features including DNS rebinding protection and CORS configuration
+
+  This change maintains full backward compatibility with the default stdio transport.
+
 ## 1.8.3
 
 ### Patch Changes
