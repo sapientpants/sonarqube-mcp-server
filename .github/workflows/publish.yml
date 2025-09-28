@@ -85,7 +85,7 @@ jobs:
           REPO="${{ github.repository }}"
 
           # Fetch tag information from GitHub API
-          TAG_API_URL="https://api.github.com/repos/$REPO/git/ref/tags/$TAG_NAME"
+          TAG_API_URL="https://api.github.com/repos/$REPO/git/refs/tags/$TAG_NAME"
           TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
           TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
           TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
@@ -244,7 +244,7 @@ jobs:
           REPO="${{ github.repository }}"
 
           # Fetch tag information from GitHub API
-          TAG_API_URL="https://api.github.com/repos/$REPO/git/ref/tags/$TAG_NAME"
+          TAG_API_URL="https://api.github.com/repos/$REPO/git/refs/tags/$TAG_NAME"
           TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
           TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
           TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
