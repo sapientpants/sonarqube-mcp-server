@@ -189,24 +189,50 @@ jobs:
       version: ${{ needs.version.outputs.version }}
 
   # =============================================================================
+  # WAIT FOR DOCKER PHASE
+  # Ensures Docker build completes before release (if Docker is enabled)
+  # =============================================================================
+
+  wait-for-docker:
+    # This job acts as a synchronization point
+    # Always succeeds, allowing release to proceed whether Docker ran or was skipped
+    needs: [version, docker]
+    if: |
+      always() &&
+      needs.version.result == 'success' &&
+      needs.version.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      # Pass through version for downstream jobs
+      version: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Check Docker build status
+        run: |
+          if [ "${{ needs.docker.result }}" == "failure" ]; then
+            echo "❌ Docker build failed"
+            exit 1
+          elif [ "${{ needs.docker.result }}" == "success" ]; then
+            echo "✅ Docker build succeeded"
+          else
+            echo "⏭️ Docker build was skipped (ENABLE_DOCKER_RELEASE not set)"
+          fi
+          echo "Proceeding to release..."
+
+  # =============================================================================
   # RELEASE CREATION PHASE
   # Creates GitHub release with all artifacts after everything is built
   # =============================================================================
 
   release:
-    # Create release only after all artifacts are ready
-    # This ensures publish workflow has everything it needs
-    needs: [version, docker]
-    # Run even if docker was skipped (when ENABLE_DOCKER_RELEASE is false)
-    if: |
-      always() &&
-      needs.version.result == 'success' &&
-      needs.version.outputs.changed == 'true' &&
-      (needs.docker.result == 'success' || needs.docker.result == 'skipped')
+    # Create release only after all build artifacts are ready
+    # wait-for-docker ensures Docker completes if enabled
+    needs: [wait-for-docker]
+    # Only run if all prerequisites passed
+    if: needs.wait-for-docker.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
-      version: ${{ needs.version.outputs.version }}
+      version: ${{ needs.wait-for-docker.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -248,7 +274,7 @@ jobs:
 
       - name: Create release artifacts
         run: |
-          VERSION="${{ needs.version.outputs.version }}"
+          VERSION="${{ needs.wait-for-docker.outputs.version }}"
           tar -czf dist-${VERSION}.tar.gz dist/
           zip -r dist-${VERSION}.zip dist/
 
@@ -272,10 +298,10 @@ jobs:
           git add package.json CHANGELOG.md .changeset
 
           # Commit with [skip actions] to prevent workflow recursion
-          git commit -m "chore(release): v${{ needs.version.outputs.version }} [skip actions]"
+          git commit -m "chore(release): v${{ needs.wait-for-docker.outputs.version }} [skip actions]"
 
           # Create annotated tag for the release
-          git tag -a "v${{ needs.version.outputs.version }}" -m "Release v${{ needs.version.outputs.version }}"
+          git tag -a "v${{ needs.wait-for-docker.outputs.version }}" -m "Release v${{ needs.wait-for-docker.outputs.version }}"
 
           # Push changes and tags to origin
           git push origin main --follow-tags
@@ -286,7 +312,7 @@ jobs:
 
       - name: Extract release notes
         run: |
-          VERSION="${{ needs.version.outputs.version }}"
+          VERSION="${{ needs.wait-for-docker.outputs.version }}"
           awk -v version="## $VERSION" '
             $0 ~ version { flag=1; next }
             /^## [0-9]/ && flag { exit }
@@ -300,16 +326,16 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.version.outputs.version }}
-          name: v${{ needs.version.outputs.version }}
+          tag_name: v${{ needs.wait-for-docker.outputs.version }}
+          name: v${{ needs.wait-for-docker.outputs.version }}
           body_path: release-notes.md
           draft: false
           prerelease: false
           make_latest: true
           files: |
             sbom.cdx.json
-            dist-${{ needs.version.outputs.version }}.tar.gz
-            dist-${{ needs.version.outputs.version }}.zip
+            dist-${{ needs.wait-for-docker.outputs.version }}.tar.gz
+            dist-${{ needs.wait-for-docker.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
@@ -330,4 +356,4 @@ jobs:
         id: release
         run: |
           echo "released=true" >> $GITHUB_OUTPUT
-          echo "✅ Released version ${{ needs.version.outputs.version }}"
+          echo "✅ Released version ${{ needs.wait-for-docker.outputs.version }}"
