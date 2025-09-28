@@ -185,20 +185,20 @@ jobs:
       version: ${{ needs.version.outputs.version }}
       enable_docker: ${{ vars.ENABLE_DOCKER_RELEASE == 'true' }}
       docker_platforms: 'linux/amd64,linux/arm64'
+      enable_npm: ${{ vars.ENABLE_NPM_RELEASE == 'true' }}
       # Future: Add more asset configuration parameters here
 
   # =============================================================================
-  # RELEASE CREATION PHASE
-  # Creates GitHub release with all artifacts after everything is built
+  # VERSION COMMIT PHASE
+  # Commits version changes after all assets are successfully prepared
   # =============================================================================
 
-  release:
-    # Create release only after all assets are prepared
-    # prepare-release-assets handles all conditional asset building
+  commit-version:
+    name: Commit Version Changes
+    # Only runs after all assets are successfully prepared
     needs: [prepare-release-assets]
     runs-on: ubuntu-latest
     outputs:
-      released: ${{ steps.release.outputs.released }}
       version: ${{ needs.prepare-release-assets.outputs.version }}
     steps:
       - name: Checkout code
@@ -207,11 +207,8 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
-      # =============================================================================
-      # ENVIRONMENT SETUP
-      # =============================================================================
-
       - name: Install pnpm
+        # Required for updating package.json version
         uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
@@ -225,25 +222,12 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
+        # Needed for changeset to update versions
         run: pnpm install --frozen-lockfile
 
-      # =============================================================================
-      # BUILD FOR RELEASE
-      # =============================================================================
-
-      - name: Build
-        run: |
-          pnpm clean
-          pnpm build
-
-      - name: Generate SBOM
-        run: pnpm sbom
-
-      - name: Create release artifacts
-        run: |
-          VERSION="${{ needs.prepare-release-assets.outputs.version }}"
-          tar -czf dist-${VERSION}.tar.gz dist/
-          zip -r dist-${VERSION}.zip dist/
+      - name: Build for changeset
+        # Must build before versioning since custom changelog is TypeScript
+        run: pnpm build
 
       # =============================================================================
       # GIT OPERATIONS
@@ -254,6 +238,12 @@ jobs:
           echo "Installing actionlint for pre-commit validation..."
           bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           echo "${PWD}" >> $GITHUB_PATH
+
+      - name: Update version in package files
+        run: |
+          # Run changeset version to update package.json and CHANGELOG.md
+          # This uses the changesets that were consumed during version determination
+          node .github/scripts/version-and-release.js --update-only
 
       - name: Commit version changes
         run: |
@@ -273,9 +263,58 @@ jobs:
           # Push changes and tags to origin
           git push origin main --follow-tags
 
-      # =============================================================================
-      # RELEASE CREATION
-      # =============================================================================
+          echo "✅ Version changes committed and pushed"
+
+  # =============================================================================
+  # GITHUB RELEASE CREATION PHASE
+  # Creates GitHub release as the final step after version is committed
+  # =============================================================================
+
+  create-release:
+    name: Create GitHub Release
+    # Only runs after version is committed
+    needs: [commit-version, prepare-release-assets]
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      version: ${{ needs.prepare-release-assets.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Checkout the newly created tag
+          ref: v${{ needs.prepare-release-assets.outputs.version }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        # Build to generate the dist files for attestation
+        run: |
+          pnpm clean
+          pnpm build
+
+      - name: Generate SBOM
+        run: pnpm sbom
+
+      - name: Create release artifacts
+        run: |
+          VERSION="${{ needs.prepare-release-assets.outputs.version }}"
+          tar -czf dist-${VERSION}.tar.gz dist/
+          zip -r dist-${VERSION}.zip dist/
 
       - name: Extract release notes
         run: |

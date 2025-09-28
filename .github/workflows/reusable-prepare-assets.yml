@@ -23,7 +23,11 @@ on:
         required: false
         type: string
         default: 'linux/amd64'
-      # Future inputs for other asset types can be added here
+      enable_npm:
+        description: 'Whether to prepare NPM package'
+        required: false
+        type: boolean
+        default: false
     outputs:
       version:
         description: 'Version number (pass-through)'
@@ -31,6 +35,9 @@ on:
       docker_built:
         description: 'Whether Docker image was built'
         value: ${{ jobs.docker.outputs.built || 'false' }}
+      npm_built:
+        description: 'Whether NPM package was built'
+        value: ${{ jobs.npm.outputs.built || 'false' }}
       assets_summary:
         description: 'Summary of all prepared assets'
         value: ${{ jobs.summary.outputs.summary }}
@@ -53,6 +60,79 @@ jobs:
       version: ${{ inputs.version }}
 
   # =============================================================================
+  # NPM PACKAGE PREPARATION JOB
+  # =============================================================================
+
+  npm:
+    name: Prepare NPM Package
+    # Job always exists but is conditionally executed
+    if: inputs.enable_npm == true
+    runs-on: ubuntu-latest
+    outputs:
+      built: ${{ steps.pack.outputs.built }}
+      artifact_name: ${{ steps.pack.outputs.artifact_name }}
+      tarball_name: ${{ steps.pack.outputs.tarball_name }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: |
+          pnpm clean
+          pnpm build
+
+      - name: Create NPM package
+        id: pack
+        run: |
+          # Create the NPM package tarball
+          NPM_PACKAGE=$(npm pack 2>/dev/null)
+          echo "📦 Created NPM package: $NPM_PACKAGE"
+
+          # Generate metadata
+          ARTIFACT_NAME="npm-package-${{ inputs.version }}-${{ github.sha }}"
+          {
+            echo "artifact_name=$ARTIFACT_NAME"
+            echo "tarball_name=$NPM_PACKAGE"
+            echo "built=true"
+          } >> $GITHUB_OUTPUT
+
+          # Create manifest of included files for verification
+          npm pack --dry-run --json 2>/dev/null | jq -r '.[0].files[].path' > npm-package-manifest.txt
+          echo "📋 Package contains $(wc -l < npm-package-manifest.txt) files"
+
+      - name: Upload NPM package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package-${{ inputs.version }}-${{ github.sha }}
+          path: |
+            *.tgz
+            npm-package-manifest.txt
+          retention-days: 7
+
+      - name: Generate attestations for NPM package
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: '*.tgz'
+
+  # =============================================================================
   # FUTURE ASSET JOBS
   # Additional jobs for other asset types can be added here
   # Examples:
@@ -72,7 +152,7 @@ jobs:
     # Always run to provide summary, even if some assets failed or were skipped
     if: always()
     # Depends on all asset jobs (they may be skipped based on conditions)
-    needs: [docker]
+    needs: [docker, npm]
     outputs:
       summary: ${{ steps.generate.outputs.summary }}
     steps:
@@ -103,6 +183,25 @@ jobs:
             SUMMARY="$SUMMARY\n  ⏭️ Docker image (disabled)"
           fi
 
+          # NPM package status
+          if [ "${{ inputs.enable_npm }}" == "true" ]; then
+            # Job was supposed to run, check its result
+            NPM_RESULT="${{ needs.npm.result }}"
+            if [ "$NPM_RESULT" == "success" ]; then
+              echo "✅ NPM package: Successfully prepared for v${{ inputs.version }}"
+              SUMMARY="$SUMMARY\n  ✅ NPM package (v${{ inputs.version }})"
+            elif [ "$NPM_RESULT" == "skipped" ]; then
+              echo "⏭️ NPM package: Skipped"
+              SUMMARY="$SUMMARY\n  ⏭️ NPM package (skipped)"
+            else
+              echo "❌ NPM package: Preparation failed"
+              SUMMARY="$SUMMARY\n  ❌ NPM package (failed)"
+            fi
+          else
+            echo "⏭️ NPM package: Disabled"
+            SUMMARY="$SUMMARY\n  ⏭️ NPM package (disabled)"
+          fi
+
           # Future assets would be added to the summary here
 
           # Output for use in other jobs
@@ -118,11 +217,25 @@ jobs:
           echo -e "$SUMMARY"
 
           # Fail the job if any critical assets failed
+          FAILED=false
           if [ "${{ inputs.enable_docker }}" == "true" ]; then
             DOCKER_RESULT="${{ needs.docker.result }}"
             if [ "$DOCKER_RESULT" == "failure" ]; then
-              echo ""
-              echo "❌ Critical asset preparation failed. Aborting release."
-              exit 1
+              echo "❌ Docker build failed"
+              FAILED=true
             fi
+          fi
+
+          if [ "${{ inputs.enable_npm }}" == "true" ]; then
+            NPM_RESULT="${{ needs.npm.result }}"
+            if [ "$NPM_RESULT" == "failure" ]; then
+              echo "❌ NPM package preparation failed"
+              FAILED=true
+            fi
+          fi
+
+          if [ "$FAILED" == "true" ]; then
+            echo ""
+            echo "❌ Critical asset preparation failed. Aborting release."
+            exit 1
           fi
