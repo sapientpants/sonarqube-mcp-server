@@ -276,3 +276,21 @@ jobs:
           echo "released=true" >> $GITHUB_OUTPUT
           echo "version=${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
           echo "✅ Released version ${{ steps.version.outputs.version }}"
+
+  # =============================================================================
+  # DOCKER BUILD PHASE
+  # Build and scan Docker image with version tag for later publishing
+  # =============================================================================
+
+  docker:
+    # Only runs when Docker release is enabled
+    # Builds after version-and-release to use proper version tag
+    if: vars.ENABLE_DOCKER_RELEASE == 'true'
+    needs: [version-and-release]
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      platforms: 'linux/amd64,linux/arm64' # Multi-platform for production
+      save-artifact: true # Save for deterministic publishing
+      artifact-name: 'docker-image-main'
+      image-name: 'sonarqube-mcp-server'
+      version: ${{ needs.version-and-release.outputs.version || github.sha }}
