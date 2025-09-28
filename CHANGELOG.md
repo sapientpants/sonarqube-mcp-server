@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.10.0
+
+### Minor Changes
+
+- [#295](https://github.com/sapientpants/sonarqube-mcp-server/pull/295) [`4ea3a14`](https://github.com/sapientpants/sonarqube-mcp-server/commit/4ea3a14cec8555e481a2e73e5c7c954674c23a30) - feat: add Docker build and Trivy security scanning to CI/CD pipeline
+  - Add Docker image building and vulnerability scanning to PR workflow for shift-left security
+  - Build multi-platform Docker images in main workflow and store as artifacts
+  - Refactor publish workflow to use pre-built images from main for deterministic deployments
+  - Create reusable Docker workflow for consistent build and scan process
+  - Add Trivy container scanning with results uploaded to GitHub Security tab
+  - Control Docker features via single `ENABLE_DOCKER_RELEASE` repository variable
+  - Add .dockerignore to optimize build context
+  - Support for linux/amd64 and linux/arm64 platforms
+
 ## 1.9.0
 
 ### Minor Changes
