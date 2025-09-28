@@ -76,56 +76,17 @@ jobs:
 
       - name: Determine artifact source
         id: artifact
-        # Find the correct NPM package artifact from the release build
+        # Use shared script to find the correct NPM package artifact from the release build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the commit SHA for this release tag
-          TAG_NAME="${{ steps.version.outputs.tag }}"
-          REPO="${{ github.repository }}"
-
-          # Fetch tag information from GitHub API
-          TAG_API_URL="https://api.github.com/repos/$REPO/git/refs/tags/$TAG_NAME"
-          TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
-          TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
-          TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
-
-          if [ "$TAG_STATUS" != "200" ]; then
-            echo "❌ GitHub API request failed for $TAG_API_URL with status $TAG_STATUS"
-            echo "Response: $TAG_BODY"
-            exit 1
-          fi
-
-          # Extract the object SHA and type
-          OBJECT_TYPE=$(echo "$TAG_BODY" | jq -r '.object.type')
-          OBJECT_SHA=$(echo "$TAG_BODY" | jq -r '.object.sha')
-
-          # If it's an annotated tag, dereference to get the commit
-          if [ "$OBJECT_TYPE" = "tag" ]; then
-            TAG_OBJ_URL="https://api.github.com/repos/$REPO/git/tags/$OBJECT_SHA"
-            TAG_OBJ_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_OBJ_URL)
-            TAG_OBJ_BODY=$(echo "$TAG_OBJ_RESPONSE" | head -n -1)
-            TAG_OBJ_STATUS=$(echo "$TAG_OBJ_RESPONSE" | tail -n 1)
-
-            if [ "$TAG_OBJ_STATUS" != "200" ]; then
-              echo "❌ GitHub API request failed for $TAG_OBJ_URL with status $TAG_OBJ_STATUS"
-              echo "Response: $TAG_OBJ_BODY"
-              exit 1
-            fi
-
-            RELEASE_SHA=$(echo "$TAG_OBJ_BODY" | jq -r '.object.sha')
-          else
-            RELEASE_SHA="$OBJECT_SHA"
-          fi
-
-          if [ -z "$RELEASE_SHA" ] || [ "$RELEASE_SHA" = "null" ]; then
-            echo "❌ Could not find commit SHA for tag $TAG_NAME"
-            exit 1
-          fi
-
-          echo "commit_sha=$RELEASE_SHA" >> $GITHUB_OUTPUT
-          echo "artifact_name=npm-package-${{ steps.version.outputs.version }}-$RELEASE_SHA" >> $GITHUB_OUTPUT
-          echo "📦 Looking for NPM artifact from commit: $RELEASE_SHA"
+          chmod +x .github/scripts/determine-artifact.sh
+          .github/scripts/determine-artifact.sh \
+            --tag "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --version "${{ steps.version.outputs.version }}" \
+            --prefix "npm-package" \
+            --output "$GITHUB_OUTPUT"
 
       - name: Try to download pre-built NPM package
         id: download
@@ -235,56 +196,17 @@ jobs:
 
       - name: Determine artifact source
         id: artifact
-        # Find the correct NPM package artifact (same as npm job)
+        # Use shared script to find the correct NPM package artifact (same as npm job)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the commit SHA for this release tag
-          TAG_NAME="${{ steps.version.outputs.tag }}"
-          REPO="${{ github.repository }}"
-
-          # Fetch tag information from GitHub API
-          TAG_API_URL="https://api.github.com/repos/$REPO/git/refs/tags/$TAG_NAME"
-          TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
-          TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
-          TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
-
-          if [ "$TAG_STATUS" != "200" ]; then
-            echo "❌ GitHub API request failed for $TAG_API_URL with status $TAG_STATUS"
-            echo "Response: $TAG_BODY"
-            exit 1
-          fi
-
-          # Extract the object SHA and type
-          OBJECT_TYPE=$(echo "$TAG_BODY" | jq -r '.object.type')
-          OBJECT_SHA=$(echo "$TAG_BODY" | jq -r '.object.sha')
-
-          # If it's an annotated tag, dereference to get the commit
-          if [ "$OBJECT_TYPE" = "tag" ]; then
-            TAG_OBJ_URL="https://api.github.com/repos/$REPO/git/tags/$OBJECT_SHA"
-            TAG_OBJ_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_OBJ_URL)
-            TAG_OBJ_BODY=$(echo "$TAG_OBJ_RESPONSE" | head -n -1)
-            TAG_OBJ_STATUS=$(echo "$TAG_OBJ_RESPONSE" | tail -n 1)
-
-            if [ "$TAG_OBJ_STATUS" != "200" ]; then
-              echo "❌ GitHub API request failed for $TAG_OBJ_URL with status $TAG_OBJ_STATUS"
-              echo "Response: $TAG_OBJ_BODY"
-              exit 1
-            fi
-
-            RELEASE_SHA=$(echo "$TAG_OBJ_BODY" | jq -r '.object.sha')
-          else
-            RELEASE_SHA="$OBJECT_SHA"
-          fi
-
-          if [ -z "$RELEASE_SHA" ] || [ "$RELEASE_SHA" = "null" ]; then
-            echo "❌ Could not find commit SHA for tag $TAG_NAME"
-            exit 1
-          fi
-
-          echo "commit_sha=$RELEASE_SHA" >> $GITHUB_OUTPUT
-          echo "artifact_name=npm-package-${{ steps.version.outputs.version }}-$RELEASE_SHA" >> $GITHUB_OUTPUT
-          echo "📦 Looking for NPM artifact from commit: $RELEASE_SHA"
+          chmod +x .github/scripts/determine-artifact.sh
+          .github/scripts/determine-artifact.sh \
+            --tag "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --version "${{ steps.version.outputs.version }}" \
+            --prefix "npm-package" \
+            --output "$GITHUB_OUTPUT"
 
       - name: Try to download pre-built NPM package
         id: download
