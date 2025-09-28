@@ -43,6 +43,10 @@ jobs:
     # Only runs if ENABLE_NPM_RELEASE variable is set to 'true'
     # Configure in Settings > Secrets and variables > Variables
     if: vars.ENABLE_NPM_RELEASE == 'true'
+    permissions:
+      contents: read
+      id-token: write # Required for npm provenance
+      actions: read # Required to download artifacts
     steps:
       - name: Determine version
         id: version
@@ -62,29 +66,69 @@ jobs:
           # This ensures we publish exactly what was released
           ref: ${{ steps.version.outputs.tag }}
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-          standalone: true
-
       - name: Setup Node.js
+        # Node.js is required for npm publish command
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
           # Configure npm registry for authentication
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies
-        # frozen-lockfile ensures exact versions from release
-        run: pnpm install --frozen-lockfile
+      - name: Determine artifact source
+        id: artifact
+        # Use shared script to find the correct NPM package artifact from the release build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/scripts/determine-artifact.sh
+          .github/scripts/determine-artifact.sh \
+            --tag "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --version "${{ steps.version.outputs.version }}" \
+            --prefix "npm-package" \
+            --output "$GITHUB_OUTPUT"
 
-      - name: Build
-        # Build from source to ensure latest code
-        # FAILS IF: TypeScript errors, build configuration issues
-        run: pnpm build
+      - name: Try to download pre-built NPM package
+        id: download
+        # Download the pre-built, pre-scanned NPM package from main workflow
+        # This ensures we publish exactly what was tested
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.artifact_name }}
+          path: ./npm-artifact
+
+      - name: Use pre-built package or build from source
+        run: |
+          if [ -d ./npm-artifact ]; then
+            # Check if any .tgz files exist
+            TARBALL=$(find ./npm-artifact -name "*.tgz" -type f | head -1)
+            if [ -n "$TARBALL" ]; then
+              echo "✅ Using pre-built NPM package from main workflow"
+              echo "📦 Extracting: $TARBALL"
+              tar -xzf "$TARBALL"
+
+              # The package extracts to a 'package' directory
+              # We need to move its contents to the current directory
+              if [ -d package ]; then
+                cp -r package/* .
+                rm -rf package
+              fi
+
+              echo "📋 Verified package contents from manifest"
+              if [ -f ./npm-artifact/npm-package-manifest.txt ]; then
+                echo "Package contains $(wc -l < ./npm-artifact/npm-package-manifest.txt) files"
+              fi
+            fi
+          else
+            echo "⚠️ Pre-built NPM package not found, building from source"
+            echo "This may happen if the main workflow didn't have ENABLE_NPM_RELEASE set"
+
+            # Install dependencies and build from source as fallback
+            npm install -g pnpm@${{ env.PNPM_VERSION }}
+            pnpm install --frozen-lockfile
+            pnpm build
+          fi
 
       - name: Check NPM token
         id: check-npm
@@ -123,6 +167,11 @@ jobs:
     # Only runs if ENABLE_GITHUB_PACKAGES variable is set
     # Useful for private packages within organization
     if: vars.ENABLE_GITHUB_PACKAGES == 'true'
+    permissions:
+      contents: read
+      packages: write # Required to publish to GitHub Packages
+      id-token: write # Required for provenance
+      actions: read # Required to download artifacts
     steps:
       - name: Determine version
         id: version
@@ -138,26 +187,61 @@ jobs:
         with:
           ref: ${{ steps.version.outputs.tag }}
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-          run_install: false
-          standalone: true
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
           # GitHub Packages npm registry URL
           registry-url: 'https://npm.pkg.github.com'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Determine artifact source
+        id: artifact
+        # Use shared script to find the correct NPM package artifact (same as npm job)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/scripts/determine-artifact.sh
+          .github/scripts/determine-artifact.sh \
+            --tag "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --version "${{ steps.version.outputs.version }}" \
+            --prefix "npm-package" \
+            --output "$GITHUB_OUTPUT"
 
-      - name: Build
-        run: pnpm build
+      - name: Try to download pre-built NPM package
+        id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.artifact_name }}
+          path: ./npm-artifact
+
+      - name: Use pre-built package or build from source
+        run: |
+          if [ -d ./npm-artifact ]; then
+            # Check if any .tgz files exist
+            TARBALL=$(find ./npm-artifact -name "*.tgz" -type f | head -1)
+            if [ -n "$TARBALL" ]; then
+              echo "✅ Using pre-built NPM package from main workflow"
+              echo "📦 Extracting: $TARBALL"
+              tar -xzf "$TARBALL"
+
+              # The package extracts to a 'package' directory
+              if [ -d package ]; then
+                cp -r package/* .
+                rm -rf package
+              fi
+
+              echo "📋 Verified package contents"
+            fi
+          else
+            echo "⚠️ Pre-built NPM package not found, building from source"
+
+            # Install dependencies and build from source as fallback
+            npm install -g pnpm@${{ env.PNPM_VERSION }}
+            pnpm install --frozen-lockfile
+            pnpm build
+          fi
 
       - name: Publish to GitHub Packages
         run: |

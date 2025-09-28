@@ -171,66 +171,35 @@ jobs:
           echo "📌 Commit SHA for artifacts: ${{ github.sha }}"
 
   # =============================================================================
-  # DOCKER BUILD PHASE
-  # Build and scan Docker image with version tag BEFORE creating the release
+  # PREPARE RELEASE ASSETS PHASE
+  # Centralized job for preparing all release artifacts (Docker, binaries, etc.)
   # =============================================================================
 
-  docker:
-    # Only runs when Docker release is enabled AND version changed
-    # Builds after version determination but BEFORE release creation
-    if: vars.ENABLE_DOCKER_RELEASE == 'true' && needs.version.outputs.changed == 'true'
+  prepare-release-assets:
+    # Always runs when version changes to prepare any configured assets
+    # Handles conditional asset building internally
     needs: [version]
-    uses: ./.github/workflows/reusable-docker.yml
+    if: needs.version.outputs.changed == 'true'
+    uses: ./.github/workflows/reusable-prepare-assets.yml
     with:
-      platforms: 'linux/amd64,linux/arm64' # Multi-platform for production
-      save-artifact: true # Save for deterministic publishing
-      artifact-name: 'docker-image-main'
-      image-name: 'sonarqube-mcp-server'
       version: ${{ needs.version.outputs.version }}
+      enable_docker: ${{ vars.ENABLE_DOCKER_RELEASE == 'true' }}
+      docker_platforms: 'linux/amd64,linux/arm64'
+      enable_npm: ${{ vars.ENABLE_NPM_RELEASE == 'true' }}
+      # Future: Add more asset configuration parameters here
 
   # =============================================================================
-  # WAIT FOR DOCKER PHASE
-  # Ensures Docker build completes before release (if Docker is enabled)
+  # VERSION COMMIT PHASE
+  # Commits version changes after all assets are successfully prepared
   # =============================================================================
 
-  wait-for-docker:
-    # This job acts as a synchronization point
-    # Always succeeds, allowing release to proceed whether Docker ran or was skipped
-    needs: [version, docker]
-    if: |
-      always() &&
-      needs.version.result == 'success' &&
-      needs.version.outputs.changed == 'true'
+  commit-version:
+    name: Commit Version Changes
+    # Only runs after all assets are successfully prepared
+    needs: [prepare-release-assets]
     runs-on: ubuntu-latest
     outputs:
-      # Pass through version for downstream jobs
-      version: ${{ needs.version.outputs.version }}
-    steps:
-      - name: Check Docker build status
-        run: |
-          if [ "${{ needs.docker.result }}" == "failure" ]; then
-            echo "❌ Docker build failed"
-            exit 1
-          elif [ "${{ needs.docker.result }}" == "success" ]; then
-            echo "✅ Docker build succeeded"
-          else
-            echo "⏭️ Docker build was skipped (either ENABLE_DOCKER_RELEASE is not 'true' or version did not change)"
-          fi
-          echo "Proceeding to release..."
-
-  # =============================================================================
-  # RELEASE CREATION PHASE
-  # Creates GitHub release with all artifacts after everything is built
-  # =============================================================================
-
-  release:
-    # Create release only after all build artifacts are ready
-    # wait-for-docker ensures Docker completes if enabled
-    needs: [wait-for-docker]
-    runs-on: ubuntu-latest
-    outputs:
-      released: ${{ steps.release.outputs.released }}
-      version: ${{ needs.wait-for-docker.outputs.version }}
+      version: ${{ needs.prepare-release-assets.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -238,9 +207,83 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
+      - name: Install pnpm
+        # Required for updating package.json version
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        # Needed for changeset to update versions
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for changeset
+        # Must build before versioning since custom changelog is TypeScript
+        run: pnpm build
+
       # =============================================================================
-      # ENVIRONMENT SETUP
+      # GIT OPERATIONS
       # =============================================================================
+
+      - name: Install actionlint for pre-commit validation
+        run: |
+          echo "Installing actionlint for pre-commit validation..."
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          echo "${PWD}" >> $GITHUB_PATH
+
+      - name: Update version in package files
+        run: |
+          # Run changeset version to update package.json and CHANGELOG.md
+          # This uses the changesets that were consumed during version determination
+          node .github/scripts/version-and-release.js --update-only
+
+      - name: Commit version changes
+        run: |
+          # Configure git with GitHub Actions bot identity
+          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git config --local user.name "${{ github.actor }}"
+
+          # Stage version-related changes
+          git add package.json CHANGELOG.md .changeset
+
+          # Commit with [skip actions] to prevent workflow recursion
+          git commit -m "chore(release): v${{ needs.prepare-release-assets.outputs.version }} [skip actions]"
+
+          # Create annotated tag for the release
+          git tag -a "v${{ needs.prepare-release-assets.outputs.version }}" -m "Release v${{ needs.prepare-release-assets.outputs.version }}"
+
+          # Push changes and tags to origin
+          git push origin main --follow-tags
+
+          echo "✅ Version changes committed and pushed"
+
+  # =============================================================================
+  # GITHUB RELEASE CREATION PHASE
+  # Creates GitHub release as the final step after version is committed
+  # =============================================================================
+
+  create-release:
+    name: Create GitHub Release
+    # Only runs after version is committed
+    needs: [commit-version, prepare-release-assets]
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      version: ${{ needs.prepare-release-assets.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # Checkout the newly created tag
+          ref: v${{ needs.prepare-release-assets.outputs.version }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -258,11 +301,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # =============================================================================
-      # BUILD FOR RELEASE
-      # =============================================================================
-
       - name: Build
+        # Build to generate the dist files for attestation
         run: |
           pnpm clean
           pnpm build
@@ -272,45 +312,13 @@ jobs:
 
       - name: Create release artifacts
         run: |
-          VERSION="${{ needs.wait-for-docker.outputs.version }}"
+          VERSION="${{ needs.prepare-release-assets.outputs.version }}"
           tar -czf dist-${VERSION}.tar.gz dist/
           zip -r dist-${VERSION}.zip dist/
 
-      # =============================================================================
-      # GIT OPERATIONS
-      # =============================================================================
-
-      - name: Install actionlint for pre-commit validation
-        run: |
-          echo "Installing actionlint for pre-commit validation..."
-          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          echo "${PWD}" >> $GITHUB_PATH
-
-      - name: Commit version changes
-        run: |
-          # Configure git with GitHub Actions bot identity
-          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          git config --local user.name "${{ github.actor }}"
-
-          # Stage version-related changes
-          git add package.json CHANGELOG.md .changeset
-
-          # Commit with [skip actions] to prevent workflow recursion
-          git commit -m "chore(release): v${{ needs.wait-for-docker.outputs.version }} [skip actions]"
-
-          # Create annotated tag for the release
-          git tag -a "v${{ needs.wait-for-docker.outputs.version }}" -m "Release v${{ needs.wait-for-docker.outputs.version }}"
-
-          # Push changes and tags to origin
-          git push origin main --follow-tags
-
-      # =============================================================================
-      # RELEASE CREATION
-      # =============================================================================
-
       - name: Extract release notes
         run: |
-          VERSION="${{ needs.wait-for-docker.outputs.version }}"
+          VERSION="${{ needs.prepare-release-assets.outputs.version }}"
           awk -v version="## $VERSION" '
             $0 ~ version { flag=1; next }
             /^## [0-9]/ && flag { exit }
@@ -324,16 +332,16 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.wait-for-docker.outputs.version }}
-          name: v${{ needs.wait-for-docker.outputs.version }}
+          tag_name: v${{ needs.prepare-release-assets.outputs.version }}
+          name: v${{ needs.prepare-release-assets.outputs.version }}
           body_path: release-notes.md
           draft: false
           prerelease: false
           make_latest: true
           files: |
             sbom.cdx.json
-            dist-${{ needs.wait-for-docker.outputs.version }}.tar.gz
-            dist-${{ needs.wait-for-docker.outputs.version }}.zip
+            dist-${{ needs.prepare-release-assets.outputs.version }}.tar.gz
+            dist-${{ needs.prepare-release-assets.outputs.version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
@@ -354,4 +362,4 @@ jobs:
         id: release
         run: |
           echo "released=true" >> $GITHUB_OUTPUT
-          echo "✅ Released version ${{ needs.wait-for-docker.outputs.version }}"
+          echo "✅ Released version ${{ needs.prepare-release-assets.outputs.version }}"
