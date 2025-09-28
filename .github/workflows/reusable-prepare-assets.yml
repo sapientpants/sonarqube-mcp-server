@@ -1,0 +1,128 @@
+# =============================================================================
+# REUSABLE WORKFLOW: Prepare Release Assets
+# PURPOSE: Centralized workflow for preparing all release artifacts
+# USAGE: Called from main workflow to build Docker images, binaries, etc.
+# =============================================================================
+
+name: Prepare Release Assets
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version number for the release'
+        required: true
+        type: string
+      enable_docker:
+        description: 'Whether to build Docker images'
+        required: false
+        type: boolean
+        default: false
+      docker_platforms:
+        description: 'Docker platforms to build for'
+        required: false
+        type: string
+        default: 'linux/amd64'
+      # Future inputs for other asset types can be added here
+    outputs:
+      version:
+        description: 'Version number (pass-through)'
+        value: ${{ inputs.version }}
+      docker_built:
+        description: 'Whether Docker image was built'
+        value: ${{ jobs.docker.outputs.built || 'false' }}
+      assets_summary:
+        description: 'Summary of all prepared assets'
+        value: ${{ jobs.summary.outputs.summary }}
+
+jobs:
+  # =============================================================================
+  # DOCKER BUILD JOB
+  # =============================================================================
+
+  docker:
+    name: Build Docker Image
+    # Job always exists but is conditionally executed
+    if: inputs.enable_docker == true
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      platforms: ${{ inputs.docker_platforms }}
+      save-artifact: true
+      artifact-name: 'docker-image-main'
+      image-name: 'sonarqube-mcp-server'
+      version: ${{ inputs.version }}
+
+  # =============================================================================
+  # FUTURE ASSET JOBS
+  # Additional jobs for other asset types can be added here
+  # Examples:
+  #   - binaries: Build compiled binaries for different platforms
+  #   - installers: Create platform-specific installers
+  #   - docs: Bundle documentation
+  # =============================================================================
+
+  # =============================================================================
+  # SUMMARY JOB
+  # Aggregates results from all asset preparation jobs
+  # =============================================================================
+
+  summary:
+    name: Summarize Assets
+    runs-on: ubuntu-latest
+    # Always run to provide summary, even if some assets failed or were skipped
+    if: always()
+    # Depends on all asset jobs (they may be skipped based on conditions)
+    needs: [docker]
+    outputs:
+      summary: ${{ steps.generate.outputs.summary }}
+    steps:
+      - name: Generate assets summary
+        id: generate
+        run: |
+          echo "📦 Release Assets Summary for v${{ inputs.version }}"
+          echo "================================================"
+
+          SUMMARY="Release assets for v${{ inputs.version }}:"
+
+          # Docker status - check if job exists and its result
+          if [ "${{ inputs.enable_docker }}" == "true" ]; then
+            # Job was supposed to run, check its result
+            DOCKER_RESULT="${{ needs.docker.result }}"
+            if [ "$DOCKER_RESULT" == "success" ]; then
+              echo "✅ Docker image: Successfully built for ${{ inputs.docker_platforms }}"
+              SUMMARY="$SUMMARY\n  ✅ Docker image (${{ inputs.docker_platforms }})"
+            elif [ "$DOCKER_RESULT" == "skipped" ]; then
+              echo "⏭️ Docker image: Skipped"
+              SUMMARY="$SUMMARY\n  ⏭️ Docker image (skipped)"
+            else
+              echo "❌ Docker image: Build failed"
+              SUMMARY="$SUMMARY\n  ❌ Docker image (failed)"
+            fi
+          else
+            echo "⏭️ Docker image: Disabled"
+            SUMMARY="$SUMMARY\n  ⏭️ Docker image (disabled)"
+          fi
+
+          # Future assets would be added to the summary here
+
+          # Output for use in other jobs
+          {
+            echo "summary<<EOF"
+            echo -e "$SUMMARY"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+          # Also display in the job log
+          echo ""
+          echo "Final Summary:"
+          echo -e "$SUMMARY"
+
+          # Fail the job if any critical assets failed
+          if [ "${{ inputs.enable_docker }}" == "true" ]; then
+            DOCKER_RESULT="${{ needs.docker.result }}"
+            if [ "$DOCKER_RESULT" == "failure" ]; then
+              echo ""
+              echo "❌ Critical asset preparation failed. Aborting release."
+              exit 1
+            fi
+          fi
