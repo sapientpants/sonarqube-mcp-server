@@ -96,9 +96,27 @@ else
   exit 1
 fi
 
-# Find the workflow run that created the release
-RUNS_API_URL="https://api.github.com/repos/$REPO/actions/runs?head_sha=$COMMIT_SHA&status=success&event=push"
-echo "🔍 Searching for successful workflow runs for commit $COMMIT_SHA"
+# The tag points to the version commit, but artifacts were built with the previous commit
+# Get the parent commit (the one that triggered the build)
+echo "🔍 Getting parent commit of $COMMIT_SHA"
+PARENT_COMMIT_URL="https://api.github.com/repos/$REPO/commits/$COMMIT_SHA"
+PARENT_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $PARENT_COMMIT_URL)
+PARENT_BODY=$(echo "$PARENT_RESPONSE" | head -n -1)
+PARENT_STATUS=$(echo "$PARENT_RESPONSE" | tail -n 1)
+
+if [ "$PARENT_STATUS" != "200" ]; then
+  echo "❌ Failed to fetch commit information with status $PARENT_STATUS"
+  echo "Response: $PARENT_BODY"
+  exit 1
+fi
+
+# Get the parent SHA (the commit that triggered the build)
+PARENT_SHA=$(echo "$PARENT_BODY" | jq -r '.parents[0].sha')
+echo "📌 Parent commit (build trigger): $PARENT_SHA"
+
+# Find the workflow run that created the release artifacts
+RUNS_API_URL="https://api.github.com/repos/$REPO/actions/runs?head_sha=$PARENT_SHA&status=success&event=push"
+echo "🔍 Searching for successful workflow runs for parent commit $PARENT_SHA"
 
 RUNS_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $RUNS_API_URL)
 RUNS_BODY=$(echo "$RUNS_RESPONSE" | head -n -1)
@@ -114,7 +132,7 @@ fi
 MAIN_RUN=$(echo "$RUNS_BODY" | jq -r '.workflow_runs[] | select(.name == "Main") | {id: .id, created_at: .created_at}')
 
 if [ -z "$MAIN_RUN" ]; then
-  echo "❌ No successful Main workflow run found for commit $COMMIT_SHA"
+  echo "❌ No successful Main workflow run found for parent commit $PARENT_SHA"
   echo "Available runs:"
   echo "$RUNS_BODY" | jq -r '.workflow_runs[] | "\(.name): \(.id) (\(.status))"'
   exit 1
@@ -137,8 +155,8 @@ if [ "$ARTIFACTS_STATUS" != "200" ]; then
   exit 1
 fi
 
-# Find the artifact with the specified prefix
-ARTIFACT_NAME="$PREFIX-$VERSION-${COMMIT_SHA:0:7}"
+# Find the artifact with the specified prefix (using parent SHA since that's what built it)
+ARTIFACT_NAME="$PREFIX-$VERSION-${PARENT_SHA:0:7}"
 ARTIFACT=$(echo "$ARTIFACTS_BODY" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name == $name)')
 
 if [ -z "$ARTIFACT" ]; then
@@ -158,7 +176,7 @@ echo "✅ Found artifact: $ARTIFACT_NAME (ID: $ARTIFACT_ID, Size: $ARTIFACT_SIZE
   echo "artifact_name=$ARTIFACT_NAME"
   echo "artifact_id=$ARTIFACT_ID"
   echo "run_id=$RUN_ID"
-  echo "commit_sha=$COMMIT_SHA"
+  echo "commit_sha=$PARENT_SHA"  # Use parent SHA since that's what built the artifacts
 } >> "$OUTPUT_FILE"
 
 echo "✅ Artifact information written to $OUTPUT_FILE"
