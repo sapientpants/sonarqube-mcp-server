@@ -13,6 +13,14 @@ on:
         description: 'Version number for the release'
         required: true
         type: string
+      tag_sha:
+        description: 'SHA of the version tag for artifact naming'
+        required: true
+        type: string
+      build_artifact:
+        description: 'Name of the pre-built TypeScript artifact'
+        required: true
+        type: string
       enable_docker:
         description: 'Whether to build Docker images'
         required: false
@@ -55,9 +63,11 @@ jobs:
     with:
       platforms: ${{ inputs.docker_platforms }}
       save-artifact: true
-      artifact-name: 'docker-image-main'
+      artifact-name: 'docker-image-${{ inputs.tag_sha }}'
       image-name: 'sonarqube-mcp-server'
       version: ${{ inputs.version }}
+      tag_sha: ${{ inputs.tag_sha }}
+      build_artifact: ${{ inputs.build_artifact }}
 
   # =============================================================================
   # NPM PACKAGE PREPARATION JOB
@@ -78,6 +88,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.build_artifact }}
+
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -92,12 +107,8 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: |
-          pnpm clean
-          pnpm build
+        # Only install production dependencies for packaging
+        run: pnpm install --prod --frozen-lockfile
 
       - name: Create NPM package
         id: pack
@@ -107,8 +118,8 @@ jobs:
           NPM_PACKAGE=$(npm pack 2>/dev/null | tail -1)
           echo "📦 Created NPM package: $NPM_PACKAGE"
 
-          # Generate metadata
-          ARTIFACT_NAME="npm-package-${{ inputs.version }}-${{ github.sha }}"
+          # Generate metadata using tag SHA for consistent naming
+          ARTIFACT_NAME="npm-package-${{ inputs.version }}-${{ inputs.tag_sha }}"
           {
             echo "artifact_name=$ARTIFACT_NAME"
             echo "tarball_name=$NPM_PACKAGE"
@@ -122,7 +133,7 @@ jobs:
       - name: Upload NPM package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: npm-package-${{ inputs.version }}-${{ github.sha }}
+          name: npm-package-${{ inputs.version }}-${{ inputs.tag_sha }}
           path: |
             *.tgz
             npm-package-manifest.txt
