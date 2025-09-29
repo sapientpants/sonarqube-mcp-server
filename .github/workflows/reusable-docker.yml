@@ -34,6 +34,14 @@ on:
         description: 'Docker image name (without registry)'
         type: string
         default: 'sonarqube-mcp-server'
+      tag_sha:
+        description: 'SHA of the version tag for consistent naming'
+        type: string
+        default: ''
+      build_artifact:
+        description: 'Name of the pre-built TypeScript artifact to use'
+        type: string
+        default: ''
     outputs:
       image-digest:
         description: 'Docker image digest'
@@ -58,6 +66,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Download build artifact
+        # Download pre-built TypeScript if artifact name provided
+        if: inputs.build_artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.build_artifact }}
 
       # =============================================================================
       # DOCKER SETUP
@@ -108,11 +123,13 @@ jobs:
           else
             # Need to output to tar for artifact or multi-platform builds
             echo "can_load=false" >> $GITHUB_OUTPUT
+            # Use tag SHA if provided, otherwise use github.sha
+            SHA_TO_USE="${{ inputs.tag_sha || github.sha }}"
             # Use OCI format for multi-platform builds (docker format doesn't support manifest lists)
             if echo "${{ inputs.platforms }}" | grep -q ','; then
-              echo "output_type=type=oci,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+              echo "output_type=type=oci,dest=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar" >> $GITHUB_OUTPUT
             else
-              echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+              echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar" >> $GITHUB_OUTPUT
             fi
           fi
 
@@ -151,9 +168,10 @@ jobs:
             echo "Using image reference for scanning: $FIRST_TAG"
           else
             # For multi-platform or artifact builds, scan the tar file
-            echo "scan_input=${{ inputs.artifact-name }}-${{ github.sha }}.tar" >> $GITHUB_OUTPUT
+            SHA_TO_USE="${{ inputs.tag_sha || github.sha }}"
+            echo "scan_input=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar" >> $GITHUB_OUTPUT
             echo "scan_image_ref=" >> $GITHUB_OUTPUT
-            echo "Using tar file for scanning: ${{ inputs.artifact-name }}-${{ github.sha }}.tar"
+            echo "Using tar file for scanning: ${{ inputs.artifact-name }}-${SHA_TO_USE}.tar"
           fi
 
       - name: Run Trivy vulnerability scanner
@@ -191,17 +209,18 @@ jobs:
         # Compress the tar file to reduce storage costs
         if: inputs.save-artifact
         run: |
+          SHA_TO_USE="${{ inputs.tag_sha || github.sha }}"
           echo "Compressing Docker image artifact..."
-          gzip -9 ${{ inputs.artifact-name }}-${{ github.sha }}.tar
-          ls -lh ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz
+          gzip -9 ${{ inputs.artifact-name }}-${SHA_TO_USE}.tar
+          ls -lh ${{ inputs.artifact-name }}-${SHA_TO_USE}.tar.gz
 
       - name: Upload Docker image artifact
         # Store image for deterministic publishing
         if: inputs.save-artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.artifact-name }}-${{ github.sha }}
-          path: ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz
+          name: ${{ inputs.artifact-name }}-${{ inputs.tag_sha || github.sha }}
+          path: ${{ inputs.artifact-name }}-${{ inputs.tag_sha || github.sha }}.tar.gz
           retention-days: 7 # Keep for a week (enough for release cycle)
           compression-level: 0 # Already compressed with gzip
 
@@ -216,4 +235,4 @@ jobs:
         if: inputs.save-artifact && inputs.version != '' && env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz
+          subject-path: ${{ inputs.artifact-name }}-${{ inputs.tag_sha || github.sha }}.tar.gz

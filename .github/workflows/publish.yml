@@ -294,61 +294,25 @@ jobs:
             exit 0
           fi
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.tag }}
+
       - name: Determine artifact source
         id: artifact
         if: steps.check-docker.outputs.has_credentials == 'true'
-        # Find the correct artifact based on the release tag using GitHub API
+        # Use shared script to find the correct Docker image artifact from the release build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the commit SHA for this release tag using GitHub API
-          TAG_NAME="${{ steps.version.outputs.tag }}"
-          REPO="${{ github.repository }}"
-
-          # Fetch tag information from GitHub API with authentication
-          TAG_API_URL="https://api.github.com/repos/$REPO/git/ref/tags/$TAG_NAME"
-          TAG_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_API_URL)
-          TAG_BODY=$(echo "$TAG_RESPONSE" | head -n -1)
-          TAG_STATUS=$(echo "$TAG_RESPONSE" | tail -n 1)
-
-          if [ "$TAG_STATUS" != "200" ]; then
-            echo "❌ GitHub API request failed for $TAG_API_URL with status $TAG_STATUS"
-            echo "Response: $TAG_BODY"
-            exit 1
-          fi
-
-          # Extract the object SHA and type
-          OBJECT_TYPE=$(echo "$TAG_BODY" | jq -r '.object.type')
-          OBJECT_SHA=$(echo "$TAG_BODY" | jq -r '.object.sha')
-
-          # If it's an annotated tag, we need to dereference to get the commit
-          if [ "$OBJECT_TYPE" = "tag" ]; then
-            # Fetch the tag object to get the actual commit SHA
-            TAG_OBJ_URL="https://api.github.com/repos/$REPO/git/tags/$OBJECT_SHA"
-            TAG_OBJ_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $TAG_OBJ_URL)
-            TAG_OBJ_BODY=$(echo "$TAG_OBJ_RESPONSE" | head -n -1)
-            TAG_OBJ_STATUS=$(echo "$TAG_OBJ_RESPONSE" | tail -n 1)
-
-            if [ "$TAG_OBJ_STATUS" != "200" ]; then
-              echo "❌ GitHub API request failed for $TAG_OBJ_URL with status $TAG_OBJ_STATUS"
-              echo "Response: $TAG_OBJ_BODY"
-              exit 1
-            fi
-
-            RELEASE_SHA=$(echo "$TAG_OBJ_BODY" | jq -r '.object.sha')
-          else
-            # For lightweight tags, the object is already the commit
-            RELEASE_SHA="$OBJECT_SHA"
-          fi
-
-          if [ -z "$RELEASE_SHA" ] || [ "$RELEASE_SHA" = "null" ]; then
-            echo "❌ Could not find commit SHA for tag $TAG_NAME"
-            exit 1
-          fi
-
-          echo "commit_sha=$RELEASE_SHA" >> $GITHUB_OUTPUT
-          echo "artifact_name=docker-image-main-$RELEASE_SHA" >> $GITHUB_OUTPUT
-          echo "📦 Looking for artifact from commit: $RELEASE_SHA"
+          chmod +x .github/scripts/determine-artifact.sh
+          .github/scripts/determine-artifact.sh \
+            --tag "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --version "${{ steps.version.outputs.version }}" \
+            --prefix "docker-image" \
+            --output "$GITHUB_OUTPUT"
 
       - name: Download Docker image artifact
         # Download the pre-built, pre-scanned image from main workflow
@@ -362,9 +326,11 @@ jobs:
       - name: Verify artifact exists
         if: steps.check-docker.outputs.has_credentials == 'true'
         run: |
-          if [ ! -f ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar.gz ]; then
+          # The artifact name format has changed to use short SHA
+          EXPECTED_FILE="./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz"
+          if [ ! -f "$EXPECTED_FILE" ]; then
             echo "❌ Docker image artifact not found!"
-            echo "Expected: ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar.gz"
+            echo "Expected: $EXPECTED_FILE"
             echo "Contents of ./docker-artifact:"
             ls -la ./docker-artifact/ || echo "Directory does not exist"
             echo ""
@@ -372,7 +338,7 @@ jobs:
             echo "Ensure ENABLE_DOCKER_RELEASE was set to 'true' when the release was created."
             exit 1
           fi
-          echo "✅ Found Docker image artifact"
+          echo "✅ Found Docker image artifact: $EXPECTED_FILE"
 
       - name: Set up Docker Buildx
         # Required for loading and pushing multi-platform images
@@ -392,10 +358,10 @@ jobs:
         if: steps.check-docker.outputs.has_credentials == 'true'
         run: |
           echo "📥 Decompressing Docker image..."
-          gunzip ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar.gz
+          gunzip ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz
 
           echo "🔄 Loading Docker image..."
-          docker load < ./docker-artifact/docker-image-main-${{ steps.artifact.outputs.commit_sha }}.tar
+          docker load < ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar
 
           # The image is already tagged with the version from the main build
           # We need to retag it with the Docker Hub repository name
