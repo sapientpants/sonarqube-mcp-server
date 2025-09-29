@@ -240,6 +240,8 @@ jobs:
           echo "${PWD}" >> $GITHUB_PATH
 
       - name: Update version in package files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Run changeset version to update package.json and CHANGELOG.md
           # This uses the changesets that were consumed during version determination
