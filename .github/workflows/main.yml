@@ -116,12 +116,12 @@ jobs:
           # Create a manifest of what's been built
           cat > build-manifest.json <<EOF
           {
-            "build_sha": "${{ github.sha }}",
-            "build_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-            "node_version": "$(node --version)",
-            "pnpm_version": "$(pnpm --version)",
-            "typescript_version": "$(pnpm list typescript --json | jq -r '.dependencies.typescript.version')",
-            "files": $(find dist -type f -name "*.js" | jq -R . | jq -s .)
+              "build_sha": "${{ github.sha }}",
+              "build_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "node_version": "$(node --version)",
+              "pnpm_version": "$(pnpm --version)",
+              "typescript_version": "$(pnpm list typescript --json | jq -r '.dependencies.typescript.version')",
+              "files": $(find dist -type f -name "*.js" | jq -R . | jq -s .)
           }
           EOF
           echo "📋 Generated build manifest with $(find dist -type f -name "*.js" | wc -l) JavaScript files"
