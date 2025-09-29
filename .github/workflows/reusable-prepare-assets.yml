@@ -107,8 +107,8 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        # Only install production dependencies for packaging
-        run: pnpm install --prod --frozen-lockfile
+        # Install all dependencies for packaging (dev and prod)
+        run: pnpm install --frozen-lockfile
 
       - name: Create NPM package
         id: pack

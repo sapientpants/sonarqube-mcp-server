@@ -196,6 +196,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Custom script validates changesets and determines version
+          # Only checks for version changes, doesn't update files
           # FAILS IF: feat/fix commits exist without changesets
           # Outputs: changed=true/false, version=X.Y.Z
           node .github/scripts/version-and-release.js --check-only
@@ -393,8 +394,8 @@ jobs:
           make_latest: true
           files: |
             sbom.cdx.json
-            dist-${{ needs.prepare-release-assets.outputs.version }}-${{ needs.version.outputs.tag_sha }}.tar.gz
-            dist-${{ needs.prepare-release-assets.outputs.version }}-${{ needs.version.outputs.tag_sha }}.zip
+            dist-${{ needs.prepare-release-assets.outputs.version }}-*.tar.gz
+            dist-${{ needs.prepare-release-assets.outputs.version }}-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
