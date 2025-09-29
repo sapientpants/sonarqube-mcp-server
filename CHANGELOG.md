@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.10.1
+
+### Patch Changes
+
+- [#296](https://github.com/sapientpants/sonarqube-mcp-server/pull/296) [`2b46244`](https://github.com/sapientpants/sonarqube-mcp-server/commit/2b462449bfd1eb03191ae3929ae2fa61cc5a9851) - Fix Docker build workflow ordering to ensure artifacts exist before release
+  - Split version determination from release creation in main workflow
+  - Build Docker image BEFORE creating GitHub release
+  - Ensures Docker artifact exists when publish workflow is triggered
+  - Prevents race condition where publish workflow can't find Docker artifacts
+
+- [`4ceaf1f`](https://github.com/sapientpants/sonarqube-mcp-server/commit/4ceaf1f71e0ac3d42493ce6f4e9114bd3a380cf8) - test: verify workflow fixes are working correctly
+
+  Testing the prepare-release-assets workflow after refactoring
+
 ## 1.10.0
 
 ### Minor Changes
