@@ -212,7 +212,8 @@ jobs:
 
       - name: Generate attestations
         # Creates cryptographic proof of build provenance (SLSA Level 3)
-        if: inputs.save-artifact && inputs.version != ''
+        # Only runs when id-token permission is available (required for attestations)
+        if: inputs.save-artifact && inputs.version != '' && env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: ${{ inputs.artifact-name }}-${{ github.sha }}.tar.gz

@@ -350,6 +350,9 @@ jobs:
       # =============================================================================
 
       - name: Generate attestations
+        # Generate SLSA provenance attestations for supply chain security
+        # Requires id-token: write permission
+        if: env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |

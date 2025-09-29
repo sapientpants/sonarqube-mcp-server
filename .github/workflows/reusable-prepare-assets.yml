@@ -129,6 +129,8 @@ jobs:
           retention-days: 7
 
       - name: Generate attestations for NPM package
+        # Only runs when id-token permission is available (required for attestations)
+        if: env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: '*.tgz'
