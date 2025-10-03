@@ -174,21 +174,7 @@ jobs:
             echo "Using tar file for scanning: ${{ inputs.artifact-name }}-${SHA_TO_USE}.tar"
           fi
 
-      - name: Run Trivy vulnerability scanner (console output)
-        # SECURITY: Scan image for vulnerabilities with table output to console
-        # This runs first to show results in logs, but doesn't fail the build
-        if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          input: ${{ steps.scan-config.outputs.scan_input }}
-          image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
-          format: 'table' # Human-readable console output
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: false
-          exit-code: '0' # Don't fail on this step
-          trivyignores: '.trivyignore'
-
-      - name: Run Trivy vulnerability scanner (SARIF output)
+      - name: Run Trivy vulnerability scanner
         # SECURITY: Scan image for vulnerabilities before any distribution
         # NOTE: Multi-platform OCI exports cannot be scanned from tar files
         # Does not fail immediately to allow SARIF upload
