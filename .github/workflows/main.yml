@@ -48,41 +48,25 @@ jobs:
   # Parallel security scans to identify vulnerabilities before release
   # =============================================================================
 
-  # CodeQL: Static analysis for security vulnerabilities
   # Scans TypeScript/JavaScript for common security issues (XSS, SQL injection, etc.)
-  codeql:
+  security:
     uses: ./.github/workflows/reusable-security.yml
-    with:
-      generate-sbom: false # SBOM generated during release for consistency
-      run-osv-scan: false # OSV scan runs separately below
-      run-codeql: true # Enable CodeQL analysis
-
-  # OSV (Open Source Vulnerabilities) scanning
-  # Uses Google's official action for comprehensive dependency vulnerability checks
-  # UPDATE: Quarterly review for new scanner versions (currently v2.2.1)
-  vulnerability:
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.2.1
-    with:
-      # Scan entire project including all manifests (package.json, pnpm-lock.yaml)
-      scan-args: |-
-        ./
-    permissions:
-      security-events: write # Required to upload findings to Security tab
-      actions: read
-      contents: read
 
   # =============================================================================
   # UNIFIED BUILD PHASE
   # Single build job that creates artifacts to be reused throughout the workflow
   # =============================================================================
 
-  build-once:
-    name: Build TypeScript Once
+  build:
+    name: Build TypeScript
     # Runs after validation passes
-    needs: [validate, codeql, vulnerability]
+    needs: [validate, security]
     runs-on: ubuntu-latest
     outputs:
       artifact-name: dist-${{ github.sha }}
+      changed: ${{ steps.version.outputs.changed }}
+      version: ${{ steps.version.outputs.version }}
+      tag_sha: ${{ steps.tag.outputs.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -137,69 +121,15 @@ jobs:
             build-manifest.json
           retention-days: 1 # Only needed for this workflow run
 
-  # =============================================================================
-  # VERSION DETERMINATION PHASE
-  # Determines version and creates tag BEFORE building release artifacts
-  # =============================================================================
-
-  version:
-    # Now depends on build-once to have compiled code available
-    needs: [build-once]
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.version.outputs.changed }} # true if version changed
-      version: ${{ steps.version.outputs.version }} # semantic version number
-      tag_sha: ${{ steps.tag.outputs.sha }} # SHA of the created tag
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Full history needed for changeset detection
-          # SECURITY: Use RELEASE_TOKEN if available for protected branch pushes
-          # Falls back to GITHUB_TOKEN for standard permissions
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-
-      # =============================================================================
-      # ENVIRONMENT SETUP
-      # Consistent toolchain setup matching package.json requirements
-      # =============================================================================
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-once.outputs.artifact-name }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.17.0
-          run_install: false
-          standalone: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # =============================================================================
-      # VERSION MANAGEMENT
-      # Determines if release needed based on changesets
-      # =============================================================================
-
       - name: Version packages
         id: version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Custom script validates changesets and determines version
-          # Only checks for version changes, doesn't update files
           # FAILS IF: feat/fix commits exist without changesets
           # Outputs: changed=true/false, version=X.Y.Z
-          node .github/scripts/version-and-release.js --check-only
+          node .github/scripts/version-and-release.js
 
       - name: Create and push tag
         # Create tag BEFORE building artifacts so they're associated with the tag
@@ -230,13 +160,13 @@ jobs:
 
   prepare-release-assets:
     # Builds release artifacts using the tagged commit
-    needs: [version, build-once]
-    if: needs.version.outputs.changed == 'true'
+    needs: [build]
+    if: needs.build.outputs.changed == 'true'
     uses: ./.github/workflows/reusable-prepare-assets.yml
     with:
-      version: ${{ needs.version.outputs.version }}
-      tag_sha: ${{ needs.version.outputs.tag_sha }}
-      build_artifact: ${{ needs.build-once.outputs.artifact-name }}
+      version: ${{ needs.build.outputs.version }}
+      tag_sha: ${{ needs.build.outputs.tag_sha }}
+      build_artifact: ${{ needs.build.outputs.artifact-name }}
       enable_docker: ${{ vars.ENABLE_DOCKER_RELEASE == 'true' }}
       docker_platforms: 'linux/amd64,linux/arm64'
       enable_npm: ${{ vars.ENABLE_NPM_RELEASE == 'true' }}
@@ -249,7 +179,7 @@ jobs:
   commit-version:
     name: Commit Version Changes
     # Only runs after all assets are successfully prepared
-    needs: [prepare-release-assets, version, build-once]
+    needs: [prepare-release-assets, build]
     runs-on: ubuntu-latest
     outputs:
       version: ${{ needs.prepare-release-assets.outputs.version }}
@@ -263,7 +193,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-once.outputs.artifact-name }}
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Install pnpm
         # Required for updating package.json version
@@ -326,7 +256,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     # Only runs after version is committed
-    needs: [commit-version, prepare-release-assets, build-once, version]
+    needs: [commit-version, prepare-release-assets, build]
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
@@ -341,7 +271,7 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-once.outputs.artifact-name }}
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -366,7 +296,7 @@ jobs:
       - name: Create release artifacts
         run: |
           VERSION="${{ needs.prepare-release-assets.outputs.version }}"
-          TAG_SHA="${{ needs.version.outputs.tag_sha }}"
+          TAG_SHA="${{ needs.build.outputs.tag_sha }}"
           tar -czf dist-${VERSION}-${TAG_SHA:0:7}.tar.gz dist/
           zip -r dist-${VERSION}-${TAG_SHA:0:7}.zip dist/
 
