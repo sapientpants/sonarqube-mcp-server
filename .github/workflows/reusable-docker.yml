@@ -206,7 +206,7 @@ jobs:
         if: always() && (steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ','))
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-results-${{ github.event_name }}-${{ github.sha }}
+          name: trivy-${{ github.sha }}
           path: trivy-results.sarif
           retention-days: 7
 
