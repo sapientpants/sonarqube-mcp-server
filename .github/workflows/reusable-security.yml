@@ -26,10 +26,6 @@ on:
         description: 'Run OSV scanner for dependency vulnerabilities'
         type: boolean
         default: true
-      generate-sbom:
-        description: 'Generate Software Bill of Materials (SBOM)'
-        type: boolean
-        default: false
 
 # SECURITY: Required permissions for security scanning
 permissions:
@@ -44,7 +40,6 @@ permissions:
 #     with:
 #       run-codeql: true
 #       run-osv-scan: true
-#       generate-sbom: true
 
 jobs:
   audit:
@@ -92,11 +87,6 @@ jobs:
         with:
           fetch-depth: 0 # Full history for accurate analysis
 
-      # =============================================================================
-      # ENVIRONMENT SETUP
-      # Required for SBOM generation and dependency analysis
-      # =============================================================================
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -111,7 +101,6 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        # Dependencies needed for accurate SBOM generation
         run: pnpm install --frozen-lockfile
 
       # =============================================================================
@@ -143,44 +132,3 @@ jobs:
       security-events: write # Required to upload findings to Security tab
       actions: read
       contents: read
-
-  sbom:
-    if: inputs.generate-sbom
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ inputs.pnpm-version }}
-          run_install: false
-          standalone: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ inputs.node-version }}
-          cache: pnpm
-
-      - name: Install dependencies
-        # Dependencies needed for accurate SBOM generation
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate SBOM
-        if: inputs.generate-sbom
-        # Creates CycloneDX format SBOM (sbom.cdx.json)
-        # Includes all production and dev dependencies
-        run: pnpm sbom
-
-      - name: Upload SBOM
-        if: inputs.generate-sbom
-        # Make SBOM available for compliance and auditing
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ github.sha }}
-          path: sbom.cdx.json
-          retention-days: 7
