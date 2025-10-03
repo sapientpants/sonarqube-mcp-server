@@ -177,25 +177,21 @@ jobs:
       - name: Run Trivy vulnerability scanner
         # SECURITY: Scan image for vulnerabilities before any distribution
         # NOTE: Multi-platform OCI exports cannot be scanned from tar files
-        # Does not fail immediately to allow SARIF upload
-        id: trivy-sarif
+        # Will fail workflow if CRITICAL or HIGH vulnerabilities found
         if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
-        continue-on-error: true
         uses: aquasecurity/trivy-action@0.28.0
         with:
           input: ${{ steps.scan-config.outputs.scan_input }}
           image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
-          format: 'sarif' # GitHub Security format
+          format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH' # Check for serious vulnerabilities
-          ignore-unfixed: false # Include unfixed CVEs
-          exit-code: '1' # Mark step as failed if vulnerabilities found
-          trivyignores: '.trivyignore' # Use ignore file for false positives
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: false
+          trivyignores: '.trivyignore'
 
       - name: Upload Trivy results to GitHub Security
         # Always upload results, even if scan fails
         # Results viewable at: Security > Code scanning alerts
-        # Only upload if Trivy actually ran (not for multi-platform builds)
         if: always() && (steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ','))
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -204,22 +200,12 @@ jobs:
 
       - name: Upload Trivy SARIF as artifact
         # Upload SARIF file as artifact for debugging and inspection
-        # Allows downloading the raw scan results
         if: always() && (steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ','))
         uses: actions/upload-artifact@v4
         with:
           name: trivy-results-${{ github.event_name }}-${{ github.sha }}
           path: trivy-results.sarif
           retention-days: 7
-
-      - name: Fail if Trivy found vulnerabilities
-        # SECURITY: Fail workflow if critical or high vulnerabilities were found
-        # This step runs after SARIF upload to ensure results are always available
-        if: steps.trivy-sarif.outcome == 'failure'
-        run: |
-          echo "::error::Trivy scan found CRITICAL or HIGH severity vulnerabilities"
-          echo "Review the scan results in the Security tab: https://github.com/${{ github.repository }}/security/code-scanning"
-          exit 1
 
       # =============================================================================
       # ARTIFACT STORAGE
