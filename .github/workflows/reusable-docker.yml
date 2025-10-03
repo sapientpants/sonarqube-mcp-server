@@ -185,12 +185,15 @@ jobs:
           image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
           exit-code: '1' # Fail if vulnerabilities found
           format: 'sarif'
+          hide-progress: false
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           scanners: 'vuln,secret,misconfig,license'
           ignore-unfixed: false
           trivyignores: '.trivyignore'
           version: 'latest'
+        env:
+          TRIVY_DEBUG: 'true'
 
       - name: Upload Trivy results to GitHub Security
         # Always upload results, even if scan fails
