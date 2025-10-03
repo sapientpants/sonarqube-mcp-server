@@ -190,18 +190,20 @@ jobs:
 
       - name: Run Trivy vulnerability scanner (SARIF output)
         # SECURITY: Scan image for vulnerabilities before any distribution
-        # FAILS IF: Critical or high vulnerabilities found (configurable)
         # NOTE: Multi-platform OCI exports cannot be scanned from tar files
+        # Does not fail immediately to allow SARIF upload
+        id: trivy-sarif
         if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
+        continue-on-error: true
         uses: aquasecurity/trivy-action@0.28.0
         with:
           input: ${{ steps.scan-config.outputs.scan_input }}
           image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
           format: 'sarif' # GitHub Security format
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH' # Fail on serious vulnerabilities
+          severity: 'CRITICAL,HIGH' # Check for serious vulnerabilities
           ignore-unfixed: false # Include unfixed CVEs
-          exit-code: '1' # Fail workflow if vulnerabilities found
+          exit-code: '1' # Mark step as failed if vulnerabilities found
           trivyignores: '.trivyignore' # Use ignore file for false positives
 
       - name: Upload Trivy results to GitHub Security
@@ -213,6 +215,15 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'container-scan-${{ github.event_name }}'
+
+      - name: Fail if Trivy found vulnerabilities
+        # SECURITY: Fail workflow if critical or high vulnerabilities were found
+        # This step runs after SARIF upload to ensure results are always available
+        if: steps.trivy-sarif.outcome == 'failure'
+        run: |
+          echo "::error::Trivy scan found CRITICAL or HIGH severity vulnerabilities"
+          echo "Review the scan results in the Security tab: https://github.com/${{ github.repository }}/security/code-scanning"
+          exit 1
 
       # =============================================================================
       # ARTIFACT STORAGE
