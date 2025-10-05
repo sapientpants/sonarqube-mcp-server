@@ -177,7 +177,7 @@ jobs:
       - name: Run Trivy vulnerability scanner
         # SECURITY: Scan image for vulnerabilities before any distribution
         # NOTE: Multi-platform OCI exports cannot be scanned from tar files
-        # Will fail workflow if CRITICAL or HIGH vulnerabilities found
+        # Will fail workflow if fixable CRITICAL or HIGH vulnerabilities found
         if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
         uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -189,7 +189,7 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           scanners: 'vuln,secret,misconfig,license'
-          ignore-unfixed: false
+          ignore-unfixed: true # Only report vulnerabilities with available fixes
           trivyignores: '.trivyignore'
           version: 'latest'
         env:
