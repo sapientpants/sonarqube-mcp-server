@@ -36,6 +36,12 @@ RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 # Production stage - minimal stdio-only runtime
 FROM node:22-alpine
 
+# Update OpenSSL to fix CVE-2025-9230, CVE-2025-9231, CVE-2025-9232
+# Upgrade libcrypto3 and libssl3 from 3.5.1-r0 to 3.5.4-r0
+RUN apk update && \
+    apk upgrade --no-cache libcrypto3 libssl3 && \
+    rm -rf /var/cache/apk/*
+
 # Create non-root user upfront
 RUN addgroup -g 1001 nodejs && \
     adduser -S -u 1001 -G nodejs nodejs
