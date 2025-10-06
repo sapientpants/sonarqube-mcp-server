@@ -192,8 +192,10 @@ jobs:
           ignore-unfixed: true # Only report vulnerabilities with available fixes
           trivyignores: '.trivyignore'
           version: 'latest'
+          license-full: true
         env:
           TRIVY_DEBUG: 'true'
+          TRIVY_IGNORED_LICENSES: 'GPL-2.0-only,GPL-3.0-only,MPL-2.0'
 
       - name: Upload Trivy results to GitHub Security
         # Always upload results, even if scan fails
