@@ -195,7 +195,7 @@ jobs:
           license-full: true
         env:
           TRIVY_DEBUG: 'true'
-          TRIVY_IGNORED_LICENSES: 'GPL-2.0-only,GPL-3.0-only,MPL-2.0'
+          TRIVY_IGNORED_LICENSES: 'GPL-2.0-only,GPL-2.0-or-later,GPL-3.0-only,GPL-3.0-or-later,LGPL-2.1-or-later,MPL-2.0'
 
       - name: Upload Trivy results to GitHub Security
         # Always upload results, even if scan fails
