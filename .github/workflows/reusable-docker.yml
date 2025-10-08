@@ -184,16 +184,14 @@ jobs:
         with:
           input: ${{ steps.scan-config.outputs.scan_input }}
           image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
-          exit-code: '1' # Don't fail on license findings - they're documented
+          exit-code: '1'
           format: 'sarif'
           hide-progress: false
           output: 'trivy-results.sarif'
           severity: 'HIGH,CRITICAL'
           scanners: 'vuln,secret,misconfig'
-          ignore-unfixed: true # Only report vulnerabilities with available fixes
           trivyignores: '.trivyignore'
           version: 'latest'
-          license-full: true
         env:
           TRIVY_DEBUG: 'true'
 
