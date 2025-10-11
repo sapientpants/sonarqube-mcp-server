@@ -94,11 +94,10 @@ jobs:
             --prefix "npm-package" \
             --output "$GITHUB_OUTPUT"
 
-      - name: Try to download pre-built NPM package
+      - name: Download pre-built NPM package
         id: download
         # Download the pre-built, pre-scanned NPM package from main workflow
         # This ensures we publish exactly what was tested
-        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
@@ -106,36 +105,31 @@ jobs:
           run-id: ${{ steps.artifact.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Use pre-built package or build from source
+      - name: Extract pre-built package
         run: |
-          if [ -d ./npm-artifact ]; then
-            # Check if any .tgz files exist
-            TARBALL=$(find ./npm-artifact -name "*.tgz" -type f | head -1)
-            if [ -n "$TARBALL" ]; then
-              echo "✅ Using pre-built NPM package from main workflow"
-              echo "📦 Extracting: $TARBALL"
-              tar -xzf "$TARBALL"
+          # Check if any .tgz files exist
+          TARBALL=$(find ./npm-artifact -name "*.tgz" -type f | head -1)
+          if [ -z "$TARBALL" ]; then
+            echo "❌ No .tgz file found in artifact!"
+            echo "Contents of ./npm-artifact:"
+            ls -la ./npm-artifact/
+            exit 1
+          fi
 
-              # The package extracts to a 'package' directory
-              # We need to move its contents to the current directory
-              if [ -d package ]; then
-                cp -r package/* .
-                rm -rf package
-              fi
+          echo "✅ Using pre-built NPM package from main workflow"
+          echo "📦 Extracting: $TARBALL"
+          tar -xzf "$TARBALL"
 
-              echo "📋 Verified package contents from manifest"
-              if [ -f ./npm-artifact/npm-package-manifest.txt ]; then
-                echo "Package contains $(wc -l < ./npm-artifact/npm-package-manifest.txt) files"
-              fi
-            fi
-          else
-            echo "⚠️ Pre-built NPM package not found, building from source"
-            echo "This may happen if the main workflow didn't have ENABLE_NPM_RELEASE set"
+          # The package extracts to a 'package' directory
+          # We need to move its contents to the current directory
+          if [ -d package ]; then
+            cp -r package/* .
+            rm -rf package
+          fi
 
-            # Install dependencies and build from source as fallback
-            npm install -g pnpm@${{ env.PNPM_VERSION }}
-            pnpm install --frozen-lockfile
-            pnpm build
+          echo "📋 Verified package contents from manifest"
+          if [ -f ./npm-artifact/npm-package-manifest.txt ]; then
+            echo "Package contains $(wc -l < ./npm-artifact/npm-package-manifest.txt) files"
           fi
 
       - name: Check NPM token
@@ -216,9 +210,8 @@ jobs:
             --prefix "npm-package" \
             --output "$GITHUB_OUTPUT"
 
-      - name: Try to download pre-built NPM package
+      - name: Download pre-built NPM package
         id: download
-        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
@@ -226,32 +219,28 @@ jobs:
           run-id: ${{ steps.artifact.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Use pre-built package or build from source
+      - name: Extract pre-built package
         run: |
-          if [ -d ./npm-artifact ]; then
-            # Check if any .tgz files exist
-            TARBALL=$(find ./npm-artifact -name "*.tgz" -type f | head -1)
-            if [ -n "$TARBALL" ]; then
-              echo "✅ Using pre-built NPM package from main workflow"
-              echo "📦 Extracting: $TARBALL"
-              tar -xzf "$TARBALL"
-
-              # The package extracts to a 'package' directory
-              if [ -d package ]; then
-                cp -r package/* .
-                rm -rf package
-              fi
-
-              echo "📋 Verified package contents"
-            fi
-          else
-            echo "⚠️ Pre-built NPM package not found, building from source"
-
-            # Install dependencies and build from source as fallback
-            npm install -g pnpm@${{ env.PNPM_VERSION }}
-            pnpm install --frozen-lockfile
-            pnpm build
+          # Check if any .tgz files exist
+          TARBALL=$(find ./npm-artifact -name "*.tgz" -type f | head -1)
+          if [ -z "$TARBALL" ]; then
+            echo "❌ No .tgz file found in artifact!"
+            echo "Contents of ./npm-artifact:"
+            ls -la ./npm-artifact/
+            exit 1
           fi
+
+          echo "✅ Using pre-built NPM package from main workflow"
+          echo "📦 Extracting: $TARBALL"
+          tar -xzf "$TARBALL"
+
+          # The package extracts to a 'package' directory
+          if [ -d package ]; then
+            cp -r package/* .
+            rm -rf package
+          fi
+
+          echo "📋 Verified package contents"
 
       - name: Publish to GitHub Packages
         run: |
