@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.5
+
+### Patch Changes
+
+- [`8050985`](https://github.com/sapientpants/sonarqube-mcp-server/commit/805098501a19ba6a5430403238ca0077139aa20f) - Fix artifact naming to use github.sha for consistency with publish workflow
+
 ## 1.10.4
 
 ### Patch Changes
