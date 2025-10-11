@@ -71,6 +71,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -100,8 +101,6 @@ jobs:
 
       - name: Commit version changes
         if: steps.version.outputs.changed == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Configure git with GitHub Actions bot identity
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
@@ -113,7 +112,7 @@ jobs:
           # Commit with [skip actions] to prevent workflow recursion
           git commit -m "chore(release): v${{ steps.version.outputs.version }} [skip actions]"
 
-          # Push changes to origin with RELEASE_TOKEN (has admin permissions)
+          # Push changes to origin
           git push origin main
 
           echo "✅ Version changes committed and pushed"
