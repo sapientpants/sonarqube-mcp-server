@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.9
+
+### Patch Changes
+
+- [`ac24e63`](https://github.com/sapientpants/sonarqube-mcp-server/commit/ac24e634b8f5cee77a141c468f72d1e628d33e9f) - Fix cross-workflow artifact downloads by adding run-id parameter
+
+  The Publish workflow was unable to download artifacts from the Main workflow because the actions/download-artifact@v4 action defaults to only downloading artifacts from the current workflow run. Added the run-id and github-token parameters to all three download steps (NPM, GitHub Packages, and Docker) to enable cross-workflow artifact access.
+
 ## 1.10.8
 
 ### Patch Changes
