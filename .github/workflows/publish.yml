@@ -103,6 +103,8 @@ jobs:
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
           path: ./npm-artifact
+          run-id: ${{ steps.artifact.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use pre-built package or build from source
         run: |
@@ -221,6 +223,8 @@ jobs:
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
           path: ./npm-artifact
+          run-id: ${{ steps.artifact.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use pre-built package or build from source
         run: |
@@ -328,6 +332,8 @@ jobs:
         with:
           name: ${{ steps.artifact.outputs.artifact_name }}
           path: ./docker-artifact
+          run-id: ${{ steps.artifact.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify artifact exists
         if: steps.check-docker.outputs.has_credentials == 'true'
