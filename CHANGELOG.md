@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.10.2
+
+### Patch Changes
+
+- [`04cb352`](https://github.com/sapientpants/sonarqube-mcp-server/commit/04cb3522380a11806df2070742c4522453926c87) - fix: update pino to 9.12.0 to resolve CVE-2025-57319
+  - Updated pino from 9.11.0 to 9.12.0
+  - Pino 9.12.0 replaces fast-redact with slow-redact
+  - Resolves prototype pollution vulnerability in fast-redact@3.5.0 (CVE-2025-57319, low severity)
+
+- [#303](https://github.com/sapientpants/sonarqube-mcp-server/pull/303) [`0f578c2`](https://github.com/sapientpants/sonarqube-mcp-server/commit/0f578c25bfdfb52b23a065b63b78cfc941cb0856) - fix: improve Docker security scanning and fix OpenSSL vulnerabilities
+  - Upgraded OpenSSL packages to fix CVE-2025-9230, CVE-2025-9231, CVE-2025-9232
+  - Simplified Trivy scan workflow to always upload SARIF results before failing
+  - Configured Trivy to only report fixable vulnerabilities
+  - Added license scanner with informational reporting (GPL/LGPL licenses documented in LICENSES.md)
+  - License findings don't fail the build; only vulnerabilities, secrets, and misconfigurations do
+  - Added SARIF artifact upload for debugging scan results
+
 ## 1.10.1
 
 ### Patch Changes
