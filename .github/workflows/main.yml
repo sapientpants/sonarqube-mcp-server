@@ -188,7 +188,7 @@ jobs:
     with:
       platforms: 'linux/amd64,linux/arm64'
       save-artifact: true
-      artifact-name: 'docker-image-${{ github.sha }}'
+      artifact-name: 'docker-image-${{ needs.build.outputs.version }}'
       image-name: 'sonarqube-mcp-server'
       version: ${{ needs.build.outputs.version }}
       tag_sha: ${{ github.sha }}
