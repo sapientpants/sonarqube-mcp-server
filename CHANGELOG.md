@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.13
+
+### Patch Changes
+
+- [#315](https://github.com/sapientpants/sonarqube-mcp-server/pull/315) [`ac06fbe`](https://github.com/sapientpants/sonarqube-mcp-server/commit/ac06fbe87af4500cdc6548b709b5a837cb3dba5e) - Fix multi-platform Docker image publishing to Docker Hub
+  - Change skopeo `--all` flag to `--multi-arch all` for proper OCI manifest list handling
+  - Ensures both linux/amd64 and linux/arm64 images are pushed correctly
+  - Fixes error: "more than one image in oci, choose an image"
+
 ## 1.10.12
 
 ### Patch Changes
