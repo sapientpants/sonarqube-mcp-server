@@ -101,14 +101,11 @@ jobs:
       - name: Commit version changes
         if: steps.version.outputs.changed == 'true'
         env:
-          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Configure git with GitHub Actions bot identity
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
-
-          # Configure git to use RELEASE_TOKEN for push (bypasses branch protection)
-          git remote set-url origin https://x-access-token:${RELEASE_TOKEN}@github.com/${{ github.repository }}.git
 
           # Stage version-related changes
           git add package.json CHANGELOG.md .changeset
