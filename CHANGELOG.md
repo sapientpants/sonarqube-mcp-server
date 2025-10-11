@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.10.15
+
+### Patch Changes
+
+- [#317](https://github.com/sapientpants/sonarqube-mcp-server/pull/317) [`b813a93`](https://github.com/sapientpants/sonarqube-mcp-server/commit/b813a937e72f980a2be2c2e93ceb9f5487456e39) - Fix race condition in artifact determination script
+  - Add retry logic with exponential backoff to determine-artifact.sh
+  - Wait up to 5 attempts with increasing delays (5s, 10s, 15s, 20s, 25s)
+  - Fixes race condition where Publish workflow starts before Main workflow is indexed by GitHub API
+  - Total retry window: ~75 seconds, giving GitHub's API time to index completed workflow runs
+
 ## 1.10.14
 
 ### Patch Changes
