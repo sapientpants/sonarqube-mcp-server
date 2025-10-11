@@ -258,7 +258,7 @@ jobs:
 
   # =============================================================================
   # DOCKER HUB PUBLISHING
-  # Uses pre-built and pre-scanned Docker image from main workflow
+  # Copies pre-built multi-platform image from GHCR to Docker Hub
   # =============================================================================
 
   docker:
@@ -269,8 +269,7 @@ jobs:
     if: vars.ENABLE_DOCKER_RELEASE == 'true'
     permissions:
       contents: read
-      packages: write # Push to GitHub Container Registry if needed
-      actions: read # Required to download artifacts
+      packages: read # Read from GitHub Container Registry
     steps:
       - name: Determine version
         id: version
@@ -296,87 +295,45 @@ jobs:
             exit 0
           fi
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.version.outputs.tag }}
-
-      - name: Determine artifact source
-        id: artifact
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        # Use shared script to find the correct Docker image artifact from the release build
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x .github/scripts/determine-artifact.sh
-          .github/scripts/determine-artifact.sh \
-            --tag "${{ steps.version.outputs.tag }}" \
-            --repo "${{ github.repository }}" \
-            --version "${{ steps.version.outputs.version }}" \
-            --prefix "docker-image" \
-            --output "$GITHUB_OUTPUT"
-
-      - name: Download Docker image artifact
-        # Download the pre-built, pre-scanned image from main workflow
-        # This ensures we publish exactly what was tested
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ steps.artifact.outputs.artifact_name }}
-          path: ./docker-artifact
-          run-id: ${{ steps.artifact.outputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify artifact exists
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        run: |
-          # The artifact name format has changed to use short SHA
-          EXPECTED_FILE="./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz"
-          if [ ! -f "$EXPECTED_FILE" ]; then
-            echo "❌ Docker image artifact not found!"
-            echo "Expected: $EXPECTED_FILE"
-            echo "Contents of ./docker-artifact:"
-            ls -la ./docker-artifact/ || echo "Directory does not exist"
-            echo ""
-            echo "This usually means the main workflow didn't build a Docker image."
-            echo "Ensure ENABLE_DOCKER_RELEASE was set to 'true' when the release was created."
-            exit 1
-          fi
-          echo "✅ Found Docker image artifact: $EXPECTED_FILE"
-
       - name: Set up Docker Buildx
-        # Required for loading and pushing multi-platform images
+        # Required for imagetools commands
         if: steps.check-docker.outputs.has_credentials == 'true'
         uses: docker/setup-buildx-action@v3
 
+      - name: Login to GitHub Container Registry
+        # Login to GHCR to pull the pre-built image
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Login to Docker Hub
-        # SECURITY: Authenticate with Docker Hub
+        # SECURITY: Authenticate with Docker Hub for pushing
         if: steps.check-docker.outputs.has_credentials == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push Docker image
-        # Push the pre-built OCI multi-platform image to Docker Hub
+      - name: Copy image from GHCR to Docker Hub
+        # Use buildx imagetools to copy multi-platform image between registries
+        # This properly handles multi-platform manifest lists
         if: steps.check-docker.outputs.has_credentials == 'true'
         run: |
-          echo "📥 Decompressing and extracting OCI image..."
-          gunzip ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz
-
-          # Extract OCI layout from tar
-          mkdir -p oci-layout
-          tar -xf ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar -C oci-layout
-
+          SOURCE_IMAGE="ghcr.io/${{ github.repository_owner }}/sonarqube-mcp-server"
           TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          echo "📤 Pushing multi-platform OCI image to Docker Hub..."
-          # Use docker buildx imagetools create to push from OCI layout
-          # This properly handles multi-platform manifest lists
+          echo "📤 Copying multi-platform image from GHCR to Docker Hub..."
+          echo "Source: $SOURCE_IMAGE:$VERSION"
+          echo "Target: $TARGET_REPO:$VERSION"
+
+          # Copy image with version tag
           docker buildx imagetools create \
             --tag $TARGET_REPO:$VERSION \
-            oci-layout://oci-layout
+            $SOURCE_IMAGE:$VERSION
 
           echo "🏷️ Creating additional tags..."
           # Create alias tags for latest, major, and major.minor versions
@@ -388,6 +345,7 @@ jobs:
           docker buildx imagetools create --tag $TARGET_REPO:$MAJOR.$MINOR $TARGET_REPO:$VERSION
 
           echo "✅ Docker image published successfully to Docker Hub"
+          echo "📋 Published tags: $VERSION, latest, $MAJOR, $MAJOR.$MINOR"
 
   # =============================================================================
   # NOTIFICATION

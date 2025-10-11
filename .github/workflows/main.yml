@@ -23,12 +23,14 @@ concurrency:
 # attestations: write - Attach attestations to artifacts
 # security-events: write - Upload security scan results
 # actions: read - Access workflow runs and artifacts
+# packages: write - Push Docker images to GitHub Container Registry
 permissions:
   contents: write
   id-token: write
   attestations: write
   security-events: write
   actions: read
+  packages: write
 
 jobs:
   # =============================================================================

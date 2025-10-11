@@ -88,6 +88,16 @@ jobs:
         # Advanced Docker builder with cache support
         uses: docker/setup-buildx-action@v3
 
+      - name: Login to GitHub Container Registry
+        # Login to GHCR for multi-platform builds that need to be pushed to registry
+        # Single-platform builds for PRs don't need registry push
+        if: inputs.save-artifact && contains(inputs.platforms, ',')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       # =============================================================================
       # DOCKER BUILD
       # Build image with layer caching for efficiency
@@ -97,7 +107,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ inputs.image-name }}
+          # Use GHCR for multi-platform artifact builds, local name otherwise
+          images: |
+            ${{ (inputs.save-artifact && contains(inputs.platforms, ',')) && format('ghcr.io/{0}/{1}', github.repository_owner, inputs.image-name) || inputs.image-name }}
           tags: |
             type=raw,value=${{ inputs.version }},enable=${{ inputs.version != '' }}
             type=raw,value=latest,enable=${{ inputs.version != '' }}
@@ -109,29 +121,45 @@ jobs:
         id: build-config
         run: |
           # Determine if we're building for multiple platforms
+          IS_MULTI_PLATFORM="false"
           if echo "${{ inputs.platforms }}" | grep -q ','; then
-            echo "is_multi_platform=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_multi_platform=false" >> $GITHUB_OUTPUT
+            IS_MULTI_PLATFORM="true"
           fi
 
-          # Determine if we can load the image (only for single-platform non-artifact builds)
+          # For multi-platform builds with save-artifact, push to GHCR
+          # For single-platform builds or PR builds, load locally or save to tar
           SAVE_ARTIFACT="${{ inputs.save-artifact }}"
-          if [ "$SAVE_ARTIFACT" != "true" ] && ! echo "${{ inputs.platforms }}" | grep -q ','; then
-            echo "can_load=true" >> $GITHUB_OUTPUT
-            echo "output_type=" >> $GITHUB_OUTPUT
+          SHOULD_PUSH="false"
+          CAN_LOAD="false"
+          OUTPUT_TYPE=""
+
+          if [ "$SAVE_ARTIFACT" = "true" ] && [ "$IS_MULTI_PLATFORM" = "true" ]; then
+            # Multi-platform artifact build: push to GHCR
+            SHOULD_PUSH="true"
+            CAN_LOAD="false"
+          elif [ "$SAVE_ARTIFACT" != "true" ] && [ "$IS_MULTI_PLATFORM" = "false" ]; then
+            # Single-platform PR build: load locally
+            CAN_LOAD="true"
           else
-            # Need to output to tar for artifact or multi-platform builds
-            echo "can_load=false" >> $GITHUB_OUTPUT
-            # Use tag SHA if provided, otherwise use github.sha
+            # Single-platform artifact build: save to tar
+            CAN_LOAD="false"
             SHA_TO_USE="${{ inputs.tag_sha || github.sha }}"
-            # Use OCI format for multi-platform builds (docker format doesn't support manifest lists)
-            if echo "${{ inputs.platforms }}" | grep -q ','; then
-              echo "output_type=type=oci,dest=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar" >> $GITHUB_OUTPUT
-            else
-              echo "output_type=type=docker,dest=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar" >> $GITHUB_OUTPUT
-            fi
+            OUTPUT_TYPE="type=docker,dest=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar"
           fi
+
+          {
+            echo "is_multi_platform=$IS_MULTI_PLATFORM"
+            echo "should_push=$SHOULD_PUSH"
+            echo "can_load=$CAN_LOAD"
+            echo "output_type=$OUTPUT_TYPE"
+          } >> $GITHUB_OUTPUT
+
+          echo "📋 Build configuration:"
+          echo "  Multi-platform: $IS_MULTI_PLATFORM"
+          echo "  Save artifact: $SAVE_ARTIFACT"
+          echo "  Should push: $SHOULD_PUSH"
+          echo "  Can load: $CAN_LOAD"
+          echo "  Output type: $OUTPUT_TYPE"
 
       - name: Build Docker image
         id: build
@@ -139,7 +167,7 @@ jobs:
         with:
           context: .
           platforms: ${{ inputs.platforms }}
-          push: false # Never push from this reusable workflow
+          push: ${{ steps.build-config.outputs.should_push == 'true' }}
           load: ${{ steps.build-config.outputs.can_load == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -163,14 +191,18 @@ jobs:
           if [ "$CAN_LOAD" = "true" ]; then
             # For loaded single-platform images, scan by image reference
             FIRST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
-            echo "scan_input=" >> $GITHUB_OUTPUT
-            echo "scan_image_ref=$FIRST_TAG" >> $GITHUB_OUTPUT
+            {
+              echo "scan_input="
+              echo "scan_image_ref=$FIRST_TAG"
+            } >> $GITHUB_OUTPUT
             echo "Using image reference for scanning: $FIRST_TAG"
           else
             # For multi-platform or artifact builds, scan the tar file
             SHA_TO_USE="${{ inputs.tag_sha || github.sha }}"
-            echo "scan_input=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar" >> $GITHUB_OUTPUT
-            echo "scan_image_ref=" >> $GITHUB_OUTPUT
+            {
+              echo "scan_input=${{ inputs.artifact-name }}-${SHA_TO_USE}.tar"
+              echo "scan_image_ref="
+            } >> $GITHUB_OUTPUT
             echo "Using tar file for scanning: ${{ inputs.artifact-name }}-${SHA_TO_USE}.tar"
           fi
 
@@ -231,12 +263,14 @@ jobs:
 
       # =============================================================================
       # ARTIFACT STORAGE
-      # Save Docker image for reuse in publish workflow
+      # Save Docker image tar files for single-platform builds
+      # Multi-platform builds are pushed to GHCR instead
       # =============================================================================
 
       - name: Compress Docker image artifact
         # Compress the tar file to reduce storage costs
-        if: inputs.save-artifact
+        # Only for single-platform builds (multi-platform builds pushed to GHCR)
+        if: inputs.save-artifact && !contains(inputs.platforms, ',')
         run: |
           SHA_TO_USE="${{ inputs.tag_sha || github.sha }}"
           echo "Compressing Docker image artifact..."
@@ -244,8 +278,9 @@ jobs:
           ls -lh ${{ inputs.artifact-name }}-${SHA_TO_USE}.tar.gz
 
       - name: Upload Docker image artifact
-        # Store image for deterministic publishing
-        if: inputs.save-artifact
+        # Store single-platform image tar for deterministic publishing
+        # Multi-platform images are stored in GHCR registry
+        if: inputs.save-artifact && !contains(inputs.platforms, ',')
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}-${{ inputs.tag_sha || github.sha }}
@@ -258,10 +293,19 @@ jobs:
       # Generate attestations for build provenance (main builds only)
       # =============================================================================
 
-      - name: Generate attestations
-        # Creates cryptographic proof of build provenance (SLSA Level 3)
-        # Only runs when id-token permission is available (required for attestations)
-        if: inputs.save-artifact && inputs.version != '' && env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
+      - name: Generate attestations for GHCR images
+        # Creates cryptographic proof of build provenance for multi-platform images
+        # Multi-platform images are stored in GHCR registry
+        if: inputs.save-artifact && contains(inputs.platforms, ',') && inputs.version != '' && env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ inputs.image-name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Generate attestations for tar artifacts
+        # Creates cryptographic proof of build provenance for single-platform tar files
+        if: inputs.save-artifact && !contains(inputs.platforms, ',') && inputs.version != '' && env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: ${{ inputs.artifact-name }}-${{ inputs.tag_sha || github.sha }}.tar.gz
