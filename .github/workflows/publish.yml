@@ -149,12 +149,13 @@ jobs:
       - name: Publish to NPM
         if: steps.check-npm.outputs.has_token == 'true'
         run: |
-          # Remove private flag to allow public publishing
-          jq 'del(.private)' package.json > tmp.json && mv tmp.json package.json
+          # Remove private flag and prepare script (which runs husky)
+          # The prepare script runs even with --ignore-scripts, so we must remove it
+          jq 'del(.private) | del(.scripts.prepare)' package.json > tmp.json && mv tmp.json package.json
+
           # Publish with provenance for supply chain security
           # --provenance creates a signed attestation of the build
-          # --ignore-scripts prevents running prepare/prepack scripts (husky) during publish
-          npm publish --provenance --access public --ignore-scripts
+          npm publish --provenance --access public
         env:
           # SECURITY: NPM_TOKEN required for authentication
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -245,11 +246,11 @@ jobs:
 
       - name: Publish to GitHub Packages
         run: |
-          # Scope package name to organization (required for GitHub Packages)
-          # Changes 'my-package' to '@org/my-package'
-          jq '.name = "@${{ github.repository_owner }}/" + .name | del(.private)' package.json > tmp.json && mv tmp.json package.json
-          # --ignore-scripts prevents running prepare/prepack scripts (husky) during publish
-          npm publish --access public --ignore-scripts
+          # Scope package name to organization and remove private flag and prepare script
+          # The prepare script runs even with --ignore-scripts, so we must remove it
+          jq '.name = "@${{ github.repository_owner }}/" + .name | del(.private) | del(.scripts.prepare)' package.json > tmp.json && mv tmp.json package.json
+
+          npm publish --access public
         env:
           # SECURITY: Uses GITHUB_TOKEN for authentication
           # Automatically available, no configuration needed
@@ -363,42 +364,45 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y skopeo
 
-      - name: Load and push Docker image
-        # Load the pre-built OCI image and push with proper tags
+      - name: Push Docker image
+        # Push the pre-built OCI image directly to Docker Hub using skopeo
         if: steps.check-docker.outputs.has_credentials == 'true'
+        env:
+          # Skopeo uses these environment variables for Docker Hub authentication
+          REGISTRY_AUTH_FILE: /tmp/auth.json
         run: |
+          echo "🔐 Configuring skopeo authentication..."
+          # Create auth config for skopeo
+          mkdir -p "$(dirname "$REGISTRY_AUTH_FILE")"
+          echo "{\"auths\":{\"docker.io\":{\"auth\":\"$(echo -n \"${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}\" | base64 -w0)\"}}}" > "$REGISTRY_AUTH_FILE"
+
           echo "📥 Decompressing Docker image..."
           gunzip ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz
 
-          # The artifact is in OCI format (for multi-platform builds)
-          # We need to use skopeo to copy it to docker-daemon
-          SOURCE_IMAGE_NAME="sonarqube-mcp-server"
           TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          echo "🔄 Loading OCI image to Docker daemon..."
-          # Use skopeo to copy from OCI archive to docker-daemon
-          # The tag in the OCI archive should match what was built in Main workflow
+          echo "📤 Pushing OCI image directly to Docker Hub..."
+          # Use skopeo to push from OCI archive directly to Docker Hub
+          # This preserves multi-platform manifest lists
           skopeo copy \
-            oci-archive:./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar:$SOURCE_IMAGE_NAME:$VERSION \
-            docker-daemon:$TARGET_REPO:$VERSION
+            --all \
+            oci-archive:./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar \
+            docker://$TARGET_REPO:$VERSION
 
-          echo "🏷️ Tagging image for Docker Hub..."
-          docker tag "$TARGET_REPO:$VERSION" "$TARGET_REPO:latest"
-
-          # Also add major and major.minor tags
+          echo "🏷️ Creating additional tags..."
+          # Also add latest, major, and major.minor tags
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
           MINOR=$(echo "$VERSION" | cut -d. -f2)
-          docker tag "$TARGET_REPO:$VERSION" "$TARGET_REPO:$MAJOR"
-          docker tag "$TARGET_REPO:$VERSION" "$TARGET_REPO:$MAJOR.$MINOR"
 
-          echo "📤 Pushing to Docker Hub..."
-          docker push "$TARGET_REPO:$VERSION"
-          docker push "$TARGET_REPO:latest"
-          docker push "$TARGET_REPO:$MAJOR"
-          docker push "$TARGET_REPO:$MAJOR.$MINOR"
+          skopeo copy docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:latest
+          skopeo copy docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR
+          skopeo copy docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR.$MINOR
 
           echo "✅ Docker image published successfully"
+
+          # Cleanup auth file
+          rm -f $REGISTRY_AUTH_FILE
 
   # =============================================================================
   # NOTIFICATION
