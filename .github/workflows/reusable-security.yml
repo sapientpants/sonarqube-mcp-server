@@ -1,8 +1,9 @@
 # =============================================================================
 # REUSABLE WORKFLOW: Security Scanning Suite
-# PURPOSE: Run security scans (CodeQL, OSV) and generate SBOM
+# PURPOSE: Run security scans (audit, OSV) and generate SBOM
 # USAGE: Called by PR and main workflows for security validation
 # OUTPUTS: Security findings uploaded to GitHub Security tab, SBOM artifact
+# NOTE: CodeQL has its own dedicated workflow (codeql.yml) for better integration
 # =============================================================================
 
 name: Reusable Security
@@ -18,18 +19,10 @@ on:
         description: 'pnpm version (should match package.json packageManager)'
         type: string
         default: '10.17.0' # UPDATE: When upgrading pnpm
-      run-codeql:
-        description: 'Run CodeQL static analysis for security vulnerabilities'
-        type: boolean
-        default: true
       run-osv-scan:
         description: 'Run OSV scanner for dependency vulnerabilities'
         type: boolean
         default: true
-      generate-sbom:
-        description: 'Generate Software Bill of Materials (SBOM)'
-        type: boolean
-        default: false
 
 # SECURITY: Required permissions for security scanning
 permissions:
@@ -42,12 +35,10 @@ permissions:
 #   security:
 #     uses: ./.github/workflows/reusable-security.yml
 #     with:
-#       run-codeql: true
 #       run-osv-scan: true
-#       generate-sbom: true
 
 jobs:
-  security:
+  audit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -71,76 +62,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node-version }}
-          cache: pnpm
+          cache: pnpm # Cache dependencies for speed
 
       - name: Install dependencies
         # Dependencies needed for accurate SBOM generation
         run: pnpm install --frozen-lockfile
 
-      # =============================================================================
-      # CODEQL STATIC ANALYSIS
-      # Scans for security vulnerabilities in source code
-      # =============================================================================
+      - name: Security audit
+        # Check for known vulnerabilities in dependencies
+        # FAILS IF: Critical vulnerabilities found
+        # To fix: Run 'pnpm update' or add overrides in package.json
+        run: pnpm audit --audit-level critical
 
-      - name: Initialize CodeQL
-        if: inputs.run-codeql
-        # Setup CodeQL for JavaScript/TypeScript analysis
-        # Detects: XSS, SQL injection, path traversal, etc.
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Run CodeQL Analysis
-        if: inputs.run-codeql
-        # Perform analysis and upload results to Security tab
-        # Results viewable at: Security > Code scanning alerts
-        # FAILS IF: Critical security issues detected (configurable)
-        uses: github/codeql-action/analyze@v3
-
-      # =============================================================================
-      # SOFTWARE BILL OF MATERIALS (SBOM)
-      # Documents all dependencies for supply chain security
-      # =============================================================================
-
-      - name: Generate SBOM
-        if: inputs.generate-sbom
-        # Creates CycloneDX format SBOM (sbom.cdx.json)
-        # Includes all production and dev dependencies
-        run: pnpm sbom
-
-      - name: Upload SBOM
-        if: inputs.generate-sbom
-        # Make SBOM available for compliance and auditing
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ github.sha }}
-          path: sbom.cdx.json
-          retention-days: 7
-
-      # =============================================================================
-      # OSV VULNERABILITY SCANNING
-      # Checks dependencies against Google's OSV database
-      # =============================================================================
-
-      - name: Run OSV Scanner
-        if: inputs.run-osv-scan
-        # Download and run Google's OSV Scanner
-        # Checks: package.json, pnpm-lock.yaml for known vulnerabilities
-        # UPDATE: Check quarterly for new scanner versions (currently v1.9.1)
-        run: |
-          # Install OSV Scanner
-          curl -sSfL https://github.com/google/osv-scanner/releases/download/v1.9.1/osv-scanner_linux_amd64 -o osv-scanner
-          chmod +x osv-scanner
-
-          # Run OSV Scanner and generate SARIF report
-          # '|| true' prevents this step from failing; results are always uploaded in the next step due to 'always()'
-          ./osv-scanner --format sarif --output results.sarif . || true
-
-      - name: Upload OSV results to GitHub Security
-        if: inputs.run-osv-scan && always()
-        # Upload findings to Security tab even if scan finds issues
-        # Results viewable at: Security > Code scanning alerts
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
-          category: 'osv-scan' # Separate category from CodeQL
+  osv-scan:
+    if: inputs.run-osv-scan
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.2.1
+    with:
+      # Scan entire project including all manifests (package.json, pnpm-lock.yaml)
+      scan-args: |-
+        ./
+    permissions:
+      security-events: write # Required to upload findings to Security tab
+      actions: read
+      contents: read

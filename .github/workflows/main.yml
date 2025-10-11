@@ -48,41 +48,24 @@ jobs:
   # Parallel security scans to identify vulnerabilities before release
   # =============================================================================
 
-  # CodeQL: Static analysis for security vulnerabilities
   # Scans TypeScript/JavaScript for common security issues (XSS, SQL injection, etc.)
-  codeql:
+  security:
     uses: ./.github/workflows/reusable-security.yml
-    with:
-      generate-sbom: false # SBOM generated during release for consistency
-      run-osv-scan: false # OSV scan runs separately below
-      run-codeql: true # Enable CodeQL analysis
-
-  # OSV (Open Source Vulnerabilities) scanning
-  # Uses Google's official action for comprehensive dependency vulnerability checks
-  # UPDATE: Quarterly review for new scanner versions (currently v2.2.1)
-  vulnerability:
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.2.1
-    with:
-      # Scan entire project including all manifests (package.json, pnpm-lock.yaml)
-      scan-args: |-
-        ./
-    permissions:
-      security-events: write # Required to upload findings to Security tab
-      actions: read
-      contents: read
 
   # =============================================================================
   # UNIFIED BUILD PHASE
   # Single build job that creates artifacts to be reused throughout the workflow
   # =============================================================================
 
-  build-once:
-    name: Build TypeScript Once
-    # Runs after validation passes
-    needs: [validate, codeql, vulnerability]
+  build:
+    name: Build TypeScript
+
     runs-on: ubuntu-latest
     outputs:
       artifact-name: dist-${{ github.sha }}
+      changed: ${{ steps.version.outputs.changed }}
+      version: ${{ steps.version.outputs.version }}
+      tag_sha: ${{ steps.tag.outputs.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -105,101 +88,33 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build TypeScript
-        run: |
-          pnpm clean
-          pnpm build
-          echo "✅ Built TypeScript once for entire workflow"
-
-      - name: Generate artifact manifest
-        run: |
-          # Create a manifest of what's been built
-          cat > build-manifest.json <<EOF
-          {
-              "build_sha": "${{ github.sha }}",
-              "build_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-              "node_version": "$(node --version)",
-              "pnpm_version": "$(pnpm --version)",
-              "typescript_version": "$(pnpm list typescript --json | jq -r '.dependencies.typescript.version')",
-              "files": $(find dist -type f -name "*.js" | jq -R . | jq -s .)
-          }
-          EOF
-          echo "📋 Generated build manifest with $(find dist -type f -name "*.js" | wc -l) JavaScript files"
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ github.sha }}
-          path: |
-            dist/
-            package.json
-            pnpm-lock.yaml
-            build-manifest.json
-          retention-days: 1 # Only needed for this workflow run
-
-  # =============================================================================
-  # VERSION DETERMINATION PHASE
-  # Determines version and creates tag BEFORE building release artifacts
-  # =============================================================================
-
-  version:
-    # Now depends on build-once to have compiled code available
-    needs: [build-once]
-    runs-on: ubuntu-latest
-    outputs:
-      changed: ${{ steps.version.outputs.changed }} # true if version changed
-      version: ${{ steps.version.outputs.version }} # semantic version number
-      tag_sha: ${{ steps.tag.outputs.sha }} # SHA of the created tag
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Full history needed for changeset detection
-          # SECURITY: Use RELEASE_TOKEN if available for protected branch pushes
-          # Falls back to GITHUB_TOKEN for standard permissions
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-
-      # =============================================================================
-      # ENVIRONMENT SETUP
-      # Consistent toolchain setup matching package.json requirements
-      # =============================================================================
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-once.outputs.artifact-name }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.17.0
-          run_install: false
-          standalone: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # =============================================================================
-      # VERSION MANAGEMENT
-      # Determines if release needed based on changesets
-      # =============================================================================
-
       - name: Version packages
         id: version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Custom script validates changesets and determines version
-          # Only checks for version changes, doesn't update files
           # FAILS IF: feat/fix commits exist without changesets
           # Outputs: changed=true/false, version=X.Y.Z
-          node .github/scripts/version-and-release.js --check-only
+          node .github/scripts/version-and-release.js
+
+      - name: Commit version changes
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          # Configure git with GitHub Actions bot identity
+          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          git config --local user.name "${{ github.actor }}"
+
+          # Stage version-related changes
+          git add package.json CHANGELOG.md .changeset
+
+          # Commit with [skip actions] to prevent workflow recursion
+          git commit -m "chore(release): v${{ steps.version.outputs.version }} [skip actions]"
+
+          # Push changes to origin (tag already exists from version job)
+          git push origin main
+
+          echo "✅ Version changes committed and pushed"
 
       - name: Create and push tag
         # Create tag BEFORE building artifacts so they're associated with the tag
@@ -223,50 +138,81 @@ jobs:
           echo "sha=${TAG_SHA}" >> $GITHUB_OUTPUT
           echo "📌 Tag SHA for artifacts: ${TAG_SHA}"
 
+      - name: Build TypeScript
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          pnpm clean
+          pnpm build
+          echo "✅ Built TypeScript once for entire workflow"
+
+      - name: Generate artifact manifest
+        if: steps.version.outputs.changed == 'true'
+        run: |
+          # Create a manifest of what's been built
+          cat > build-manifest.json <<EOF
+          {
+              "build_sha": "${{ github.sha }}",
+              "build_time": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "node_version": "$(node --version)",
+              "pnpm_version": "$(pnpm --version)",
+              "typescript_version": "$(pnpm list typescript --json | jq -r '.dependencies.typescript.version')",
+              "files": $(find dist -type f -name "*.js" | jq -R . | jq -s .)
+          }
+          EOF
+          echo "📋 Generated build manifest with $(find dist -type f -name "*.js" | wc -l) JavaScript files"
+
+      - name: Upload build artifact
+        if: steps.version.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: |
+            dist/
+            package.json
+            pnpm-lock.yaml
+            build-manifest.json
+          retention-days: 1 # Only needed for this workflow run
+
   # =============================================================================
   # PREPARE RELEASE ASSETS PHASE
   # Centralized job for preparing all release artifacts (Docker, binaries, etc.)
   # =============================================================================
 
-  prepare-release-assets:
-    # Builds release artifacts using the tagged commit
-    needs: [version, build-once]
-    if: needs.version.outputs.changed == 'true'
-    uses: ./.github/workflows/reusable-prepare-assets.yml
+  docker:
+    name: Build Docker Image
+    needs: [validate, security, build]
+    if: vars.ENABLE_DOCKER_RELEASE == 'true' && needs.build.outputs.changed == 'true'
+    uses: ./.github/workflows/reusable-docker.yml
     with:
-      version: ${{ needs.version.outputs.version }}
-      tag_sha: ${{ needs.version.outputs.tag_sha }}
-      build_artifact: ${{ needs.build-once.outputs.artifact-name }}
-      enable_docker: ${{ vars.ENABLE_DOCKER_RELEASE == 'true' }}
-      docker_platforms: 'linux/amd64,linux/arm64'
-      enable_npm: ${{ vars.ENABLE_NPM_RELEASE == 'true' }}
+      platforms: 'linux/amd64,linux/arm64'
+      save-artifact: true
+      artifact-name: 'docker-image-${{ needs.build.outputs.tag_sha }}'
+      image-name: 'sonarqube-mcp-server'
+      version: ${{ needs.build.outputs.version }}
+      tag_sha: ${{ needs.build.outputs.tag_sha }}
+      build_artifact: ${{ needs.build.outputs.artifact-name }}
 
-  # =============================================================================
-  # VERSION COMMIT PHASE
-  # Commits version changes after all assets are successfully prepared
-  # =============================================================================
-
-  commit-version:
-    name: Commit Version Changes
-    # Only runs after all assets are successfully prepared
-    needs: [prepare-release-assets, version, build-once]
+  npm:
+    name: Prepare NPM Package
+    needs: [validate, security, build]
+    if: vars.ENABLE_NPM_RELEASE == 'true' && needs.build.outputs.changed == 'true'
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ needs.prepare-release-assets.outputs.version }}
+      built: ${{ steps.pack.outputs.built }}
+      artifact_name: ${{ steps.pack.outputs.artifact_name }}
+      tarball_name: ${{ steps.pack.outputs.tarball_name }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-once.outputs.artifact-name }}
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Install pnpm
-        # Required for updating package.json version
         uses: pnpm/action-setup@v4
         with:
           version: 10.17.0
@@ -280,43 +226,42 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        # Needed for changeset to update versions
+        # Install all dependencies for packaging (dev and prod)
         run: pnpm install --frozen-lockfile
 
-      # =============================================================================
-      # GIT OPERATIONS
-      # =============================================================================
-
-      - name: Install actionlint for pre-commit validation
+      - name: Create NPM package
+        id: pack
         run: |
-          echo "Installing actionlint for pre-commit validation..."
-          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          echo "${PWD}" >> $GITHUB_PATH
+          # Create the NPM package tarball
+          # Use tail -1 to get just the filename, as npm pack may output additional text
+          NPM_PACKAGE=$(npm pack 2>/dev/null | tail -1)
+          echo "📦 Created NPM package: $NPM_PACKAGE"
 
-      - name: Update version in package files
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Run changeset version to update package.json and CHANGELOG.md
-          # This uses the changesets that were consumed during version determination
-          node .github/scripts/version-and-release.js --update-only
+          # Generate metadata using tag SHA for consistent naming
+          ARTIFACT_NAME="npm-package-${{ needs.build.outputs.version }}-${{ needs.build.outputs.tag_sha }}"
+          {
+            echo "artifact_name=$ARTIFACT_NAME"
+            echo "tarball_name=$NPM_PACKAGE"
+            echo "built=true"
+          } >> $GITHUB_OUTPUT
 
-      - name: Commit version changes
-        run: |
-          # Configure git with GitHub Actions bot identity
-          git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          git config --local user.name "${{ github.actor }}"
+          # Create manifest of included files for verification
+          npm pack --dry-run --json 2>/dev/null | jq -r '.[0].files[].path' > npm-package-manifest.txt
+          echo "📋 Package contains $(wc -l < npm-package-manifest.txt) files"
 
-          # Stage version-related changes
-          git add package.json CHANGELOG.md .changeset
+      - name: Upload NPM package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package-${{ needs.build.outputs.version }}-${{ needs.build.outputs.tag_sha }}
+          path: |
+            *.tgz
+            npm-package-manifest.txt
+          retention-days: 7
 
-          # Commit with [skip actions] to prevent workflow recursion
-          git commit -m "chore(release): v${{ needs.prepare-release-assets.outputs.version }} [skip actions]"
-
-          # Push changes to origin (tag already exists from version job)
-          git push origin main
-
-          echo "✅ Version changes committed and pushed"
+      - name: Generate attestations for NPM package
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: '*.tgz'
 
   # =============================================================================
   # GITHUB RELEASE CREATION PHASE
@@ -325,23 +270,23 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    # Only runs after version is committed
-    needs: [commit-version, prepare-release-assets, build-once, version]
+    needs: [build, docker, npm]
+    if: needs.build.outputs.changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
-      version: ${{ needs.prepare-release-assets.outputs.version }}
+      version: ${{ needs.build.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           # Checkout the newly created tag
-          ref: v${{ needs.prepare-release-assets.outputs.version }}
+          ref: v${{ needs.build.outputs.version }}
 
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.build-once.outputs.artifact-name }}
+          name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -365,14 +310,14 @@ jobs:
 
       - name: Create release artifacts
         run: |
-          VERSION="${{ needs.prepare-release-assets.outputs.version }}"
-          TAG_SHA="${{ needs.version.outputs.tag_sha }}"
+          VERSION="${{ needs.build.outputs.version }}"
+          TAG_SHA="${{ needs.build.outputs.tag_sha }}"
           tar -czf dist-${VERSION}-${TAG_SHA:0:7}.tar.gz dist/
           zip -r dist-${VERSION}-${TAG_SHA:0:7}.zip dist/
 
       - name: Extract release notes
         run: |
-          VERSION="${{ needs.prepare-release-assets.outputs.version }}"
+          VERSION="${{ needs.build.outputs.version }}"
           awk -v version="## $VERSION" '
             $0 ~ version { flag=1; next }
             /^## [0-9]/ && flag { exit }
@@ -386,18 +331,18 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ needs.prepare-release-assets.outputs.version }}
-          name: v${{ needs.prepare-release-assets.outputs.version }}
+          tag_name: v${{ needs.build.outputs.version }}
+          name: v${{ needs.build.outputs.version }}
           body_path: release-notes.md
           draft: false
           prerelease: false
           make_latest: true
           files: |
             sbom.cdx.json
-            dist-${{ needs.prepare-release-assets.outputs.version }}-*.tar.gz
-            dist-${{ needs.prepare-release-assets.outputs.version }}-*.zip
+            dist-${{ needs.build.outputs.version }}-*.tar.gz
+            dist-${{ needs.build.outputs.version }}-*.zip
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       # =============================================================================
       # SUPPLY CHAIN SECURITY
@@ -406,7 +351,6 @@ jobs:
       - name: Generate attestations
         # Generate SLSA provenance attestations for supply chain security
         # Requires id-token: write permission
-        if: env.ACTIONS_ID_TOKEN_REQUEST_URL != ''
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
@@ -419,4 +363,4 @@ jobs:
         id: release
         run: |
           echo "released=true" >> $GITHUB_OUTPUT
-          echo "✅ Released version ${{ needs.prepare-release-assets.outputs.version }}"
+          echo "✅ Released version ${{ needs.build.outputs.version }}"

@@ -176,29 +176,58 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         # SECURITY: Scan image for vulnerabilities before any distribution
-        # FAILS IF: Critical or high vulnerabilities found (configurable)
         # NOTE: Multi-platform OCI exports cannot be scanned from tar files
+        # Scans for vulnerabilities, secrets, misconfigurations, and licenses
+        # License findings are informational only (see LICENSES.md)
         if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
         uses: aquasecurity/trivy-action@0.28.0
         with:
           input: ${{ steps.scan-config.outputs.scan_input }}
           image-ref: ${{ steps.scan-config.outputs.scan_image_ref }}
-          format: 'sarif' # GitHub Security format
+          exit-code: '1'
+          format: 'sarif'
+          hide-progress: false
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH' # Fail on serious vulnerabilities
-          ignore-unfixed: false # Include unfixed CVEs
-          exit-code: '1' # Fail workflow if vulnerabilities found
-          trivyignores: '.trivyignore' # Use ignore file for false positives
+          severity: 'HIGH,CRITICAL'
+          scanners: 'vuln,secret,misconfig'
+          trivyignores: '.trivyignore'
+          version: 'latest'
+        env:
+          TRIVY_DEBUG: 'true'
+
+      - name: Check Trivy results for vulnerabilities
+        # Fail build if non-license security issues are found
+        # License findings are informational and don't fail the build
+        if: steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ',')
+        run: |
+          if [ -f trivy-results.sarif ]; then
+            # Check for vulnerabilities, secrets, or misconfigurations (not licenses)
+            SECURITY_ISSUES=$(jq -r '.runs[0].results[] | select(.ruleId | startswith("CVE-") or startswith("SECRET-") or startswith("CONFIG-")) | .level' trivy-results.sarif 2>/dev/null | wc -l || echo "0")
+            if [ "$SECURITY_ISSUES" -gt 0 ]; then
+              echo "::error::Found $SECURITY_ISSUES security issue(s) in container image"
+              echo "Review the scan results in the Security tab after SARIF upload"
+              exit 1
+            fi
+            echo "No security vulnerabilities found (license findings are informational)"
+          fi
 
       - name: Upload Trivy results to GitHub Security
         # Always upload results, even if scan fails
         # Results viewable at: Security > Code scanning alerts
-        # Only upload if Trivy actually ran (not for multi-platform builds)
         if: always() && (steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ','))
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'container-scan-${{ github.event_name }}'
+
+      - name: Upload Trivy SARIF as artifact
+        # Upload SARIF file as artifact for debugging and inspection
+        if: always() && (steps.build-config.outputs.can_load == 'true' || !contains(inputs.platforms, ','))
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ github.sha }}
+          path: trivy-results.sarif
+          retention-days: 7
 
       # =============================================================================
       # ARTIFACT STORAGE

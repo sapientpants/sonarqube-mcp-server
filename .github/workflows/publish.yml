@@ -17,6 +17,12 @@ on:
         required: true
         type: string
 
+# Allow only one publish workflow per branch
+# cancel-in-progress: false to allow multiple releases to proceed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 # Global environment variables for consistency
 env:
   PNPM_VERSION: 10.17.0 # Pinned: Must match packageManager in package.json

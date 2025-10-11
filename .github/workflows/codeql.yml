@@ -1,0 +1,72 @@
+# =============================================================================
+# WORKFLOW: CodeQL Security Analysis
+# PURPOSE: Continuous security analysis for the default branch and pull requests
+# TRIGGERS: Push to main, Pull requests to main
+# OUTPUTS: Security findings uploaded to GitHub Security tab
+# =============================================================================
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run daily at 00:00 UTC to catch new vulnerabilities
+    - cron: '0 0 * * *'
+
+# SECURITY: Required permissions for CodeQL analysis
+permissions:
+  actions: read # Read workflow metadata
+  contents: read # Read source code
+  security-events: write # Upload security findings to Security tab
+
+jobs:
+  analyze:
+    name: Analyze Code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for accurate analysis
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+          run_install: false
+          standalone: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        # Dependencies needed for accurate CodeQL analysis
+        run: pnpm install --frozen-lockfile
+
+      # =============================================================================
+      # CODEQL STATIC ANALYSIS
+      # Scans for security vulnerabilities in source code
+      # =============================================================================
+
+      - name: Initialize CodeQL
+        # Setup CodeQL for JavaScript/TypeScript analysis
+        # Detects: XSS, SQL injection, path traversal, command injection, etc.
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # Optionally specify additional queries to run
+          # queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        # Analyze code and upload results to Security tab
+        # Results viewable at: Security > Code scanning alerts
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
