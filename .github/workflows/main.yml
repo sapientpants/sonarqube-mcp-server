@@ -304,8 +304,9 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        # Only production dependencies needed
-        run: pnpm install --prod --frozen-lockfile
+        # Only production dependencies needed for SBOM generation
+        # Skip scripts to avoid running husky (dev dependency)
+        run: pnpm install --prod --frozen-lockfile --ignore-scripts
 
       - name: Generate SBOM
         run: pnpm sbom
