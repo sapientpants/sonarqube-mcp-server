@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.10
+
+### Patch Changes
+
+- [#312](https://github.com/sapientpants/sonarqube-mcp-server/pull/312) [`62516b5`](https://github.com/sapientpants/sonarqube-mcp-server/commit/62516b56bdba7ab4020c54e0d06c3a0d503ad07e) - Remove fallback to build from source in publish workflow
+
+  The NPM and GitHub Packages publish jobs now fail explicitly if pre-built artifacts are not found, instead of falling back to building from source. This ensures we always publish exactly what was tested and validated in the Main workflow, maintaining supply chain integrity.
+
 ## 1.10.9
 
 ### Patch Changes
