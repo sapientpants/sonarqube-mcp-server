@@ -1,6 +1,6 @@
 {
   "name": "sonarqube-mcp-server",
-  "version": "1.10.13",
+  "version": "1.10.14",
   "description": "Model Context Protocol server for SonarQube",
   "keywords": [
     "sonarqube",
