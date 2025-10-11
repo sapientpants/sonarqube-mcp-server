@@ -1,8 +1,9 @@
 # =============================================================================
 # REUSABLE WORKFLOW: Security Scanning Suite
-# PURPOSE: Run security scans (CodeQL, OSV) and generate SBOM
+# PURPOSE: Run security scans (audit, OSV) and generate SBOM
 # USAGE: Called by PR and main workflows for security validation
 # OUTPUTS: Security findings uploaded to GitHub Security tab, SBOM artifact
+# NOTE: CodeQL has its own dedicated workflow (codeql.yml) for better integration
 # =============================================================================
 
 name: Reusable Security
@@ -18,10 +19,6 @@ on:
         description: 'pnpm version (should match package.json packageManager)'
         type: string
         default: '10.17.0' # UPDATE: When upgrading pnpm
-      run-codeql:
-        description: 'Run CodeQL static analysis for security vulnerabilities'
-        type: boolean
-        default: true
       run-osv-scan:
         description: 'Run OSV scanner for dependency vulnerabilities'
         type: boolean
@@ -38,7 +35,6 @@ permissions:
 #   security:
 #     uses: ./.github/workflows/reusable-security.yml
 #     with:
-#       run-codeql: true
 #       run-osv-scan: true
 
 jobs:
@@ -77,49 +73,6 @@ jobs:
         # FAILS IF: Critical vulnerabilities found
         # To fix: Run 'pnpm update' or add overrides in package.json
         run: pnpm audit --audit-level critical
-
-  codeql:
-    if: inputs.run-codeql
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Full history for accurate analysis
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ inputs.pnpm-version }}
-          run_install: false
-          standalone: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ inputs.node-version }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # =============================================================================
-      # CODEQL STATIC ANALYSIS
-      # Scans for security vulnerabilities in source code
-      # =============================================================================
-
-      - name: Initialize CodeQL
-        # Setup CodeQL for JavaScript/TypeScript analysis
-        # Detects: XSS, SQL injection, path traversal, etc.
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Run CodeQL Analysis
-        # Perform analysis and upload results to Security tab
-        # Results viewable at: Security > Code scanning alerts
-        # FAILS IF: Critical security issues detected (configurable)
-        uses: github/codeql-action/analyze@v3
 
   osv-scan:
     if: inputs.run-osv-scan
