@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.4
+
+### Patch Changes
+
+- [`0a14753`](https://github.com/sapientpants/sonarqube-mcp-server/commit/0a14753b460aad978d9008b96d7c96d15e179f3d) - Fix production install in release workflow by skipping prepare script that requires husky
+
 ## 1.10.3
 
 ### Patch Changes
