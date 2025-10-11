@@ -331,6 +331,23 @@ jobs:
             echo "Release v$VERSION" > release-notes.md
           fi
 
+      # =============================================================================
+      # SUPPLY CHAIN SECURITY
+      # Generate attestations BEFORE creating release to avoid race condition
+      # This ensures the Main workflow is complete before triggering Publish workflow
+      # =============================================================================
+
+      - name: Generate attestations
+        # Generate SLSA provenance attestations for supply chain security
+        # Requires id-token: write permission
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/**/*.js
+            sbom.cdx.json
+            dist-*-*.tar.gz
+            dist-*-*.zip
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -346,21 +363,6 @@ jobs:
             dist-${{ needs.build.outputs.version }}-*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-
-      # =============================================================================
-      # SUPPLY CHAIN SECURITY
-      # =============================================================================
-
-      - name: Generate attestations
-        # Generate SLSA provenance attestations for supply chain security
-        # Requires id-token: write permission
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: |
-            dist/**/*.js
-            sbom.cdx.json
-            dist-*-*.tar.gz
-            dist-*-*.zip
 
       - name: Set release output
         id: release
