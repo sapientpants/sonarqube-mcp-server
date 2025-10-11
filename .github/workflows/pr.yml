@@ -22,10 +22,12 @@ concurrency:
 # contents: read - Read code for analysis
 # security-events: write - Upload security findings
 # actions: read - Access workflow artifacts
+# packages: write - Required by reusable-docker.yml (not used in PR builds)
 permissions:
   contents: read
   security-events: write
   actions: read
+  packages: write
 
 jobs:
   # =============================================================================
