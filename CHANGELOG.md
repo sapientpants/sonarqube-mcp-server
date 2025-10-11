@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.8
+
+### Patch Changes
+
+- [#311](https://github.com/sapientpants/sonarqube-mcp-server/pull/311) [`323854c`](https://github.com/sapientpants/sonarqube-mcp-server/commit/323854c49f372ed422052e687ec6bbaaa409a0bb) - Fix Docker artifact naming to match NPM pattern for consistent artifact resolution
+
+  Changed Docker artifact naming from `docker-image-{SHA}` to `docker-image-{VERSION}` to match the NPM artifact pattern. This ensures the determine-artifact.sh script can find Docker artifacts using the same logic as NPM artifacts, eliminating the need for conditional logic based on artifact type.
+
 ## 1.10.7
 
 ### Patch Changes
