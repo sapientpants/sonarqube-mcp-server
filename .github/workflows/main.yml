@@ -188,10 +188,10 @@ jobs:
     with:
       platforms: 'linux/amd64,linux/arm64'
       save-artifact: true
-      artifact-name: 'docker-image-${{ needs.build.outputs.tag_sha }}'
+      artifact-name: 'docker-image-${{ github.sha }}'
       image-name: 'sonarqube-mcp-server'
       version: ${{ needs.build.outputs.version }}
-      tag_sha: ${{ needs.build.outputs.tag_sha }}
+      tag_sha: ${{ github.sha }}
       build_artifact: ${{ needs.build.outputs.artifact-name }}
 
   npm:
@@ -239,8 +239,8 @@ jobs:
           NPM_PACKAGE=$(npm pack 2>/dev/null | tail -1)
           echo "📦 Created NPM package: $NPM_PACKAGE"
 
-          # Generate metadata using tag SHA for consistent naming
-          ARTIFACT_NAME="npm-package-${{ needs.build.outputs.version }}-${{ needs.build.outputs.tag_sha }}"
+          # Generate metadata using github.sha for consistent naming with publish workflow
+          ARTIFACT_NAME="npm-package-${{ needs.build.outputs.version }}-${{ github.sha }}"
           {
             echo "artifact_name=$ARTIFACT_NAME"
             echo "tarball_name=$NPM_PACKAGE"
@@ -254,7 +254,7 @@ jobs:
       - name: Upload NPM package artifact
         uses: actions/upload-artifact@v4
         with:
-          name: npm-package-${{ needs.build.outputs.version }}-${{ needs.build.outputs.tag_sha }}
+          name: npm-package-${{ needs.build.outputs.version }}-${{ github.sha }}
           path: |
             *.tgz
             npm-package-manifest.txt
