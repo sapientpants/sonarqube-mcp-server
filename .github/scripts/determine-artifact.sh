@@ -155,8 +155,8 @@ if [ "$ARTIFACTS_STATUS" != "200" ]; then
   exit 1
 fi
 
-# Find the artifact with the specified prefix (using parent SHA since that's what built it)
-ARTIFACT_NAME="$PREFIX-$VERSION-${PARENT_SHA:0:7}"
+# Find the artifact with the specified prefix (using full parent SHA to match artifact naming)
+ARTIFACT_NAME="$PREFIX-$VERSION-${PARENT_SHA}"
 ARTIFACT=$(echo "$ARTIFACTS_BODY" | jq -r --arg name "$ARTIFACT_NAME" '.artifacts[] | select(.name == $name)')
 
 if [ -z "$ARTIFACT" ]; then
