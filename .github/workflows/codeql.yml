@@ -13,8 +13,8 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Run weekly on Mondays at 00:00 UTC to catch new vulnerabilities
-    - cron: '0 0 * * 1'
+    # Run daily at 00:00 UTC to catch new vulnerabilities
+    - cron: '0 0 * * *'
 
 # SECURITY: Required permissions for CodeQL analysis
 permissions:

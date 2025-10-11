@@ -132,7 +132,6 @@ When updating the pnpm version in this project, you MUST update it in ALL of the
    - `.github/workflows/main.yml`: Line with `version: 10.17.0`
    - `.github/workflows/pr.yml`: Line with `version: 10.17.0`
    - `.github/workflows/publish.yml`: `PNPM_VERSION` environment variable
-   - `.github/workflows/reusable-setup.yml`: Default value for `pnpm-version` input
    - `.github/workflows/reusable-security.yml`: Default value for `pnpm-version` input
    - `.github/workflows/reusable-validate.yml`: Default value for `pnpm-version` input
 
