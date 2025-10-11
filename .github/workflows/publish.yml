@@ -357,52 +357,33 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Install skopeo
-        # Skopeo is needed to handle OCI format images from multi-platform builds
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y skopeo
-
       - name: Push Docker image
-        # Push the pre-built OCI image directly to Docker Hub using skopeo
+        # Push the pre-built OCI image directly to Docker Hub using buildx imagetools
         if: steps.check-docker.outputs.has_credentials == 'true'
-        env:
-          # Skopeo uses these environment variables for Docker Hub authentication
-          REGISTRY_AUTH_FILE: /tmp/auth.json
         run: |
-          echo "🔐 Configuring skopeo authentication..."
-          # Create auth config for skopeo
-          mkdir -p "$(dirname "$REGISTRY_AUTH_FILE")"
-          echo "{\"auths\":{\"docker.io\":{\"auth\":\"$(echo -n \"${{ secrets.DOCKERHUB_USERNAME }}:${{ secrets.DOCKERHUB_TOKEN }}\" | base64 -w0)\"}}}" > "$REGISTRY_AUTH_FILE"
-
           echo "📥 Decompressing Docker image..."
           gunzip ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz
 
           TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          echo "📤 Pushing OCI image directly to Docker Hub..."
-          # Use skopeo to push from OCI archive directly to Docker Hub
-          # This preserves multi-platform manifest lists
-          skopeo copy \
-            --multi-arch all \
-            oci-archive:./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar \
-            docker://$TARGET_REPO:$VERSION
+          echo "📤 Importing and pushing OCI image to Docker Hub..."
+          # Use docker buildx imagetools to import from OCI archive and push to Docker Hub
+          # This properly handles multi-platform manifest lists
+          docker buildx imagetools import \
+            --tag $TARGET_REPO:$VERSION \
+            oci-archive://./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar
 
           echo "🏷️ Creating additional tags..."
-          # Also add latest, major, and major.minor tags
+          # Also add latest, major, and major.minor tags by creating aliases
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
           MINOR=$(echo "$VERSION" | cut -d. -f2)
 
-          skopeo copy --multi-arch all docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:latest
-          skopeo copy --multi-arch all docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR
-          skopeo copy --multi-arch all docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR.$MINOR
+          docker buildx imagetools create --tag $TARGET_REPO:latest $TARGET_REPO:$VERSION
+          docker buildx imagetools create --tag $TARGET_REPO:$MAJOR $TARGET_REPO:$VERSION
+          docker buildx imagetools create --tag $TARGET_REPO:$MAJOR.$MINOR $TARGET_REPO:$VERSION
 
           echo "✅ Docker image published successfully"
-
-          # Cleanup auth file
-          rm -f $REGISTRY_AUTH_FILE
 
   # =============================================================================
   # NOTIFICATION
