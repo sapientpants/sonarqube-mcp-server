@@ -358,24 +358,28 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push Docker image
-        # Push the pre-built OCI image directly to Docker Hub using buildx imagetools
+        # Push the pre-built OCI multi-platform image to Docker Hub
         if: steps.check-docker.outputs.has_credentials == 'true'
         run: |
-          echo "📥 Decompressing Docker image..."
+          echo "📥 Decompressing and extracting OCI image..."
           gunzip ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz
+
+          # Extract OCI layout from tar
+          mkdir -p oci-layout
+          tar -xf ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar -C oci-layout
 
           TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
           VERSION="${{ steps.version.outputs.version }}"
 
-          echo "📤 Importing and pushing OCI image to Docker Hub..."
-          # Use docker buildx imagetools to import from OCI archive and push to Docker Hub
+          echo "📤 Pushing multi-platform OCI image to Docker Hub..."
+          # Use docker buildx imagetools create to push from OCI layout
           # This properly handles multi-platform manifest lists
-          docker buildx imagetools import \
+          docker buildx imagetools create \
             --tag $TARGET_REPO:$VERSION \
-            ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar
+            oci-layout://oci-layout
 
           echo "🏷️ Creating additional tags..."
-          # Also add latest, major, and major.minor tags by creating aliases
+          # Create alias tags for latest, major, and major.minor versions
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
           MINOR=$(echo "$VERSION" | cut -d. -f2)
 
@@ -383,7 +387,7 @@ jobs:
           docker buildx imagetools create --tag $TARGET_REPO:$MAJOR $TARGET_REPO:$VERSION
           docker buildx imagetools create --tag $TARGET_REPO:$MAJOR.$MINOR $TARGET_REPO:$VERSION
 
-          echo "✅ Docker image published successfully"
+          echo "✅ Docker image published successfully to Docker Hub"
 
   # =============================================================================
   # NOTIFICATION
