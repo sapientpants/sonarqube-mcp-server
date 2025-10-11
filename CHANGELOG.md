@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.10.3
+
+### Patch Changes
+
+- [#308](https://github.com/sapientpants/sonarqube-mcp-server/pull/308) [`dd1b5ae`](https://github.com/sapientpants/sonarqube-mcp-server/commit/dd1b5aed45d1a31268004cb91a9ab25fe2ec57bb) - Update dependencies to latest versions:
+  - @modelcontextprotocol/sdk 1.18.2 → 1.20.0
+  - Update 15 dev dependencies (TypeScript 5.9.3, ESLint 9.37.0, Jest 30.2.0, and others)
+  - Remove deprecated @types/uuid package
+  - Keep zod at 3.x for compatibility with MCP SDK requirements
+
 ## 1.10.2
 
 ### Patch Changes
