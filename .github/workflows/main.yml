@@ -99,6 +99,7 @@ jobs:
           node .github/scripts/version-and-release.js
 
       - name: Commit version changes
+        if: steps.version.outputs.changed == 'true'
         run: |
           # Configure git with GitHub Actions bot identity
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
@@ -138,12 +139,14 @@ jobs:
           echo "📌 Tag SHA for artifacts: ${TAG_SHA}"
 
       - name: Build TypeScript
+        if: steps.version.outputs.changed == 'true'
         run: |
           pnpm clean
           pnpm build
           echo "✅ Built TypeScript once for entire workflow"
 
       - name: Generate artifact manifest
+        if: steps.version.outputs.changed == 'true'
         run: |
           # Create a manifest of what's been built
           cat > build-manifest.json <<EOF
@@ -159,6 +162,7 @@ jobs:
           echo "📋 Generated build manifest with $(find dist -type f -name "*.js" | wc -l) JavaScript files"
 
       - name: Upload build artifact
+        if: steps.version.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dist-${{ github.sha }}
@@ -267,6 +271,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: [build, docker, npm]
+    if: needs.build.outputs.changed == 'true'
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
