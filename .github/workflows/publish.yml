@@ -386,7 +386,7 @@ jobs:
           # Use skopeo to push from OCI archive directly to Docker Hub
           # This preserves multi-platform manifest lists
           skopeo copy \
-            --all \
+            --multi-arch all \
             oci-archive:./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar \
             docker://$TARGET_REPO:$VERSION
 
@@ -395,9 +395,9 @@ jobs:
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
           MINOR=$(echo "$VERSION" | cut -d. -f2)
 
-          skopeo copy docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:latest
-          skopeo copy docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR
-          skopeo copy docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR.$MINOR
+          skopeo copy --multi-arch all docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:latest
+          skopeo copy --multi-arch all docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR
+          skopeo copy --multi-arch all docker://$TARGET_REPO:$VERSION docker://$TARGET_REPO:$MAJOR.$MINOR
 
           echo "✅ Docker image published successfully"
 
