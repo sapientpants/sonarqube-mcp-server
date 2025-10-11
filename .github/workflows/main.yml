@@ -100,10 +100,15 @@ jobs:
 
       - name: Commit version changes
         if: steps.version.outputs.changed == 'true'
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           # Configure git with GitHub Actions bot identity
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
+
+          # Configure git to use RELEASE_TOKEN for push (bypasses branch protection)
+          git remote set-url origin https://x-access-token:${RELEASE_TOKEN}@github.com/${{ github.repository }}.git
 
           # Stage version-related changes
           git add package.json CHANGELOG.md .changeset
@@ -111,7 +116,7 @@ jobs:
           # Commit with [skip actions] to prevent workflow recursion
           git commit -m "chore(release): v${{ steps.version.outputs.version }} [skip actions]"
 
-          # Push changes to origin (tag already exists from version job)
+          # Push changes to origin with RELEASE_TOKEN (has admin permissions)
           git push origin main
 
           echo "✅ Version changes committed and pushed"
@@ -120,6 +125,8 @@ jobs:
         # Create tag BEFORE building artifacts so they're associated with the tag
         id: tag
         if: steps.version.outputs.changed == 'true'
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
 
@@ -127,10 +134,13 @@ jobs:
           git config --local user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
           git config --local user.name "${{ github.actor }}"
 
+          # Configure remote to use RELEASE_TOKEN for push (required because each step runs in a fresh environment)
+          git remote set-url origin https://x-access-token:${RELEASE_TOKEN}@github.com/${{ github.repository }}.git
+
           # Create annotated tag
           git tag -a "v${VERSION}" -m "Release v${VERSION}"
 
-          # Push tag to trigger artifact builds with correct SHA
+          # Push tag with RELEASE_TOKEN (has admin permissions)
           git push origin "v${VERSION}"
 
           # Get the tag SHA for artifact naming
@@ -141,7 +151,6 @@ jobs:
       - name: Build TypeScript
         if: steps.version.outputs.changed == 'true'
         run: |
-          pnpm clean
           pnpm build
           echo "✅ Built TypeScript once for entire workflow"
 
