@@ -153,7 +153,8 @@ jobs:
           jq 'del(.private)' package.json > tmp.json && mv tmp.json package.json
           # Publish with provenance for supply chain security
           # --provenance creates a signed attestation of the build
-          npm publish --provenance --access public
+          # --ignore-scripts prevents running prepare/prepack scripts (husky) during publish
+          npm publish --provenance --access public --ignore-scripts
         env:
           # SECURITY: NPM_TOKEN required for authentication
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -247,7 +248,8 @@ jobs:
           # Scope package name to organization (required for GitHub Packages)
           # Changes 'my-package' to '@org/my-package'
           jq '.name = "@${{ github.repository_owner }}/" + .name | del(.private)' package.json > tmp.json && mv tmp.json package.json
-          npm publish --access public
+          # --ignore-scripts prevents running prepare/prepack scripts (husky) during publish
+          npm publish --access public --ignore-scripts
         env:
           # SECURITY: Uses GITHUB_TOKEN for authentication
           # Automatically available, no configuration needed
@@ -354,35 +356,44 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Install skopeo
+        # Skopeo is needed to handle OCI format images from multi-platform builds
+        if: steps.check-docker.outputs.has_credentials == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
       - name: Load and push Docker image
-        # Load the pre-built image and push with proper tags
+        # Load the pre-built OCI image and push with proper tags
         if: steps.check-docker.outputs.has_credentials == 'true'
         run: |
           echo "📥 Decompressing Docker image..."
           gunzip ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar.gz
 
-          echo "🔄 Loading Docker image..."
-          docker load < ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar
-
-          # The image is already tagged with the version from the main build
-          # We need to retag it with the Docker Hub repository name
-          # Note: This must match the image-name parameter in main.yml's docker job
+          # The artifact is in OCI format (for multi-platform builds)
+          # We need to use skopeo to copy it to docker-daemon
           SOURCE_IMAGE_NAME="sonarqube-mcp-server"
-          SOURCE_IMAGE="$SOURCE_IMAGE_NAME:${{ steps.version.outputs.version }}"
           TARGET_REPO="${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}"
+          VERSION="${{ steps.version.outputs.version }}"
+
+          echo "🔄 Loading OCI image to Docker daemon..."
+          # Use skopeo to copy from OCI archive to docker-daemon
+          # The tag in the OCI archive should match what was built in Main workflow
+          skopeo copy \
+            oci-archive:./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar:$SOURCE_IMAGE_NAME:$VERSION \
+            docker-daemon:$TARGET_REPO:$VERSION
 
           echo "🏷️ Tagging image for Docker Hub..."
-          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:${{ steps.version.outputs.version }}"
-          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:latest"
+          docker tag "$TARGET_REPO:$VERSION" "$TARGET_REPO:latest"
 
           # Also add major and major.minor tags
-          MAJOR=$(echo "${{ steps.version.outputs.version }}" | cut -d. -f1)
-          MINOR=$(echo "${{ steps.version.outputs.version }}" | cut -d. -f2)
-          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:$MAJOR"
-          docker tag "$SOURCE_IMAGE" "$TARGET_REPO:$MAJOR.$MINOR"
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          docker tag "$TARGET_REPO:$VERSION" "$TARGET_REPO:$MAJOR"
+          docker tag "$TARGET_REPO:$VERSION" "$TARGET_REPO:$MAJOR.$MINOR"
 
           echo "📤 Pushing to Docker Hub..."
-          docker push "$TARGET_REPO:${{ steps.version.outputs.version }}"
+          docker push "$TARGET_REPO:$VERSION"
           docker push "$TARGET_REPO:latest"
           docker push "$TARGET_REPO:$MAJOR"
           docker push "$TARGET_REPO:$MAJOR.$MINOR"
