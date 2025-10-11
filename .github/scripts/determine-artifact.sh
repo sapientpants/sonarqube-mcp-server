@@ -115,24 +115,44 @@ PARENT_SHA=$(echo "$PARENT_BODY" | jq -r '.parents[0].sha')
 echo "📌 Parent commit (build trigger): $PARENT_SHA"
 
 # Find the workflow run that created the release artifacts
+# Retry with exponential backoff to handle race conditions
 RUNS_API_URL="https://api.github.com/repos/$REPO/actions/runs?head_sha=$PARENT_SHA&status=success&event=push"
 echo "🔍 Searching for successful workflow runs for parent commit $PARENT_SHA"
 
-RUNS_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $RUNS_API_URL)
-RUNS_BODY=$(echo "$RUNS_RESPONSE" | head -n -1)
-RUNS_STATUS=$(echo "$RUNS_RESPONSE" | tail -n 1)
+MAX_RETRIES=5
+RETRY_COUNT=0
+MAIN_RUN=""
 
-if [ "$RUNS_STATUS" != "200" ]; then
-  echo "❌ Failed to fetch workflow runs with status $RUNS_STATUS"
-  echo "Response: $RUNS_BODY"
-  exit 1
-fi
+while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ -z "$MAIN_RUN" ]; do
+  if [ $RETRY_COUNT -gt 0 ]; then
+    WAIT_TIME=$((5 * RETRY_COUNT))
+    echo "⏳ Waiting ${WAIT_TIME}s before retry $RETRY_COUNT/$MAX_RETRIES..."
+    sleep $WAIT_TIME
+  fi
 
-# Find the Main workflow run
-MAIN_RUN=$(echo "$RUNS_BODY" | jq -r '.workflow_runs[] | select(.name == "Main") | {id: .id, created_at: .created_at}')
+  RUNS_RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -w "\n%{http_code}" $RUNS_API_URL)
+  RUNS_BODY=$(echo "$RUNS_RESPONSE" | head -n -1)
+  RUNS_STATUS=$(echo "$RUNS_RESPONSE" | tail -n 1)
+
+  if [ "$RUNS_STATUS" != "200" ]; then
+    echo "❌ Failed to fetch workflow runs with status $RUNS_STATUS"
+    echo "Response: $RUNS_BODY"
+    exit 1
+  fi
+
+  # Find the Main workflow run
+  MAIN_RUN=$(echo "$RUNS_BODY" | jq -r '.workflow_runs[] | select(.name == "Main") | {id: .id, created_at: .created_at}')
+
+  if [ -z "$MAIN_RUN" ]; then
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+      echo "⚠️  Main workflow not found yet (attempt $RETRY_COUNT/$MAX_RETRIES)"
+    fi
+  fi
+done
 
 if [ -z "$MAIN_RUN" ]; then
-  echo "❌ No successful Main workflow run found for parent commit $PARENT_SHA"
+  echo "❌ No successful Main workflow run found for parent commit $PARENT_SHA after $MAX_RETRIES attempts"
   echo "Available runs:"
   echo "$RUNS_BODY" | jq -r '.workflow_runs[] | "\(.name): \(.id) (\(.status))"'
   exit 1
