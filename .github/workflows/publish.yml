@@ -372,7 +372,7 @@ jobs:
           # This properly handles multi-platform manifest lists
           docker buildx imagetools import \
             --tag $TARGET_REPO:$VERSION \
-            oci-archive://./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar
+            ./docker-artifact/${{ steps.artifact.outputs.artifact_name }}.tar
 
           echo "🏷️ Creating additional tags..."
           # Also add latest, major, and major.minor tags by creating aliases
