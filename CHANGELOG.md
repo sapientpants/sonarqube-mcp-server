@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.11
+
+### Patch Changes
+
+- [#313](https://github.com/sapientpants/sonarqube-mcp-server/pull/313) [`e17faac`](https://github.com/sapientpants/sonarqube-mcp-server/commit/e17faac04b3bea217c8d712edc911f3c75ea139e) - Fix NPM and Docker publish failures
+  - NPM: Add --ignore-scripts flag to prevent husky from running during publish
+  - Docker: Use skopeo to load OCI format images from multi-platform builds instead of docker load
+
 ## 1.10.10
 
 ### Patch Changes
