@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.10.12
+
+### Patch Changes
+
+- [#314](https://github.com/sapientpants/sonarqube-mcp-server/pull/314) [`2a31f70`](https://github.com/sapientpants/sonarqube-mcp-server/commit/2a31f70fcbb02753adb387df77bd4476917bf380) - Fix NPM prepare script and Docker OCI push issues
+  - NPM: Remove prepare script from package.json before publishing (--ignore-scripts doesn't skip prepare)
+  - Docker: Use skopeo to push OCI archive directly to Docker Hub instead of loading to docker-daemon
+  - Docker: Configure skopeo authentication with Docker Hub credentials
+
 ## 1.10.11
 
 ### Patch Changes
