@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.10.6
+
+### Patch Changes
+
+- [`b3befb7`](https://github.com/sapientpants/sonarqube-mcp-server/commit/b3befb7844802604a56dfb3aca7cc7ed054b3817) - Fix race condition by generating attestations before creating release to ensure Main workflow completes before Publish workflow starts
+
 ## 1.10.5
 
 ### Patch Changes
