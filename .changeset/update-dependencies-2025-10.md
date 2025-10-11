@@ -1,5 +1,5 @@
 ---
-'@sapientpants/sonarqube-mcp-server': patch
+'sonarqube-mcp-server': patch
 ---
 
 Update dependencies to latest versions:
