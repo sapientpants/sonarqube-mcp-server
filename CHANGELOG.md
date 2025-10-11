@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.10.16
+
+### Patch Changes
+
+- [#318](https://github.com/sapientpants/sonarqube-mcp-server/pull/318) [`08ef441`](https://github.com/sapientpants/sonarqube-mcp-server/commit/08ef441fcfa44083be92de09e5ab3e2787f37939) - Fix race condition in artifact determination script
+  - Add retry logic with exponential backoff to determine-artifact.sh
+  - Wait up to 5 attempts with increasing delays (5s, 10s, 15s, 20s, 25s)
+  - Fixes race condition where Publish workflow starts before Main workflow is indexed by GitHub API
+  - Total retry window: ~75 seconds, giving GitHub's API time to index completed workflow runs
+
+- [#318](https://github.com/sapientpants/sonarqube-mcp-server/pull/318) [`08ef441`](https://github.com/sapientpants/sonarqube-mcp-server/commit/08ef441fcfa44083be92de09e5ab3e2787f37939) - Fix Docker Hub publishing for multi-platform OCI images
+  - Extract OCI layout from tar archive
+  - Use `docker buildx imagetools create` with `oci-layout://` scheme
+  - Properly handles multi-platform manifest lists for linux/amd64 and linux/arm64
+  - Fixes "unknown flag: --tag" error from incorrect buildx imagetools import syntax
+
 ## 1.10.15
 
 ### Patch Changes
