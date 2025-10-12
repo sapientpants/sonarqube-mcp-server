@@ -21,6 +21,63 @@ All architectural decisions are documented in Architecture Decision Records (ADR
 
 Refer to the ADRs for detailed information about design rationale, implementation details, and consequences of each architectural decision.
 
+## Key Architectural Decisions
+
+**Testing** (ADR-0020):
+
+- Vitest as test framework with native ES modules support
+- fast-check for property-based testing
+- 80% minimum coverage required (lines, functions, branches, statements)
+
+**Code Quality** (ADR-0021):
+
+- TypeScript strict mode enabled (all strict flags)
+- ESLint flat config with cognitive complexity limit (15)
+- Prettier for consistent formatting
+- Husky + lint-staged for pre-commit automation
+
+**Package Manager** (ADR-0022):
+
+- pnpm for disk efficiency and strict dependency management
+- Version MUST match across: package.json, Dockerfile, all workflows
+- Uses Corepack for automatic version management
+
+**Release Management** (ADR-0023):
+
+- Changesets for versioning and changelog generation
+- Changeset validation enforced in CI/CD
+- Automated GitHub releases via workflows
+
+**CI/CD** (ADR-0024):
+
+- GitHub Actions with 7 workflows (main, PR, publish, 4 reusable)
+- Parallel execution for validation, security, build
+- Quality gates block merge on failures
+
+**Security** (ADR-0025):
+
+- Multi-layered: Trivy (containers), CodeQL (SAST), OSV-Scanner (deps), SonarCloud
+- SLSA provenance attestations on all artifacts
+- SBOM (CycloneDX) generated for Docker images
+
+**Resilience** (ADR-0026):
+
+- Circuit breaker pattern via opossum library
+- Default: 50% error threshold, 10s timeout, 30s reset
+- Integrated with metrics/monitoring system
+
+**Docker Publishing** (ADR-0027):
+
+- Multi-platform: linux/amd64, linux/arm64
+- Two-stage: build→GHCR (with security scan), copy→Docker Hub
+- Build-once-deploy-many strategy
+
+**Transport** (ADR-0010, ADR-0028):
+
+- stdio: Default transport (recommended)
+- HTTP: Optional session-based transport with SSE
+- HTTP uses session management (not OAuth), delegates auth to gateways
+
 ## Code Quality Conventions
 
 Follow these conventions to maintain code quality:

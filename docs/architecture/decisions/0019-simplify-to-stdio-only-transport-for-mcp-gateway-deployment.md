@@ -1,10 +1,28 @@
 # 19. Simplify to stdio-only transport for MCP gateway deployment
 
 Date: 2025-01-30
+Partially Superseded: 2025-10-12 by ADR-0028
 
 ## Status
 
-Accepted
+Partially Superseded by ADR-0028
+
+This decision was partially reversed on 2025-10-12. While the removal of OAuth-based HTTP transport and authentication complexity remains valid, the "stdio-only" decision was superseded by ADR-0028, which re-introduced HTTP transport in a simpler, session-based form without OAuth complexity.
+
+**What remains valid from this ADR:**
+
+- Removal of OAuth 2.0 authentication infrastructure (60+ files)
+- Removal of service account management and permission filtering
+- Delegation of enterprise features to MCP gateways
+- Simplified authentication model
+
+**What was superseded:**
+
+- "stdio-only" transport decision (HTTP transport re-added in ADR-0028)
+- Removal of all HTTP endpoints (HTTP re-added with session management)
+- Removal of SSE (SSE re-added for real-time notifications)
+
+See ADR-0028 for the current HTTP transport implementation (session-based without OAuth).
 
 ## Context
 
@@ -91,4 +109,5 @@ Users currently using HTTP transport should:
 - GitHub Issue #243: Simplify to stdio-only transport
 - ADR-0010: Use stdio transport for MCP communication
 - ADR-0016: HTTP transport with OAuth 2.0 (being reverted)
+- **ADR-0028: Session-Based HTTP Transport with SSE (PARTIALLY SUPERSEDES THIS ADR)**
 - MCP Specification: Transport layer abstraction

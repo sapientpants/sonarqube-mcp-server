@@ -60,8 +60,6 @@ jobs:
   # =============================================================================
 
   build:
-    name: Build TypeScript
-
     runs-on: ubuntu-latest
     outputs:
       artifact-name: dist-${{ github.sha }}
