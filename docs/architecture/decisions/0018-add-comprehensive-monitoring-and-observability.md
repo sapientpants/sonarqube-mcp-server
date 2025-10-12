@@ -1,6 +1,7 @@
 # 18. Add comprehensive monitoring and observability
 
 Date: 2025-01-25
+Updated: 2025-10-11 (Added circuit breaker details and cross-references)
 
 ## Status
 
@@ -70,7 +71,23 @@ We will implement a comprehensive monitoring and observability stack with the fo
 
 ### 5. Operational Features
 
-- Circuit breakers using `opossum` library
+- **Circuit breakers** using `opossum` library
+  - Implemented via `CircuitBreakerFactory` pattern (see ADR-0026)
+  - Default thresholds: 50% error rate, 10-second timeout, 30-second reset
+  - Event-driven monitoring integration:
+    - `open` event: Circuit opened due to failures → metrics updated
+    - `close` event: Circuit recovered → metrics updated
+    - `halfOpen` event: Testing recovery → logged for observability
+    - `failure` event: Request failed → failure counter incremented
+    - `timeout` event: Request timed out → timeout metrics tracked
+    - `reject` event: Request rejected (circuit open) → rejection counter incremented
+  - Metrics tracked:
+    - Circuit breaker state (open/closed/half-open)
+    - Failure count per breaker
+    - Rejection count per breaker
+    - Success/failure ratio
+    - Request latency percentiles
+  - See ADR-0026 for complete circuit breaker documentation
 - Connection pooling with `undici` or `got`
 - Graceful degradation when dependencies fail
 - Request rate limiting enhancements
@@ -103,6 +120,8 @@ We will implement a comprehensive monitoring and observability stack with the fo
 - **Troubleshooting**: Quickly diagnose issues with distributed tracing
 - **Compliance**: Meet enterprise SLA requirements
 - **Integration**: Works with existing monitoring infrastructure
+- **Resilience**: Circuit breakers prevent cascading failures and provide fail-fast behavior
+- **Observability**: Circuit breaker events integrated with metrics for real-time failure detection
 
 ### Negative
 
@@ -143,3 +162,6 @@ We will implement a comprehensive monitoring and observability stack with the fo
 - [OpenTelemetry Node.js](https://opentelemetry.io/docs/instrumentation/js/)
 - [The RED Method](https://www.weave.works/blog/the-red-method-key-metrics-for-microservices-architecture/)
 - [Circuit Breaker Pattern](https://martinfowler.com/bliki/CircuitBreaker.html)
+- ADR-0026: Circuit Breaker Pattern with opossum (complete implementation details)
+- Implementation: `src/monitoring/circuit-breaker.ts`
+- Metrics Implementation: `src/monitoring/metrics.ts`

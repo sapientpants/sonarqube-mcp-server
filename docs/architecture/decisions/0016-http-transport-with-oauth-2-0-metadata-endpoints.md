@@ -1,10 +1,23 @@
 # 16. HTTP Transport with OAuth 2.0 Metadata Endpoints
 
 Date: 2025-06-22
+Superseded: 2025-01-30 by ADR-0019
 
 ## Status
 
-Accepted
+Superseded by ADR-0019
+
+This decision was reversed on 2025-01-30. The HTTP transport and OAuth 2.0 implementation was removed in favor of stdio-only transport with enterprise features delegated to MCP gateways (Docker MCP Gateway, IBM Context Forge, SGNL, Operant, etc.).
+
+**Rationale for reversal:**
+
+- HTTP transport added significant complexity (~60+ authentication/authorization files)
+- MCP gateway solutions now provide these enterprise features at the infrastructure layer
+- Better separation of concerns: business logic vs infrastructure concerns
+- Reduced attack surface and maintenance burden
+- Aligns with Unix philosophy of "do one thing well"
+
+See ADR-0019 for the current stdio-only transport approach.
 
 ## Context
 
@@ -97,3 +110,10 @@ class HttpTransport implements ITransport {
 - ADR-0015: Transport Architecture Refactoring
 - ADR-0014: Current Security Model and Future OAuth2 Considerations
 - ADR-0008: Use Environment Variables for Configuration
+- **ADR-0019: Simplify to stdio-only transport (SUPERSEDES THIS ADR)**
+
+## Historical Note
+
+This ADR documents the HTTP transport implementation that was later removed. The decision to implement HTTP transport with OAuth 2.0 was sound at the time (June 2025), but the rapid evolution of the MCP ecosystem with purpose-built gateway solutions made this approach redundant. The code and infrastructure described in this ADR were removed in January 2025 as part of a significant simplification effort that reduced the codebase by ~40%.
+
+This ADR is retained for historical context and to document the architectural exploration that led to the current stdio-only approach.
