@@ -273,7 +273,12 @@ jobs:
   create-release:
     name: Create GitHub Release
     needs: [build, docker, npm]
-    if: needs.build.outputs.changed == 'true'
+    # Run if build succeeded AND docker/npm either succeeded or were skipped
+    if: |
+      needs.build.outputs.changed == 'true' &&
+      !cancelled() &&
+      (needs.docker.result == 'success' || needs.docker.result == 'skipped') &&
+      (needs.npm.result == 'success' || needs.npm.result == 'skipped')
     runs-on: ubuntu-latest
     outputs:
       released: ${{ steps.release.outputs.released }}
