@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.10.19
+
+### Patch Changes
+
+- [#325](https://github.com/sapientpants/sonarqube-mcp-server/pull/325) [`75e683f`](https://github.com/sapientpants/sonarqube-mcp-server/commit/75e683f36570572777c439aa11973dc9c927a8e0) - Update production dependencies to latest versions:
+  - pino: 9.12.0 → 10.0.0 (major version update with improved performance)
+  - pino-roll: 3.1.0 → 4.0.0 (compatible with Pino 10)
+  - @types/node: 24.7.1 → 24.7.2 (minor type definition updates)
+  - zod: kept at 3.25.76 (maintained for compatibility)
+
+  All tests passing with no breaking changes identified.
+
 ## 1.10.18
 
 ### Patch Changes
