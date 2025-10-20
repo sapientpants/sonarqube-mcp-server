@@ -93,7 +93,7 @@
     "express": "5.1.0",
     "lodash": "^4.17.21",
     "opossum": "^9.0.0",
-    "pino": "10.0.0",
+    "pino": "10.1.0",
     "pino-roll": "4.0.0",
     "pino-syslog": "3.2.0",
     "sonarqube-web-api-client": "0.11.1",
