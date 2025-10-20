@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.10.20
+
+### Patch Changes
+
+- [#327](https://github.com/sapientpants/sonarqube-mcp-server/pull/327) [`cd17f93`](https://github.com/sapientpants/sonarqube-mcp-server/commit/cd17f9352afff73043fbc1b1db278a7a95fa2876) - chore: update dependencies to latest versions
+
+  Updated production dependencies:
+  - @modelcontextprotocol/sdk: 1.20.0 → 1.20.1
+  - pino: 10.0.0 → 10.1.0
+  - sonarqube-web-api-client: 0.11.1 → 1.0.1 (major update with stricter typing)
+
+  Updated dev dependencies:
+  - vite: 7.1.10 → 7.1.11
+  - @cyclonedx/cdxgen: 11.9.0 → 11.10.0
+  - @eslint/js: 9.37.0 → 9.38.0
+  - @types/node: 24.7.2 → 24.8.1
+  - eslint: 9.37.0 → 9.38.0
+
+  Note: zod remains pinned to 3.25.76 to match @modelcontextprotocol/sdk dependency
+
 ## 1.10.19
 
 ### Patch Changes
