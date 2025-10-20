@@ -43,11 +43,11 @@ export class SystemDomain extends BaseDomain {
     }
 
     const causes: string[] = [];
-    nodes.forEach((node) => {
+    for (const node of nodes) {
       if (node.causes) {
         causes.push(...node.causes);
       }
-    });
+    }
 
     return causes;
   }

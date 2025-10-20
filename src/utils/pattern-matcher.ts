@@ -32,9 +32,9 @@ export class PatternMatcher {
   private globToRegex(pattern: string): RegExp {
     // Escape all regex special characters except * and ?
     const escaped = pattern
-      .replace(/[\\^$.()|[\]{}+]/g, '\\$&') // Escape regex special chars
-      .replace(/\*/g, '.*') // * matches any sequence
-      .replace(/\?/g, '.'); // ? matches any single character
+      .replaceAll(/[\\^$.()|[\]{}+]/g, String.raw`\$&`) // Escape regex special chars
+      .replaceAll(/\*/g, '.*') // * matches any sequence
+      .replaceAll(/\?/g, '.'); // ? matches any single character
 
     // Create regex with anchors for full string matching
     return new RegExp(`^${escaped}$`);
