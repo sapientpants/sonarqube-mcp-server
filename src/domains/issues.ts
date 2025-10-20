@@ -220,13 +220,16 @@ export class IssuesDomain extends BaseDomain {
       builder.withCwe(params.cwe);
     }
     if (params.owaspTop10) {
-      builder.withOwaspTop10(params.owaspTop10);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      builder.withOwaspTop10(params.owaspTop10 as any);
     }
     if (params.owaspTop10v2021) {
-      builder.withOwaspTop10v2021(params.owaspTop10v2021);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      builder.withOwaspTop10v2021(params.owaspTop10v2021 as any);
     }
     if (params.sansTop25) {
-      builder.withSansTop25(params.sansTop25);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      builder.withSansTop25(params.sansTop25 as any);
     }
     if (params.sonarsourceSecurity) {
       builder.withSonarSourceSecurity(params.sonarsourceSecurity);
@@ -242,7 +245,8 @@ export class IssuesDomain extends BaseDomain {
 
     // Facets
     if (params.facets) {
-      builder.withFacets(params.facets);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
+      builder.withFacets(params.facets as any);
     }
     if (params.facetMode) {
       builder.withFacetMode(params.facetMode);

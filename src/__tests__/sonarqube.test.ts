@@ -583,7 +583,7 @@ describe('SonarQubeClient', () => {
         .query((actualQuery) => {
           return (
             actualQuery.projects === 'project1' &&
-            actualQuery.componentKeys === 'comp2' && // components overrides componentKeys
+            actualQuery.components === 'comp2' && // components overrides componentKeys
             actualQuery.onComponentOnly === 'true'
           );
         })
@@ -714,7 +714,10 @@ describe('SonarQubeClient', () => {
             actualQuery.createdInLast === '7d' &&
             actualQuery.assigned === 'true' &&
             actualQuery.assignees === 'user1,user2' &&
-            actualQuery.authors === 'author1,author2'
+            // API now uses repeated 'author' parameter instead of 'authors'
+            Array.isArray(actualQuery.author) &&
+            actualQuery.author[0] === 'author1' &&
+            actualQuery.author[1] === 'author2'
           );
         })
         .matchHeader('authorization', 'Bearer test-token')
