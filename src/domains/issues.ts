@@ -17,6 +17,45 @@ import type {
 } from '../types/index.js';
 import { BaseDomain } from './base.js';
 
+// Type aliases for sonarqube-web-api-client enums (not exported by the library)
+type OwaspTop10Category = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10';
+type OwaspTop10v2021Category = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10';
+type SansTop25Category = 'insecure-interaction' | 'risky-resource' | 'porous-defenses';
+type IssueFacet =
+  | 'severities'
+  | 'statuses'
+  | 'resolutions'
+  | 'rules'
+  | 'tags'
+  | 'types'
+  | 'author'
+  | 'authors'
+  | 'assignees'
+  | 'assigned_to_me'
+  | 'languages'
+  | 'projects'
+  | 'directories'
+  | 'files'
+  | 'cwe'
+  | 'createdAt'
+  | 'owaspTop10'
+  | 'owaspTop10-2021'
+  | 'owaspAsvs-4.0'
+  | 'owaspMobileTop10-2024'
+  | 'pciDss-3.2'
+  | 'pciDss-4.0'
+  | 'sansTop25'
+  | 'sonarsourceSecurity'
+  | 'stig-ASD_V5R3'
+  | 'casa'
+  | 'codeVariants'
+  | 'cleanCodeAttributeCategories'
+  | 'impactSeverities'
+  | 'impactSoftwareQualities'
+  | 'issueStatuses'
+  | 'prioritizedRule'
+  | 'scopes';
+
 /**
  * Domain module for issues-related operations
  */
@@ -220,13 +259,14 @@ export class IssuesDomain extends BaseDomain {
       builder.withCwe(params.cwe);
     }
     if (params.owaspTop10) {
-      builder.withOwaspTop10(params.owaspTop10);
+      builder.withOwaspTop10(params.owaspTop10 as OwaspTop10Category[]);
     }
     if (params.owaspTop10v2021) {
-      builder.withOwaspTop10v2021(params.owaspTop10v2021);
+      builder.withOwaspTop10v2021(params.owaspTop10v2021 as OwaspTop10v2021Category[]);
     }
     if (params.sansTop25) {
-      builder.withSansTop25(params.sansTop25);
+      // NOTE: withSansTop25 is deprecated since SonarQube 10.0, but kept for backward compatibility
+      builder.withSansTop25(params.sansTop25 as SansTop25Category[]);
     }
     if (params.sonarsourceSecurity) {
       builder.withSonarSourceSecurity(params.sonarsourceSecurity);
@@ -242,7 +282,7 @@ export class IssuesDomain extends BaseDomain {
 
     // Facets
     if (params.facets) {
-      builder.withFacets(params.facets);
+      builder.withFacets(params.facets as IssueFacet[]);
     }
     if (params.facetMode) {
       builder.withFacetMode(params.facetMode);
