@@ -45,7 +45,7 @@ export abstract class BaseDomain {
       });
 
     // Wrap operation with circuit breaker
-    const breakerName = `sonarqube.${endpoint.replace(/\//g, '.')}`;
+    const breakerName = `sonarqube.${endpoint.replaceAll('/', '.')}`;
     const wrappedOperation = wrapWithCircuitBreaker(breakerName, retryableOperation, {
       timeout: 30000, // 30 seconds
       errorThresholdPercentage: 50,
