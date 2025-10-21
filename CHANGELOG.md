@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.10.21
+
+### Patch Changes
+
+- [#336](https://github.com/sapientpants/sonarqube-mcp-server/pull/336) [`2383f4d`](https://github.com/sapientpants/sonarqube-mcp-server/commit/2383f4d6e79b3d4b2f96c495bbe229e0dc3aa047) - refactor: improve code quality by addressing SonarQube code smells
+
+  Improved code readability and maintainability by addressing 7 code smell issues:
+  - Use `String#replaceAll()` instead of `replace()` with global regex for better clarity
+  - Convert `forEach()` to `for...of` loop for improved performance and readability
+  - Use `String.raw` template literal to avoid unnecessary escaping in regex patterns
+
+  These changes follow modern JavaScript/TypeScript best practices and reduce technical debt by 30 minutes. No functional changes or breaking changes introduced.
+
 ## 1.10.20
 
 ### Patch Changes
