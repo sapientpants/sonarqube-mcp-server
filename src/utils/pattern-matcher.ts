@@ -32,7 +32,7 @@ export class PatternMatcher {
   private globToRegex(pattern: string): RegExp {
     // Escape all regex special characters except * and ?
     const escaped = pattern
-      .replaceAll(/[\\^$.()|[\]{}+]/g, String.raw`\$&`) // Escape regex special chars
+      .replaceAll(/[\\^$.()|[\]{}+]/g, '\\$&') // Escape regex special chars
       .replaceAll('*', '.*') // * matches any sequence
       .replaceAll('?', '.'); // ? matches any single character
 
