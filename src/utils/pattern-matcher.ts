@@ -33,8 +33,8 @@ export class PatternMatcher {
     // Escape all regex special characters except * and ?
     const escaped = pattern
       .replaceAll(/[\\^$.()|[\]{}+]/g, String.raw`\$&`) // Escape regex special chars
-      .replaceAll(/\*/g, '.*') // * matches any sequence
-      .replaceAll(/\?/g, '.'); // ? matches any single character
+      .replaceAll('*', '.*') // * matches any sequence
+      .replaceAll('?', '.'); // ? matches any single character
 
     // Create regex with anchors for full string matching
     return new RegExp(`^${escaped}$`);
