@@ -110,7 +110,7 @@
     "@fast-check/vitest": "^0.2.2",
     "@jest/globals": "^30.2.0",
     "@types/cors": "2.8.19",
-    "@types/express": "5.0.3",
+    "@types/express": "5.0.4",
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.8.1",
